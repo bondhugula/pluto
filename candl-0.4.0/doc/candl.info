@@ -1,0 +1,89 @@
+This is candl.info, produced by makeinfo version 4.13 from candl.texi.
+
+This manual is dedicated to CAnDL version 0.2.0, a library dependence
+analysis of polyhedral programs.
+
+   Copyright (C) 2003-2008 Cedric Basoul.
+
+   Permission is granted to copy, distribute and/or modify this
+document under the terms of the GNU Free Documentation License, Version
+1.2 published by the Free Software Foundation. To receive a copy of the
+GNU Free Documentation License, write to the Free Software Foundation,
+Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA.
+
+
+File: candl.info,  Node: Top,  Next: Introduction,  Up: (dir)
+
+CAnDL
+*****
+
+This manual is dedicated to CAnDL version 0.2.0, a library dependence
+analysis of polyhedral programs.
+
+   Copyright (C) 2003-2008 Cedric Basoul.
+
+   Permission is granted to copy, distribute and/or modify this
+document under the terms of the GNU Free Documentation License, Version
+1.2 published by the Free Software Foundation. To receive a copy of the
+GNU Free Documentation License, write to the Free Software Foundation,
+Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA.
+
+* Menu:
+
+* Introduction::
+* Usage::
+
+
+File: candl.info,  Node: Introduction,  Next: Usage,  Prev: Top,  Up: Top
+
+1 Introduction
+**************
+
+There is a Doxygen documentation of the API available in
+`doc/htmldoc.tar.gz'.
+
+1.1 Installation of CAnDL
+=========================
+
+The installation of CAnDL follows the classical scheme. You can specify
+the path of PIPLib to the configure script with `--with-piplib' (1).
+
+     $> tar xzf candl-0.2.0.tar.gz
+     $> cd candl-0.2.0
+     $> ./configure --prefix=/path/to/be/installed
+     $> make
+
+The `make check' command can be used to make a test run of CAnDL.
+
+     $> make check
+
+The `make install' command can be used to install the library.
+
+     $> make install
+
+   ---------- Footnotes ----------
+
+   (1) The configure script will automatically detect the location of
+dependencies if _-prefix=path/to/dir_ is specified and all dependencies
+were installed in path/to/dir
+
+
+File: candl.info,  Node: Usage,  Prev: Introduction,  Up: Top
+
+2 Usage
+*******
+
+This chapter describes briefly the input/output of CAnDL binary.
+
+2.1 Input file design
+=====================
+
+
+
+Tag Table:
+Node: Top561
+Node: Introduction1165
+Ref: Introduction-Footnote-11880
+Node: Usage2053
+
+End Tag Table

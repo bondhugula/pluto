@@ -1,0 +1,23 @@
+* * * * * * * * *
+* ScopLib 0.2.0 *
+* * * * * * * * *
+
+
+Install
+-------
+
+$> ./configure
+
+$> make 
+
+$> make install
+
+
+Support
+-------
+
+
+Please contact both:
+ Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>, maintainer
+ Cedric Bastoul <cedric.bastoul@inria.fr>, author
+

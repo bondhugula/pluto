@@ -1,0 +1,33 @@
+# Figure 4 from "Efficient code generation for automatic parallelization
+# and optimization".
+#
+# Language
+c
+
+# Context
+
+   1 2
+   1  1
+0
+
+# Number of statements
+1
+
+1
+
+#        i'   i    j    1
+   6 5
+   0    1   -1   -2    0
+   1    0    1    0   -1
+   1    0   -1    0    3
+   1    0    0    1   -1
+   1    0    0   -1    3
+   1    0    0    0    1
+
+0 0 0
+
+0
+0
+
+
+

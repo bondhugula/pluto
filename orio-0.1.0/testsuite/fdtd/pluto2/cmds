@@ -1,0 +1,16 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast fdtd-2d.base.c -DREPS=1 -DT=512 -DN=512
+par:
+  export OMP_NUM_THREADS=4; icc -fast -parallel fdtd-2d.base.c -DREPS=1 -DT=512 -DN=512
+
+*** pluto+ancc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp fdtd-2d.pluto_ancc.seq_par.c -DREPS=1 -DT=512 -DN=512
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp fdtd-2d.pluto_ancc.seq_par.c -DREPS=1 -DT=512 -DN=512
+
+
+

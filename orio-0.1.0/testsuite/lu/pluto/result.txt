@@ -1,0 +1,76 @@
+=====================
+  LU decomposition
+=====================
+
+Pluto version: 
+  Optimizations used: L1 and L2 tiling, loop unroll/jam, parallelization, icc vectorization
+  Flags used: --tile --l2tile [--parallel] [--multipipe] --unroll --prevector
+  Default tile sizes: 32 for L1 (all dimensions) and 256 for L2 (all dimensions)
+  Default unroll factors: 8x8 for the two innermost loops of the hotspot
+
+Best performance parameters (pluto+ancc with rect reg-tiling):
+  Pluto's loop tiling:
+    - L1 tile sizes: 32x32x32
+    - L2 tile sizes: 64x128x64
+  ancc's register tiling:
+    - unroll factors: 8x8x1 for the three innermost loop of the hotspot
+  ancc's scalar replacement: OFF
+
+Best performance parameters (pluto+ancc with both rect and non-rect reg-tilings):
+  Pluto's loop tiling:
+    - L1 tile sizes: 32x16x32
+    - L2 tile sizes: 64x128x64
+  ancc's register tiling:
+    - unroll factors: 32x8x1 for the three innermost loop of the hotspot
+  ancc's scalar replacement: ON
+
+Total number of operations for LU = N*(N-1)/2 + 2*N*(N-1)*(2*N-1)/6
+
+***********************************
+ Sequential (i.e. single core)
+----------------------------------------------------------------------------------------------
+ N       icc -fast       pluto    pluto+ancc           pluto+ancc
+                               (rect reg-tiling)  (non-rect reg-tiling)
+----------------------------------------------------------------------------------------------
+(in seconds)
+----------------------------------------------------------------------------------------------
+  256    0.004778     0.007940     0.006547     0.003739
+  512    0.039333     0.062832     0.052062     0.023667
+ 1024    0.891728     0.499984     0.458753     0.174213
+ 2048   11.482684     3.969062     3.600027     1.370501
+ 4096   93.992237    32.018879    29.783092    11.020228
+ 8192  778.374714   387.848403   348.400776    93.750879
+----------------------------------------------------------------------------------------------
+(in GFLOPS)
+----------------------------------------------------------------------------------------------
+  256    2.33   1.40   1.70   2.98
+  512    2.27   1.42   1.72   3.78
+ 1024    0.80   1.43   1.56   4.11
+ 2048    0.50   1.44   1.59   4.18
+ 4096    0.49   1.43   1.54   4.16
+ 8192    0.47   0.94   1.05   3.91
+
+
+***********************************
+ Parallel
+----------------------------------------------------------------------------------------------
+ N=4096
+----------------------------------------------------------------------------------------------
+ #cores  icc -parallel -fast    pluto      pluto+ancc           pluto+ancc 
+                                        (rect reg-tiling)  (rect and non-rect reg-tilings)
+----------------------------------------------------------------------------------------------
+(in seconds)
+----------------------------------------------------------------------------------------------
+   1     93.603821          32.143856       32.030479        10.904353
+   2     93.549702          18.439005       17.439226         5.963794
+   3     93.424258          13.553355       12.035727         4.320541
+   4     93.423417          11.536561        9.359305         3.420609
+----------------------------------------------------------------------------------------------
+(in GFLOPS)
+----------------------------------------------------------------------------------------------
+   1     0.49    1.42    1.43    4.20
+   2     0.49    2.48    2.63    7.68
+   3     0.49    3.38    3.81   10.60 
+   4     0.49    3.97    4.89   13.39
+
+

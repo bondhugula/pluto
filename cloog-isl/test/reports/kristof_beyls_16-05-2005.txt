@@ -1,0 +1,933 @@
+Dear Dr. Bastoul,
+
+At the university of Ghent, we are starting to look
+at automatic optimization of loops to optimize the implementation
+in an FPGA. With the advent of your Cloog tool, we think
+it becomes possible to use the polyhedral model
+for the kind of optimizations we are thinking about, instead of using
+optimizations based on transforming abstract syntax trees.
+
+As a first test, we started with the representation of a
+wavelet decoder loop kernel in Cloog format. We do this
+by starting from a Fortran77-description, parse it
+using our FPT compiler and PolyAst-library, and then
+generate the Cloog data structures. Then we use
+the function cloog_program_dump_cloog to obtain an
+ASCII-file representing the code in Cloog-format.
+
+However, when trying to read in the generated file,
+we found that the generated file was incorrect, and
+I think the cause is in two small bugs in the
+function cloog_program_dump_cloog. After I've
+corrected them, the generated file seems correct
+(i.e. cloog can correctly read the generated file).
+
+I've attached the adapted program.c source file.
+I only changed the function cloog_program_dump_cloog,
+and now it looks as follows:
+
+void cloog_program_dump_cloog(FILE * foo, CloogProgram * program)
+{ int i, j ;
+  Matrix * matrix ;
+  Polyhedron * polyhedron ;
+  CloogLoop * loop ;
+
+  fprintf(foo,
+  "# CLooG -> CLooG\n"
+  "# This is an automatic dump of an input file from a CloogProgram data\n"
+  "# structure. It can be correct ONLY if dumped before loop generation.\n") ;
+
+  /* Language. */
+  if (program->language == 'c')
+  fprintf(foo,"# Langage: C\n") ;
+  else
+  fprintf(foo,"# Langage: FORTRAN\n") ;
+  fprintf(foo,"%c\n\n",program->language) ;
+
+  /* Context. */
+  fprintf(foo,"# Context (%d parameter(s)):\n",program->context->Dimension) ;
+  matrix = cloog_domain_domain2matrix(program->context) ;
+  cloog_domain_matrix_print(foo,matrix);
+  cloog_domain_matrix_free(matrix);
+  fprintf(foo,"1 # Parameter name(s)\n") ;
+  for (i=0;i<program->names->nb_parameters;i++)
+  fprintf(foo,"%s ",program->names->parameters[i]) ;
+
+  /* Statement number. */
+  i = 0 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { i++ ;
+    loop = loop->next ;
+  }
+  fprintf(foo,"\n\n# Statement number:\n%d\n\n",i) ;
+
+  /* Iteration domains. */
+  i = 1 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { /* Name of the domain. */
+    fprintf(foo,"# Iteration domain of statement %d.\n",i) ;
+
+    /* Number of polyhedron inside the union of disjoint polyhedra. */
+    j = 0 ;
+    polyhedron = /* KB 15.05.2005 remove program->, since otherwise
+                    the number of polytopes describing the iteration
+                    space of the first loop will be printed, instead
+                    of the number of polytopes for the current loop. program->*/loop->domain ;
+    while (polyhedron != NULL)
+    { j++ ;
+      polyhedron = polyhedron->next ;
+    }
+    fprintf(foo,"%d\n",j) ;
+
+    /* The polyhedra themselves. */
+    polyhedron = loop->domain ;
+    while (polyhedron != NULL)
+    { matrix = cloog_domain_domain2matrix(polyhedron) ;
+      cloog_domain_matrix_print(foo,matrix);
+      cloog_domain_matrix_free(matrix);
+      polyhedron = polyhedron->next ;
+    }
+    /* KB 15.05.2005 : options should be printed once per statement, not once
+       per polytope */
+      fprintf(foo,"0 0 0 # For future options.\n\n") ;
+    i++ ;
+    loop = loop->next ;
+  }
+  fprintf(foo,"\n1 # Iterator name(s)\n") ;
+  for (i=0;i<program->names->nb_iterators;i++)
+  fprintf(foo,"%s ",program->names->iterators[i]) ;
+  fprintf(foo,"\n\n") ;
+
+  /* Scattering functions (none since included inside domains). */
+  fprintf(foo,"# No scattering functions.\n0\n\n") ;
+}
+
+
+The two changes are indicated by comments starting with the letters 'KB'.
+
+I'm sending you these changes, so that they can be incorporated in the
+next version of cloog, if you find them to be correct.
+
+with kinds regards,
+
+Kristof Beyls
+
+P.S.: I'm currently studying your work about loop chunking, since I'll
+need some kind of generalized loop tiling transformation that extends over
+multiple loop nests, to get an efficient implementation of the wavelet
+code in an FPGA.
+
+
+-- -------------------------------------------------------------------- Parallel Information Systems Tel: +32(9)2649528 Universiteit Gent Fax: +32(9)2643594 St.-Pietersnieuwstraat 41 E-mail: Kristof.Beyls@elis.ugent.be B-9000 Gent, Belgium http://www.elis.ugent.be/~kbeyls --------------------------------------------------------------------
+
+
+
+
+   /**-------------------------------------------------------------------**
+    **                              CLooG                                **
+    **-------------------------------------------------------------------**
+    **                            program.c                              **
+    **-------------------------------------------------------------------**
+    **                 First version: october 25th 2001                  **
+    **-------------------------------------------------------------------**/
+
+
+/******************************************************************************
+ *               CLooG : the Chunky Loop Generator (experimental)             *
+ ******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2001 Cedric Bastoul                                          *
+ *                                                                            *
+ * This is free software; you can redistribute it and/or modify it under the  *
+ * terms of the GNU General Public License as published by the Free Software  *
+ * Foundation; either version 2 of the License, or (at your option) any later *
+ * version.                                                                   *
+ *                                                                            *
+ * This software is distributed in the hope that it will be useful, but       *
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY *
+ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License   *
+ * for more details.                                                          *
+ *                                                                            *
+ * You should have received a copy of the GNU General Public License along    *
+ * with software; if not, write to the Free Software Foundation, Inc.,        *
+ * 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA                     *
+ *                                                                            *
+ * CLooG, the Chunky Loop Generator                                           *
+ * Written by Cedric Bastoul, Cedric.Bastoul@inria.fr                         *
+ *                                                                            *
+ ******************************************************************************/
+/* CAUTION: the english used for comments is probably the worst you ever read,
+ *          please feel free to correct and improve it !
+ */
+
+
+# include <sys/types.h>
+# include <sys/time.h>
+# include <sys/resource.h>
+# include <stdlib.h>
+# include <stdio.h>
+# include <string.h>
+# include <ctype.h>
+# include "../include/cloog/cloog.h"
+
+
+/******************************************************************************
+ *                          Structure display function                        *
+ ******************************************************************************/
+
+/* cloog_program_print function:
+ * This function prints the content of a CloogProgram structure (program) into a
+ * file (foo, possibly stdout).
+ */
+void cloog_program_print(FILE * foo, CloogProgram * program)
+{ fprintf(foo,"Program:\n") ;
+  fprintf(foo,"Language %c.\n",program->language) ;
+  fprintf(foo,"Scattering dimension number = %d.\n",program->scattdims) ;
+
+  cloog_names_print(foo,program->names) ;
+ 
+  fprintf(foo,"Under the context:\n") ;
+  cloog_domain_print(foo,program->context) ;
+  fprintf(foo,"\n") ;
+  cloog_loop_print(foo,program->loop) ;
+}
+
+
+/* cloog_program_dump_cloog function:
+ * This function dumps a CloogProgram structure supposed to be completely
+ * filled in a CLooG input file (foo possibly stdout) such as CLooG can
+ * rebuild almost exactly the data structure from the input file (the number
+ * of scattering functions is lost since they are included inside the
+ * iteration domains, this can only lead to a less beautiful pretty printing).
+ * 27 june 2003: first version.
+ */
+void cloog_program_dump_cloog(FILE * foo, CloogProgram * program)
+{ int i, j ;
+  Matrix * matrix ;
+  Polyhedron * polyhedron ;
+  CloogLoop * loop ;
+  
+  fprintf(foo,
+  "# CLooG -> CLooG\n"
+  "# This is an automatic dump of an input file from a CloogProgram data\n"
+  "# structure. It can be correct ONLY if dumped before loop generation.\n") ;
+
+  /* Language. */
+  if (program->language == 'c')
+  fprintf(foo,"# Langage: C\n") ;
+  else
+  fprintf(foo,"# Langage: FORTRAN\n") ;
+  fprintf(foo,"%c\n\n",program->language) ;
+
+  /* Context. */
+  fprintf(foo,"# Context (%d parameter(s)):\n",program->context->Dimension) ;
+  matrix = cloog_domain_domain2matrix(program->context) ;
+  cloog_domain_matrix_print(foo,matrix);
+  cloog_domain_matrix_free(matrix);
+  fprintf(foo,"1 # Parameter name(s)\n") ;
+  for (i=0;i<program->names->nb_parameters;i++)
+  fprintf(foo,"%s ",program->names->parameters[i]) ;
+
+  /* Statement number. */
+  i = 0 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { i++ ;
+    loop = loop->next ;
+  } 
+  fprintf(foo,"\n\n# Statement number:\n%d\n\n",i) ;
+   
+  /* Iteration domains. */
+  i = 1 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { /* Name of the domain. */
+    fprintf(foo,"# Iteration domain of statement %d.\n",i) ;
+  
+    /* Number of polyhedron inside the union of disjoint polyhedra. */
+    j = 0 ;
+    polyhedron = /* KB 15.05.2005 remove program->, since otherwise
+                    the number of polytopes describing the iteration
+                    space of the first loop will be printed, instead
+                    of the number of polytopes for the current loop. program->*/loop->domain ;
+    while (polyhedron != NULL)
+    { j++ ;
+      polyhedron = polyhedron->next ;
+    } 
+    fprintf(foo,"%d\n",j) ;
+
+    /* The polyhedra themselves. */
+    polyhedron = loop->domain ;
+    while (polyhedron != NULL)
+    { matrix = cloog_domain_domain2matrix(polyhedron) ;
+      cloog_domain_matrix_print(foo,matrix);
+      cloog_domain_matrix_free(matrix);
+      polyhedron = polyhedron->next ;
+    }
+    /* KB 15.05.2005 : options should be printed once per statement, not once
+       per polytope */
+      fprintf(foo,"0 0 0 # For future options.\n\n") ;
+    i++ ;
+    loop = loop->next ;
+  } 
+  fprintf(foo,"\n1 # Iterator name(s)\n") ;
+  for (i=0;i<program->names->nb_iterators;i++)
+  fprintf(foo,"%s ",program->names->iterators[i]) ;
+  fprintf(foo,"\n\n") ;
+  
+  /* Scattering functions (none since included inside domains). */
+  fprintf(foo,"# No scattering functions.\n0\n\n") ;
+}
+
+
+/* cloog_program_dump_loopgen function:
+ * This function dumps a CloogProgram structure supposed to be completely
+ * filled in a LoopGen input file (foo possibly stdout) such as LoopGen can
+ * generate the code for this problem. If the user of CLooG had the bad idea
+ * to put the scattering functions directly inside the iteration domains, the
+ * time dimension of LoopGen is supposed to be 1.
+ * 27 june 2003: first version (should work but do not...).
+ */
+void cloog_program_dump_loopgen(FILE * foo, CloogProgram * program)
+{ int i, j, time ;
+  Matrix * matrix ;
+  Polyhedron * polyhedron ;
+  CloogLoop * loop ;
+  
+  /* Statement number and time dimensions. */
+  i = 0 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { i++ ;
+    loop = loop->next ;
+  } 
+  if (program->scattdims)
+  time = program->scattdims ;
+  else
+  time = 1 ;
+  fprintf(foo,"%d %d 1\n\n",i,time) ;
+
+  fprintf(foo,
+  "# CLooG -> LoopGen\n"
+  "# This is an automatic dump of an input file from a CloogProgram data\n"
+  "# structure. It can be correct ONLY if dumped before loop generation.\n\n") ;
+
+  /* Context. */
+  fprintf(foo,"# Context (%d parameter(s)):\n1\n",program->context->Dimension) ;
+  matrix = cloog_domain_domain2matrix(program->context) ;
+  cloog_domain_matrix_print(foo,matrix);
+  cloog_domain_matrix_free(matrix);
+  fprintf(foo,"\n") ;
+   
+  /* Iteration domains. */
+  i = 1 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { /* Number of polyhedron inside the union of disjoint polyhedra. */
+    j = 0 ;
+    polyhedron = program->loop->domain ;
+    while (polyhedron != NULL)
+    { j++ ;
+      polyhedron = polyhedron->next ;
+    } 
+    fprintf(foo,"%d\n",j) ;
+
+    /* Name of the domain. */
+    fprintf(foo,"# Iteration domain of statement %d.\n",i) ;
+    
+    /* The polyhedra themselves. */
+    polyhedron = loop->domain ;
+    while (polyhedron != NULL)
+    { matrix = cloog_domain_domain2matrix(polyhedron) ;
+      cloog_domain_matrix_print(foo,matrix);
+      cloog_domain_matrix_free(matrix);
+       polyhedron = polyhedron->next ;
+    }
+    fprintf(foo,"\n") ;
+    i++ ;
+    loop = loop->next ;
+  } 
+}
+
+
+/* cloog_program_dump_omega function:
+ * This function dumps a CloogProgram structure supposed to be completely
+ * filled in a OMEGA Calculator file (foo possibly stdout) such as OC can
+ * generate the code for this problem. If the user of CLooG had the bad idea
+ * to put the scattering functions directly inside the iteration domains, they
+ * will be added in the corresponding iteration domain for OMEGA with some
+ * equalities, so he need to pray (because OMEGA and equalities are really
+ * not friends)...
+ * December 7th 2003: first version.
+ */
+void cloog_program_dump_omega(FILE * foo, CloogProgram * program)
+{ int i, j, k, first, nb_iterators, nb_parameters, max_depth=0,
+      statement_number ;
+  Polyhedron * polyhedron ;
+  CloogLoop * loop ;
+  Value sign ;
+  
+  fprintf(foo,
+  "# CLooG -> OMEGA\n"
+  "# This is an automatic dump of an input file from a CloogProgram data\n"
+  "# structure. It can be correct ONLY if dumped before loop generation.\n\n") ;
+
+  nb_parameters = program->context->Dimension ;
+  
+  /* Context. */
+  fprintf(foo,"# Context (%d parameter(s)).\n",nb_parameters) ;
+  if (nb_parameters >= 1)
+  { fprintf(foo,"Symbolic %s",program->names->parameters[0]) ;
+    for (i=1;i<nb_parameters;i++)
+    fprintf(foo,", %s",program->names->parameters[i]) ;
+    fprintf(foo," ;\n\n") ;
+  }
+
+  /* Statements. */
+  fprintf(foo,"# Iteration domains:\n") ;
+  statement_number = 1 ;
+  loop = program->loop ;
+  while (loop != NULL)
+  { nb_iterators = loop->domain->Dimension - nb_parameters ;
+    if (nb_iterators > max_depth)
+    max_depth = nb_iterators ;
+    
+    /* Name of the statement. */
+    fprintf(foo,"IS%d0:={",statement_number) ;
+  
+    /* Dimensions. */
+    fprintf(foo,"[") ;
+    if (nb_iterators-program->scattdims >= 1)
+    { fprintf(foo,"%s",program->names->iterators[program->scattdims]) ;
+      for (j=program->scattdims+1;j<nb_iterators;j++)
+      fprintf(foo,",%s",program->names->iterators[j]) ;
+    }
+    fprintf(foo,"]: ") ;
+  
+    /* Number of polyhedron inside the union of disjoint polyhedra
+     * (must be 1 for OMEGA, we just check it).
+     */
+    j = 0 ;
+    polyhedron = program->loop->domain ;
+    while (polyhedron != NULL)
+    { j++ ;
+      polyhedron = polyhedron->next ;
+    }
+    if (j > 1)
+    { fprintf(stderr,"[CLooG]ERROR: the problem cannot be dumped for OMEGA.\n");
+      exit(0) ;
+    }
+
+    /* The polyhedra themselves. */
+    polyhedron = loop->domain ;
+    for (j=program->scattdims;j<polyhedron->NbConstraints;j++)
+    { first = 1 ;
+      
+      if (j > program->scattdims)
+      fprintf(foo," && ") ;
+    
+      /* The coefficients of the iterators and the parameters. */
+      for (k=1;k<=polyhedron->Dimension;k++)
+      if (polyhedron->Constraint[j][k] != 0)
+      { if (!first)
+        { if (polyhedron->Constraint[j][k] > 0)
+          fprintf(foo,"+") ;
+        }
+	else
+        first = 0 ;
+	
+        if ((polyhedron->Constraint[j][k] != 1) &&
+	    (polyhedron->Constraint[j][k] != -1))
+        fprintf(foo,VALUE_FMT,polyhedron->Constraint[j][k]) ;
+	else
+        if (polyhedron->Constraint[j][k] == -1)
+        fprintf(foo,"-") ;
+	
+        if (k<=nb_iterators)
+        fprintf(foo,"%s",program->names->iterators[k-1]) ;
+        else
+        fprintf(foo,"%s",program->names->parameters[k-1-nb_iterators]) ;
+      }
+      
+      /* The constant (k has the good value after the loop). */
+      if (polyhedron->Constraint[j][k] != 0)
+      { if (!first)
+        { if (polyhedron->Constraint[j][k] > 0)
+	  fprintf(foo,"+") ;
+        }
+        fprintf(foo,VALUE_FMT,polyhedron->Constraint[j][k]) ;
+      }
+      
+      /* The (in)equality to 0. */
+      if (polyhedron->Constraint[j][0] == 0)
+      fprintf(foo,"=0") ;
+      else
+      fprintf(foo,">=0") ;
+    }
+    fprintf(foo,"} ;\n") ;
+    
+    if ((loop = loop->next) != NULL)
+    statement_number ++ ;
+  }
+  
+  /* Scattering functions (scheduling for OMEGA). */
+  loop = program->loop ;
+  if (program->scattdims > 0)
+  { statement_number = 1 ;
+    loop = program->loop ;
+    fprintf(foo,"\n# Schedules:\n") ;
+    
+    while (loop != NULL)
+    { nb_iterators = loop->domain->Dimension - nb_parameters ;
+      if (nb_iterators > max_depth)
+      max_depth = nb_iterators ;
+    
+      /* Name of the statement. */
+      fprintf(foo,"T%d0:={",statement_number) ;
+  
+      /* Dimensions. */
+      fprintf(foo,"[") ;
+      if (nb_iterators-program->scattdims >= 1)
+      { fprintf(foo,"%s",program->names->iterators[program->scattdims]) ;
+        for (j=program->scattdims+1;j<nb_iterators;j++)
+        fprintf(foo,",%s",program->names->iterators[j]) ;
+      }
+      fprintf(foo,"] -> [") ;
+  
+      /* The functions themselves. */
+      polyhedron = loop->domain ;
+      for (j=0;j<program->scattdims;j++)
+      { first = 1 ;
+      
+        if (j > 0)
+        fprintf(foo,",") ;
+    
+        /* We assume that the coefficient of the scattering iterator is 1. */
+        if ((polyhedron->Constraint[j][j+1] != 1) &&
+            (polyhedron->Constraint[j][j+1] != -1))
+        { fprintf(stderr,"[CLooG]ERROR: scattering dimension coefficients must "
+                         "be 1 or -1to dump for OMEGA.") ;
+          exit(0) ;
+        }
+      
+        /* Depending on the sign of the scattering coefficient, the
+	 * coefficient for the scheduling expression.
+	 */
+	if (polyhedron->Constraint[j][j+1] == 1)
+        sign = -1 ;
+        else
+        sign = 1 ;
+      
+        /* The coefficients of the iterators and the parameters. */
+        for (k=program->scattdims+1;k<=polyhedron->Dimension;k++)
+        if (polyhedron->Constraint[j][k] != 0)
+        { if (!first)
+          { if (sign*polyhedron->Constraint[j][k] > 0)
+            fprintf(foo,"+") ;
+          }
+	  else
+          first = 0 ;
+
+          if ((polyhedron->Constraint[j][k] != 1) &&
+	      (polyhedron->Constraint[j][k] != -1))
+          fprintf(foo,VALUE_FMT,sign*polyhedron->Constraint[j][k]) ;
+	  else
+          if (sign*polyhedron->Constraint[j][k] == -1)
+          fprintf(foo,"-") ;
+	
+          if (k<=nb_iterators)
+          fprintf(foo,"%s",program->names->iterators[k-1]) ;
+          else
+          fprintf(foo,"%s",program->names->parameters[k-1-nb_iterators]) ;
+        }
+      
+        /* The constant (k has the good value after the loop). */
+        if (polyhedron->Constraint[j][k] != 0)
+        { if (!first)
+          { if (sign*polyhedron->Constraint[j][k] > 0)
+	    fprintf(foo,"+") ;
+          }
+          fprintf(foo,VALUE_FMT,sign*polyhedron->Constraint[j][k]) ;
+        }
+	else
+	{ if (first)
+	  fprintf(foo,"0") ;
+	}
+      }
+    
+      /* The scheduling expressions 'a la CLooG' end with the original
+       * dimensions...
+       */
+      if (nb_iterators >= 1)
+      { for (j=program->scattdims;j<nb_iterators;j++)
+        fprintf(foo,",%s",program->names->iterators[j]) ;
+      }
+    
+      /* ...and possibly zeros in order for the scheduling functions to have
+       * the same dimension number.
+       */
+      for (j=nb_iterators;j<max_depth;j++)
+      fprintf(foo,",0") ;
+    
+      fprintf(foo,"]} ;\n") ;
+    
+      if ((loop = loop->next) != NULL)
+      statement_number ++ ;
+    }
+  }
+  
+  /* The codegen call. */
+  fprintf(foo,"\n# CodeGen call:\n") ;
+  fprintf(foo,"codegen %d ",max_depth) ;
+  if (statement_number > 0)
+  { if (program->scattdims != 0)
+    fprintf(foo,"T10:") ;
+    fprintf(foo,"IS10") ;
+    for (i=1;i<statement_number;i++)
+    { fprintf(foo,", ") ;
+      if (program->scattdims != 0)
+      fprintf(foo,"T%d0:",i+1) ;
+      fprintf(foo,"IS%d0",i+1) ;
+    }
+  }
+  fprintf(foo," ;\n") ; 
+}
+
+
+/* cloog_program_pprint function:
+ * This function prints the content of a CloogProgram structure (program) into a
+ * file (foo, possibly stdout), in a C-like language.
+ */
+void cloog_program_pprint(foo, program, options)
+FILE * foo ;
+CloogProgram * program ;
+CloogOptions * options ;
+{ CloogInfos * infos ;
+  
+  infos = (CloogInfos *)malloc(sizeof(CloogInfos)) ;
+  infos->nb_iterators  = program->names->nb_iterators ;
+  infos->nb_parameters = program->names->nb_parameters ;
+  infos->iterators     = program->names->iterators ;
+  infos->parameters    = program->names->parameters ;
+  infos->scattdims     = program->scattdims ;  
+  infos->options       = options ;
+  /* Allocation for the array of strides, there is a +1 since the statement can
+   * be included inside an external loop without iteration domain.
+   */ 
+  infos->stride        =(Value *)malloc((infos->nb_iterators+1)*sizeof(Value)) ;
+	
+  if (program->language == 'f')
+  infos->language      = LANGUAGE_FORTRAN ;
+  else
+  infos->language      = LANGUAGE_C ;
+ 
+  if (program->language == 'f')
+  fprintf(foo,"! Generated from %s by CLooG v%s %s bits in %.2fs.\n",
+          options->name,CLOOG_RELEASE,CLOOG_VERSION,options->time) ;
+  else
+  fprintf(foo,"/* Generated from %s by CLooG v%s %s bits in %.2fs. */\n",
+          options->name,CLOOG_RELEASE,CLOOG_VERSION,options->time) ;
+  
+  pprint(foo,program->loop,NULL,1,0,infos) ;
+  
+  free(infos->stride) ;
+  free(infos) ;
+}
+
+
+/******************************************************************************
+ *                         Memory deallocation function                       *
+ ******************************************************************************/
+
+
+/* cloog_program_free function:
+ * This function frees the allocated memory for a CloogProgram structure.
+ */
+void cloog_program_free(CloogProgram * program)
+{ cloog_names_free(program->names) ;
+  cloog_loop_free(program->loop) ;
+  cloog_domain_free(program->context) ;
+  free(program) ;
+}
+
+
+/******************************************************************************
+ *                               Reading function                             *
+ ******************************************************************************/
+
+
+/* cloog_program_read function:
+ * This function read the informations to put in a CloogProgram structure from
+ * a file (foo, possibly stdin). It returns a pointer to a CloogProgram
+ * structure containing the read informations.
+ * October 25th 2001: first version.
+ * September 9th 2002: - the big reading function is now splitted in several
+ *                       functions (one per read data structure).
+ *                     - adaptation to the new file format with naming.
+ */
+CloogProgram * cloog_program_read(FILE * foo)
+{ int i, nb_statements, nb_parameters, nb_iterators ;
+  char s[MAX_STRING], language, ** scat_names, prefix[2]={'c','\0'} ;
+  CloogLoop * current, * next ;
+  CloogNames * names ;
+  CloogDomainList * scattering ;
+  CloogProgram * p ;
+  
+  /* Memory allocation for the CloogProgram structure. */
+  p = (CloogProgram *)malloc(sizeof(CloogProgram)) ;
+  if (p == NULL) 
+  { fprintf(stderr, "[CLooG]ERROR: memory overflow.\n") ;
+    exit(1) ;
+  }
+
+  /* Memory allocation for the CloogNames structure. */
+  names = (CloogNames *)malloc(sizeof(CloogNames)) ;
+  if (names == NULL) 
+  { fprintf(stderr, "[CLooG]ERROR: memory overflow.\n") ;
+    exit(1) ;
+  }
+  
+  /* First of all, we read the language to use. */
+  while (fgets(s,MAX_STRING,foo) == 0) ;
+  while ((*s=='#'||*s=='\n') || (sscanf(s," %c",&language)<1))
+  fgets(s,MAX_STRING,foo) ;
+  p->language = language ;
+
+  /* We then read the context data. */
+  p->context = cloog_domain_read(foo) ;
+  nb_parameters = p->context->Dimension ;
+  
+  /* Reading of the parameter names. */
+  names->nb_parameters = nb_parameters ;
+  names->parameters = cloog_names_read(foo,nb_parameters,NULL,FIRST_PARAMETER) ;
+      
+  /* We read the statement number. */
+  while (fgets(s,MAX_STRING,foo) == 0) ;
+  while ((*s=='#'||*s=='\n') || (sscanf(s," %d",&nb_statements)<1))
+  fgets(s,MAX_STRING,foo) ;
+
+  /*printf("%d ",nb_statements) ;*/
+
+  /* Domains reading for each statement. */
+  if (nb_statements > 0)
+  { /* Reading of the first domain. */
+    p->loop = cloog_loop_read(foo,1,nb_parameters) ;
+    if (p->loop->domain != NULL)
+    nb_iterators = p->loop->domain->Dimension - nb_parameters ;
+    else
+    nb_iterators = 0 ;
+    
+    /* And the same for each next domain. */
+    current = p->loop ;
+    for (i=2;i<=nb_statements;i++)
+    { next = cloog_loop_read(foo,i,nb_parameters) ;
+      if (next->domain != NULL)
+      if (next->domain->Dimension - nb_parameters > nb_iterators)
+      nb_iterators = next->domain->Dimension - nb_parameters ;
+      
+      current->next = next ;
+      current = current->next ;
+    }     
+    
+    /* Reading of the iterator names. */
+    names->nb_iterators = nb_iterators ;
+    names->iterators = cloog_names_read(foo,nb_iterators,NULL,FIRST_ITERATOR) ;
+    p->names = names ;
+
+    /* Reading and puting the scattering data in program structure. */
+    scattering = cloog_domain_list_read(foo) ;
+    
+    if (scattering != NULL)
+    { if (cloog_domain_list_quick_same(scattering))
+      { fprintf(stderr, "[CLooG]WARNING: some scattering functions are "
+                        "similar.\n") ;
+      }
+      
+      p->scattdims = scattering->domain->Dimension - p->loop->domain->Dimension;
+      scat_names = cloog_names_read(foo,p->scattdims,prefix,'1') ;
+      cloog_program_scatter(p,scattering,scat_names) ;
+      cloog_domain_list_free(scattering) ;
+      /* Now we can free scat_names since cloog_program_scatter copied it. */
+      for (i=0;i<p->scattdims;i++)
+      free(scat_names[i]) ; 
+      free(scat_names) ; 
+    }
+    else
+    p->scattdims = 0 ;
+  }
+  else
+  { p->loop = NULL ;
+    p->names = NULL ;
+  }
+        
+  return(p) ;
+}
+
+
+/******************************************************************************
+ *                            Processing functions                            *
+ ******************************************************************************/
+
+
+/* cloog_program_statement_count function:
+ * This function returns the number of statements in the whole program. This has
+ * nothing to do here, and I don't remember why and when I wrote it, anyway...
+ */
+int cloog_program_statement_count(CloogLoop * start)
+{ int count=0 ;
+  CloogLoop * loop ;
+  CloogStatement * statement ;
+
+  loop = start ;
+
+  while (loop != NULL)
+  { if (loop->inner != NULL)
+    count += cloog_program_statement_count(loop->inner) ;
+    
+    statement = loop->statement ;
+    
+    while (statement != NULL)
+    { count ++ ;
+      statement = statement->next ;
+    }
+    loop = loop->next ;
+  }
+  
+  return count ;
+}
+
+
+/* cloog_program_generate function:
+ * This function calls the Quillere algorithm for loop scanning. (see the
+ * Quillere paper) and calls the loop simplification function.
+ * - depth is the loop depth we want to optimize (guard free as possible),
+ *   the first loop depth is 1 and anegative value is the infinity depth.
+ * - sep_level is the level number where we want to start loop separation.
+ * October 26th 2001: first version. 
+ */ 
+CloogProgram * cloog_program_generate(program, options)
+CloogProgram * program ;
+CloogOptions * options ;
+{ float time ;
+  struct rusage start, end ;
+  CloogLoop * loop, * simplified ;
+
+  if ((program->scattdims > options->l) && (options->l > 0))
+  fprintf(stderr, "[CLooG]WARNING: -l depth is less than scattering dimension "
+                  "number (the generated code may be illegal).\n") ;
+  
+  if (program->loop == NULL)
+  return program ;
+  else
+  { loop = program->loop ;
+    getrusage(RUSAGE_SELF, &start) ;
+    
+    /* Here we go ! */
+    loop = cloog_loop_generate(loop,program->context,1,
+                               program->context->Dimension,options) ;
+    
+    getrusage(RUSAGE_SELF, &end) ;
+    /* We calculate the time spent in code generation. */
+    time =  (end.ru_utime.tv_usec -  start.ru_utime.tv_usec)/(float)(MEGA) ;
+    time += (float)(end.ru_utime.tv_sec - start.ru_utime.tv_sec) ;
+    options->time = time ;
+    
+    if (loop == NULL)
+    { program->loop = NULL ;
+      return program ;
+    }
+    else
+    { /*cloog_loop_print(stdout,loop) ;*/
+      simplified = cloog_loop_simplify(loop,program->context,1,
+                                       program->context->Dimension);
+      program->loop = simplified ;
+      /*program->loop = loop ;*/
+      return program ;
+    }
+  }
+}
+
+
+/* cloog_program_scatter function:
+ * This function adds the scattering (scheduling) informations in a program.
+ * If names is NULL, this function create names itself such that the i^th
+ * name is ci.
+ * November 6th 2001: first version. 
+ */
+void cloog_program_scatter(program, scattering, names)
+CloogProgram * program ;
+CloogDomainList * scattering ;
+char ** names ;
+{ int i, scattering_dim, scattering_dim2, new_dim, not_enough_constraints=0 ;
+  char ** iterators ;
+  CloogLoop * loop ;
+  
+  if ((program != NULL) && (scattering != NULL))
+  { loop = program->loop ;
+    
+    /* We compute the scattering dimension and check it is >=0. */
+    scattering_dim = scattering->domain->Dimension - loop->domain->Dimension ;
+    if (scattering_dim <= 0)
+    { fprintf(stderr, "[CLooG]ERROR: scattering has not enough dimensions.\n") ;
+      exit(1) ;
+    }
+    if (scattering_dim >= scattering->domain->NbConstraints)
+    not_enough_constraints ++ ;
+    
+    /* We add scattering names in program->iterators. */
+    new_dim = program->names->nb_iterators + scattering_dim ;
+    iterators = (char **)malloc(new_dim*sizeof(char *)) ;
+    if (iterators == NULL) 
+    { fprintf(stderr, "[CLooG]ERROR: memory overflow.\n") ;
+      exit(1) ;
+    }
+    for (i=0;i<scattering_dim;i++)
+    { iterators[i] = (char *)malloc(MAX_NAME*sizeof(char)) ;
+      if (iterators[i] == NULL) 
+      { fprintf(stderr, "[CLooG]ERROR: memory overflow.\n") ;
+        exit(1) ;
+      }
+      if (names != NULL)
+      strcpy(iterators[i],names[i]) ;
+      else 
+      sprintf(iterators[i],"c%d",i+1) ;
+    }
+    for (i=scattering_dim;i<new_dim;i++)
+    iterators[i] = program->names->iterators[i-scattering_dim] ;
+    free(program->names->iterators) ;
+    program->names->iterators = iterators ;
+
+    /* We update nb_iterators. */
+    program->names->nb_iterators = new_dim ;
+ 
+    /* Finally we scatter all loops. */
+    cloog_loop_scatter(loop,scattering->domain) ;
+    loop = loop->next ;
+    scattering = scattering->next ;    
+    
+    while ((loop != NULL) && (scattering != NULL))
+    { scattering_dim2 = scattering->domain->Dimension - loop->domain->Dimension;
+      if (scattering_dim2 != scattering_dim)
+      { fprintf(stderr, "[CLooG]ERROR: "
+                        "scattering dimensions are not the same.\n") ;
+        exit(1) ;
+      }
+      if (scattering_dim2 >= scattering->domain->NbConstraints)
+      not_enough_constraints ++ ;
+      
+      cloog_loop_scatter(loop,scattering->domain) ;
+      loop = loop->next ;
+      scattering = scattering->next ;
+    }
+    if ((loop != NULL) || (scattering != NULL))
+    fprintf(stderr, "[CLooG]WARNING: "
+                    "there is not a scattering for each statement.\n");
+    
+    if (not_enough_constraints)
+    fprintf(stderr, "[CLooG]WARNING: not enough constraints for "
+                    "%d scattering function(s).\n",not_enough_constraints) ;
+  }
+}
+

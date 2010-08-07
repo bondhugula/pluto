@@ -1,0 +1,2 @@
+#pragma scop
+#pragma endscop

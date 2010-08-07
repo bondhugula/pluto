@@ -1,0 +1,17 @@
+# CLooG -> OMEGA
+# This is an automatic dump of an input file from a CloogProgram data
+# structure. It can be correct ONLY if dumped before loop generation.
+
+# Context (0 parameter(s)).
+# Iteration domains:
+IS10:={[c1,c2]: c1>=0 && -c1+31>=0 && c2>=0 && -c2+511>=0} ;
+IS20:={[c1]: c1>=0 && -c1+127>=0} ;
+IS30:={[c1,c2]: c1>=0 && -c1+126>=0 && c2>=0 && -c2+127>=0} ;
+
+# Schedules:
+T10:={[c1,c2] -> [1536c1+3c2,c1,c2]} ;
+T20:={[c1] -> [384c1+1534,c1,0]} ;
+T30:={[c1,c2] -> [384c1+3c2+1919,c1,c2]} ;
+
+# CodeGen call:
+codegen 3 T10:IS10, T20:IS20, T30:IS30 ;

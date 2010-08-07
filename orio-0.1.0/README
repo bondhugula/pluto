@@ -1,0 +1,69 @@
+===================================================================================
+  ORIO -- An Annotation-Based Performance Tuning Tool
+ 
+    Albert Hartono    <hartonoa@cse.ohio-state.edu>, <hartono@mcs.anl.gov>
+    Boyana Norris     <norris@mcs.anl.gov>
+
+===================================================================================
+
+INSTALLATION
+
+The Orio installation follows the standard Python Module Distribution
+Utilities, or Disutils for short.
+
+For users who want to quickly install Orio to the standard locations
+of third-party Python modules (requiring superuser privileges in a
+Unix system), the installation is straightforward as shown below.
+
+  % tar -xvzf orio.tar.gz
+  % cd orio
+  % python setup.py install
+
+On a Unix platform, the above install command will normally put an
+orcc script in the /usr/bin location, and also create an orio module
+directory in the /usr/lib/python2.X/site-packages location.
+
+To test whether Orio has been properly installed in your system, try
+to execute orcc command as given below as an example.
+
+  % orcc --help
+
+  description: compile shell for Orio
+
+  usage: orcc [options] <ifile> 
+    <ifile>   input file containing the annotated code
+
+  options:
+    -h, --help                     display this message
+    -o <file>, --output=<file>     place the output to <file>
+    -v, --verbose                  verbosely show details of the results of the running program
+
+In order to install Orio to an alternate location, users need to
+supply a base directory for the installation. For instance, the
+following command will install an orcc script under
+/home/username/bin, and also put an orio module under
+/home/username/lib/python/site-packages.
+
+  % tar -xvzf orio.tar.gz
+  % cd orio
+  % python setup.py install --prefix=/home/username
+
+It is also important to ensure that the installed Orio module location
+is included in the PYTHONPATH environment variable. Similarly, users
+can optionally include the installed orcc script location in the PATH
+shell variable. To do this for the above example, the following two
+lines can be added in the .bashrc configuration file (assuming the
+user uses Bash shell, of course).
+
+export PYTHONPATH=$PYTHONPATH:/home/username/lib/python/site-packages
+export PATH=$PATH:/home/username/bin
+
+==================================================================================   
+
+CONTACT INFO
+
+  Please send all questions, bugs reports, and comments to:
+    Albert Hartono    <hartonoa@cse.ohio-state.edu>, <hartono@mcs.anl.gov>
+    Boyana Norris     <norris@mcs.anl.gov>
+
+

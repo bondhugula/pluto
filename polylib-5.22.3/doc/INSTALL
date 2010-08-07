@@ -1,0 +1,51 @@
+
+This is version 5.22 of the Polyhedral Library.
+http://icps.u-strasbg.fr/polylib
+
+
+REQUIREMENTS:
+=============
+All you need to build the polylib is a C compiler like gcc.
+
+If you want the library to be overflow proof, you might install
+the GNU-MP library, version 2.0.2 or more. You can get it from:
+       ftp://ftp.gnu.org
+or from any GNU mirror site.
+You should run './configure --with-libgmp' to use gmp.
+
+You can also build the polylib if you don't have gmp, but it will
+fail when an overflow occurs.
+
+
+BUILDING, if you have root access:
+=================================
+1. Run ./configure
+2. Become root
+3. Run 'make install'
+4. Run 'make test' to test the library on a given set of examples
+5. Run 'make longtest' to run a longer test on the examples
+
+
+BUILDING, if you don't have root access (WITHOUT INSTALLING THE LIB)
+====================================================================
+Run './configure --disable-install-lib' at step 1.
+The executables will be built in the Obj.*.* directory, linked with
+the static library.
+You can run the tests after 'make' in this case.
+
+INSTALLING THE LIB IN A PRIVATE DIRECTORY
+=========================================
+Run './configure --prefix=MyDirectory'
+
+I suggest that you also add option '--enable-onlystatic'. It does not
+make much sense to build a shared object in a private directory.
+If you do however, you will have to set your LD_LIBRARY_PATH before
+using the lib.
+
+OTHER OPTIONS
+=============
+Type './configure --help' to get a complete list of options supported
+by the configure script.
+
+If something fails, send me an e-report: loechner@icps.u-strasbg.fr
+--Vincent

@@ -1,0 +1,56 @@
+# ---------------------- CONTEXT ----------------------
+c # language is C
+
+# Context (no constraints on two parameters)
+1 4                   # 1 lines and 4 columns
+# eq/in m  n  1
+    1   0  0  0       # 0 >= 0, always true
+
+1 # We want to set manually the parameter names
+m n                   # parameter names
+
+# --------------------- STATEMENTS --------------------
+2 # Number of statements
+
+2 # First statement: two domains
+# First domain
+3 5                   # 3 lines and 5 columns
+# eq/in i  m  n  1
+    1   1  0  0 -1    # i >= 1
+    1  -1  0  1  0    # i <= n
+    1   1 -1  0  0    # i >= m
+# Second domain
+3 5                   # 3 lines and 5 columns
+# eq/in i  m  n  1 
+    1   1  0  0 -1    # i >= 1
+    1  -1  0  1  0    # i <= n
+    1  -1  2  0  0    # i <= 2*m
+0  0  0               # for future options
+ 
+1 # Second statement: one domain
+4 6                   # 4 lines and 6 columns
+# eq/in i  j  m  n  1 
+    1   1  0  0  0 -1 # i >= 1
+    1  -1  0  0  1  0 # i <= n
+    1  -1  1  0  0 -1 # j >= i+1
+    1   0 -1  1  0  0 # j <= m
+0  0  0               # for future options
+
+1 # We want to set manually the iterator names
+i j                   # iterator names
+
+# --------------------- SCATTERING --------------------
+2 # Scattering functions
+# First function
+2 7                   # 2 lines and 7 columns
+# eq/in p1 p2  i  m  n  1 
+    0    1  0 -1  0  0  0    # p1 = i
+    0    0  1  0  0  0  0    # p2 = 0
+# Second function
+2 8                   # 2 lines and 8 columns
+# eq/in p1 p2  i  j  m  n  1 
+    0    1  0  0  0  0 -1  0 # p1 = n
+    0    0  1 -1 -1  0  0  0 # p2 = i+j
+
+1 # We want to set manually the scattering dimension names
+p1 p2                 # scattering dimension names

@@ -1,0 +1,33 @@
+# language: C
+c
+
+# parameters n m
+1 4
+#  n  m  1
+1  0  0  1
+0
+
+2 # Number of statements
+
+1
+# S2 {i, j | 0<=i<=n; 0<=j<=i}
+4 6
+#  i  j  n  m  1
+1  1  0  0  0  0
+1 -1  0  1  0  0
+1  0  1  0  0  0
+1  1 -1  0  0  0
+0  0  0
+
+1
+# S2 {i, j | 0<=i<=n; 0<=j<=m}
+4 6
+#  i  j  n  m  1
+1  1  0  0  0  0
+1 -1  0  1  0  0
+1  0  1  0  0  0
+1  0 -1  0  1  0
+0  0  0
+0
+
+0 # Scattering functions

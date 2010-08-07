@@ -1,0 +1,29 @@
+# language: FORTRAN
+f
+
+# The context (no constraints on parameters)
+1 4             # 1 lines and 4 columns
+#  m  n  1
+1  0  0  0
+1
+m n
+
+1 # The number of statements
+
+2 # First statement
+# The first domain
+3 5              # 3 lines and 5 columns
+#  i  m  n  1 
+1  1  0  0 -1    #  i >= 1
+1 -1  0  1  0    #  i <= n
+1  1 -1  0  0    #  i >= m
+# The second domain
+3 5              # 3 lines and 5 columns
+#  i  m  n  1 
+1  1  0  0 -1    #  i >= 1
+1 -1  0  1  0    #  i <= n
+1 -1  2  0  0    #  i <= 2*m
+0 0 0
+0
+
+0

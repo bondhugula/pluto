@@ -1,0 +1,110 @@
+# language: FORTRAN
+f
+
+# Context
+# {length,width | width+2<=length; 1<=width}
+3   4
+#  M  N   1
+1  1  -1 -2
+1  0  1  -1
+1  0  0  1
+0
+
+8 # Number of statements
+
+1
+# {t1,t2,length,width | t1=0; t2=0; width+2<=length; 1<=width}
+5   6
+#  i  j  M  N  1
+0  1  0  0  0  0
+0  0  1  0  0  0
+1  0  0  1  -1 -2
+1  0  0  0  1  -1
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | 1<=t1<=width; t2=0; width+2<=length}
+5   6
+#  i  j  M  N  1
+0  0  1  0  0  0
+1  1  0  0  0  -1
+1  -1 0  0  1  0
+1  0  0  1  -1 -2
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | t1=t2; 1<=t2<=width; width+2<=length}
+5   6
+#  i  j  M  N  1
+0  1  -1 0  0  0
+1  0  1  0  0  -1
+1  0  -1 0  1  0
+1  0  0  1  -1 -2
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | t1=2t2-width; width+1<=t2<=length-1; 1<=width}
+5   6
+#  i  j  M  N  1
+0  1  -2 0  1  0
+1  0  1  0  -1 -1
+1  0  -1 1  0  -1
+1  0  0  0  1  -1
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | t1=2t2+width; 1<=t2<=length-width-1; 1<=width}
+5   6
+#  i  j  M  N  1
+0  1  -2 0  -1 0
+1  0  1  0  0  -1
+1  0  -1 1  -1 -1
+1  0  0  0  1  -1
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | (2t2-width+1,t2+1)<=t1<=(t2+length-1,2t2+width-1); 1<=t2<=length-1; width+2<=length}
+8   6
+#  i  j  M  N  1
+1  1  -2 0  1  -1
+1  1  -1 0  0  -1
+1  -1 1  1  0  -1
+1  -1 2  0  1  -1
+1  0  1  0  0  -1
+1  0  -1 1  0  -1
+1  0  0  1  -1 -2
+1  0  0  0  0  1
+0 0 0
+
+1
+# {t1,t2,length,width | (width+1,2t2+width+1)<=t1<=(2length-width-2,2t2+width+2); width+2<=length; 1<=width}
+6   6
+#  i  j  M  N  1
+1  1  0  0  -1 -1
+1  1  -2 0  -1 -1
+1  -1 0  2  -1 -2
+1  -1 2  0  1  2
+1  0  0  1  -1 -2
+1  0  0  0  1  -1
+0 0 0
+
+1
+# {t1,t2,length,width | (width+1,2t2-width)<=t1<=(2t2+width,2length-width-2); width+2<=length; 1<=width}
+7   6
+#  i  j  M  N  1
+1  1  0  0  -1 -1
+1  1  -2 0  1  0
+1  -1 2  0  1  0
+1  -1 0  2  -1 -2
+1  0  0  1  -1 -2
+1  0  0  0  1  -1
+1  0  0  0  0  1
+0 0 0
+0
+
+0 # Scattering functions

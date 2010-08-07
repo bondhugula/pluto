@@ -1,0 +1,173 @@
+#
+# PLuto README
+#
+# Uday Bondhugula
+# udayreddy@gmail.com
+#
+
+INSTALLING PLUTO
+
+Requirements: A Linux distribution. Pluto has been tested on x86 and 
+x86-64 machines running Fedora Core {4,5,7,8,9}, Ubuntu, and RedHat  
+Enterprise Server 5.x. Solaris should also be fine if you have GNU 
+utilities.
+
+Pluto includes all libraries that it depends on.  autoconf/automake 
+system will take care of automatically building everything. Nothing else 
+needs to be downloaded and installed separately.
+
+
+BUILDING PLUTO
+
+Run 'install from Pluto's top-level directory
+
+$ tar zxvf pluto-0.6.0.tar.gz
+$ cd pluto-0.6.0/
+$ ./install
+$ make test
+
+    OR
+
+$ tar zxvf pluto-0.6.0.tar.gz
+$ cd pluto-0.6.0/
+$ ./configure [--enable-debug]
+$ make
+$ make test
+
+If you do not have ICC, uncomment line 7 and comment line 8 of 
+examples/common.mk.
+
+'polycc' is the wrapper script around src/pluto (core transformer) and 
+all other components. 'polycc' runs all of these in sequence on an input 
+C program (with the section to  parallelize/optimize marked) and is what 
+a user should use on input. Output generated is OpenMP parallel C code 
+that can be readily compiled and run on shared-memory parallel machines 
+like general-purpose multicores.
+
+
+TRYING A NEW CODE
+
+- Use '#pragma scop' and '#pragma endscop' around the section of code 
+  you want to parallelize/optimize.
+
+- Then, just run 
+    
+    ./polycc <C source file> --parallel --tile
+
+  The transformation is also printed out, and test.par.c will have the 
+  parallelized code. If you want to see intermediate files, like the 
+  .cloog file generated (.opt.cloog, .tiled.cloog, or .par.cloog 
+  depending on command-line options provided), use --debug on command 
+  line.
+
+- Tile sizes can be specified in a file 'tile.sizes', otherwise default 
+  sizes will be set. See doc/DOC.txt on how to specify the sizes.
+
+To run a good number of experiments on a code, it is best to use the 
+setup created for example codes in the examples/ directory
+
+- Just copy one of the sample directories, edit Makefile (SRC = ), 
+  util.h, decls.h appropriately (put your problem size declarations in 
+  decls.h)
+
+- Now, do a make (this will build all executables; 'orig' is the 
+  original code, 'tiled' is the tiled code, 'par' is the OpenMP 
+  parallelized+locality optimized code; 'par2d' is with two degrees of 
+  parallelism whenever it exists). One could do 'make <target>', where
+  target can be orig, orig_par, opt, tiled, tiled_par
+
+- 'make test' to test for correctness
+
+
+COMMAND-LINE OPTIONS
+
+Run
+
+./polycc -h 
+
+or see documentation (doc/DOC.txt) for details
+
+
+TRYING ANY INCLUDED EXAMPLE CODE
+
+Let us say we are trying the 2-d Gauss Seidel. Do a 'make par', this 
+will generate seidel.par.c from seidel.c and also compile it to generate 
+'par'. Likewise, 'make tiled' for 'tiled' and 'make orig' for the 
+'orig'.
+
+$ cd examples/seidel
+
+seidel.orig.c: This is the original code (the kernel in this code is 
+extracted)
+
+seidel.opt.c: This is the transformed code without tiling (this is not 
+of much use, except for seeing the benefits of fusion in some cases)
+
+seidel.tiled.c: This the pluto tiled code (not parallelized) generated 
+from the tool - this should be used for single core execution
+
+seidel.par.c: This is the pluto parallelized + locality tiled code. This 
+has OpenMP pragmas and the code is L1 tiled or L1 and L2 tiled.
+
+seidel.par2d.c: In this case, since we have two degrees of pipelined 
+parallelism, so the .par2d.c is the code with nested parallel OpenMP 
+pragmas.
+
+- To change any of the flags used for an example, edit the top section 
+  of examples/common.mk or the Makefile in the example directory
+
+- To manually specify tile sizes, create tile.sizes; see 
+   examples/matmul/ for example or doc/DOC.txt for more information.  
+
+- orig (orig_par is the icc auto-parallelized original code), tiled, par 
+  and par2d are corresponding executables; they already have timers; you 
+  just have to run them and that will print execution time as well
+
+So, to run pluto parallelized version:
+
+$ export OMP_NUM_THREADS=4; ./par
+
+To run ICC auto-parallelized version:
+
+$ export OMP_NUM_THREADS=4; ./orig_par
+
+To run the original unparallelized code (compiled with icc -fast)
+
+$ ./orig
+
+To run the pluto tiled version (non-parallelized, local tiled)
+
+$ ./tiled
+
+- 'make clean' in the particular example's directory removes all the 
+    executables as well as the generated codes
+
+To launch a complete verification that compares output of tiled, par
+with orig for all examples, in the examples/ directory, run
+
+[examples/ ]$ make test
+
+
+
+MORE INFO
+
+* See doc/DOC.txt for an overview of the system and more details
+
+* For specifying custom tile sizes through 'tile.sizes' file, see 
+doc/DOC.txt
+
+* For specifying custom fusion structure through '.fst' file, see 
+doc/DOC.txt
+
+* See cloog-isl/PLUTO_CHANGES for minor changes made to Cloog's 
+configure.in
+
+* See piplib-1.4.0/PLUTO_CHANGES for minor changes made to Cloog's 
+configure.in
+
+
+CONTACT
+
+Please send all bugs reports and comments to Uday Kumar Reddy
+udayreddy@gmail.com
+bondhugula.1@osu.edu

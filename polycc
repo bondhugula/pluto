@@ -1,0 +1,106 @@
+#!  /bin/sh
+#!  /bin/sh
+#!/bin/bash
+#
+# Top-level script that runs all components of the end-to-end
+# system
+#
+# Just run 'polycc <C code>' when the program section to 
+# be parallelized/optimized around special comments as described
+# in the `README'
+# 
+# Copyright (C) 2007-2008 Uday Bondhugula 
+#
+# Available under GNU GPL v2 (see `COPYING')
+# 
+
+pluto=/home/uday/git/pluto/src/pluto
+ploog=/home/uday/git/pluto/ploog
+vloog=/home/uday/git/pluto/vloog
+plann=/home/uday/git/pluto/plann
+plorc=/home/uday/git/pluto/plorc
+
+
+# check for command-line options
+for arg in $*; do
+    if [ $arg == "--parallel" ]; then
+        PARALLEL=1
+    elif [ $arg == "--parallelize" ]; then
+        PARALLEL=1
+    elif [ $arg == "--tile" ]; then
+        TILE=1
+    elif [ $arg == "--multipipe" ]; then
+        MULTIPAR=1
+    elif [ $arg == "--unroll" ]; then
+        UNROLL=1
+    elif [ $arg == "--debug" ]; then
+        DEBUG=1
+    elif [ $arg == "--moredebug" ]; then
+        DEBUG=1
+    elif [ $arg == "-i" ]; then
+        INDENT=1
+    elif [ $arg == "--indent" ]; then
+        INDENT=1
+    elif [ $arg == "--rar" ]; then
+        RAR=1
+    elif [ $arg == "--silent" ]; then
+        SILENT=1
+    elif [ ${arg:0:1} != "-" ]; then
+        SOURCEFILE=$arg;
+    fi
+done
+
+# some special processing for linearized accesses
+grep __SPECIAL $SOURCEFILE > .nonlinearized
+grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
+
+$pluto $* || exit 1
+
+dirname=`dirname  $SOURCEFILE`
+basename=`basename $SOURCEFILE`
+prefix=`basename $SOURCEFILE .c`
+
+INFILE=$dirname/$prefix.pluto.c
+
+if [ "$MULTIPAR" == "1" ]; then
+    OUTFILE=$dirname/$prefix.par2d.c
+elif [ "$PARALLEL" == "1" ]; then
+    OUTFILE=$dirname/$prefix.par.c
+elif [ "$TILE" == "1" ]; then
+    OUTFILE=$dirname/$prefix.tiled.c
+else
+    OUTFILE=$dirname/$prefix.opt.c
+fi
+
+# run the syntactic #pragma inserter
+if [ "$PARALLEL" == 1 ]; then
+    $ploog $INFILE || exit 1
+fi
+
+# generate and insert unrolling annotations, run ancc on it,
+if [ "$UNROLL" == 1 ]; then
+    $plorc $INFILE /home/uday/git/pluto/orio-0.1.0
+fi
+
+#if [ "$UNROLL" == 1 ]; then
+    #$plann $INFILE /home/uday/git/pluto/annotations
+#fi
+
+# pre vectorize (#pragma ivdep and scalar bound rep for the 
+# vectorizable innermost loop if it was detected)
+$vloog $INFILE
+
+# put the original skeleton around the transformed code
+/home/uday/git/pluto/inscop $SOURCEFILE $INFILE $OUTFILE
+
+if [ "$DEBUG" != 1 ]; then
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized
+fi
+
+if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
+    indent -kr -br -ce -l125 $OUTFILE
+fi
+
+if [ "$SILENT" != 1 ]; then
+    echo "[Polycc] Output written to $OUTFILE"
+fi

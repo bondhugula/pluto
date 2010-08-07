@@ -1,0 +1,23 @@
+# language: C
+c
+
+# parameter {}
+0 2
+0
+
+1 # Number of statements:
+
+1
+# {i, j | }
+5 5
+#   j   q   i   1
+0   1  -1   0  -3
+1   0  -5   1  -1
+1   0   5  -1   4
+1   0   0   1   0
+1   0   0  -1   8
+0   0   0
+1
+j q i
+
+0 # Scattering functions

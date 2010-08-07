@@ -1,0 +1,13 @@
+
+export OMP_NUM_THREADS=1
+icc -fast -openmp -I/usr/local/icc/include mm.best-seq.c -DREPS=2 -DNCONT=100 -DCONT=100000
+./a.out
+./a.out
+rm a.out
+
+export OMP_NUM_THREADS=4
+icc -fast -openmp -I/usr/local/icc/include mm.best-par.c -DREPS=2 -DNCONT=100 -DCONT=100000
+./a.out
+./a.out
+rm a.out
+

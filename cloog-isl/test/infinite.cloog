@@ -1,0 +1,32 @@
+# langage
+c
+
+# parametres {M, N | M>=1 N >=1}
+2 4
+#  M  N  1
+1  1  0 -1
+1  0  1 -1
+0
+
+2 # Number of statements
+
+1
+# {i | 1<=i<=M}
+0 5
+#  i  M  N  1
+#1  1  0  0 -1
+#1 -1  1  0  0
+0 0 0
+
+1
+# {i, j | 1<=i<=N 1<=j<=M}
+4 6
+#  i  j  M  N  1
+1  1  0  0  0 -1
+1 -1  0  0  1  0
+1  0  1  0  0 -1
+1  0 -1  1  0  0
+0 0 0
+0
+ 
+0 # Scattering functions

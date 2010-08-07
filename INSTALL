@@ -1,0 +1,19 @@
+# Pluto INSTALL
+#
+# Thu Dec 13 02:13:01 EST 2007
+#
+# Uday Bondhugula
+# bondhugu@cse.ohio-state.edu
+# bondhugula.1@osu.edu
+#
+
+QUICK INSTALL
+
+$ tar zxvf pluto-0.6.0.tgz
+$ cd pluto-0.6.0/
+$ ./configure [--enable-debug]
+$ make
+
+* polycc is the script wrapper around src/pluto and all other 
+components, and it is the one to run. Please refer to the README 
+for more details.

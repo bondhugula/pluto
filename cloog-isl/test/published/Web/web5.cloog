@@ -1,0 +1,261 @@
+# CLooG example file #5.
+# Please read the first and second examples which are fully documented to
+# understand the different parts of the input file.
+#
+################################################################################
+#  do i=1,n                            The problem here is to regenerate a     #
+#  | do j =1,i-1                       real-life Cholesau kernel according to  #
+#  | | if (j.EQ.1) then                the original scheduling (see the user's #
+#S1| | | s1(i,j)=a(i,j)s4(j,i)**2      manual for more details). The original  #
+#  | | else                            program is given on the left. For each  #
+#S2| | | s1(i,j)=s1(i,j-1)-s4(j,i)**2  statement the original schedule is:     #
+#  | if (i .EQ. 1) then                        T_S1(i,j)  =(i,0,j,0,0,0)       #
+#S3| | s2(i)=sqrt(a(i,i))                      T_S2(i,j)  =(i,0,j,1,0,0)       #
+#  | else                                      T_S3(i)    =(i,1,0,0,0,0)       #
+#S4| | s2(i)=sqrt (s1(i,i-1))                  T_S4(i)    =(i,2,0,0,0,0)       #
+#  | do k=i+1,n                                T_S5(i,j,k)=(i,3,j,0,k,0)       #
+#  | | do l=1,i-1                              T_S6(i,j,k)=(i,3,j,0,k,1)       #
+#  | | | if (l .EQ. 1) then                    T_S7(i,j)  =(i,3,j,1,0,0)       #
+#S5| | | | s3(i,k,l)=a(k,i)-(s4(l,k)*s4(l,i))  T_S8(i,j)  =(i,3,j,2,0,0)       #
+#  | | | else                                                                  #
+#S6| | | | s3(i,k,l)=s3(i,k,l-1)-(s4(l,k)*s4(l,i))                             #
+#  | | if (i .EQ.1) then                                                       #
+#S7| | | s4(i,k)=a(k,i)/s2(i)          Note that in the generated code there   #
+#  | | else                            are no more conditions.                 #
+#S8| | | s4(i,k)=s3(i,k,i-1)/s2(i)                                             #
+################################################################################
+#
+#------------------------------------CONTEXT------------------------------------
+
+# 1. language: FORTRAN
+f
+
+# 2. Parameters {n | n>=10}
+1 3
+#  n  1
+1  1 -10 # n>=10
+
+# 3. We set manually the parameter name: n
+1
+n
+
+#-----------------------------------POLYHEDRA-----------------------------------
+
+# 4. Number of polyhedra:
+8
+
+# Polyhedron #1
+1
+# {i, j | 1<=i<=n; 1<=j<=i-1; j=1}
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1  0  1  0 -1 # 1<=j
+1  1 -1  0 -1 # j<=i-1
+0  0  1  0 -1 # j=1
+0  0  0       # 3 zeroes !
+
+# Polyhedron #2
+2
+# {i, j | 1<=i<=n; 1<=j<=i-1; j!=1}
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1  0  1  0 -1 # 1<=j
+1  1 -1  0 -1 # j<=i-1
+1  0  1  0 -2 # j>=2
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1  0  1  0 -1 # 1<=j
+1  1 -1  0 -1 # j<=i-1
+1  0 -1  0  0 # j<=0
+0  0  0       # 3 zeroes !
+
+# Polyhedron #3
+1
+# {i | 1<=i<=n; i=1}
+3 4
+#  i  n  1
+1  1  0 -1 # 1<=i
+1 -1  1  0 # i<=n
+0  1  0 -1 # i=1
+0  0  0    # 3 zeroes !
+
+# Polyhedron #4
+2
+# {i | 1<=i<=n; i!=1}
+3 4
+#  i  n  1
+1  1  0 -1 # 1<=i
+1 -1  1  0 # i<=n
+1  1  0 -2 # i>=2
+3 4
+#  i  n  1
+1  1  0 -1 # 1<=i
+1 -1  1  0 # i<=n
+1 -1  0  0 # i<=0
+0  0  0    # 3 zeroes !
+
+# Polyhedron #5
+1
+# {i, j | 1<=i<=n; i+1<=j<=n; 1<=k<=i-1; k=1}
+7 6
+#  i  j  k  n  1
+1  1  0  0  0 -1 # 1<=i
+1 -1  0  0  1  0 # i<=n
+1 -1  1  0  0 -1 # i+1<=j
+1  0 -1  0  1  0 # j<=n
+1  0  0  1  0 -1 # 1<=k
+1  1  0 -1  0 -1 # k<=i-1
+0  0  0  1  0 -1 # k=1
+0  0  0          # 3 zeroes !
+
+# Polyhedron #6
+2
+# {i, j | 1<=i<=n; i+1<=j<=n; 1<=k<=i-1; k!=1}
+7 6
+#  i  j  k  n  1
+1  1  0  0  0 -1 # 1<=i
+1 -1  0  0  1  0 # i<=n
+1 -1  1  0  0 -1 # i+1<=j
+1  0 -1  0  1  0 # j<=n
+1  0  0  1  0 -1 # 1<=k
+1  1  0 -1  0 -1 # k<=i-1
+1  0  0  1  0 -2 # k>=2
+7 6
+#  i  j  k  n  1
+1  1  0  0  0 -1 # 1<=i
+1 -1  0  0  1  0 # i<=n
+1 -1  1  0  0 -1 # i+1<=j
+1  0 -1  0  1  0 # j<=n
+1  0  0  1  0 -1 # 1<=k
+1  1  0 -1  0 -1 # k<=i-1
+1  0  0 -1  0  0 # k<=0
+0  0  0          # 3 zeroes !
+
+# Polyhedron #7
+1
+# {i, j | 1<=i<=n; i+1<=j<=n; i=1}
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1 -1  1  0 -1 # i+1<=j
+1  0 -1  1  0 # j<=n
+0  1  0  0 -1 # i=1
+0  0  0       # 3 zeroes !
+
+# Polyhedron #8
+2
+# {i, j | 1<=i<=n; i+1<=j<=n; i!=1}
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1 -1  1  0 -1 # i+1<=j
+1  0 -1  1  0 # j<=n
+1  1  0  0 -2 # i>=2
+5 5
+#  i  j  n  1
+1  1  0  0 -1 # 1<=i
+1 -1  0  1  0 # i<=n
+1 -1  1  0 -1 # i+1<=j
+1  0 -1  1  0 # j<=n
+1 -1  0  0  0 # i<=0
+0  0  0       # 3 zeroes !
+
+# 6. We let CLooG choose the iterator names
+0
+
+#----------------------------------SCATTERING-----------------------------------
+
+# 7. Scattering functions ORIGINAL SCHEDULING
+8
+
+# Scattering function for polyhedron #1: T_S1(i,j)  =(i,0,j,0,0,0)
+6 11
+# c1 c2 c3 c4 c5 c6  i  j  n  1
+0  1  0  0  0  0  0 -1  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0  0 # 0
+0  0  0  1  0  0  0  0 -1  0  0 # j
+0  0  0  0  1  0  0  0  0  0  0 # 0
+0  0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0  0 # 0
+
+# Scattering function for polyhedron #2: T_S2(i,j)  =(i,0,j,1,0,0)
+6 11
+# c1 c2 c3 c4 c5 c6  i  j  n  1
+0  1  0  0  0  0  0 -1  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0  0 # 0
+0  0  0  1  0  0  0  0 -1  0  0 # j
+0  0  0  0  1  0  0  0  0  0 -1 # 1
+0  0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0  0 # 0
+
+# Scattering function for polyhedron #3: T_S3(i)    =(i,1,0,0,0,0)
+6 10
+# c1 c2 c3 c4 c5 c6  i  n  1
+0  1  0  0  0  0  0 -1  0  0 # i
+0  0  1  0  0  0  0  0  0 -1 # 1
+0  0  0  1  0  0  0  0  0  0 # 0
+0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  1  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0 # 0
+
+# Scattering function for polyhedron #4: T_S4(i)    =(i,2,0,0,0,0)
+6 10
+# c1 c2 c3 c4 c5 c6  i  n  1
+0  1  0  0  0  0  0 -1  0  0 # i
+0  0  1  0  0  0  0  0  0 -2 # 2
+0  0  0  1  0  0  0  0  0  0 # 0
+0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  1  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0 # 0
+
+# Scattering function for polyhedron #5: T_S5(i,j,k)=(i,3,j,0,k,0)
+6 12
+# c1 c2 c3 c4 c5 c6  i  j  k  n  1
+0  1  0  0  0  0  0 -1  0  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0  0 -3 # 3
+0  0  0  1  0  0  0  0 -1  0  0  0 # j
+0  0  0  0  1  0  0  0  0  0  0  0 # 0
+0  0  0  0  0  1  0  0  0 -1  0  0 # k
+0  0  0  0  0  0  1  0  0  0  0  0 # 0
+
+# Scattering function for polyhedron #6: T_S6(i,j,k)=(i,3,j,0,k,1)
+6 12
+# c1 c2 c3 c4 c5 c6  i  j  k  n  1
+0  1  0  0  0  0  0 -1  0  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0  0 -3 # 3
+0  0  0  1  0  0  0  0 -1  0  0  0 # j
+0  0  0  0  1  0  0  0  0  0  0  0 # 0
+0  0  0  0  0  1  0  0  0 -1  0  0 # k
+0  0  0  0  0  0  1  0  0  0  0 -1 # 1
+
+# Scattering function for polyhedron #7: T_S7(i,j)  =(i,3,j,1,0,0)
+6 11
+# c1 c2 c3 c4 c5 c6  i  j  n  1
+0  1  0  0  0  0  0 -1  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0 -3 # 3
+0  0  0  1  0  0  0  0 -1  0  0 # j
+0  0  0  0  1  0  0  0  0  0 -1 # 1
+0  0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0  0 # 0
+
+# Scattering function for polyhedron #8: T_S8(i,j)  =(i,3,j,2,0,0)
+6 11
+# c1 c2 c3 c4 c5 c6  i  j  n  1
+0  1  0  0  0  0  0 -1  0  0  0 # i
+0  0  1  0  0  0  0  0  0  0 -3 # 3
+0  0  0  1  0  0  0  0 -1  0  0 # j
+0  0  0  0  1  0  0  0  0  0 -2 # 2
+0  0  0  0  0  1  0  0  0  0  0 # 0
+0  0  0  0  0  0  1  0  0  0  0 # 0
+
+# We want to set manually the scattering dimension names.
+1
+c1 c2 c3 c4 c5 c6

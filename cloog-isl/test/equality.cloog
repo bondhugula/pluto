@@ -1,0 +1,33 @@
+# Language: C
+c
+
+# Context (0 parameter(s)):
+1 2
+   1    1 
+1 # Parameter name(s)
+
+
+# Statement number:
+2
+
+# Iteration domain of statement 1.
+1
+3 4
+0 2 -1 0
+1 1 0 0
+1 -1 0 5
+0 0 0 # For future options.
+
+# Iteration domain of statement 2.
+1
+3 4
+0 0 -1 4
+1 1 0 0
+1 -1 0 5
+0 0 0 # For future options.
+
+1 # Iterator name(s)
+i0 i1
+
+# No scattering functions.
+0

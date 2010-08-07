@@ -1,0 +1,33 @@
+# language: C
+c
+
+# Context
+# parameters m n p q
+1 6
+# m n p q 1
+1 0 0 0 0 1
+1
+m n p q
+
+2 # Number of statements
+
+1
+# S1 i,...
+3 7
+#  i  m  n  p  q  1
+1  1 -1  0  0  0  0
+1 -1  0  1  0  0  0
+1  0  0  0  0  0  1
+0  0  0
+
+1
+#
+3 7
+#  i  m  n  p  q  1
+1  1  0  0 -1  0  0
+1 -1  0  0  0  1  0
+1  0  0  0  0  0  1
+0  0  0
+0
+
+0 # Scattering functions

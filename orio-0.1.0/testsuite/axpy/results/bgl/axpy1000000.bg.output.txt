@@ -1,0 +1,75 @@
+"_annot_perftest11115.c", line 98.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 98.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 180.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 180.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 266.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 266.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 338.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 338.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 412.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 412.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 504.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 504.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 580.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 580.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 658.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 658.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 726.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 726.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 796.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 796.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 876.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 876.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 940.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 940.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1006.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1006.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1066.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1066.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1128.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1128.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1216.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1216.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1306.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1306.24: 1506-224 (W) Incorrect pragma ignored.
+"_annot_perftest11115.c", line 1364.22: 1506-004 (W) pragma must appear before use of identifier x1. pragma ignored.
+"_annot_perftest11115.c", line 1364.24: 1506-224 (W) Incorrect pragma ignored.
+
+====== BEGIN ANNOTATIONS TOOL ======
+
+----- begin reading the source file: axpy4_1000000.c -----
+----- finish reading the source file -----
+
+----- begin reading the tuning specification file: axpy1000000.bg.spec -----
+----- finish reading the tuning specification -----
+
+----- begin parsing annotations -----
+----- finish parsing annotations -----
+
+----- begin optimizations -----
+
+----- begin empirical performance tuning -----
+
+----- begin exhaustive search -----
+ compiling:
+	mpixlc  -O3 -qstrict -lm -DREPS=10000 -o _annot_perftest11115.exe _annot_perftest11115.c
+ running:
+	cqsub -n 64 -t 10 -q short  _annot_perftest11115.exe
+>>>> best coordinate found: [13], cost: 2.54014e-06
+>>>> best coordinate found: [15], cost: 2.54005e-06
+>>>> best coordinate found: [3], cost: 2.5396e-06
+>>>> best coordinate found: [1], cost: 2.53955e-06
+----- end exhaustive search -----
+----- begin summary -----
+ best coordinate: [1], cost: 2.53955e-06
+ total search time: 1334.49 seconds
+----- end summary -----
+----- best performance parameters -----
+ UF = 2
+----- end performance tuning -----
+----- finish optimizations -----
+
+----- begin writing output to: _axpy4_1000000.c -----
+----- finish writing output -----
+
+====== END ANNOTATIONS TOOL ======

@@ -1,0 +1,22 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast adi.base.c -DREPS=1 -DT=512 -DN=512
+par:
+  export OMP_NUM_THREADS=4; icc -fast -parallel adi.base.c -DREPS=1 -DT=512 -DN=512
+
+*** pluto ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast adi.pluto.seq.c -DREPS=1 -DT=512 -DN=512
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp adi.pluto.par.c -DREPS=1 -DT=512 -DN=512
+
+*** pluto+ancc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp adi.pluto_ancc.seq_par.c -DREPS=1 -DT=512 -DN=512
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp adi.pluto_ancc.seq_par.c -DREPS=1 -DT=512 -DN=512
+
+
+

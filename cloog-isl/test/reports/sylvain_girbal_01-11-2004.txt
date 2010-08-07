@@ -1,0 +1,11 @@
+
+Salut,
+
+J'ai noté que dans la doc de cloog library, a propos de la structure CloogProgram, names pouvait être NULL si on utilisait pas le pretty printer de cloog.
+
+Or, avec le champs names a NULL, cloog_program_scatter seg fault...
+
+Pas de problème si je malloc un CloogName et que je met ses champs à NULL et 0 (pour la double paire de noms / nombre de noms)
+
+Sylvai
+n.

@@ -1,0 +1,27 @@
+# language: C
+c
+
+# Context
+2 3
+#  M  1
+1  1  0
+1  0  1
+0 
+
+1 # Number of statements
+
+1
+#
+7 5
+#  i  j  M  1
+1  1  0  0  0
+1 -1  0  1  0
+1 -1  0  0 10
+1  0  1  0  0
+1  0 -1  1  0
+1  0 -1  0 10
+1  0  0  0  1
+0  0  0
+0
+
+0 # Scattering functions

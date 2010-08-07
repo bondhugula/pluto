@@ -1,0 +1,5 @@
+Changes made to cloog-isl/
+
+1. Piplib has been removed from ISL (no cloog-isl/isl/piplib). It's 
+not used by cloog-isl.
+

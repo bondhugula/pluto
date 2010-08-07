@@ -1,0 +1,66 @@
+Fully tested: up to linearity.
+
+------------LEAKS-------------
+leaks by Domain_Difference:
+4-param 
+byu98-1-2-3
+darte
+durbin_e_s
+emploi
+forwardsub-1-1-2
+forwardsub-2-1-2-3
+forwardsub-3-1-2
+gesced
+gesced2
+guide
+iftest
+iftest2
+infinite
+infinite3
+levenshtein-1-2-3
+
+
+leaks by cloog_statement_copy:
+cholesky
+cholesky2
+
+
+leaks by forgotten domains !!!
+cholesky2
+
+
+------------ERRORS-------------
+errors by Domain_Difference:
+cholesky
+cholesky2
+darte
+durbin_e_s
+escedk
+forwardsub-1-1-2
+forwardsub-3-1-2
+levenshtein-1-2-3
+
+
+
+errors by pprint_equal_type:
+basic-bounds-2
+basic-bounds-6
+levenshtein-1-2-3
+
+
+
+errors by PolyhedronTSort:
+cholesky2
+cholesky
+darte
+durbin_e_s
+elimination
+escedk
+forwardsub-1-1-2
+forwardsub-2-1-2-3
+forwardsub-3-1-2
+levenshtein-1-2-3
+
+
+
+

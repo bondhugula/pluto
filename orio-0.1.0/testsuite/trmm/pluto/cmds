@@ -1,0 +1,20 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast trmm.base.c -DREPS=1 -Dalpha=1 -DN=1024
+par:
+  export OMP_NUM_THREADS=1; icc -fast -parallel trmm.base.c -DREPS=1 -Dalpha=1 -DN=1024
+
+*** mkl ***
+seq-par:
+  export OMP_NUM_THREADS=1; icc -fast -I/usr/local/mkl/include trmm.mkl.c -L /usr/local/mkl/lib/em64t -lmkl_em64t -lguide -lpthread -DREPS=1 -DMYalpha=1 -DMYN=1024
+
+*** pluto+ancc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp trmm.pluto_ancc.seq_par.c -DREPS=1 -Dalpha=1 -DN=1024
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp trmm.pluto_ancc.seq_par.c -DREPS=1 -Dalpha=1 -DN=1024
+
+
+

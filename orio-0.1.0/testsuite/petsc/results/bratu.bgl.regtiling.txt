@@ -1,0 +1,48 @@
+
+====== BEGIN ANNOTATIONS TOOL ======
+
+----- begin reading the source file: bratu.c -----
+----- finish reading the source file -----
+
+----- begin reading the tuning specification file: bratu.regtiling.bg.spec -----
+----- finish reading the tuning specification -----
+
+----- begin parsing annotations -----
+----- finish parsing annotations -----
+
+----- begin optimizations -----
+
+----- begin empirical performance tuning -----
+
+----- begin exhaustive search -----
+ compiling:
+	mpixlc  -O3 -qstrict -lm -DREPS=1000 -o _annot_perftest2154.exe _annot_perftest2154.c
+ running:
+	cqsub -n 64 -t 10 -q short  _annot_perftest2154.exe
+>>>> best coordinate found: [5, 0], cost: 7.07251e-05
+>>>> best coordinate found: [22, 0], cost: 7.02012e-05
+>>>> best coordinate found: [14, 1], cost: 6.97806e-05
+>>>> best coordinate found: [15, 1], cost: 6.97541e-05
+ compiling:
+	mpixlc  -O3 -qstrict -lm -DREPS=1000 -o _annot_perftest2154.exe _annot_perftest2154.c
+ running:
+	cqsub -n 64 -t 10 -q short  _annot_perftest2154.exe
+>>>> best coordinate found: [6, 2], cost: 6.96938e-05
+>>>> best coordinate found: [9, 2], cost: 6.96671e-05
+>>>> best coordinate found: [8, 2], cost: 6.96656e-05
+>>>> best coordinate found: [7, 2], cost: 6.96583e-05
+----- end exhaustive search -----
+----- begin summary -----
+ best coordinate: [7, 2], cost: 6.96583e-05
+ total search time: 449.62 seconds
+----- end summary -----
+----- best performance parameters -----
+ Ui = 8
+ Uj = 3
+----- end performance tuning -----
+----- finish optimizations -----
+
+----- begin writing output to: _bratu.c -----
+----- finish writing output -----
+
+====== END ANNOTATIONS TOOL ======

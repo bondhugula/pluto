@@ -1,0 +1,30 @@
+# CLooG example file #7: A useful basis to start writing its own input file.
+# 1. Language: C
+c
+
+# 2. Parameters {M | M>=0}.
+1 3
+#  M  1
+1  1  0
+
+# 3. We let CLooG choose the parameter names.
+0
+
+# 4. Number of polyhedra:
+1
+
+# 5. Polyhedron #1 {i, j | 0<=i<=M 0<=j<=M}.
+1
+4 5
+#   i   j   M   1
+1   1   0   0   0
+1  -1   0   1   0
+1   0   1   0   0
+1   0  -1   1   0
+0   0   0
+
+# 6. We let CLooG choose the iterator names.
+0
+
+# 7. Let CLoog scan the polyhedra in the way it wants.
+0

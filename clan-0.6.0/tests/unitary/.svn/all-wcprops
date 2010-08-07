@@ -1,0 +1,401 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/28288/users/bastoul/clan/trunk/tests/unitary
+END
+functioncall2.c
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/25435/users/bastoul/clan/trunk/tests/unitary/functioncall2.c
+END
+noloop.c
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/noloop.c
+END
+complexop.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/complexop.c
+END
+maxloopcomplex.c
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/maxloopcomplex.c
+END
+redefiter.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/redefiter.c
+END
+assigniter.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/28288/users/bastoul/clan/trunk/tests/unitary/assigniter.c.scop
+END
+redefiter.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/redefiter.c.scop
+END
+complexcond.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/complexcond.c.scop
+END
+classicloop.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/classicloop.c.scop
+END
+functioncall.c
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/functioncall.c
+END
+functioncall.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/functioncall.c.scop
+END
+comments.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/comments.c
+END
+minloopsimple.c
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/minloopsimple.c
+END
+noloop2.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/noloop2.c
+END
+comments.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/comments.c.scop
+END
+minmax.c
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/minmax.c
+END
+maxloopsimple.c
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/maxloopsimple.c
+END
+minmax.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/minmax.c.scop
+END
+maxloopsimple.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/maxloopsimple.c.scop
+END
+assigniter2.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/28288/users/bastoul/clan/trunk/tests/unitary/assigniter2.c.scop
+END
+empty.c
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/empty.c
+END
+complexprog.c
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/complexprog.c
+END
+twoconds.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/twoconds.c.scop
+END
+binop.c
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/binop.c
+END
+assigniter.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/18359/users/bastoul/clan/trunk/tests/unitary/assigniter.c
+END
+noloop.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/noloop.c.scop
+END
+complexop.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/complexop.c.scop
+END
+twocondincond.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/twocondincond.c.scop
+END
+basicnest.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/basicnest.c
+END
+parenthesis.c
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/18196/users/bastoul/clan/trunk/tests/unitary/parenthesis.c
+END
+field.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/25434/users/bastoul/clan/trunk/tests/unitary/field.c.scop
+END
+simpleloop.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/simpleloop.c.scop
+END
+parenthesis.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/18196/users/bastoul/clan/trunk/tests/unitary/parenthesis.c.scop
+END
+twoconds.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/twoconds.c
+END
+empty.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/empty.c.scop
+END
+intaddit.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/18244/users/bastoul/clan/trunk/tests/unitary/intaddit.c.scop
+END
+minloopcomplex.c
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/minloopcomplex.c
+END
+functioncall2.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/25435/users/bastoul/clan/trunk/tests/unitary/functioncall2.c.scop
+END
+object.c
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/25434/users/bastoul/clan/trunk/tests/unitary/object.c
+END
+twocondincond.c
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/twocondincond.c
+END
+minloopcomplex.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/minloopcomplex.c.scop
+END
+underscore.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/18045/users/bastoul/clan/trunk/tests/unitary/underscore.c
+END
+maxloopcomplex.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/maxloopcomplex.c.scop
+END
+complexcond.c
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/complexcond.c
+END
+classicloop.c
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/classicloop.c
+END
+underscore.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/18045/users/bastoul/clan/trunk/tests/unitary/underscore.c.scop
+END
+negassign.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/negassign.c
+END
+multiparenthcond.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/multiparenthcond.c.scop
+END
+ternary.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/ternary.c.scop
+END
+increment.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/increment.c.scop
+END
+minloopsimple.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/minloopsimple.c.scop
+END
+simplecond.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/simplecond.c
+END
+simplecond.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/simplecond.c.scop
+END
+intaddit.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/18244/users/bastoul/clan/trunk/tests/unitary/intaddit.c
+END
+complexprog.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/complexprog.c.scop
+END
+object.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/25434/users/bastoul/clan/trunk/tests/unitary/object.c.scop
+END
+binop.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/binop.c.scop
+END
+basicnest.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/basicnest.c.scop
+END
+multiparenthcond.c
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/multiparenthcond.c
+END
+negassign.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/negassign.c.scop
+END
+simpleloop.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/simpleloop.c
+END
+field.c
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/25434/users/bastoul/clan/trunk/tests/unitary/field.c
+END
+ternary.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/16301/users/bastoul/clan/trunk/tests/unitary/ternary.c
+END
+increment.c
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/tests/unitary/increment.c
+END
+assigniter2.c
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/28288/users/bastoul/clan/trunk/tests/unitary/assigniter2.c
+END
+noloop2.c.scop
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/18046/users/bastoul/clan/trunk/tests/unitary/noloop2.c.scop
+END

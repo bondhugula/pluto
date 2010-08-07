@@ -1,0 +1,59 @@
+On Wed, 27 Oct 2004 11:46:07 +0200, Cédric Bastoul
+<cedric.bastoul@prism.uvsq.fr> wrote:
+
+>> Hi Michael,
+>> here is CLooG GMP (a light version of the future CLooG 1.0, with still
+>> some memory leaks and bugs). You should get and build the GMP library
+>> (http://www.swox.com/gmp/ ) and build the PolyLib GMP
+>> (http://icps.u-strasbg.fr/polylib/ then use the option
+>> --with-libgmp=/gmp_install_directory for the configure script). For
+>> CLooG you have to use the --with-bits=gmp and
+>> --with-libgmp=/gmp_install_directory for the configure script. There is
+>> no -cpp option in this CLooG version, I hope you don't use it. Be aware
+>> that your example needs a lot of memory (more than 256MB), I did not
+>> succeed to find the result on my laptop, but at least there were no
+>> other problems.
+>> Good luck, please feel free to send me some feedbacks about this
+>> version, and please, please, do not distribute it.
+>> Cheers,
+>> 
+>> Cedric
+
+
+Hello Cedric,
+
+I'd like to thank you for your very quick response to my problem. I
+tried to build CLooG-GMP with our version of Polylib5.11.1 with
+gmp-support enabled. The only problem that occured to me was that I
+had to include "-lgmp" to the default library-flags in CLooG's
+makefile.in.
+
+Also, I always have a little trouble, because we use polylib as a
+statically linked library, but there is no target in the CLooG
+makefile for building the executable using static linking. It's no big
+deal, I just add a little "-static" to the linking options. I don't
+know if it would be usefull to others, but as you provide a static and
+shared option for the CLooG library targets, could you think about
+providing a similar option for the executable, too? Again, that is
+only a very minor issue, I don' want to waste your time on things like
+that... 
+
+One more important thing: there is that "MAX_RAYS" constant that is
+hard-coded to 200 in the domain.h file. This is simply too low for
+most of my bigger examples. I think it would be quite usefull in the
+future to give an additional option for CLooG to set the number of
+MAX_RAYS without having to re-compile CLooG.
+
+At the moment, I try to get my example done, CLooG has been running
+now for about 50min on my Athlon-64 with 2GB physical and 4GB swap
+memory (of which CLooG is using 2.5GB at the moment). 
+I doubt that it will finish with a result, but that is simply because
+the example seems to be too difficult (although I still don't see how
+I could reduce it...).
+
+Thanks again for the GMP-version! 
+
+greetings,
+Michael
+
+

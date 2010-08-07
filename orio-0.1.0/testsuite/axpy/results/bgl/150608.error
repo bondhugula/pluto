@@ -1,0 +1,49 @@
+<Mar 30 19:23:07.683063> FE_MPI (Info) : Initializing MPIRUN
+Welcome to SUSE LINUX Enterprise Server 9 (ppc) - Kernel %r (%t).
+/bin/bash: SHELL: readonly variable
+/bin/bash: PATH: readonly variable
+/bin/bash: line 1: dircolors: No such file or directory
+<Mar 30 19:23:09.260378> BRIDGE (Info) : The machine serial number (alias) is BGL
+<Mar 30 19:23:09.402194> FE_MPI (Info) : Preparing partition
+<Mar 30 19:23:09.402487> BE_MPI (Info) : Examining specified partition
+<Mar 30 19:23:09.530726> BE_MPI (Info) : Checking partition R001_J203-64 initial state ...
+<Mar 30 19:23:09.530758> BE_MPI (Info) : Partition R001_J203-64 initial state = FREE ('F')
+<Mar 30 19:23:09.530769> BE_MPI (Info) : Checking partition owner...
+<Mar 30 19:23:09.530779> BE_MPI (Info) : Checking if the partition is busy ...
+<Mar 30 19:23:09.566060> BE_MPI (Info) : Checking partition size ...
+<Mar 30 19:23:09.566083> BE_MPI (Info) : Setting new owner
+<Mar 30 19:23:09.582819> BE_MPI (Info) : Booting partition
+<Mar 30 19:23:46.479450> BE_MPI (Info) : Partition is ready
+<Mar 30 19:23:46.579583> BE_MPI (Info) : Done preparing partition
+<Mar 30 19:23:46.620399> FE_MPI (Info) : Adding job
+<Mar 30 19:23:46.858437> FE_MPI (Info) : Job added with the following id: 157991
+<Mar 30 19:23:46.858469> FE_MPI (Info) : Starting job 157991
+<Mar 30 19:23:47.020436> FE_MPI (Info) : Waiting for job to terminate
+<Mar 30 19:23:52.533929> BE_MPI (Info) : IO - Connection from Ciodb established on fd=12
+<Mar 30 19:23:52.536842> BE_MPI (Info) : IO - Threads initialized
+<Mar 30 19:33:07.711147> FE_MPI (Info) :  
+<Mar 30 19:33:07.711483> FE_MPI (Info) : ! Received signal SIGINT
+<Mar 30 19:33:07.711508> FE_MPI (WARN) :  
+<Mar 30 19:33:07.711519> FE_MPI (WARN) : !------------------------------------------------!
+<Mar 30 19:33:07.711528> FE_MPI (WARN) : ! MPIRUN is now taking all the necessary actions !
+<Mar 30 19:33:07.711539> FE_MPI (WARN) : ! to terminate the job and to free the resources !
+<Mar 30 19:33:07.711548> FE_MPI (WARN) : ! occupied by this job. This may take a while... !
+<Mar 30 19:33:07.711557> FE_MPI (WARN) : !------------------------------------------------!
+<Mar 30 19:33:07.711566> FE_MPI (WARN) :  
+<Mar 30 19:33:07.711601> FE_MPI (Info) : Starting cleanup sequence
+<Mar 30 19:33:08.866422> BE_MPI (WARN) : Received a message from Front-End
+<Mar 30 19:33:08.866458> BE_MPI (WARN) : Execution of the current command interrupted
+<Mar 30 19:33:08.866505> BE_MPI (Info) : Starting cleanup sequence
+<Mar 30 19:33:08.967411> BE_MPI (Info) : Cancelling BG/L job 157991
+<Mar 30 19:33:08.968969> BE_MPI (Info) : Job 157991 state is RUNNING ('R')
+<Mar 30 19:33:09.084815> BE_MPI (Info) : Job 157991 state is DYING ('D'). Waiting...
+<Mar 30 19:33:19.708210> BE_MPI (Info) : Job 157991 has been moved to the history table
+<Mar 30 19:33:19.710438> BE_MPI (ERROR): The error message in the job record is as follows:
+<Mar 30 19:33:19.710471> BE_MPI (ERROR):   "killed with signal 9"
+<Mar 30 19:33:19.811470> BE_MPI (Info) : Destroying partition R001_J203-64
+<Mar 30 19:33:30.531753> BE_MPI (Info) : Partition R001_J203-64 switched to state FREE ('F')
+<Mar 30 19:33:30.745832> BE_MPI (Info) : ==   BE completed   ==
+<Mar 30 19:33:30.769954> FE_MPI (ERROR): Failure list:
+<Mar 30 19:33:30.769993> FE_MPI (ERROR):   - 1. Execution interrupted by signal (failure #61)
+<Mar 30 19:33:30.770005> FE_MPI (Info) : ==   FE completed   ==
+<Mar 30 19:33:30.770015> FE_MPI (Info) : == Exit status:   1 ==

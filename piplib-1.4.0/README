@@ -1,0 +1,88 @@
+#
+#  /**-------------------------------------------------------------------**
+#   **                            PIP/PipLib                             **
+#   **-------------------------------------------------------------------**
+#   **                   Parametric Integer Programming                  **
+#   **-------------------------------------------------------------------**
+#   **           First version of this file: february 21th 2002          **
+#   **-------------------------------------------------------------------**/
+#
+
+For complete informations about this software, how to build and use it,
+please see the postscript file in the ./doc subdirectory (a pdf version
+is available in the web site).
+
+#   **-------------------------------------------------------------------**
+#   **                        I. Description                             **
+#   **-------------------------------------------------------------------**/
+
+PIP/PipLib is the well known Paul Feautrier's parametric integer programming
+solver. PIP is a software which finds the lexicographic minimum of the set of
+integer points which lie inside a convex polyhedron. This polyhedron can depend
+linearly on one or more integral parameters. If user ask for a non integral
+solution, PIP can give the exact solution as an integral quotient. The heart
+of PIP is the parametrized Gomory's cuts algorithm followed by parametrized
+dual simplex method. The PIP Library (PipLib for short) was implemented to
+allow the user to call PIP directly from his programs, without file accesses
+or system calls. The user only needs to link his programs with C libraries.
+
+#   **-------------------------------------------------------------------**
+#   **                    II. Building PIP/PipLib                        **
+#   **-------------------------------------------------------------------**/
+
+The configure shell script attempts to guess correct values for various
+system-dependent variables used during compilation. It uses those values to
+create a Makefile. The file configure.in is used to create configure by a
+program called autoconf.  You only need configure.in if you want to change
+it or regenerate configure using a newer version of autoconf.
+
+The simplest way to compile this package is:
+cd to the directory containing the package's source code and type 
+
+  ./configure
+
+to configure the package for your system (while running, configure prints
+some messages telling which features it is checking for), to compile the
+package, type
+
+  make
+  
+
+to install the program and/or the library, type
+
+  make install
+
+you can remove the program binaries and object files from the source code
+directory by typing
+  
+  make clean
+  
+To also remove the files that configure created (so you can compile the
+package for a different kind of computer) type
+  
+  make distclean
+
+#   **-------------------------------------------------------------------**
+#   **                           III Options                             **
+#   **-------------------------------------------------------------------**/
+
+By default,  make will install the package's files in /usr/local/bin,
+/usr/local/lib, etc. You can specify an installation prefix other than 
+/usr/local by giving onfigure} the option --prefix=PATH.
+
+By default, both PIP and the PipLib are compiled and installed.
+By giving configure the option --without-pip you disable the
+compilation and installation of PIP. By giving configure the option
+--without-lib you disable the compilation and installation of the PipLib.
+
+By default, both int (32 bits) and long long int (64 bits) versions are
+built. By giving configure the option --enable-int you ask for int
+version only and by giving configure the option --enable-llint you
+ask for long long int version only.
+
+#   **-------------------------------------------------------------------**
+#   **                          IV Running PIP                           **
+#   **-------------------------------------------------------------------**/
+
+To run PIP, simply type 'pip32' or 'pip64', optionally followed by the name
+of an input file. For more informations, please check the ./doc subdirectory.

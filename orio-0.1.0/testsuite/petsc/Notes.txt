@@ -1,0 +1,2 @@
+cqsub -n 1 -t 20 -q short -O ex5 ex5 -log_summary -da_grid_x 512 -da_grid_y 512
+cqsub -n 1 -t 20 -q short -O ex5_an ex5_an -log_summary -da_grid_x 512 -da_grid_y 512

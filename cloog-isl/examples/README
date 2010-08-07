@@ -1,0 +1,58 @@
+#
+#  /**-------------------------------------------------------------------**
+#   **                              CLooG                                **
+#   **-------------------------------------------------------------------**
+#   **                       Library use examples                        **
+#   **-------------------------------------------------------------------**
+#   **             First version of this file: july 15th 2003            **
+#   **-------------------------------------------------------------------**/
+#
+
+
+In this directory are presented various examples of how to use the CLooG
+library. For each case, you will need to edit the makefile file according to
+your system, in particular you will have to set where your CLooG library has
+been installed, and where are the CLooG header files. Don't forget to update
+your LD_LIBRARY_PATH environment variable to reach the CLooG library. If you
+performed the default installation of CLooG, the library is in /usr/local/lib
+thus you need to set LD_LIBRARY_PATH thanks to one of the following command:
+'setenv LD_LIBRARY_PATH /usr/local/lib' for tcsh-like shells, or
+'export LD_LIBRARY_PATH=/usr/local/lib' for bash-like shells.
+
+For any problem: <cedric.bastoul@inria.fr>.
+
+
+#   **-------------------------------------------------------------------**
+#   **                          I. Example                               **
+#   **-------------------------------------------------------------------**/
+
+
+This example program creates a simple CLooG-like loop generation program in a
+few lines. The input problem has to be given on standard input. We can test it
+for instance by typing 'more FILE.cloog | ./example' (or example.exe under
+Cygwin).
+
+
+#   **-------------------------------------------------------------------**
+#   **                       II. cloog2loopgen                           **
+#   **-------------------------------------------------------------------**/
+
+NO MORE EXISTS !
+
+This example creates a program converting a CLooG input file to a LoopGen input
+file. This can be useful to compare the two tools (I do not support LoopGen,
+don't ask me if you find some bugs !). The usage of the created tool is:
+'cloog2loopgen input_file output_file'.
+
+
+#   **-------------------------------------------------------------------**
+#   **                       III. cloog2Omega                            **
+#   **-------------------------------------------------------------------**/
+
+
+NO MORE EXISTS !
+
+This example creates a program converting a CLooG input file to an Omega
+CodeGen input file. This can be useful to compare the two tools (I do not
+support CodeGen, don't ask me if you find some bugs !). The usage of the
+created tool is: 'cloog2omega input_file output_file'.

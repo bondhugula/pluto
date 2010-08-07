@@ -1,0 +1,16 @@
+# langage
+c
+
+# Context
+0 2
+0
+
+1 # Number of statements
+
+1
+# {i | 1<=i<=M}
+0 3
+0 0 0
+0
+
+0 # Scattering functions

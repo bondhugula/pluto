@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/16760/users/bastoul/clan/trunk/doc
+END
+clan.texi
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/16760/users/bastoul/clan/trunk/doc/clan.texi
+END
+Doxyfile.in
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/doc/Doxyfile.in
+END
+S4.cloog
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/14184/users/bastoul/clan/trunk/doc/S4.cloog
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/14338/users/bastoul/clan/trunk/doc/Makefile.am
+END
+ascii-art.txt
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/14184/users/bastoul/clan/trunk/doc/ascii-art.txt
+END

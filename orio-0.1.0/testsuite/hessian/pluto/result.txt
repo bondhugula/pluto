@@ -1,0 +1,73 @@
+===============================
+ Hessian Matrix Computation
+===============================
+
+Hessian matrix is the square matrix of second-order partial derivatives of a function.
+
+The original code is the following.
+
+ for (i = 0; i<=N-1; i++)
+  for (j = 0; j<=N-1; j++)
+    {
+      Y[i][j] = a0 * X0[i][j] + a1 * X1[i][j] + a2 * X2[i][j]
+        + 2.0 * b00 * u0[i] * u0[j]
+        + 2.0 * b11 * u1[i] * u1[j]
+        + 2.0 * b22 * u2[i] * u2[j]
+        + b01 * (u0[i] * u1[j] + u1[i] * u0[j])
+        + b02 * (u0[i] * u2[j] + u2[i] * u0[j])
+        + b12 * (u1[i] * u2[j] + u2[i] * u1[j]);
+    }
+
+
+
+
+
+************
+ N=1000
+************
+-icc -fast -parallel
+ 0.007985
+ 0.007601
+ 0.007613
+ 0.007863
+ 
+-ancc
+
+************
+ N=3000
+************
+-icc -fast -parallel
+ 0.069475
+ 0.067309
+ 0.068320
+ 0.070137
+ 
+-ancc
+
+
+************
+ N=5000
+************
+-icc -fast -parallel
+ 0.192333
+ 0.186441
+ 0.188907
+ 0.194303
+ 
+-ancc
+
+
+************
+ N=8000
+************
+-icc -fast -parallel
+ 0.503156
+ 0.481576
+ 0.487203
+ 0.499266
+
+-ancc
+
+
+
+

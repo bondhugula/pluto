@@ -1,0 +1,85 @@
+# CLooG example file #2.
+# Please read the first example which is fully documented to understand the
+# six first parts of the input file. This example explains the seventh one.
+#
+################################################################################
+# The problem here is to impose a scanning order for the polyhedron of the     #
+# first example : the points are ordered by i+j values (a well known skewing). #
+#                      |                          |                            #
+#    j^                |   i^           i<=c1-2   |                            #
+#     | i>=2           |    |  c1>=4   / c1<=2*n  |                            #
+#     | |   i<=n       |    |   |     / | i>=c1-n |                            #
+#     | |   |          |    |   |    /  |/        |                            #
+#   n-+-*****--j<=n    |  n-+---+---*****--i<=n   | for (c1=4;c1<=2*n;c1++){   #
+#     | *****          |    |   |  *****|         |  for (i=max(c1-n,2);       #
+#     | *****         ==>   |   | ***** |        ==>      i<=min(c1-2,n);i++){ #
+#     | *****          |    |   |*****  |         |   j = c1-i ;               #
+#   2-+-*****--j>=2    |  2-+---*****---+--i>=2   |   S1 ;                     #
+#     | |   |          |    |  /|  /    |         |  }                         #
+#   0-+-+---+--->i     |  0-+---+-------+--->c1   | }                          #
+#     | |   |          |    |   |       |         |                            #
+#     0 2   n          |    0   4      2n         |                            #
+#                      |                          |                            #
+#   Context : n>=2     |  Scattering function:    |                            #
+#   System  : 2<=i<=n  |  c1=i+j                  |                            #
+#             2<=j<=m  |                          |                            #
+#                      |                          |                            #
+################################################################################
+#
+# 1. Language: C
+c
+
+# 2. Parameters {n | n>= 2}
+1 3
+#  n  1
+1  1 -2
+
+# 3. We set manually the parameter name: n
+1
+n
+
+# 4. Number of polyhedra:
+1
+
+# 5. The polyhedron description:
+1
+# {j, j | 2<=i<=n 2<=j<=n}
+4 5
+#   i   j   n   1
+1   1   0   0  -2 # i>=2
+1  -1   0   1   0 # i<=n
+1   0   1   0  -2 # j>=2
+1   0  -1   1   0 # j<=n
+0   0   0         # 3 zeroes !
+
+# 6. We let CLooG choose the iterator names
+0
+
+# 7. Seventh, we define the scanning order. In CLooG speaking, we talk about
+#    scattering functions (a shortcut for scheduling, allocation etc.). It may
+#    be useful to read the CLooG documentation about this point since it is
+#    not trivial if you are not comfortable with transformations in the polytope
+#    model. We describe them in three parts:
+#    7.1 The number of scattering functions. It must be either 0 (in this case
+#        there is no particular scanning order and CLooG will do what it wants)
+#        or the number of polyhedra (set in part 4.).
+#    7.2 The list of scattering functions. Each scattering function is a
+#        constraint matrix (as those that describe context or polyhedra) but
+#        made exclusively of equalities. They equate each new scattering
+#        dimension with an affine expression of the original polyhedron
+#        dimensions, the parameters and the scalar. CLooG will only respect the
+#        ordering given by the scattering dimensions. If there are several 
+#        scattering dimensions, CLooG will use the lexicographic ordering (the
+#        first dimension leads, then the second one and so on). Every scattering
+#        functions must have the same number of scattering dimensions.
+#        Here we have c1=i+j, a one-dimensional scattering. It means that the
+#        points of the original polyhedron with the same i+j value will be
+#        scanned during the same iteration of the outer loop.
+#    7.3 We set the scattering dimension names. We just put 0 if we want to let
+#        CLooG decide names, 1 otherwise. If we put 1, at the next line we give
+#        the space-separated parameter list.
+1   # One scattering function (since there is only one polyhedron)
+1 6 # The scattering function is a matrix of one row and six columns
+# c1   i   j   n   1
+0  1  -1  -1   0   0 # c1 = i+j
+0   # We let CLooG choose the scattering dimension names

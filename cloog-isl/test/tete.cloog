@@ -1,0 +1,30 @@
+c
+
+# 2 parameters
+1 4
+1 0 0 0 
+
+0
+
+# 1 statement
+1
+
+# 1 domain
+# i=n+2
+1
+2 5
+0 -1  0  1  2
+0  1  0 -1 -3
+0  0  0 
+
+0
+
+# 0 scattering function
+# c1=M+1
+# c2=N
+0
+
+0
+
+
+

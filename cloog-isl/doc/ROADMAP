@@ -1,0 +1,18 @@
+still to do before
+0.14.0 - dumping functions
+       - backtrack only to remove ifs
+       - update documentation
+       - configure for GMP and Solaris
+
+0.14.1 - remove the constraint that all scattering functions must have the same
+         dimensionality and use the new liberty degrees to generate better codes
+         (e.g. continue loop fusion only when the stride is the same...)
+       - if-hoisting instead of backtracking by option
+       
+0.14.2 clean loop during generation (haircut and never_integral)
+
+0.14.3 allow non-integral scattering (easy: see PACT paper)
+
+...
+
+1.0.0  Omega-like input.

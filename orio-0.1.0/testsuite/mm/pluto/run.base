@@ -1,0 +1,14 @@
+
+export OMP_NUM_THREADS=1
+icc -fast -I/usr/local/icc/include mm.base.c -DREPS=4 -DNCONT=10000 -DCONT=1
+./a.out
+./a.out
+rm a.out
+
+
+export OMP_NUM_THREADS=2
+icc -fast -parallel -I/usr/local/icc/include mm.base.c -DREPS=4 -DNCONT=10000 -DCONT=1
+./a.out
+./a.out
+rm a.out
+

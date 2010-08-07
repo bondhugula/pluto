@@ -1,0 +1,82 @@
+# language: C
+c
+
+# parameters {n | n>=16}
+1 3
+#  n  1
+1  1 -16
+0
+
+2 # Number of statements
+
+1
+# {i, j | 1<=i<=n 5<=j<=n-10}
+4 5
+#  i  j  n  1
+1  1  0  0 -1
+1 -1  0  1  0
+1  0  1  0 -5
+1  0 -1  1 -10
+0  0  0
+
+1
+# {i, j | 1<=i<=n 5<=j<=n-10}
+4 5
+#  i  j  n  1
+1  1  0  0 -1
+1 -1  0  1  0
+1  0  1  0 -5
+1  0 -1  1 -10
+0  0  0
+0
+
+2 # Scattering functions
+# Et les instructions de chunking (sol triviale)...
+2 7
+# c1 c2  i  j  n  1
+0  1  0 -1  0  0  0
+0  0  1  0 -1  0  0
+
+2 7
+# c1 c2  i  j  n  1
+0  1  0  0 -1  0  0
+0  0  1 -1  1  0  0
+0
+
+# Et les instructions de chunking (sol aux inverse)...
+2 7
+# c1 c2  i    j  n  1
+0  1  0 -10  -3  0 -5
+0  0  1 -4   -1  0  5
+
+2 7
+# c1 c2  i    j  n  1
+0  1  0 -9   -4  0 -15
+0  0  1 -5    0  0  0
+0
+
+2
+# Et les instructions de chunking (sol aux egalites)...
+2 7
+# c1 c2  i    j  n  1
+0  1  0  1   -2  0  -30
+0  0  1 -1    1  0  30
+
+2 7
+# c1 c2  i    j  n  1
+0  1  0 -1    1  0  15
+0  0  1  1   -2  0 -30
+0
+
+# Et les instructions de chunking (sol triviale)...
+2 7
+# c1 c2  i  j  n  1
+0  1  0 -1  0  0  0
+0  0  1  0 -1  0  5
+
+2 7
+# c1 c2  i  j  n  1
+0  1  0  0 -1  0 -10
+0  0  1 -1  0  0  0
+0
+

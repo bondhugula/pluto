@@ -1,0 +1,58 @@
+#
+#  /**-------------------------------------------------------------------**
+#   **                              CLooG                                **
+#   **-------------------------------------------------------------------**
+#   **                     The Chunky Loop Generator                     **
+#   **-------------------------------------------------------------------**
+#   **            First version of this file: april 29th 2005            **
+#   **-------------------------------------------------------------------**/
+#
+
+This file is mainly for the authors, in order to put ideas, requests, and
+work-in-progress notes.
+
+#   **-------------------------------------------------------------------**
+#   **                       I. Requested features                       **
+#   **-------------------------------------------------------------------**/
+
+1. GMP !!! (LooPo Team).
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+2. Set the statement prefix (Michael Classen).
+
+3. Do not fuse the iterators/scattering dimension names lists (Hadda Cheroun).
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+4. Exploit URUK transformation properties (WRAP-IT Team).
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+
+#   **-------------------------------------------------------------------**
+#   **                         II. Known bugs                            **
+#   **-------------------------------------------------------------------**/
+
+1. Lead to segfault :
+cloog ./test/daegon_lu_osp.cloog -f 3 -l 6 -nobacktrack -override
+(while every other -l values do not !)
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+2. -strides gives bad result for a dreamup or interpolation-duration file in
+test/non_optimal (I don't remember which one)
+
+3. Various configure problems (check Sylvain Girbal mails in the mailbox !).
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+4. With GMP, try test/emploi.cloog (with valgrind): a memory leak...
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+5. With GMP, option -cpp do not write all the statement internal stuff
+(e.g., S1(,,) ; instead of S1(i,j,k) ;).
+DOOOOOOOOOOOOOOOOOOOOOOOOONE !!!!!!!!!!!!!!!!!
+
+#   **-------------------------------------------------------------------**
+#   **                        III. Various notes                         **
+#   **-------------------------------------------------------------------**/
+
+Kill the cat.
+
+

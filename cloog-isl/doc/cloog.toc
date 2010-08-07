@@ -1,0 +1,63 @@
+@numchapentry{Introduction}{1}{Introduction}{1}
+@numsecentry{Basically, what's the point ?}{1.1}{Basics}{1}
+@numsecentry{Defining a Scanning Order: Scattering Functions}{1.2}{Scattering}{2}
+@numchapentry{Using the CLooG Software}{2}{CLooG Software}{5}
+@numsecentry{A First Example}{2.1}{A First Example}{5}
+@numsecentry{Writing The Input File}{2.2}{Writing The Input File}{6}
+@numsubsecentry{Domain Representation}{2.2.1}{Domain Representation}{7}
+@numsubsecentry{Scattering Function Representation}{2.2.2}{Scattering Representation}{8}
+@numsecentry{Calling CLooG}{2.3}{Calling CLooG}{10}
+@numsecentry{CLooG Options}{2.4}{CLooG Options}{11}
+@numsubsecentry{Last Depth to Optimize Control @code {-l <depth>}}{2.4.1}{Last Depth to Optimize Control}{11}
+@numsubsecentry{First Depth to Optimize Control @code {-f <depth>}}{2.4.2}{First Depth to Optimize Control}{11}
+@numsubsecentry{Simplify Convex Hull @code {-sh <boolean>}}{2.4.3}{Simplify Convex Hull}{12}
+@numsubsecentry{Once Time Loop Elimination @code {-otl <boolean>}}{2.4.4}{Once Time Loop Elimination}{13}
+@numsubsecentry{Equality Spreading @code {-esp <boolean>}}{2.4.5}{Equality Spreading}{13}
+@numsubsecentry{First Level for Spreading @code {-fsp <level>}}{2.4.6}{First Level for Spreading}{13}
+@numsubsecentry{Statement Block @code {-block <boolean>}}{2.4.7}{Statement Block}{14}
+@numsubsecentry{Loop Strides @code {-strides <boolean>}}{2.4.8}{Loop Strides}{14}
+@numsubsecentry{Compilable Code @code {-compilable <value>}}{2.4.9}{Compilable Code}{15}
+@numsubsecentry{Callable Code @code {-callable <boolean>}}{2.4.10}{Callable Code}{16}
+@numsubsecentry{Output @code {-o <output>}}{2.4.11}{Output}{17}
+@numsubsecentry{Help @code {--help} or @code {-h}}{2.4.12}{Help}{17}
+@numsubsecentry{Version @code {--version} or @code {-v}}{2.4.13}{Version}{17}
+@numsubsecentry{Quiet @code {--quiet} or @code {-q}}{2.4.14}{Quiet}{17}
+@numsecentry{A Full Example}{2.5}{Full Example}{17}
+@numchapentry{Using the CLooG Library}{3}{CLooG Library}{21}
+@numsecentry{CLooG Data Structures Description}{3.1}{CLooG Data Structures}{21}
+@numsubsecentry{CloogState}{3.1.1}{CloogState}{21}
+@numsubsecentry{CloogMatrix}{3.1.2}{CloogMatrix}{21}
+@numsubsecentry{CloogDomain}{3.1.3}{CloogDomain}{22}
+@numsubsubsecentry{PolyLib}{3.1.3.1}{CloogDomain/PolyLib}{22}
+@numsubsubsecentry{isl}{3.1.3.2}{CloogDomain/isl}{22}
+@numsubsecentry{CloogScattering}{3.1.4}{CloogScattering}{23}
+@numsubsubsecentry{PolyLib}{3.1.4.1}{CloogScattering/PolyLib}{23}
+@numsubsubsecentry{isl}{3.1.4.2}{CloogScattering/isl}{23}
+@numsubsecentry{CloogScatteringList}{3.1.5}{CloogScatteringList}{23}
+@numsubsecentry{CloogStatement}{3.1.6}{CloogStatement}{23}
+@numsubsecentry{CloogBlock}{3.1.7}{CloogBlock}{24}
+@numsubsecentry{CloogBlockList}{3.1.8}{CloogBlockList}{24}
+@numsubsecentry{CloogLoop}{3.1.9}{CloogLoop}{24}
+@numsubsecentry{CloogNames}{3.1.10}{CloogNames}{25}
+@numsubsecentry{CloogProgram}{3.1.11}{CloogProgram}{25}
+@numsubsecentry{CloogOptions}{3.1.12}{CloogOptions}{28}
+@numsecentry{CLooG Functions Description}{3.2}{CLooG Functions}{28}
+@numsubsecentry{cloog_program_generate}{3.2.1}{cloog_program_generate}{28}
+@numsubsecentry{cloog_program_pprint}{3.2.2}{cloog_program_pprint}{30}
+@numsubsecentry{cloog_program_scatter}{3.2.3}{cloog_program_scatter}{30}
+@numsubsecentry{cloog_program_read}{3.2.4}{cloog_program_read}{30}
+@numsubsecentry{Allocation and Initialization Functions}{3.2.5}{Allocation and Initialization Functions}{30}
+@numsubsecentry{Memory Deallocation Functions}{3.2.6}{Memory Deallocation Functions}{31}
+@numsubsecentry{Printing Functions}{3.2.7}{Printing Functions}{31}
+@numsecentry{CLooG Output}{3.3}{CLooG Output}{31}
+@numsecentry{Example of Library Utilization}{3.4}{Example of Library Utilization}{34}
+@numchapentry{Installing CLooG}{4}{Installing}{37}
+@numsecentry{License}{4.1}{License}{37}
+@numsecentry{Requirements}{4.2}{Requirements}{37}
+@numsubsecentry{PolyLib (optional)}{4.2.1}{PolyLib}{37}
+@numsubsecentry{GMP Library (optional)}{4.2.2}{GMP Library}{38}
+@numsecentry{CLooG Basic Installation}{4.3}{Basic Installation}{38}
+@numsecentry{Optional Features}{4.4}{Optional Features}{39}
+@numsecentry{Uninstallation}{4.5}{Uninstallation}{40}
+@numchapentry{Documentation}{5}{Documentation}{41}
+@numchapentry{References}{6}{References}{43}

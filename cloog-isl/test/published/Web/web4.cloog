@@ -1,0 +1,62 @@
+# CLooG example file #4.
+# Please read the first example which is fully documented to understand the
+# different parts of this input file.
+#
+################################################################################
+# The problem here is to scan a single non-rectangular polyhedron.             #
+#                                      |                                       #
+#          j^ i>=2                     |                                       #
+#           | | j<=n+2-i               |                                       #
+#           | |\     | i<=n            |                                       #
+#           | | \    |                 |                                       #
+#         m-+-****---+-j<=m            |   for (i=2;i<=n;i++) {                #
+#           | *****  |                 |     for (j=2;j<=min(m,-i+n+2);j++) {  #
+#           | ****** |                ==>      S1 ;                            #
+#           | *******|                 |     }                                 #
+#         2-+-********-j>=2            |   }                                   #
+#           | |      |\                |                                       #
+#         0-+-+------+--->i            |                                       #
+#           | |      |                 |                                       #
+#           0 2      n                 |                                       #
+#         Context : n>=2               |                                       #
+#                   m>=2               |                                       #
+#         System  : 2<=i<=n            |                                       #
+#                   2<=j<=m            |                                       #
+#                   j<=n+2-i           |                                       #
+#                                      |                                       #
+################################################################################
+#
+# 1. Language: C
+c
+
+# 2. Parameters {n,m | n>=2 m>=2}
+2 4        # 2 rows ans 4 columns
+#  m  n  1
+1  1  0 -2 # m>=2
+1  0  1 -2 # n>=2
+
+# 3. We set manually the parameter name: m, n
+1
+m n
+
+# 4. Number of polyhedra:
+1
+
+# 5. The polyhedron description:
+1
+# {i, j | 2<=i<=n 2<=j<=m n+2-i-j>=0}
+5 6                   # 5 rows and 6 columns
+#   i   j   m   n   1
+1   1   0   0   0  -2 # i>=2
+1  -1   0   0   1   0 # i<=n
+1   0   1   0   0  -2 # j>=2
+1   0  -1   1   0   0 # j<=m
+1  -1  -1   0   1   2 # j<=n+2-i
+0   0   0             # 3 zeroes !
+
+# 6. We set manually the iterator names: i, j
+1
+i j
+
+# 7. Let CLoog scan the polyhedron in the way it wants.
+0

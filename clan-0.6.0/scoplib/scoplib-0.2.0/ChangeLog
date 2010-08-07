@@ -1,0 +1,107 @@
+2010-03-08  Louis-Noel Pouchet  <pouchet@cse.ohio-state.edu>
+
+	* configure.in: Bump to ScopLib 0.2.0.
+	* README: Update with build information.
+
+2010-02-05  Louis-Noel Pouchet  <pouchet@cse.ohio-state.edu>
+
+	* include/scoplib/matrix.h,
+	* source/matrix.c: Add function scoplib_matrix_equal.
+
+2010-01-26  Louis-Noel Pouchet  <louis-noel.pouchet@inria.fr>
+
+	* include/macros.h: Add SCOPVAL_multo macro.
+
+2009-09-21  Louis-Noel Pouchet  <louis-noel.pouchet@inria.fr>
+
+	* source/vector.c,
+	* source/matrix.c,
+	* source/scop.c,
+	* source/statement.c,
+	* source/Makefile.am,
+	* include/Makefile.am,
+	* include/scoplib/scop.h.in,
+	* include/scoplib/vector.h,
+	* include/scoplib/macros.h,
+	* include/scoplib/matrix.h,
+	* include/scoplib/statement.h,
+	* COPYING.LESSER,
+	* configure.in,
+	* Makefile.am,
+	* README: Downgrade license from LGPL3+ to LGPL2.1+, to be
+	compatible with CLooG's license.
+
+2009-06-24  Louis-Noel Pouchet  <louis-noel.pouchet@inria.fr>
+
+	* source/scop.c,
+	* source/statement.c,
+	* include/scoplib/statement.h: Add support for control and exit
+	predicates as statement attributes. Needed for non-static control
+	code support.
+
+2009-05-02  Louis-Noel Pouchet  <louis-noel.pouchet@inria.fr>
+
+	* source/matrix.c,
+	* include/scoplib/macros.h,
+	* include/scoplib/matrix.h,
+	* configure.in: Fix a few minor problems.
+
+2009-05-02  Louis-Noel Pouchet  <louis-noel.pouchet@inria.fr>
+	This is the initial checkin of ScopLib, a fork of Clan which
+	contains only the functions related to the .scop format, and the
+	main scop/statement/matrix/vector functions.
+
+	clan_*_p types have been renamed scoplib_*_p, similarely for
+	function calls.
+
+	* AUTHORS,
+	* autoconf,
+	* autogen.sh,
+	* configure.in,
+	* COPYING.LESSER,
+	* doc,
+	* doc/ascii-art.txt,
+	* doc/clan.texi,
+	* doc/Doxyfile.in,
+	* doc/images,
+	* doc/images/basic.eps,
+	* doc/images/basic.fig,
+	* doc/images/basic.jpg,
+	* doc/images/basic.pdf,
+	* doc/images/basic.txt,
+	* doc/images/basic1.eps,
+	* doc/images/basic1.fig,
+	* doc/images/basic1.jpg,
+	* doc/images/basic1.pdf,
+	* doc/images/basic1.txt,
+	* doc/images/basic2.eps,
+	* doc/images/basic2.fig,
+	* doc/images/basic2.jpg,
+	* doc/images/basic2.pdf,
+	* doc/images/basic2.txt,
+	* doc/images/tree.eps,
+	* doc/images/tree.fig,
+	* doc/images/tree.jpg,
+	* doc/images/tree.pdf,
+	* doc/images/tree.txt,
+	* doc/Makefile.am,
+	* doc/S4.cloog,
+	* include,
+	* include/Makefile.am,
+	* include/scoplib,
+	* include/scoplib/macros.h,
+	* include/scoplib/matrix.h,
+	* include/scoplib/scop.h.in,
+	* include/scoplib/statement.h,
+	* include/scoplib/vector.h,
+	* Makefile.am,
+	* NEWS,
+	* README,
+	* source,
+	* source/Makefile.am,
+	* source/matrix.c,
+	* source/scop.c,
+	* source/statement.c,
+	* source/vector.c,
+	* THANKS: Initial checkin of the project.
+

@@ -1,0 +1,18 @@
+                 j ^
+                   |
+                   |
+                   |
+              ^    + n+5
+            /   \  |
+          /       \|             i
+----+----+----+----+----+-------->
+       /    -n-5   | \ n+5
+     /             |   \
+    <         -n-5 +    >
+     \             |   / 
+       \           | /
+        \          +   (Supposed to be a
+          \       /|    square, but eh !
+            \   /  |    Please look at the
+              v    +    PDF manual !!!)
+                   |

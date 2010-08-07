@@ -1,0 +1,51 @@
+submitting walltime=10 minutes
+using project 'pilot-norris'
+submitting walltime=10 minutes
+using project 'pilot-norris'
+
+====== BEGIN ANNOTATIONS TOOL ======
+
+----- begin reading the source file: bratu.c -----
+----- finish reading the source file -----
+
+----- begin reading the tuning specification file: bratu.regtiling.bg.spec -----
+----- finish reading the tuning specification -----
+
+----- begin parsing annotations -----
+----- finish parsing annotations -----
+
+----- begin optimizations -----
+
+----- begin empirical performance tuning -----
+
+----- begin exhaustive search -----
+ compiling:
+	mpixlc  -O3 -qstrict -lm -DREPS=1000 -o _annot_perftest10051.exe _annot_perftest10051.c
+ running:
+	cqsub -n 64 -t 10 -q short  _annot_perftest10051.exe
+>>>> best coordinate found: [5, 0], cost: 6.04856e-05
+>>>> best coordinate found: [22, 0], cost: 6.02598e-05
+>>>> best coordinate found: [14, 1], cost: 5.9597e-05
+ compiling:
+	mpixlc  -O3 -qstrict -lm -DREPS=1000 -o _annot_perftest10051.exe _annot_perftest10051.c
+ running:
+	cqsub -n 64 -t 10 -q short  _annot_perftest10051.exe
+>>>> best coordinate found: [4, 2], cost: 5.95761e-05
+>>>> best coordinate found: [6, 2], cost: 5.95481e-05
+>>>> best coordinate found: [9, 2], cost: 5.94743e-05
+>>>> best coordinate found: [8, 2], cost: 5.94643e-05
+----- end exhaustive search -----
+----- begin summary -----
+ best coordinate: [8, 2], cost: 5.94643e-05
+ total search time: 680.40 seconds
+----- end summary -----
+----- best performance parameters -----
+ Ui = 9
+ Uj = 3
+----- end performance tuning -----
+----- finish optimizations -----
+
+----- begin writing output to: _bratu_bgp.c -----
+----- finish writing output -----
+
+====== END ANNOTATIONS TOOL ======

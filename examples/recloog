@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cloog -cpp 1 -compilable 100 -csp 1 -esp 1 $1 > out.c

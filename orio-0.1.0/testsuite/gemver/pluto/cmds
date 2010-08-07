@@ -1,0 +1,16 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast gemver.base.c -DREPS=4 -DN=10000
+par:
+  export OMP_NUM_THREADS=4; icc -fast -parallel gemver.base.c -DREPS=4 -DN=10000
+
+*** pluto+ancc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp gemver.pluto_ancc.seq.c -DREPS=4 -DN=10000
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp gemver.pluto_ancc.par.c -DREPS=4 -DN=10000
+
+
+

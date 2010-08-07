@@ -1,0 +1,46 @@
+# Optimal code is in fact :
+# 
+# for (i=0;i<=M;i++) {
+#   S1 ;
+#   for (j=0;j<=N;j++) {
+#     S2 ;
+#   }
+#   S3 ;
+# }
+
+# language: C
+c
+
+# parameters {M, N | M>=1 N >=1}
+0 2
+0
+
+3 # Number of statements
+
+1
+# {i | 0<=i<=5 i==j}
+3 4
+1  1  0  0
+1 -1  0  5
+0  1 -1  0
+0  0  0
+
+1
+# {i | 0<=i<=5 i<=j<=5}
+4 4
+1  1  0  0
+1 -1  0  5
+1 -1  1  0
+1  0 -1  5
+0  0  0
+
+1
+# {i | 0<=i<=5 j==5}
+3 4
+1  1  0  0
+1 -1  0  5
+0  0  1 -5
+0  0  0
+0
+ 
+0 # Scattering functions

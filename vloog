@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# VLooG: Vector pragma adder, helper script for pluto
+
+# Syntax
+# 
+# vloog  <C file>
+#
+# 
+# Reads contents of .vectorize and generate ivdep pragmas for those loops 
+# after replacing their bounds by scalars. This allows ICC to auto-vectorize
+# those loops. .vectorize is created by the pluto core.
+#
+# Author: Uday Bondhugula
+#
+# This script is called by polycc
+# 
+
+match_closing_brace() {
+
+    grep -n [{}] $1 > loopopenclose
+    sed -n -e '/^'$2':/,$p' loopopenclose > cut
+
+    open=0
+    numclose=0
+    #cat cut
+    while read -n1 char; do
+        #do something with the byte in $char
+        #echo $open $clos $char
+        if [ "$char" == "{" ]; then
+            open=$(($open+1))
+        elif [ "$char" == "}" ]; then
+            numclose=$(($numclose+1))
+            open=$(($open-1))
+            if [ $open == 0 ]; then
+                #echo $numclose
+                break
+            fi
+        fi
+    done <cut
+
+    cat cut | grep "}" > closecut
+
+    closing_brace_linenum=`sed -n -e ''$numclose'p' closecut | awk '{split($1,t,":"); print t[1]}'`
+
+    rm -f cut loopopenclose closecut
+
+    echo $closing_brace_linenum > closenum
+    return $closing_brace_linenum
+}
+
+
+if [ ! -f .vectorize ]; then
+    exit 2
+fi
+
+numlines=`wc -l .vectorize | awk '{print $1}'`
+
+if [ $numlines == "0" ]; then
+    exit 3
+fi
+
+
+# Vectorization pragma for ICC
+VECDIM=`cat .vectorize`
+
+LINE_NUMBERS=`grep -n "for ($VECDIM.*=" $1 | awk '{split($1,t,":"); print t[1]}'`
+
+j=0
+for num in $LINE_NUMBERS; do
+
+    LOOP=`sed -n -e ''$(($num+5*$j))'p' $1`
+
+    match_closing_brace $1 $(($num+5*$j))
+    closing_brace=`cat closenum`
+    if [ $closing_brace -lt $num ]; then
+        echo "Vectorizer failed!"
+        exit 4
+    fi
+
+    sed -n -e '1,'$(($num+5*$j-1))'p' $1 > .header 
+    sed -n -e ''$(($closing_brace+1))',$p' $1 > .footer
+    sed -n -e ''$(($num+5*$j+1))','$closing_brace'p' $1 > .body
+
+    # everything from tr is a hack for ancc generated code 
+    sed -n -e ''$(($num+5*$j))'p' $1 | tr -d ' ' | sed -e 's/for/for /' > .vecloop
+
+    # lower and upper bounds
+    echo -ne "{\n\tlbv="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .vecloop`"; " > .lb
+    echo -e "\tubv="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .vecloop`";" > .ub
+
+    cat .header .lb .ub > $1
+    echo -e "#pragma ivdep\n#pragma vector always\n\tfor ($VECDIM=lbv; $VECDIM<=ubv; $VECDIM++) {" >> $1
+    cat .body >> $1
+    echo "}" >> $1
+    cat .footer >> $1
+
+    j=$(($j+1))
+done
+echo "[Vloog] added vectorization pragmas on $j loop(s)"
+
+rm -f .header .lb .ub .header .footer .vecloop .footer .body closenum

@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# A handy script to try a customized .cloog file. The pluto system does not use
+# this script. Only meant for power users!
+#
+# Uday Bondhugula
+#
+# This script is in the public domain
+# 
+# Usage
+# recloog <-f option to cloog> <-l option to CLooG> <existing C file> <new .cloog file>
+#
+#
+
+if [ $# -ne 4 ]; then
+    echo -n -e "Usage:"
+    echo -e "\trecloog {-f option to cloog} {-l option to CLooG} {existing C file} {new .cloog file}"
+    exit
+fi
+
+cloog -cpp 1 -esp 1 -csp 1 -f $1 -l $2 $4 > .out.c
+
+NUMLINES=`wc -l $3 | awk '{print $1}'`
+
+grep -B $NUMLINES "/* Generated from" $3 | grep -v "/* Generated"  > .header
+grep -A $NUMLINES "/* End of CLooG code" $3 > .footer
+
+cat .header .out.c .footer > $3
+rm -f .header .out.c .footer

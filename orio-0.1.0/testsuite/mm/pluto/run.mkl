@@ -1,0 +1,13 @@
+
+export OMP_NUM_THREADS=1
+icc -fast -I/usr/local/mkl/include mm.mkl.c -DREPS=1 -DNCONT=10000 -DCONT=1 -L /usr/local/mkl/lib/em64t -lmkl_em64t -lguide -lpthread
+./a.out
+./a.out
+rm a.out
+
+export OMP_NUM_THREADS=4
+icc -fast -parallel -I/usr/local/mkl/include mm.mkl.c -DREPS=1 -DNCONT=10000 -DCONT=1 -L /usr/local/mkl/lib/em64t -lmkl_em64t -lguide -lpthread
+./a.out
+./a.out
+rm a.out
+

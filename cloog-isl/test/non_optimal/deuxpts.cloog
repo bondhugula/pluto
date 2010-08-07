@@ -1,0 +1,35 @@
+
+
+#----------------------SCoP NO. 49
+
+#-------------------CONTEXT------------------------
+   c # language is c
+   1 # Context (no constarints on parameters)
+   1 3		# 1 lines and 10 coloumns
+   # NUM1    1
+   0    0    0 
+
+   0
+
+#---------------------STATEMENTS--------------------
+  2 #Number of Statements
+
+   1 #STMT 1 at line no. 2063 has 1 domain
+   # Domain 1
+   1 3
+   # NUM1    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 7 at line no. 2075 has 1 domain
+   # Domain 1
+   1 3
+   # NUM1    1 
+   0    0    0 
+   0    0    0 
+
+   0
+
+#---------------------SCATTERING FUNCTIONS--------------------
+  0 #Scattering functions
+

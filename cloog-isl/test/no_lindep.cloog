@@ -1,0 +1,34 @@
+# language C
+c
+
+# 2 parameters
+1 4
+1 0 0 0 
+
+0
+
+# 1 statement
+1
+
+# 1 domain
+# i=n+2
+1
+1 5
+0 -1  0  1  2
+
+0 0 0 
+
+0
+
+# 1 scattering function
+# c1=M+1
+# c2=N
+1
+2  7
+0 -1  0  0  1  0  1
+0  0 -1  0  0  1  0
+
+0
+
+
+

@@ -1,0 +1,12 @@
+This directory contains programs used as tools by the annotation
+software.
+
+The following is a list of available tools.
+  PLY - An implementation of lex and yacc parsing tools for Python. 
+        URL: http://www.dabeaz.com/ply
+  ZestyParser - a Python package for writing data parsers
+                URL: http://zestyparser.adamatlas.org/
+
+
+
+

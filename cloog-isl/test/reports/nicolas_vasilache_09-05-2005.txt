@@ -1,0 +1,44 @@
+Hello,
+
+Un bug etait reste dans la fonction, voici le code correct a remplacer ... a priori c'est juste sur les parametres de Vector_Combine.
+Teste et fonctionne.
+
+Tu es la demain ?
+
+
+if(singlePoint == 1){
+     for(i=0; i<m->NbRows; i++){
+   int j = 0;
+   if(i != lineNum){
+     for(j=1; j<m->NbColumns; j++){
+       if(m->p[i][level] != 0){
+         int sign = (m->p[i][level] * m->p[lineNum][level] > 0) ? -1 : 1;
+         Vector *tmpResVec = Vector_Alloc(m->NbColumns - 1);
+         Vector_Combine(&(m->p[i][1]), &(m->p[lineNum][1]), tmpResVec->p, sign*m->p[lineNum][level],
+                -sign*m->p[i][level], m->NbColumns - 1);
+         Value gcd;
+         Vector_Gcd(tmpResVec->p, m->NbColumns - 1, &gcd);
+         Vector_AntiScale(tmpResVec->p, &(m->p[i][1]), gcd, m->NbColumns - 1);
+         Vector_Free(tmpResVec);
+       }
+     }
+   }
+     }
+    Cédric Bastoul wrote:
+
+> Merci beaucoup, je le place localement dans le pprint sans doute la semaine prochaine comme ça je ferais une option sans backtrack et -f safe, enfin j'espère ! 2 bugs en une semaine :-/ (l'autre c'était pour le -cpp je crois que tu t'en fous) !
+> A+
+>
+> Ced.
+>
+> Nicolas Vasilache a écrit :
+>
+>>
+>> void cloog_loop_normalize(CloogLoop *loop, int level){
+>>  
+>> }
+>>
+>>
+>
+>
+

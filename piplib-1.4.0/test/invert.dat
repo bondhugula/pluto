@@ -1,0 +1,10 @@
+( (Lower bound on j after loop inversion
+      (unknowns j i)
+      (parameters k m n))
+  2 3 3 1 -1 1
+  ( #[0 -1 0 0 1 0]
+    #[-1 0 0 0 0 1]
+    #[1 1 0 -1 0 0]
+  )
+  ( #[-1 1 1 0])
+)

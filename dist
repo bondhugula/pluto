@@ -1,0 +1,65 @@
+#!/bin/bash
+
+VERSION=0.6.0
+
+rm -rf ../releases/pluto-$VERSION
+mkdir ../releases/pluto-$VERSION
+
+EXAMPLES_INCLUDE="adi jacobi-1d-imper lu fdtd-2d seidel mvt matmul matmul-init jacobi-2d-imper gemver template dsyrk dsyr2k tmm strmm covcol corcol ssymm"
+
+cp -rv * ../releases/pluto-$VERSION/
+
+# change to the distribution directory
+cd ../releases/pluto-$VERSION
+
+rm -rf pluto-examples*
+
+# Populate examples
+cd examples/
+rm -rf *
+cp ../../../pluto/examples/common.mk .
+cp ../../../pluto/examples/Makefile .
+
+for i in `echo $EXAMPLES_INCLUDE`; do 
+    cp -r ../../../pluto/examples/$i/ .
+done
+make clean
+# disable for now
+#make
+#make clean
+rm -f .upload
+# come out of the distribution's examples directory
+cd ..
+
+# Cleanup
+rm -f `find -name .#*`
+rm -rf `find -name CVS`
+rm -rf `find -name .svn`
+rm -f `find -name .cvsignore`
+rm -f `find -name .unroll`
+rm -f `find -name .vectorize`
+rm -f `find -name .swp`
+rm -f `find -name *pouchet*`
+rm -f `find -name *saday*`
+rm -f `find -name parsetab.py`
+rm -f `find -name "*~"`
+rm -f dist
+rm -f upload
+rm -f tags cscope.out
+rm -f TO_TEST
+#rm -f polylib-loopo-5.11.1/vars.mk
+rm -f extractpff.sh
+
+cd test; make clean; cd ..
+
+# in the top-level directory
+make distclean
+./bootstrap.sh
+./configure
+make clean
+rm -f polycc polycc.sh
+
+# Come out of the distribution directory
+cd ..
+
+# tar zcvf pluto-$VERSION.tgz pluto-$VERSION

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+CC=icc
+CFLAGS=-fast -DTIME
+# CFLAGS=-O3 -DTIME
+
+base=`dirname $1`/`basename $1 .c`
+
+fusionoptions="--maxfuse --smartfuse --nofuse"
+
+unrolloptions="--nounroll --unroll --unroll"
+
+prevectoropts="--noprevector --prevector"
+
+tileopts="--tile --notile"
+#tileopts="--notile"
+
+echo > tune_log
+
+for fusionopt in $fusionoptions ; do
+    for tileopt in $tileopts ; do
+        i=0
+        for unrollopt in $unrolloptions; do
+            for vecopt in $prevectoropts ; do
+                ../../polycc $base.c $fusionopt $unrollopt --ufactor=$i $vecopt $tileopt 
+                echo $fusionopt $tileopt $unrollopt --ufactor=$i $vecopt | tee -a tune_log
+                if [ $tileopt = "--tile" ]; then
+                    $(CC) $(CFLAGS) $base.tiled.c -o out
+                else
+                    $(CC) $(CFLAGS) $base.opt.c -o out
+                fi
+                ./out | tee -a tune_log
+            done
+            i=$((i+4))
+        done
+    done
+done
+
+rm -f out

@@ -1,0 +1,64 @@
+# ---------------------- CONTEXT ----------------------
+c # language is C
+
+# Context (no constraints on one parameter)
+1 3                     # 1 line and 3 columns    
+# eq/in n  1
+    1   0  0            # 0 >= 0, always true
+
+1 # We want to set manually the parameter name
+n                       # parameter name
+
+# --------------------- STATEMENTS --------------------
+2 # Number of statements
+
+1 # First statement: one domain
+4 5                     # 4 lines and 3 columns
+# eq/in i  j  n  1
+    1   1  0  0 -1      # i >= 1
+    1  -1  0  1 -1      # i <= n-1
+    1  -1  1  0 -1      # j >= i+1
+    1   0 -1  1  0      # j <= n
+0  0  0                 # for future options
+ 
+1
+# Second statement: one domain
+6 6                     # 6 lines and 3 columns
+# eq/in i  j  k  n  1
+    1   1  0  0  0 -1   # i >= 1
+    1  -1  0  0  1 -1   # i <= n-1
+    1  -1  1  0  0 -1   # j >= i+1
+    1   0 -1  0  1  0   # j <= n
+    1  -1  0  1  0 -1   # k >= i+1
+    1   0  0 -1  1  0   # k <= n
+0  0  0                 # for future options
+
+0 # We let CLooG set the iterator names
+
+# --------------------- SCATTERING --------------------
+2 # Scattering functions
+# First function
+8 13                    # 3 lines and 3 columns
+# eq/in p1 p2 p3 p4 p5 p6 p7 p8  i  j  n  1
+    0    1  0  0  0  0  0  0  0 -1  0  0  0     # p1 = i
+    0    0  1  0  0  0  0  0  0  0  0  0  0     # p2 = 0
+    0    0  0  1  0  0  0  0  0 -1  0  0  0     # p3 = i
+    0    0  0  0  1  0  0  0  0  0  0  0  0     # p4 = 0
+    0    0  0  0  0  1  0  0  0  0 -1  0  0     # p5 = j
+    0    0  0  0  0  0  1  0  0  0  0  0  0     # p6 = 0
+    0    0  0  0  0  0  0  1  0  0  0  0  0     # p7 = 0
+    0    0  0  0  0  0  0  0  1  0  0  0  0     # p8 = 0
+# Second function
+8 14                    # 3 lines and 3 columns
+# eq/in p1 p2 p3 p4 p5 p6 p7 p8  i  j  k  n  1
+    0    1  0  0  0  0  0  0  0  0  0 -1  0  0  # p1 = k
+    0    0  1  0  0  0  0  0  0  0  0  0  0  0  # p2 = 0
+    0    0  0  1  0  0  0  0  0 -1  0  0  0  0  # p3 = i
+    0    0  0  0  1  0  0  0  0  0  0  0  0  0  # p4 = 0
+    0    0  0  0  0  1  0  0  0  0 -1  0  0  0  # p5 = j
+    0    0  0  0  0  0  1  0  0  0  0  0  0 -1  # p6 = 1
+    0    0  0  0  0  0  0  1  0  0  0 -1  0  0  # p7 = k
+    0    0  0  0  0  0  0  0  1  0  0  0  0  0  # p8 = 0
+
+1 # We want to set manually the scattering dimension names
+p1 p2 p3 p4 p5 p6 p7 p8 # scattering dimension names

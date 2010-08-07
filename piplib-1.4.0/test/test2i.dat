@@ -1,0 +1,7 @@
+((variables : a b c d ...., pas de parametres)
+ 2 0 2 0 -1 1
+ (#[1 0 -2]
+  #[1 2 -3]
+ )
+ ()
+)

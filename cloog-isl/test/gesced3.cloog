@@ -1,0 +1,39 @@
+# language: C
+c
+
+# parametres {n | n>=m m>=2}
+2 4
+#  m  n  1
+1 -1  1  0
+1  1  0 -2
+0
+
+2 # Number of statements
+
+1
+# {i | 1<=i<=n}
+2 5
+#  i  m  n  1
+1  1  0  0 -1
+1 -1  0  1  0
+0  0  0
+
+1
+# {i | 1<=i<=n}
+2 5
+#  i  m  n  1
+1  1  0  0 -1
+1 -1  0  1  0
+0  0  0
+0
+
+2
+# Et les instructions de chunking (sol triviale)...
+1 6
+# c1  i  m  n  1
+0  1 -1 -1  0  0
+
+1 6
+# c1  i  m  n  1
+0  1 -1 -2  0  0
+0

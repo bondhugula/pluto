@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cp -rv ~/poly/candl/trunk/source/*.c candl-0.3.0/source/
+cp -rv ~/poly/candl/trunk/include/candl/*.h candl-0.3.0/include/candl/
+
+rm -rf clan-0.5.0/source/*.{c,h,y}
+cp -rv ~/poly/clan/trunk/source/*.{c,h,y} clan-0.5.0/source/
+cp -rv ~/poly/clan/trunk/include/clan/*.h clan-0.5.0/include/clan/
+cp -rv ~/poly/clan/trunk/include/clan/*.h.in clan-0.5.0/include/clan/

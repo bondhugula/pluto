@@ -1,0 +1,350 @@
+
+
+#-------------------CONTEXT------------------------
+   c # language is c
+   # Context (no constarints on parameters)
+   1 4		# 1 lines and 3 coloumns
+   #   i m  1
+   1   0  0 0
+
+   1 # We want to set manually the parameter names
+   i m	# parameter names
+
+#---------------------STATEMENTS--------------------
+   12 #Number of Statements
+
+   1 #STMT 1 at line no. 18 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k  i   m   1
+   1      0   0   0   0  0
+   1      0   0   0  0   0
+   1      1   0   0  0   0
+   1     -1   0  0   0   7
+   1      0   1  0   0   0
+   1      1  -2   1  0   0
+   1    0  -1  0   0   3
+   0   0   0
+
+   1
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2  1   0   0
+   1      0   2   0  -3   0
+   0   0   0
+
+   1
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2  1   0   0
+   1      0   2   0  -2  -8
+   0   0   0
+
+   1 #STMT 2 at line no. 19 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2  1   0   0
+   1      0  -1   0   0   3
+   0   0   0
+
+   1
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2   1  0   0
+   1      0   2   0  -3   0
+   0   0   0
+
+   1
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0    0  0   7
+   1      0   1    0  0   0
+   1      1  -2  1   0   0
+   1      0   2   0  -2  -8
+   0   0   0
+
+   1 #STMT 2 at line no. 19 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2  1   0   0
+   1      0  -1   0   0   3
+   0   0   0
+
+   1
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2   1  0   0
+   1      0   2   0  -3   0
+   0   0   0
+
+   1
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0    0  0   7
+   1      0   1    0  0   0
+   1      1  -2  1   0   0
+   1      0   2   0  -2  -8
+   0   0   0
+
+   1 #STMT 4 at line no. 23 has 2 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0   0   0   7
+   1      0   1   0   0   0
+   1      1  -2    1  0   0
+   1      0   1   0   0  -4
+   0   0   0
+
+   1
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1      0   0   0   0   0
+   1      0   0   0   0   0
+   1      1   0   0   0   0
+   1     -1   0    0  0   7
+   1      0   1    0  0   0
+   1      1  -2   1   0   0
+   1      0  -2    0  6  -1
+   0   0   0
+
+   1 #STMT 5 at line no. 25 has 1 domain
+   # Domain 1
+   4 5
+   #      j    i   m   1
+   1      0    0   0   0
+   1      0    0   0   0
+   1      1    0   0   0
+   1     -1    0   0   7
+   0   0   0
+   #enclosing loop of statement at line no. 27 is non static
+
+   1 # Set Iterator Names
+      j   k	#Iterator Names
+
+#---------------------SCATTERING FUNCTIONS--------------------
+   12 #Scattering functions
+
+# Scattering Matrix for stmt at line no.18
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0   0
+
+# Scattering Matrix for stmt at line no.18
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0   0
+
+# Scattering Matrix for stmt at line no.18
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0   0
+
+# Scattering Matrix for stmt at line no.19
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -1
+
+# Scattering Matrix for stmt at line no.19
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -1
+
+# Scattering Matrix for stmt at line no.19
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -1
+
+# Scattering Matrix for stmt at line no.20
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -2
+
+# Scattering Matrix for stmt at line no.20
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -2
+
+# Scattering Matrix for stmt at line no.20
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -2
+
+# Scattering Matrix for stmt at line no.23
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -3
+
+# Scattering Matrix for stmt at line no.23
+   4 10
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0   0     0   0   0   0  -3
+   0   0   1   0   0     0   0  -2   0   0
+   0   0   0   1   0    -2   0   0   0   0
+   0   0   0   0   1     0  -4   0   0  -3
+
+# Scattering Matrix for stmt at line no.25
+   4 9
+   #  p0  p1  p2  p3     j   i   m   1
+   0   1   0   0   0     0   0   0  -3
+   0   0   1   0   0     0  -2   0   0
+   0   0   0   1   0    -2   0   0  -1
+   0   0   0   0   1     0   0   0   0
+
+   1 # Set manually the scattering dimension names
+  p0  p1  p2  p3	#Scattering dimension names
+
+#---------------------SCATTERING FUNCTIONS--------------------
+   5 #Scattering functions
+
+# Scattering Matrix for stmt at line no.18
+   3 9
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0        0   0   0   0  -3
+   0   0   1   0        0   0  -2   0   0
+   0   0   0   1       -2   0   0   0   0
+
+# Scattering Matrix for stmt at line no.19
+   3 9
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0        0   0   0   0  -3
+   0   0   1   0        0   0  -2   0   0
+   0   0   0   1       -2   0   0   0   0
+
+# Scattering Matrix for stmt at line no.20
+   3 9
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0        0   0   0   0  -3
+   0   0   1   0        0   0  -2   0   0
+   0   0   0   1       -2   0   0   0   0
+
+# Scattering Matrix for stmt at line no.23
+   3 9
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0   0        0   0   0   0  -3
+   0   0   1   0        0   0  -2   0   0
+   0   0   0   1       -2   0   0   0   0
+
+# Scattering Matrix for stmt at line no.25
+   3 8
+   #  p0  p1  p2      j   i   m   1
+   0   1   0   0        0   0   0  -3
+   0   0   1   0        0  -2   0   0
+   0   0   0   1       -2   0   0  -1
+
+   1 # Set manually the scattering dimension names
+  p0  p1  p2  p3	#Scattering dimension names
+
+#---------------------SCATTERING FUNCTIONS--------------------
+   5 #Scattering functions
+
+# Scattering Matrix for stmt at line no.18
+   2 8
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0     0   0   0   0  -3
+   0   0   1      0   0  -2   0   0
+
+# Scattering Matrix for stmt at line no.19
+   2 8
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0      0   0   0   0  -3
+   0   0   1      0   0  -2   0   0
+
+# Scattering Matrix for stmt at line no.20
+   2 8
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0      0   0   0   0  -3
+   0   0   1      0   0  -2   0   0
+
+# Scattering Matrix for stmt at line no.23
+   2 8
+   #  p0  p1  p2  p3     j   k   i   m   1
+   0   1   0      0   0   0   0  -3
+   0   0   1        0   0  -2   0   0
+
+# Scattering Matrix for stmt at line no.25
+   2 7
+   #  p0  p1  p2  p3     j   i   m   1
+   0   1   0       0   0   0  -3
+   0   0   1       0  -2   0   0
+
+   1 # Set manually the scattering dimension names
+  p0  p1  	#Scattering dimension names

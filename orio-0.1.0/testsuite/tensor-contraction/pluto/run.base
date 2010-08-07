@@ -1,0 +1,7 @@
+
+export OMP_NUM_THREADS=2
+icc -fast -parallel -I/usr/local/icc/include tensor.4d2d.base.c -DREPS=2 -DOSIZE=10 -DVSIZE=100
+./a.out
+./a.out
+rm a.out
+

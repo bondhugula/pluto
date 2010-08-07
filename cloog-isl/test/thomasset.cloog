@@ -1,0 +1,51 @@
+# language: C
+c
+1 3
+1 0 0 	# 0 >= 0
+1
+n 
+
+# ------------- STATEMENTS -------------
+2	# Number of statements
+
+# ax:Z
+1	# The domain is made of one polyhedron
+4 5	# 4 lines and 5 columns
+#	i	j	n	
+1	-1	0	1	0	
+1	1	0	0	-1	
+1	1	-3	0	-1	
+1	-1	3	0	3	
+0 0 0	# future options
+
+# ax:P
+1	# The domain is made of one polyhedron
+10 8	# 10 lines and 8 columns
+#	i	j	k	p	q	n	
+1	-1	0	0	0	0	1	0	
+1	0	-1	0	0	0	1	0	
+1	0	1	0	0	0	0	-1	
+1	1	0	0	0	0	0	-1	
+1	0	1	0	0	-3	0	0	
+1	0	-1	0	0	3	0	2	
+1	0	0	0	-3	0	1	0	
+1	0	0	0	3	0	-1	2	
+1	0	0	-3	0	0	0	1	
+1	0	0	3	0	0	0	1	
+0 0 0	# future options
+1	# Iterator Names
+i j k p q
+
+# ------------- SCATTERING -------------
+2 # nb scattering functions
+# Scattering for ax:Z
+2 7	# 2 lines and 7 columns
+#	c1	c2	i	j	n	
+0	1	0	0	-1	0	0	
+0	0	1	0	0	0	0	
+# Scattering for ax:P
+2 10	# 2 lines and 10 columns
+#	c1	c2	i	j	k	p	q	n	
+0	1	0	0	0	-1	-1	-1	0	0
+0	0	1	-1	0	0	0	0	0	1	
+0	# Scattering Function Names

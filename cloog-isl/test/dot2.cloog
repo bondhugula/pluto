@@ -1,0 +1,29 @@
+# language: C
+c
+
+# parameters {M, N | M>=1 N >=1}
+2 4
+1  1  0 -1
+1  0  1 -1
+0
+
+2 # Number of statements
+
+1
+# {i | 1<=i<=M}
+2 5
+1  1  0  0 -1
+1 -1  1  0  0
+0  0  0
+
+1
+# {i, j | 1<=i<=N 1<=j<=M}
+4 6
+1  1  0  0  0 -1
+1 -1  0  0  1  0
+1  0  1  0  0 -1
+1  0 -1  1  0  0
+0  0  0
+0
+ 
+0 # Scattering functions

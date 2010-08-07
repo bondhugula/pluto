@@ -1,0 +1,138 @@
+==========================================================
+ Experimental Results for Tensor Contraction
+==========================================================
+
+An example of 3-tensor contraction is shown below (taken from CCSDT_T1 equation):
+
+ R[v1,v2,o1,o2] += A4[vx,v1,ox,o1] * A2[v2,oy] * I[ox,oy,o2,vx]
+
+  where:
+    R is the residual tensor
+    A2 and A4 are the amplitude tensors (2-d and 4-d, respectively)
+    I is the integral tensor
+    V is the range of indices v1,v2,vx
+    O is the range of indices o1,o2,ox,oy
+
+The operation-minimal form of the above 3-tensor contracton is given below:
+
+ T[v1,o1,o2,o3] += A4[vx,v1,ox,o2] * I[ox,o1,o3,vx]
+ R[v1,v2,o1,o2] += T[v1,ox,o1,o2] * A2[v2,ox]
+
+  where:
+    T is a temporary tensor used to store intermediate results
+
+The first contraction is 4Dx4D=4D (two index contractions).
+The second contraction is 4Dx2D=4D (one index contraction)
+
+Typical values of O is 10,100
+Typical values of V is 100,500,1000,5000
+
+======================== 
+ Machine 
+======================== 
+ 
+A quad-core Intel Core 2 Quad Q6600 CPU clocked at 2.4 Ghz with 32 KB 
+L1 D cache, 8MB of L2 cache (4MB shared per core pair), and 2 GB of 
+DDR2-667 RAM, running Linux kernel version 2.6.22 (x86-64). 
+ 
+ 
+=================================== 
+ Optimizations 
+===================================   
+ 
+ 1. Two-level tiling   
+ 2. Loop permutation/interchange 
+ 3. Array copying optimization (enhanced with array reordering) 
+ 4. Loop unroll-and-jam 
+ 5. Scalar replacement 
+ 6. Parallelization (OpenMP pragma insertion at the outermost loop) 
+ 7. Vectorization (pragma insertion at the innermost loops) 
+
+**************************
+ O=10
+**************************
+-------------
+ V=100
+-------------
+-icc -fast -parallel
+ 1 core:  0.006152 secs  3.25 GFLOPS
+ 2 cores: 0.006186 secs  3.23 GFLOPS
+ 3 cores: 0.006282 secs  3.19 GFLOPS
+ 4 cores: 0.006250 secs  3.20 GFLOPS
+
+-ancc
+ 1 core:  0.005821 secs  3.44 GFLOPS
+ 2 cores: 0.004237 secs  4.72 GFLOPS
+ 3 cores: 0.003019 secs  6.62 GFLOPS
+ 4 cores: 0.002448 secs  8.17 GFLOPS
+
+-------------
+ V=500
+-------------
+-icc -fast -parallel
+ 0.154970  3.23
+ 0.154543  3.24
+ 0.154512  3.24
+ 0.156548  3.19
+
+-ancc
+ 0.154003  3.24
+ 0.095990  5.21
+ 0.088194  5.66
+ 0.082342  6.07
+
+-------------
+ V=1000
+-------------
+-icc -fast -parallel
+ 0.623558  3.21
+ 0.622989  3.21
+ 0.623119  3.21
+ 0.625460  3.20
+
+-ancc
+ 0.617620  3.24
+ 0.380690  5.25
+ 0.351817  5.68
+ 0.327169  6.11
+ 
+-------------
+ V=1500
+-------------
+-icc -fast -parallel
+ 1.403572  3.21
+ 1.403395  3.21
+ 1.401267  3.21
+ 1.403799  3.21
+
+-ancc
+ 1.404018  3.21
+ 0.873683  5.15
+ 0.807831  5.57
+ 0.723909  6.21
+
+
+===================
+ Code variants
+===================
+Only two code variants were found:
+
+1. 'tv1','tv2','to1','to2','tox','v1','v2','o1','o2','ox'
+   1x1x1x1x1,1x1x1x1x1,___,NO openmp,NO vector,NO ScReplace
+
+2. 'tv1','tv2','to1','to2','tox','v1','v2','o1','o2','ox'
+   1x1x1x1x1,1x8x1x1x1,___
+
+The first variant is used for a single-core case.
+The second variant is used for multi-core cases.
+
+Below is an example on how to interpret the code variant's representation:
+
+  'tv1','tv2','to1','to2','tox','v1','v2','o1','o2','ox': the loop order
+  1x1x1x1x1: tile sizes for loop to1,to2,tox,tv1,tv2
+  1x8x1x1x1: unroll factors for loop o1,o2,ox,v1,v2
+  ___: no array are copied
+
+
+
+

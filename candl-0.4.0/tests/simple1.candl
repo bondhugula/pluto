@@ -1,0 +1,35 @@
+# -------------------
+# Context
+0 3
+
+# Number of statements
+1
+# -------------------
+# Statement 1
+# Statement type
+A
+
+# Iteration domain
+4 5
+   1    1    0    0    0 
+   1   -1    0    1   -1 
+   1    0    1    0   -1 
+   1    0   -1    1   -1 
+
+# Loop labels
+0 1 
+# Written items
+2 5
+   1    1    0    0    0 
+   0    0    1    0    0 
+
+# Read items
+4 5
+   1    0    1    0    0 
+   0    1    0    0    0 
+   1    1    0    0    0 
+   0    0    1    0   -1 
+
+# -------------------
+# Transformation candidate
+0

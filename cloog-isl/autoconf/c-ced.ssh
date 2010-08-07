@@ -1,0 +1,81 @@
+# To print the code correctly : a2ps --pretty-print=c-ced.ssh
+
+# Style sheet for C
+# Copyright (c) 1995-2000 Akim Demaille, Miguel Santana
+#
+
+#
+# This file is part of a2ps.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; see the file COPYING.  If not, write to
+# the Free Software Foundation, 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+#
+
+style C is
+requires a2ps 4.13
+
+written by "Akim Demaille <akim@freefriends.org>"
+version is 1.6
+documentation is
+   "This style does not highlight the function definitions."
+   "Another style which highlights them, GNUish C, is provided (gnuc.ssh)."
+   "It works only if you respect some syntactic conventions."
+end documentation
+
+alphabets are
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_#$%"
+
+case sensitive
+
+ancestors are
+  cpp
+end ancestors
+
+keywords in Keyword are
+   double, enum, void, int, long, FILE, struct, char, signed, float,
+   short, unsigned
+end keywords
+
+keywords in Keyword_strong are
+   auto, "case", const, continue, do, inline, extern, for, register,
+   return, switch, union, goto, typedef, sizeof, typeof, volatile, static,
+   NULL, default, break, if, while, else
+end keywords
+
+optional operators are
+  (/(case)([ 	]+)(.+)([ 	]*:)/
+   \1 Keyword_strong, \2 Plain, \3 Label, \4 Plain)
+end operators
+
+optional operators are
+   -> \rightarrow,
+   && \wedge,
+   || \vee,
+   != \neq,
+   == \equiv,
+   # We need to protect these, so that <= is not replaced in <<=
+   <<=,
+   >>=,
+   <= \leq,
+   >= \geq,
+   ! \not
+end operators
+
+sequences are
+    "/*" Comment "*/",
+    "//" Comment
+end sequences
+
+end style

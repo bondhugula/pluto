@@ -1,0 +1,8 @@
+
+
+export OMP_NUM_THREADS=1
+
+icc -fast -openmp -I/usr/local/icc/include -lm 1d.tuned-seq.512.c -DREPS=1 -DTVAL=10000 -DNVAL=500000
+./a.out
+rm a.out
+

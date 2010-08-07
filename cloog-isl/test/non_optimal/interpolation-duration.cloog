@@ -1,0 +1,74 @@
+#language : C
+c
+
+#parameter: none
+1 2
+# 1
+1 0   #0>=0
+
+0
+
+5 #number of statements
+
+1 #T0 : One domain
+4 4 # 4lines and 4 columns
+1  1  0 0  # c1 >= 0
+1 -1  0 0  # c1 <= 0
+1  0  1 0  #c2 >=0
+1  0 -1 12 #c2 <= 12
+0  0  0    #for future options
+
+1 #T1 : One domain
+4 4 # 4lines and 4 columns
+1  1  0 0  # c1 >= 0
+1 -1  0 7  # c1 <= 7
+1  0  1 0  #c2 >=0
+1  0 -1 0  #c2 <= 0
+0  0  0    #for future options
+
+1 #T2 : One domain
+4 4 # 4lines and 4 columns
+1  1  0 0  # c1 >= 0
+1 -1  0 3  # c1 <= 3
+1  0  1 0  #c2 >=0
+1  0 -1 0  #c2 <= 0
+0  0  0    #for future options
+
+1 #T3 : One domain
+4 4 # 4lines and 4 columns
+1  1  0 0  # c1 >= 0
+1 -1  0 3  # c1 <= 3
+1  0  1 0  #c2 >=0
+1  0 -1 0  #c2 <= 0
+0  0  0    #for future options
+
+1 #T4 : One domain
+4 4 # 4lines and 4 columns
+1  1  0 0  # c1 >= 0
+1 -1  0 3  # c1 <= 3
+1  0  1 0  #c2 >=0
+1  0 -1 0  #c2 <= 0
+0  0  0    #for future options
+
+1
+c1 c2 c3 c4 c5 c6 c7 c8 c9 c10
+
+5
+
+1 5
+0  1  -65 -5 0  #d = 65c1 + 5c2
+
+1 5
+0  1  -5  -5 -61 #d = 5c3 + 5c4 + 61
+
+1 5
+0  1  -10 -5 -67 #d = 10c5+5c6+67
+
+1 5
+0  1  -10 -5 -68 #d=10c7+5c8+68
+
+1 5
+0  1  -10  -5 -69 #d=10c9+5c10+69
+
+1
+d

@@ -1,0 +1,16 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast seidel.base.c -DREPS=1 -DN=1024 -DT=1024
+par:
+  export OMP_NUM_THREADS=4; icc -fast -parallel seidel.base.c -DREPS=1 -DN=1024 -DT=1024
+
+*** pluto+ancc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp seidel.pluto_ancc.par.c -DREPS=1 -DN=1024 -DT=1024
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp seidel.pluto_ancc.par.c -DREPS=1 -DN=1024 -DT=1024
+
+
+

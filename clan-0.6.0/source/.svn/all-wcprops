@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/30846/users/bastoul/clan/trunk/source
+END
+parser.y
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/30846/users/bastoul/clan/trunk/source/parser.y
+END
+scanner.l
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/28696/users/bastoul/clan/trunk/source/scanner.l
+END
+vector.c
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/21038/users/bastoul/clan/trunk/source/vector.c
+END
+matrix.c
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/21038/users/bastoul/clan/trunk/source/matrix.c
+END
+scop.c
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/28699/users/bastoul/clan/trunk/source/scop.c
+END
+statement.c
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/21038/users/bastoul/clan/trunk/source/statement.c
+END
+symbol.c
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/28288/users/bastoul/clan/trunk/source/symbol.c
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/16748/users/bastoul/clan/trunk/source/Makefile.am
+END
+options.c
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/22929/users/bastoul/clan/trunk/source/options.c
+END
+clan.c
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/21038/users/bastoul/clan/trunk/source/clan.c
+END

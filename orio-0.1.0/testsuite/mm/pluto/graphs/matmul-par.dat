@@ -1,0 +1,7 @@
+# num cores pluto tile wavefront (1,1,0) pluto tile wavefront (1,1,1) icc -parallel -fast -O3 pluto 2-d
+# nx = ny = 2000
+# num_cores pluto icc -parallel atlas-pt mkl netlib_blas goto pluto+ancc
+1 3.73 6.53 2.35 1.9783 13.962 2.0 3.047674
+2 1.87 3.25 0.0 1.0281 14.435 1.03 1.543498
+3 1.40 2.19 0.0 1.0281 14.414 0.731 1.385953
+4 0.954 1.642 0.7032 0.539 14.4 0.5618 0.803230s

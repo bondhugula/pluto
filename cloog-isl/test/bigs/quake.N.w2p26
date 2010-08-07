@@ -1,0 +1,124 @@
+
+
+#----------------------SCoP NO. 26
+
+#-------------------CONTEXT------------------------
+   c # language is c
+   # Context (no constarints on parameters)
+   1 3		# 1 lines and 3 coloumns
+   #    n    1
+   0    0    0 
+
+   1 # We want to set manually the parameter names
+   n 	# parameter names
+
+#---------------------STATEMENTS--------------------
+   7 #Number of Statements
+
+   1 #STMT 1 at line no. 1012 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 2 at line no. 1015 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 3 at line no. 1016 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 4 at line no. 1020 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 5 at line no. 1021 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 #STMT 6 at line no. 1024 has 1 domain
+   # Domain 1
+   2 4
+   #    i    n    1 
+   1    1    0    0 
+   1   -1    1    0 
+   0    0    0 
+
+   1 #STMT 7 at line no. 0 has 1 domain
+   # Domain 1
+   1 3
+   #    n    1 
+   0    0    0 
+   0    0    0 
+
+   1 # Set Iterator Names
+   i 	#Iterator Names
+
+#---------------------SCATTERING FUNCTIONS--------------------
+   7 #Scattering functions
+
+# Scattering Matrix for stmt at line no.1012
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0    0 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+# Scattering Matrix for stmt at line no.1015
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0   -1 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+# Scattering Matrix for stmt at line no.1016
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0   -2 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+# Scattering Matrix for stmt at line no.1020
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0   -3 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+# Scattering Matrix for stmt at line no.1021
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0   -4 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+# Scattering Matrix for stmt at line no.1024
+   3 7
+   #   p0   p1   p2    i    n    1 
+   0    1    0    0    0    0   -5 
+   0    0    1    0   -1    0    0 
+   0    0    0    1    0    0    0 
+
+# Scattering Matrix for stmt at line no.0
+   3 6
+   #   p0   p1   p2    n    1 
+   0    1    0    0    0   -6 
+   0    0    1    0    0    0 
+   0    0    0    1    0    0 
+
+   1 # Set manually the scattering dimension names
+  p0   p1   p2 	#Scattering dimension names

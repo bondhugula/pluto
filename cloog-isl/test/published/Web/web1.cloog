@@ -1,0 +1,81 @@
+# CLooG example file #1.
+# Please read this example carefully to understand how the input file is made.
+# Do not worry, it is quite easy !
+#
+################################################################################
+# The problem here is to generate the scanning code for the integral points    #
+# inside a 2-dimensional polyhedron (geometrically a square).                  #
+#                                      |                                       #
+#             j^                       |                                       #
+#              | i>=2                  |                                       #
+#              | |   i<=n              |                                       #
+#              | |   |                 |                                       #
+#            n-+-*****--j<=n           |       for (i=2;i<=n;i++) {            #
+#              | *****                 |         for (j=2;j<=n;j++) {          #
+#              | *****                ==>           S1 ;                       #
+#              | *****                 |         }                             #
+#            2-+-*****--j>=2           |       }                               #
+#              | |   |                 |                                       #
+#            0-+-+---+--->i            |                                       #
+#              | |   |                 |                                       #
+#              0 2   n                 |                                       #
+#                                      |                                       #
+#            Context : n>=2            |                                       #
+#            System  : 2<=i<=n         |                                       #
+#                      2<=j<=m         |                                       #
+#                                      |                                       #
+################################################################################
+#
+# Comments begin with a # and finish with the line.
+# Typically, a ClooG input file has 7 points:
+
+# 1. First we need to set the output language, here: C. You can also prefer to
+#    set f for FORTRAN.
+c
+
+# 2. Second, we have to give the constraints on parameters (i.e. unknown values
+#    that are constant during scanning) here {n | n>=2}. The constraints are
+#    described using a matrix. First we give the row and column numbers. Then
+#    we give the constraints themselves. The first number is 0 if the constraint
+#    is an equality =0, it is 1 if the constraint is an inequality >=0. The
+#    other entries are the coefficients of the parameters and then the scalar.
+1 3     # 1 row, 3 columns
+#  n  1
+1  1 -2 # this means 1*n + -2*1 >= 0, i.e. n>=2
+
+# 3. Third, let us set the parameter names. We just put 0 if we want to let
+#    CLooG decide names, 1 otherwise. If we put 1, at the next line we give the
+#    space-separated parameter list (here we set only n).
+1
+n
+
+# 4. Fourth we give the number of polyhedra to scan, here 1.
+1
+
+# 5. Fifth, we give the list of polyhedra. Each polyhedron is described using
+#    three parts:
+#    5.1 Each co-called polyhedron may be actually an union of disjoint
+#        polyhedra, so we begin with precising the number of disjoint polyhedra
+#        of the union (here 1, there is only one part).
+#    5.2 The constraint matrix, in the same way as in part 2. First column is
+#        the equality/inequality tag, then the variable coefficients, then the
+#        parameter coefficients, then the scalar. Here we want the following
+#        domain: {i, j | 2<=i<=n 2<=j<=n}.
+#    5.3 A line with three zeroes, this is historical.
+1                 # 1 the union has only one element
+4 5               # 4 rows, 5 columns
+#   i   j   n   1
+1   1   0   0  -2 #  i-2>=0, i.e. i>=2
+1  -1   0   1   0 # -i+n>=0, i.e. i<=n
+1   0   1   0  -2 #  j-2>=0, i.e. j>=2
+1   0  -1   1   0 # -j+n>=0, i.e. j<=n
+0   0   0         # 3 zeroes !
+
+# 6. Sixth, let us set the iterator names. We just put 0 if we want to let CLooG
+#    decide names, 1 otherwise. If we put 1, at the next line we give the
+#    space-separated iterator list (here we let CLooG do).
+0
+
+# 7. Seventh, let us define a scanning order. But let us study it later and just
+#    put 0: CLoog can scan the polyhedra in the way it wants !
+0

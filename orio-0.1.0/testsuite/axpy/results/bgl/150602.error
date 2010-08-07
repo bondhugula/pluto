@@ -1,0 +1,35 @@
+<Mar 30 19:09:15.440083> FE_MPI (Info) : Initializing MPIRUN
+Welcome to SUSE LINUX Enterprise Server 9 (ppc) - Kernel %r (%t).
+/bin/bash: SHELL: readonly variable
+/bin/bash: PATH: readonly variable
+/bin/bash: line 1: dircolors: No such file or directory
+<Mar 30 19:09:16.975847> BRIDGE (Info) : The machine serial number (alias) is BGL
+<Mar 30 19:09:17.117174> FE_MPI (Info) : Preparing partition
+<Mar 30 19:09:17.117521> BE_MPI (Info) : Examining specified partition
+<Mar 30 19:09:17.239021> BE_MPI (Info) : Checking partition R001_J115-64 initial state ...
+<Mar 30 19:09:17.239055> BE_MPI (Info) : Partition R001_J115-64 initial state = FREE ('F')
+<Mar 30 19:09:17.239066> BE_MPI (Info) : Checking partition owner...
+<Mar 30 19:09:17.239077> BE_MPI (Info) : Checking if the partition is busy ...
+<Mar 30 19:09:17.283676> BE_MPI (Info) : Checking partition size ...
+<Mar 30 19:09:17.283700> BE_MPI (Info) : Setting new owner
+<Mar 30 19:09:17.289517> BE_MPI (Info) : Booting partition
+<Mar 30 19:09:48.934132> BE_MPI (Info) : Partition is ready
+<Mar 30 19:09:49.034543> BE_MPI (Info) : Done preparing partition
+<Mar 30 19:09:49.074344> FE_MPI (Info) : Adding job
+<Mar 30 19:09:49.319581> FE_MPI (Info) : Job added with the following id: 157984
+<Mar 30 19:09:49.319610> FE_MPI (Info) : Starting job 157984
+<Mar 30 19:09:49.475589> FE_MPI (Info) : Waiting for job to terminate
+<Mar 30 19:09:54.988619> BE_MPI (Info) : IO - Connection from Ciodb established on fd=12
+<Mar 30 19:09:54.991785> BE_MPI (Info) : IO - Threads initialized
+<Mar 30 19:18:40.778477> BE_MPI (Info) : IO - Output thread terminated
+<Mar 30 19:18:40.790353> BE_MPI (Info) : Job 157984 switched to state TERMINATED ('T')
+<Mar 30 19:18:40.790393> BE_MPI (Info) : Job successfully terminated
+<Mar 30 19:18:41.139223> FE_MPI (Info) : BG/L job exit status = (0)
+<Mar 30 19:18:41.139266> FE_MPI (Info) : Job terminated normally
+<Mar 30 19:18:41.139426> BE_MPI (Info) : Starting cleanup sequence
+<Mar 30 19:18:41.139458> BE_MPI (Info) : BG/L Job already terminated / hasn't been added
+<Mar 30 19:18:41.243666> BE_MPI (Info) : Destroying partition R001_J115-64
+<Mar 30 19:18:52.074959> BE_MPI (Info) : Partition R001_J115-64 switched to state FREE ('F')
+<Mar 30 19:18:52.183980> BE_MPI (Info) : ==   BE completed   ==
+<Mar 30 19:18:52.211193> FE_MPI (Info) : ==   FE completed   ==
+<Mar 30 19:18:52.211233> FE_MPI (Info) : == Exit status:   0 ==

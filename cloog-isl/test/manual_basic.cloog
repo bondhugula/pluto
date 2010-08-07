@@ -1,0 +1,31 @@
+# ---------------------- CONTEXT ----------------------
+c # language is C
+
+1 # Context (constraints on two parameters)
+2 4                   # 2 lines and 4 columns
+# eq/in m  n  1
+    1   1  0 -2       # 1*m + 0*n -2*1 >= 0, i.e. m>=2
+    1   0  1 -2       # 0*m + 1*n -2*1 >= 0, i.e. n>=2
+
+1 # We want to set manually the parameter names
+m n                   # parameter names
+
+# --------------------- STATEMENTS --------------------
+1 # Number of statements
+
+1 # First statement: one domain
+# First domain
+5 6                   # 5 lines and 6 columns
+# eq/in i  j  m  n  1 
+    1   1  0  0  0 -2 # i >= 2
+    1  -1  0  0  1  0 # i <= n
+    1   0  1  0  0 -2 # j >= 2
+    1   0 -1  1  0  0 # j <= m
+    1  -1 -1  0  1  2 # n+2-i>=j
+0  0  0               # for future options
+
+1 # We want to set manually the iterator names
+i j                   # iterator names
+
+# --------------------- SCATTERING --------------------
+0 # No scattering functions

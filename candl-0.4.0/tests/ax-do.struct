@@ -1,0 +1,431 @@
+Program:
++-- candl_program_t
+|	|	
+|	+-- CandlMatrix
+|	|	0 3
+|	|	
+|	|	
+|	Statement number: 2
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 0
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 1, outer loops(s): 0
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	2 4
+|	|	|	[    1     1     0    -1  ]
+|	|	|	[    1    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 4
+|	|	|	[    1     1     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	0 4
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- No transformation candidate
+|	|	
+|	
+
+Dependences:
++-- CandlDependence
+|	|	
+|	Type: RAW (flow)
+|	|	
+|	Depth: 0
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 0
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 1, outer loops(s): 0
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	2 4
+|	|	|	[    1     1     0    -1  ]
+|	|	|	[    1    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 4
+|	|	|	[    1     1     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	0 4
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlMatrix
+|	|	7 6
+|	|	[    1     1     0     0     0    -1  ]
+|	|	[    1    -1     0     0     1     0  ]
+|	|	[    1     0     1     0     0    -1  ]
+|	|	[    1     0    -1     0     1     0  ]
+|	|	[    1     0     0     1     0    -1  ]
+|	|	[    1     0     0    -1     1     0  ]
+|	|	[    0     1    -1     0     0     0  ]
+|	|	
+|	V
+|   CandlDependence
+|	|	
+|	Type: WAW (output)
+|	|	
+|	Depth: 0
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 0
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 1, outer loops(s): 0
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	2 4
+|	|	|	[    1     1     0    -1  ]
+|	|	|	[    1    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 4
+|	|	|	[    1     1     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	0 4
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlMatrix
+|	|	7 6
+|	|	[    1     1     0     0     0    -1  ]
+|	|	[    1    -1     0     0     1     0  ]
+|	|	[    1     0     1     0     0    -1  ]
+|	|	[    1     0    -1     0     1     0  ]
+|	|	[    1     0     0     1     0    -1  ]
+|	|	[    1     0     0    -1     1     0  ]
+|	|	[    0     1    -1     0     0     0  ]
+|	|	
+|	V
+|   CandlDependence
+|	|	
+|	Type: RAW (flow)
+|	|	
+|	Depth: 2
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlMatrix
+|	|	11 7
+|	|	[    1     1     0     0     0     0    -1  ]
+|	|	[    1    -1     0     0     0     1     0  ]
+|	|	[    1     0     1     0     0     0    -1  ]
+|	|	[    1     0    -1     0     0     1     0  ]
+|	|	[    1     0     0     1     0     0    -1  ]
+|	|	[    1     0     0    -1     0     1     0  ]
+|	|	[    1     0     0     0     1     0    -1  ]
+|	|	[    1     0     0     0    -1     1     0  ]
+|	|	[    0     1     0    -1     0     0     0  ]
+|	|	[    0    -1     0     1     0     0     0  ]
+|	|	[    1     0    -1     0     1     0    -1  ]
+|	|	
+|	V
+|   CandlDependence
+|	|	
+|	Type: WAW (output)
+|	|	
+|	Depth: 2
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlMatrix
+|	|	11 7
+|	|	[    1     1     0     0     0     0    -1  ]
+|	|	[    1    -1     0     0     0     1     0  ]
+|	|	[    1     0     1     0     0     0    -1  ]
+|	|	[    1     0    -1     0     0     1     0  ]
+|	|	[    1     0     0     1     0     0    -1  ]
+|	|	[    1     0     0    -1     0     1     0  ]
+|	|	[    1     0     0     0     1     0    -1  ]
+|	|	[    1     0     0     0    -1     1     0  ]
+|	|	[    0     1     0    -1     0     0     0  ]
+|	|	[    0    -1     0     1     0     0     0  ]
+|	|	[    1     0    -1     0     1     0    -1  ]
+|	|	
+|	V
+|   CandlDependence
+|	|	
+|	Type: WAR (anti)
+|	|	
+|	Depth: 2
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlStatement
+|	|	|	
+|	|	Label: 1
+|	|	|	
+|	|	Type: affectation
+|	|	|	
+|	|	Depth: 2, outer loops(s): 1 2
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0    -1  ]
+|	|	|	[    1    -1     0     1     0  ]
+|	|	|	[    1     0     1     0    -1  ]
+|	|	|	[    1     0    -1     1     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	1 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	
+|	|	+-- CandlMatrix
+|	|	|	4 5
+|	|	|	[    1     1     0     0     0  ]
+|	|	|	[    2     1     0     0     0  ]
+|	|	|	[    0     0     1     0     0  ]
+|	|	|	[    3     0     1     0     0  ]
+|	|	|	
+|	|	
+|	+-- CandlMatrix
+|	|	11 7
+|	|	[    1     1     0     0     0     0    -1  ]
+|	|	[    1    -1     0     0     0     1     0  ]
+|	|	[    1     0     1     0     0     0    -1  ]
+|	|	[    1     0    -1     0     0     1     0  ]
+|	|	[    1     0     0     1     0     0    -1  ]
+|	|	[    1     0     0    -1     0     1     0  ]
+|	|	[    1     0     0     0     1     0    -1  ]
+|	|	[    1     0     0     0    -1     1     0  ]
+|	|	[    0     1     0    -1     0     0     0  ]
+|	|	[    0    -1     0     1     0     0     0  ]
+|	|	[    1     0    -1     0     1     0    -1  ]
+|	|	
+|	
+
+Violations:
++-- NULL dependence violation
+|	
+digraph G {
+# Data Dependence Graph
+# Generated by Candl 0.3.0 64 bits
+  S0 -> S1 [label=" RAW depth 0, ref 0->0 "];
+  S0 -> S1 [label=" WAW depth 0, ref 0->0 "];
+  S1 -> S1 [label=" RAW depth 2, ref 0->0 "];
+  S1 -> S1 [label=" WAW depth 2, ref 0->0 "];
+  S1 -> S1 [label=" WAR depth 2, ref 0->0 "];
+# Number of edges = 5
+}

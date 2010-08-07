@@ -1,0 +1,58 @@
+# language: C
+c
+
+# parameter: none 
+1 2
+#  1
+1  0	# 0 >= 0
+
+0
+
+3 # Number of statements
+
+1 # S1 : One domain
+4 4 # 4 lines and 4 columns
+#  c1   c2    1
+1   1    0    0		# c1 >= 0
+1  -1    0   31		# c1 <= 31
+1   0    1    0		# c2 >= 0
+1   0   -1  511		# c2 <= 511
+0   0    0		# for future options
+
+1 # S2 : One domain
+2 3 # 2 lines and 3 columns
+#  c3    1
+1   1    0		# c3 >= 0
+1  -1  127		# c3 <= 127
+0   0    0		# for future options
+
+1 # S3 : One domain
+4 4 # 4 lines and 4 columns
+#  c4   c5    1
+1   1    0    0		# c4 >= 0
+1  -1    0  126		# c4 <= 126
+1   0    1    0		# c5 >= 0
+1   0   -1  127		# c5 <= 127
+0   0    0		# for future options
+
+
+1 # set manually the iterator names
+c1 c2 c3 c4 c5
+
+3 # Scattering functions
+
+1 5
+#   d   c1   c2   1
+0    1 -1536  -3   0	# d = 1536*c1 + 3*c2
+
+1 4
+#   d   c3      1
+0    1 -384   -1534	# d = 384*c3 + 1534
+
+1 5
+#   d   c4   c5      1
+0   1   -384  -3   -1919	# d = 384*c4 + 3*c5 + 1919
+
+
+1 # set manually the scattering dimension names
+d

@@ -1,0 +1,217 @@
+#----------------------Function is main
+
+#-------------------CONTEXT------------------------
+   c # language is c
+   # Context (no constarints on parameters)
+   1 3		# 1 lines and 3 coloumns
+   #   m   1
+   0   0   0
+
+   1 # We want to set manually the parameter names
+   m	# parameter names
+
+#---------------------STATEMENTS--------------------
+   5 #Number of Statements
+
+   3 #STMT 1 at line no. 18 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0  -1   0   3
+
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -3   0
+
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -2  -8
+   0   0   0
+
+   3 #STMT 2 at line no. 19 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0  -1   0   3
+
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -3   0
+
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -2  -8
+   0   0   0
+
+   3 #STMT 3 at line no. 20 has 3 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0  -1   0   3
+
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -3   0
+
+   # Domain 3
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   2  -2  -8
+   0   0   0
+
+   2 #STMT 4 at line no. 23 has 2 domain
+   # Domain 1
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0   1   0  -4
+
+   # Domain 2
+   7 6
+   #   i   j   k   m   1
+   1   1   0   0   0   0
+   1  -1   0   0  11   0
+   1   0   1   0   0   0
+   1   0  -1   0   0   7
+   1   0   0   1   0   0
+   1   1   1  -2   3   0
+   1   0   0  -2   6  -1
+   0   0   0
+
+   1 #STMT 5 at line no. 25 has 1 domain
+   # Domain 1
+   4 5
+   #   i   j   m   1
+   1   1   0   0   0
+   1  -1   0  11   0
+   1   0   1   0   0
+   1   0  -1   0   7
+   0   0   0
+
+   1 # Set Iterator Names
+   i   j   k	#Iterator Names
+
+#---------------------SCATTERING FUNCTIONS--------------------
+   5 #Scattering functions
+
+# Scattering Matrix for stmt at line no.18
+   7 13
+   #  p0  p1  p2  p3  p4  p5  p6   i   j   k   m   1
+   0   1   0   0   0   0   0   0   0   0   0   0  -3
+   0   0   1   0   0   0   0   0  -1   0   0   0   0
+   0   0   0   1   0   0   0   0   0   0   0   0   0
+   0   0   0   0   1   0   0   0   0  -1   0   0   0
+   0   0   0   0   0   1   0   0   0   0   0   0   0
+   0   0   0   0   0   0   1   0   0   0  -1   0   0
+   0   0   0   0   0   0   0   1   0   0   0   0   0
+
+# Scattering Matrix for stmt at line no.19
+   7 13
+   #  p0  p1  p2  p3  p4  p5  p6   i   j   k   m   1
+   0   1   0   0   0   0   0   0   0   0   0   0  -3
+   0   0   1   0   0   0   0   0  -1   0   0   0   0
+   0   0   0   1   0   0   0   0   0   0   0   0   0
+   0   0   0   0   1   0   0   0   0  -1   0   0   0
+   0   0   0   0   0   1   0   0   0   0   0   0   0
+   0   0   0   0   0   0   1   0   0   0  -1   0   0
+   0   0   0   0   0   0   0   1   0   0   0   0  -1
+
+# Scattering Matrix for stmt at line no.20
+   7 13
+   #  p0  p1  p2  p3  p4  p5  p6   i   j   k   m   1
+   0   1   0   0   0   0   0   0   0   0   0   0  -3
+   0   0   1   0   0   0   0   0  -1   0   0   0   0
+   0   0   0   1   0   0   0   0   0   0   0   0   0
+   0   0   0   0   1   0   0   0   0  -1   0   0   0
+   0   0   0   0   0   1   0   0   0   0   0   0   0
+   0   0   0   0   0   0   1   0   0   0  -1   0   0
+   0   0   0   0   0   0   0   1   0   0   0   0  -2
+
+# Scattering Matrix for stmt at line no.23
+   7 13
+   #  p0  p1  p2  p3  p4  p5  p6   i   j   k   m   1
+   0   1   0   0   0   0   0   0   0   0   0   0  -3
+   0   0   1   0   0   0   0   0  -1   0   0   0   0
+   0   0   0   1   0   0   0   0   0   0   0   0   0
+   0   0   0   0   1   0   0   0   0  -1   0   0   0
+   0   0   0   0   0   1   0   0   0   0   0   0   0
+   0   0   0   0   0   0   1   0   0   0  -1   0   0
+   0   0   0   0   0   0   0   1   0   0   0   0  -3
+
+# Scattering Matrix for stmt at line no.25
+   7 12
+   #  p0  p1  p2  p3  p4  p5  p6   i   j   m   1
+   0   1   0   0   0   0   0   0   0   0   0  -3
+   0   0   1   0   0   0   0   0  -1   0   0   0
+   0   0   0   1   0   0   0   0   0   0   0   0
+   0   0   0   0   1   0   0   0   0  -1   0   0
+   0   0   0   0   0   1   0   0   0   0   0  -1
+   0   0   0   0   0   0   1   0   0   0   0   0
+   0   0   0   0   0   0   0   1   0   0   0   0
+
+   1 # Set manually the scattering dimension names
+  p0  p1  p2  p3  p4  p5  p6	#Scattering dimension names

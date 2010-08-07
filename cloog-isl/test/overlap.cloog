@@ -1,0 +1,35 @@
+# language: C
+c
+
+# parameter {n d | n >= 0 d >= 0}
+2 4
+#  n  d  1
+1  1  0  0
+1  0  1  0
+1
+n d
+
+2 # Number of statements:
+
+1
+# {i, j | n<=i<=2*n n<=j<=2*n}
+4 6
+#   i   j   n   d   1
+1   1   0  -1   0   0
+1  -1   0   2   0   0
+1   0   1  -1   0   0
+1   0  -1   2   0   0
+0   0   0
+
+1
+# {i, j | n+d<=i<=2*n+d n+d<=j<=2*n+d}
+4 6
+#   i   j   n   d   1
+1   1   0  -1  -1   0
+1  -1   0   2   1   0
+1   0   1  -1  -1   0
+1   0  -1   2   1   0
+0   0   0
+0
+
+0 # Scattering functions

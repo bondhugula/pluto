@@ -1,0 +1,89 @@
+c # language is C
+# ---------- CONTEXT ----------
+1 # Context (no constraints on parameters)
+1    2     # 1 lines, 2 columns
+0    0
+
+0 # Automatically find parameter names
+
+# ---------- STATEMENTS ----------
+5 # Number of statements
+
+1 # Statement has a non resticted domain
+1    2
+1    0
+0    0    0
+
+1 # Statement has a non resticted domain
+1    2
+1    0
+0    0    0
+
+1 # Statement has 1 domain STATEMENT QUI ME PAUSE PB
+6    5
+#    i    j    p    1
+1    0    1    0    0    # 0 <= j <= 999
+1    0    -1   0    999
+1    -1   1    0    0    # j <= i <= j + 9
+1    1    -1   0    9
+1    -1   0    10   0    #  i = 10 * p
+1    1    0    -10  0
+0    0    0
+
+1 # Statement has a non resticted domain
+1    2
+1    0
+0    0    0
+
+1 # Statement has a non resticted domain
+1    2
+1    0
+0    0    0
+
+0 # Automatically find iterator names.
+
+# ---------- SCATTERING FUNCTIONS ----------
+5 # Number of scattering functions
+
+5    7
+#    p0   p1   p2   p3   p4
+0    1    0    0    0    0                   0     # Beta 0
+0    0    1    0    0    0                   0     # Alpha & Gamma 1
+0    0    0    1    0    0                   0     # Beta 1
+0    0    0    0    1    0                   0     # Alpha & Gamma 2
+0    0    0    0    0    1                   0     # Beta 2
+
+5    7
+#    p0   p1   p2   p3   p4
+0    1    0    0    0    0                   -1    # Beta 0
+0    0    1    0    0    0                   0     # Alpha & Gamma 1
+0    0    0    1    0    0                   0     # Beta 1
+0    0    0    0    1    0                   0     # Alpha & Gamma 2
+0    0    0    0    0    1                   0     # Beta 2
+
+5    10
+#    p0   p1   p2   p3   p4
+0    1    0    0    0    0         0    0           0     -2    # Beta 0
+0    0    1    0    0    0         -1   0           0      0     # Alpha & Gamma 1
+0    0    0    1    0    0         0    0           0      0     # Beta 1
+0    0    0    0    1    0         0    -1          0      0     # Alpha & Gamma 2
+0    0    0    0    0    1         0    0           0      0     # Beta 2
+
+5    7
+#    p0   p1   p2   p3   p4
+0    1    0    0    0    0                   -3    # Beta 0
+0    0    1    0    0    0                   0     # Alpha & Gamma 1
+0    0    0    1    0    0                   0     # Beta 1
+0    0    0    0    1    0                   0     # Alpha & Gamma 2
+0    0    0    0    0    1                   0     # Beta 2
+
+5    7
+#    p0   p1   p2   p3   p4
+0    1    0    0    0    0                   -4    # Beta 0
+0    0    1    0    0    0                   0     # Alpha & Gamma 1
+0    0    0    1    0    0                   0     # Beta 1
+0    0    0    0    1    0                   0     # Alpha & Gamma 2
+0    0    0    0    0    1                   0     # Beta 2
+
+1 # Set the scattering parameter names.
+p0 p1 p2 p3 p4

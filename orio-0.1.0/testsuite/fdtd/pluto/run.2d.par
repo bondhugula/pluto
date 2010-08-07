@@ -1,0 +1,8 @@
+
+
+export OMP_NUM_THREADS=4
+
+icc -fast -openmp -I/usr/local/icc/include -lm 2d.tuned-par.c -DREPS=1 -DTVAL=500 -DNXVAL=2000 -DNYVAL=2000
+./a.out
+rm a.out
+

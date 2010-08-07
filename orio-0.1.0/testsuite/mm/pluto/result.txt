@@ -1,0 +1,289 @@
+=============================================================
+ Experiment Results for Matrix-Matrix Multiplication
+=============================================================
+
+C[i][j] += A[i][k] * B[k][j]
+  M = range of i
+  N = range of j
+  K = range of k
+
+========================
+ Machine
+========================
+
+A quad-core Intel Core 2 Quad Q6600 CPU clocked at 2.4 Ghz with 32 KB
+L1 D cache, 8MB of L2 cache (4MB shared per core pair), and 2 GB of
+DDR2-667 RAM, running Linux kernel version 2.6.22 (x86-64).
+
+
+===================================
+ Optimizations
+===================================  
+
+ 1. Two-level tiling  
+ 2. Loop permutation/interchange
+ 3. Array copying optimization (enhanced with array reordering)
+ 4. Loop unroll-and-jam
+ 5. Scalar replacement
+ 6. Parallelization (OpenMP pragma insertion at the outermost loop)
+ 7. Vectorization (pragma insertion at the innermost loops)
+
+
+===================================
+ Representation of Code Variant
+===================================
+
+  ikj-ikj-kij,64x16x64,512x64x256,4x1x4,AB_,NO OpenMP
+
+The meaning of the performance parameters above is the following:
+
+ * ikj-ikj-kij: the loop order = iii,kkk,jjj, ii,kk,jj, k,i,j
+
+   The first three loops (iii,kkk,jjj) are the 2nd level (outermost) of the inter-tile loops.
+   The second three loops (ii,kk,jj) are the 1st level of the inter-tile loops.
+   The last three (k,i,j) are the intra-tile loops.
+
+ * 64x16x64: the tile sizes for loops ii,jj,kk (respectively)
+
+ * 512x64x256: the tile sizes for loops iii,jjj,kkk (respectively)
+  
+ * 4x1x4: the unroll factors applied on loop i,j,k (respectively)
+
+ * AB_: array-copy optimizations are applied on array A and B, but not C 
+   ___: no arrays are copied
+   ABC: all arrays are copied
+
+ * NO OpenMP: no OpenMP pragma is inserted into the code (i.e. sequential code)
+
+
+****************************************
+K=10000
+****************************************
+---------------
+M=N=10
+---------------
+-ICC -fast -parallel
+ 0.000496 seconds (1 core)  4.03 GFLOPS
+ 0.000484 seconds (2 cores) 4.13 GFLOPS
+ 0.000490 seconds (3 cores) 4.08 GFLOPS
+ 0.000488 seconds (4 cores) 4.10 GFLOPS
+
+-Intel MKL 9.1
+ 0.000839 seconds (1 core)  2.38 GFLOPS
+ 0.000727 seconds (2 cores) 2.75 GFLOPS
+ 0.000732 seconds (3 cores) 2.73 GFLOPS
+ 0.000764 seconds (4 cores) 2.62 GFLOPS
+
+-ANCC
+ 0.000393 seconds (1 core)  5.09 GFLOPS  code: ikj-ikj-kij,64x16x64,512x64x256,4x1x4,___,NO OpenMP 
+ 0.000393 seconds (2 cores) 5.09 GFLOPS  code: (same as 1-core case)
+ 0.000393 seconds (3 cores) 5.09 GFLOPS  code: (same as 1-core case)
+ 0.000393 seconds (4 cores) 5.09 GFLOPS  code: (same as 1-core case)
+
+---------------
+M=N=100
+---------------
+-ICC -fast -parallel
+ 0.059980   3.33
+ 0.059424   3.37
+ 0.059362   3.37
+ 0.059425   3.37
+
+-Intel MKL 9.1
+ 0.025214   7.93
+ 0.015502  12.90
+ 0.015448  12.94
+ 0.010330  19.36
+
+-ANCC
+ 0.030893   6.47  kij-kij-kij,32x128x64,512x128x128,4x1x4,___
+ 0.019893  10.05  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+ 0.019710  10.15  ikj-ikj-ikj,32x32x64,1x1024x1024,4x1x4,A_C
+ 0.016831  11.88  (same as 3-core case)
+
+---------------
+M=N=500
+---------------
+-ICC -fast -parallel
+ 1.460045   3.42
+ 0.732195   6.83
+ 0.490045  10.20
+ 0.372355  13.43
+
+-Intel MKL 9.1
+ 0.567692   8.81
+ 0.294077  17.00
+ 0.292666  17.08
+ 0.156702  31.91
+
+-ANCC
+ 0.635380   7.87  kij-kij-kij,128x512x32,512x512x512,6x1x4,___
+ 0.402065  12.43  ikj-ikj-ikj,32x1x1,256x1x256,4x1x4,_BC
+ 0.318507  15.70  (same as 4-core case)
+ 0.228721  21.86  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+---------------
+M=N=1000
+---------------
+-ICC -fast -parallel
+ 6.195143   3.23
+ 3.089143   6.47
+ 2.087589   9.58
+ 1.558463  12.83
+
+-Intel MKL 9.1
+ 2.252366   8.88
+ 1.131447  17.68
+ 1.125611  17.77
+ 0.597777  33.46
+
+-ANCC
+ 3.201761   6.25  (same as 2-core case)
+ 1.636873  12.22  ikj-ikj-ikj,32x1x1,256x1x256,4x1x4,_BC
+ 1.237576  16.16  (same as 4-core case)
+ 0.859292  23.27  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+
+****************************************
+K=100000
+****************************************
+---------------
+M=N=10
+---------------
+-ICC -fast -parallel
+ 0.009369   2.13
+ 0.009299   2.15
+ 0.009284   2.15
+ 0.009321   2.15
+
+-Intel MKL 9.1
+ 0.009601   2.08
+ 0.008964   2.23
+ 0.009113   2.19
+ 0.007849   2.55
+
+-ANCC
+ 0.006147   3.25  jki-jki-ikj,32x64x128,256x512x512,2x1x6,___,NO OpenMP 
+ 0.006147   3.25  (same as 1-core case)
+ 0.006147   3.25  (same as 1-core case)
+ 0.006147   3.25  (same as 1-core case)
+
+---------------
+M=N=100
+---------------
+-ICC -fast -parallel
+ 0.604256   3.31
+ 0.605014   3.31
+ 0.603063   3.32
+ 0.603202   3.32
+
+-Intel MKL 9.1
+ 0.249711   8.01
+ 0.153271  13.05
+ 0.151221  13.23
+ 0.100558  19.89
+
+-ANCC
+ 0.304668   6.56  ikj-ikj-ikj,32x1x1,256x1x256,4x1x4,_BC
+ 0.190201  10.52  (same as 4-core case)
+ 0.141878  14.10  (same as 4-core case)
+ 0.105599  18.94  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+---------------
+M=N=500
+---------------
+-ICC -fast -parallel
+ 14.587850   3.43
+  7.287340   6.86
+  4.860661  10.29
+  3.852912  12.98
+
+-Intel MKL 9.1
+ 5.662832    8.83
+ 2.918300   17.13
+ 2.915311   17.15
+ 1.522448   32.84
+ 
+-ANCC
+ 8.142136    6.15  (same as 4-core case)
+ 4.188314   11.94  (same as 4-core case)
+ 2.903526   17.22  (same as 4-core case)
+ 2.119307   23.59  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+---------------
+M=N=1000
+---------------
+-ICC -fast -parallel
+ 58.809914   3.40
+ 29.294747   6.82
+ 20.061790   9.97
+ 14.925855  13.40
+
+-Intel MKL 9.1
+ 22.531728   8.88
+ 11.235033  17.80
+ 11.227008  17.81
+  5.927857  33.74
+
+-ANCC
+ 32.511168   6.15  (same as 4-core case)
+ 16.454080  12.16  (same as 4-core case)
+ 11.253241  17.77  (same as 4-core case)
+  8.432224  23.72  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+
+****************************************
+K=1000000
+****************************************
+---------------
+M=N=10
+---------------
+-ICC -fast -parallel
+ 0.088309   2.26
+ 0.087903   2.28
+ 0.087793   2.28
+ 0.088606   2.26
+
+-Intel MKL 9.1
+ 0.094076   2.13
+ 0.087233   2.29
+ 0.086505   2.31
+ 0.082780   2.41
+
+-ANCC
+ 0.059113   3.38  (same as 3-core case)
+ 0.037415   5.34  (same as 3-core case)
+ 0.032391   6.17  ijk-ijk-kij,16x16x128,1x1x1024,8x1x8,_BC
+ 0.032011   6.25  (same as 3-core case)
+
+---------------
+M=N=100
+---------------
+-ICC -fast -parallel
+ 5.968663   3.35
+ 5.959454   3.36
+ 5.970510   3.35
+ 5.965249   3.35
+
+-Intel MKL 9.1
+ 2.498790   8.00
+ 1.527353  13.09
+ 1.517950  13.18
+ 1.014203  19.72
+
+-ANCC
+ 3.038492   6.58  ikj-ikj-ikj,32x1x1,256x1x256,4x1x4,_BC
+ 1.960132  10.20  (same as 4-core case)
+ 1.370077  14.60  (same as 4-core case)
+ 1.074937  18.61  kij-kij-kij,128x64x256,256x1024x512,8x1x8,A_C
+
+---------------
+M=N=500
+---------------
+ *** icc compilation is not possible (because static array is too large)
+
+---------------
+M=N=1000
+---------------
+ *** icc compilation is not possible (because static array is too large)
+

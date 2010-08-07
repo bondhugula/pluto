@@ -1,0 +1,99 @@
+salut,
+
+je testais ta librairie cloog et je suis tombé sur un point qui m'a fait
+perdre un peu de temps, je pense que si ce n'est pas le cas, ça serait pas
+mal de le préciser dans la doc pour éviter des déboires. je te passe les
+détails du pourquoi, en fait je suis tombé sur un core dont voici la trace
+d'appels :
+
+
+#0  0x1b907460 in _vgi__soname$3Alibc$2Eso$2E6$3Afree (p=0x0) at vg_replace_malloc.c:153
+#1  0x1bb1e2f2 in cloog_statement_free (statement=0x1bb58d30) at source/statement.c:118
+#2  0x1bb19390 in cloog_loop_free_parts (loop=0x1bb66280, domain=1, statement=1, inner=0, next=0) at source/loop.c:170
+#3  0x1bb1aba5 in cloog_loop_simplify (loop=0x1bb66280, context=0x1bb662c8, level=3, nb_par=0) at source/loop.c:1096
+#4  0x1bb1a9c7 in cloog_loop_simplify (loop=0x1bb66530, context=0x1bb68820, level=2, nb_par=0) at source/loop.c:1040
+#5  0x1bb1a9c7 in cloog_loop_simplify (loop=0x1bb68a60, context=0x1bb58b98, level=1, nb_par=0) at source/loop.c:1040
+#6  0x1bb18e32 in cloog_program_generate (program=0x1bb57cc8, options=0x1bb57c68) at source/program.c:712
+
+
+en fait il s'agit du ``nom'' des statements : le champ loop->statement->body.
+et bien pour que ta librairie marche, il faut qu'il soit initialisé et
+désallouable par un free. ce ne peut être un champ statique style
+"statement" comme je l'avais mis au début. c'est un détail mais qui peut
+être piégeur.
+
+point différent : le champ 'name' des options, il semble important de le
+définir avant de faire un print, mais celui là pas forcément avec un malloc
+car il n'est pas désalloué par un quelconque free de cloog_options_free.
+
+ces petits détails pris en compte, ça à l'air de mieux marcher.
+a+
+,fb
+
+
+----------------------------------------------------------------------------
+>Salut Fabrice,
+>> il faut que tu arrêtes d'allonger ma pile de choses à m'occuper 
+>> 'rapidement' sinon j'en ai pour jusqu'en 2006 !
+
+
+allez, une dernière, pareil c'est pas urgent, stocke, j'ai pas besoin de
+réponse pour l'instant. en fait lorsque tu as pas de paramètres à ton
+problème, tu passes le polyhèdre :
+
+1 2
+1 1
+
+comme dans l'exemple ci-dessous :
+
+# ----------------------------------------------------------------------
+# language: C
+c
+
+# parameters {m, n | 4<=m<=n}
+1 2
+1 1
+0
+
+1 # Number of statements
+
+1
+# {i, j | 1<=i<=n 1<=j<=m}
+4 4
+#  i  j  m  n  1
+1 1  0   5 
+1 -1  0   5 
+1 0  1   5 
+1 0 -1   5 
+0 0 0
+0
+
+0 # Scattering functions
+# ----------------------------------------------------------------------
+
+qui donne parfaitement : 
+
+/* Generated from a.cloog by CLooG v0.12.2 64 bits in 0.00s. */
+for (i=-5;i<=5;i++) {
+  for (j=-5;j<=5;j++) {
+    S1 ;
+  }
+}
+
+
+
+par contre, si je décide de lui passer à la place :
+
+1 2
+0 1
+
+là il ne m'afficher plus de solution. c'est bizarre ou c'est normal ? 
+
+en fait le polyhèdre ci dessus est intéressant, car il correspond au
+polyhèdre retourné par la fonction Empty_Polyhedron de la polylib.
+
+cprog->context=Empty_Polyhedron(0);
+
+,fb
+
+

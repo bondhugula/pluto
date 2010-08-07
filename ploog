@@ -1,0 +1,69 @@
+#!/bin/bash
+# 
+# ploog - inserts OpenMP pragmas into CLooG code (where to insert, what
+# to insert comes from the pluto core through the .pragmas file
+#
+# Copyright (C) 2007-2008 Uday Bondhugula 
+#
+
+if [ $# -ne 1 ]; then
+    echo "Usage: ./ploog <src file>"
+    exit 1
+fi
+
+if [ ! -f $1 ]; then
+    echo "ploog: Input file $1 does not exist"
+    exit 2
+fi
+
+if [ ! -f .pragmas ]; then
+    echo "[ploog] WARNING: no parallel loops"
+    exit 0
+fi
+
+NUMLINES=`wc -l $1 | awk '{print $1}'`
+
+dirname=`dirname $1`
+
+npar=`wc -l .pragmas | awk '{print $1}'`
+
+PARDIMS=`cat .pragmas | awk '{print $1}'`
+
+i=1
+
+for DIM in $PARDIMS;  do
+
+    # sometimes the scattering dimension may not appear
+    grep -q $DIM $1 
+
+    if [ $? == 0 ]; then
+
+        # mark all loops of this scattering dimension parallel
+
+        LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}'`
+
+        grep "$DIM #pragma" .pragmas > .pragma
+
+        j=0
+        for num in $LINE_NUMBERS; do
+
+            LOOP=`sed -n -e ''$(($num+3*$j))'p' $1`
+            sed -n -e '1,'$(($num+3*$j-1))'p' $1 > .header
+            sed -n -e ''$(($num+3*$j+1))',$p' $1 > .footer
+
+            sed -n -e ''$(($num+3*$j))'p' $1 > .parloop
+
+            # lower and upper bounds
+            echo -e "\tlb$i="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .parloop`";" > .lb
+            echo -e "\tub$i="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .parloop`";" > .ub
+
+            cat .header .lb .ub .pragma | sed -e "s/$DIM #pragma/#pragma/" > $1
+            echo -e "\tfor ($DIM=lb$i; $DIM<=ub$i; $DIM++) {" >> $1
+            cat .footer >> $1
+            j=$((j+1))
+        done
+        i=$((i+1))
+    fi
+done
+
+rm -f .header .footer .ub .lb .parloop .pragma

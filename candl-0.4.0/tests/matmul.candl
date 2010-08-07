@@ -1,0 +1,89 @@
+# Original code
+# 
+# for (i = 0; i <= n; ++i)
+#   for (j = 0; j <= n; ++j) {
+#     C[i][j] = 0;
+#     for (k = 0; k <= n; ++k)
+#        C[i][j] = C[i][j] + A[i][k] * B[k][j];
+#  }
+# 
+
+
+
+####################
+# Context
+0 3
+#  n  1
+#1  1 -1
+
+
+####################
+# Number of statements
+2
+
+####################
+# -------------------------
+# Statement 1
+# Statement type (A: affectation)
+A
+
+# Iteration domain
+4 5
+#  i  j  n  1
+1  1  0  0  0  # i >= 0
+1 -1  0  1 -1  # i <= n
+1  0  1  0  0  # j >= 0
+1  0 -1  1 -1  # j <= n
+
+# Loop labels
+1 2
+
+# Written items
+2 5
+#  i  j  n  1
+1  1  0  0  0 # C[i][j]
+0  0  1  0  0
+
+# Read items
+0 0
+
+####################
+# -------------------------
+# Statement 2
+# Statement type (P: plus-reduction)
+P
+
+# Iteration domain
+6 6
+#  i  j  k  n  1
+1  1  0  0  0  0  # i >= 0
+1 -1  0  0  1 -1  # i <= n
+1  0  1  0  0  0  # j >= 0
+1  0 -1  0  1 -1  # j <= n
+1  0  0  1  0  0  # k >= 0
+1  0  0 -1  1 -1  # k <= n
+
+# Loop labels
+1 2 3
+
+# Written items
+2 6
+#  i  j  k  n  1
+1  1  0  0  0  0 # C[i][j]
+0  0  1  0  0  0
+
+# Read items
+6 6
+#  i  j  k  n  1
+1  1  0  0  0  0 # C[i][j]
+0  0  1  0  0  0
+2  1  0  0  0  0 # A[i][k]
+0  0  0  1  0  0
+3  0  0  1  0  0 # B[k][j]
+0  0  1  0  0  0
+
+
+###########################
+# Transformation candidate
+0
+

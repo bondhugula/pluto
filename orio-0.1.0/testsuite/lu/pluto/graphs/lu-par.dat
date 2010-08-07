@@ -1,0 +1,7 @@
+# N=4096
+# cores icc pluto pluto+ancc(rect only) pluto+ancc(rect+non-rect)
+1 0.49 1.42 1.43  4.20
+2 0.49 2.48 2.63  7.68
+3 0.49 3.38 3.81 10.60
+4 0.49 3.97 4.89 13.39
+

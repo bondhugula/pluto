@@ -1,0 +1,306 @@
+X-UIDL: 39066.1115110713
+X-Mozilla-Status: 0001
+X-Mozilla-Status2: 00000000
+Received: from soleil.uvsq.fr (soleil.uvsq.fr [193.51.24.1])
+	by relay-5m.club-internet.fr (Postfix) with ESMTP id BC73EE06B
+	for <netced@club-internet.fr>; Tue,  3 May 2005 10:58:32 +0200 (CEST)
+Received: from torquenada.prism.uvsq.fr (torquenada.prism.uvsq.fr [193.51.25.9])
+          by soleil.uvsq.fr (8.12.11/jtpda-5.4) with ESMTP id j438wWHF077509
+          for <netced@club-internet.fr>; Tue, 3 May 2005 10:58:32 +0200 (CEST)
+Received: from soleil.uvsq.fr (root@soleil.uvsq.fr [193.51.24.1])
+          by torquenada.prism.uvsq.fr (8.11.4/jtpda-5.3.2) with ESMTP id j438wVC14523
+          for <cedric.bastoul@prism.uvsq.fr>; Tue, 3 May 2005 10:58:31 +0200 (MEST)
+Received: from nez-perce.inria.fr (nez-perce.inria.fr [192.93.2.78])
+          by soleil.uvsq.fr (8.12.11/jtpda-5.4) with ESMTP id j438wVeJ077472
+          for <cedric.bastoul@prism.uvsq.fr>; Tue, 3 May 2005 10:58:31 +0200 (CEST)
+Received: from achille.futurs.inria.fr (achille.futurs.inria.fr [195.83.212.184])
+	by nez-perce.inria.fr (8.13.0/8.13.0) with ESMTP id j438wP9Z005161
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <cedric.bastoul@prism.uvsq.fr>; Tue, 3 May 2005 10:58:26 +0200
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+	by achille.futurs.inria.fr (8.13.0/8.12.10) with ESMTP id j438wPL3027759
+	for <cedric.bastoul@prism.uvsq.fr>; Tue, 3 May 2005 10:58:25 +0200
+Message-ID: <42773D31.4050400@inria.fr>
+Date: Tue, 03 May 2005 10:58:25 +0200
+From: Nicolas Vasilache <Nicolas.Vasilache@inria.fr>
+User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.7.3) Gecko/20040916
+X-Accept-Language: en-us, en
+MIME-Version: 1.0
+To: =?ISO-8859-1?Q?C=E9dric_Bastoul?= <cedric.bastoul@prism.uvsq.fr>
+Subject: Test case matmul
+Content-Type: multipart/mixed;
+ boundary="------------030606060102070406010005"
+X-Miltered: at soleil.uvsq.fr with ID 42773D38.000 by Joe's j-chkmail (http://j-chkmail.ensmp.fr)!
+X-Miltered: at soleil.uvsq.fr with ID 42773D37.001 by Joe's j-chkmail (http://j-chkmail.ensmp.fr)!
+X-Miltered: at nez-perce with ID 42773D31.000 by Joe's j-chkmail (http://j-chkmail.ensmp.fr)!
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-1.7.5 (soleil.uvsq.fr [193.51.24.1]); Tue, 03 May 2005 10:58:32 +0200 (CEST)
+X-Greylist: IP, sender and recipient auto-whitelisted, not delayed by milter-greylist-1.7.5 (soleil.uvsq.fr [193.51.24.1]); Tue, 03 May 2005 10:58:31 +0200 (CEST)
+X-j-chkmail-Score: MSGID : 42773D38.000 on soleil.uvsq.fr : j-chkmail score : XX : 10/50 0
+X-j-chkmail-Score: MSGID : 42773D37.001 on soleil.uvsq.fr : j-chkmail score : XX : 10/50 0
+X-Antivirus: scanned by sophie at soleil.uvsq.fr
+X-Antivirus: scanned by sophie at soleil.uvsq.fr
+Status:   
+X-Mmail: \Recent                                 
+X-M-Uid: 39066.1115110713
+
+This is a multi-part message in MIME format.
+--------------030606060102070406010005
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Options:
+cloog -f 8 -l 9 matmul.B.main.scop1.cloog
+
+Code correct:
+S1;
+S2;
+for (p0=0;p0<=N-1;p0++) {
+  for (p1=0;p1<=N-1;p1++) {
+    S4(i = p0,j = p1);
+    S5(i = p0,j = p1);
+  }
+}
+for (p0=0;p0<=N-1;p0++) {
+  for (p1=0;p1<=N-1;p1++) {
+    for (p2=0;p2<=floord(N-1,32);p2++) {
+      S7(i = p0,j = p1,k = p2,l = 32*p2);
+      for (p3=32*p2+1;p3<=min(N-1,32*p2+31);p3++) {
+        S6(i = p0,j = p1,k = p2,l = p3-1);
+        S7(i = p0,j = p1,k = p2,l = p3);
+      }
+      if (p2 >= ceild(N-32,32)) {
+        S6(i = p0,j = p1,k = p2,l = N-1);
+      }
+      if (p2 <= floord(N-33,32)) {
+        S6(i = p0,j = p1,k = p2,l = 32*p2+31);
+      }
+    }
+  }
+}
+S8;
+
+
+Code incorrect:
+S1 ;
+S2 ;
+for (p1=0;p1<=N-1;p1++) {
+  for (p3=0;p3<=N-1;p3++) {
+    S4(i = p1,j = p3) ;
+    S5(i = p1,j = p3) ;
+  }
+}
+for (p1=0;p1<=N-1;p1++) {
+  for (p3=0;p3<=N-1;p3++) {
+    for (p5=0;p5<=floord(N-1,32);p5++) {
+      if (p5 <= 0) {
+        S7(i = p1,j = p3,k = p5,l = 0) ;
+      }
+      p7 = 32*p5 ;
+      l = 32*p5 ;
+      S7(i = p1,j = p3,k = p5) ;
+      for (p7=max(32*p5+1,1);p7<=min(32*p5+31,N-1);p7++) {
+        l = p7-1 ;
+        S6(i = p1,j = p3,k = p5) ;
+        S7(i = p1,j = p3,k = p5,l = p7) ;
+      }
+      if (p5 >= ceild(N-32,32)) {
+        l = N-1 ;
+        S6(i = p1,j = p3,k = p5) ;
+      }
+      p7 = 32*p5+32 ;
+      l = 32*p5+31 ;
+      S6(i = p1,j = p3,k = p5) ;
+    }
+  }
+}
+S8 ;
+
+
+--------------030606060102070406010005
+Content-Type: text/plain;
+ name="matmul.B.main.scop1.cloog"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="matmul.B.main.scop1.cloog"
+
+c # language is C
+# ---------- CONTEXT ----------
+1 # Context (constraints on parameters)
+2    4     # 1 lines, 4 columns
+1    -1   0    3    
+1    0    1    -100 
+
+
+0 # Automatically find parameter names
+
+# ---------- STATEMENTS ----------
+8 # Number of statements
+
+1 # Statement has a non resticted domain
+1    4    
+1    0    0    0    
+0    0    0    
+
+1 # Statement has a non resticted domain
+1    4    
+1    0    0    0    
+0    0    0    
+
+1 # Statement has 1 domain
+1    4    
+1    1    0    -79  
+0    0    0    
+
+1 # Statement has 1 domain
+4    6    
+1    1    0    0    0    0    
+1    -1   0    0    1    -1   
+1    0    1    0    0    0    
+1    0    -1   0    1    -1   
+0    0    0    
+
+1 # Statement has 1 domain
+4    6    
+1    1    0    0    0    0    
+1    -1   0    0    1    -1   
+1    0    1    0    0    0    
+1    0    -1   0    1    -1   
+0    0    0    
+
+1 # Statement has 1 domain
+8    8    
+1    1    0    0    0    0    0    0    
+1    -1   0    0    0    0    1    -1   
+1    0    1    0    0    0    0    0    
+1    0    -1   0    0    0    1    -1   
+1    0    0    0    1    0    0    0    
+1    0    0    0    -1   0    1    -1   
+1    0    0    -32  1    0    0    0    
+1    0    0    32   -1   0    0    31   
+0    0    0    
+
+1 # Statement has 1 domain
+8    8    
+1    1    0    0    0    0    0    0    
+1    -1   0    0    0    0    1    -1   
+1    0    1    0    0    0    0    0    
+1    0    -1   0    0    0    1    -1   
+1    0    0    0    1    0    0    0    
+1    0    0    0    -1   0    1    -1   
+1    0    0    -32  1    0    0    0    
+1    0    0    32   -1   0    0    31   
+0    0    0    
+
+1 # Statement has a non resticted domain
+1    4    
+1    0    0    0    
+0    0    0    
+
+0 # Automatically find iterator names.
+
+# ---------- SCATTERING FUNCTIONS ----------
+8 # Number of scattering functions
+
+9    13   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0                   0    0    0     # Beta 0
+0    0    1    0    0    0    0    0    0    0                   0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0                   0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0                   0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0                   0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0                   0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0                   0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0                   0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1                   0    0    0     # Beta 4
+
+9    13   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0                   0    0    -1    # Beta 0
+0    0    1    0    0    0    0    0    0    0                   0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0                   0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0                   0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0                   0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0                   0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0                   0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0                   0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1                   0    0    0     # Beta 4
+
+9    13   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0                   0    0    -2    # Beta 0
+0    0    1    0    0    0    0    0    0    0                   0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0                   0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0                   0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0                   0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0                   0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0                   0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0                   0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1                   0    0    0     # Beta 4
+
+9    15   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0         0    0              0    0    -3    # Beta 0
+0    0    1    0    0    0    0    0    0    0         -1   0              0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0         0    0              0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0         0    -1             0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0         0    0              0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0         0    0              0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0         0    0              0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0         0    0              0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1         0    0              0    0    0     # Beta 4
+
+9    15   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0         0    0              0    0    -3    # Beta 0
+0    0    1    0    0    0    0    0    0    0         -1   0              0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0         0    0              0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0         0    -1             0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0         0    0              0    0    -1    # Beta 2
+0    0    0    0    0    0    1    0    0    0         0    0              0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0         0    0              0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0         0    0              0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1         0    0              0    0    0     # Beta 4
+
+9    17   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0         0    0    0    0              0    0    -4    # Beta 0
+0    0    1    0    0    0    0    0    0    0         -1   0    0    0              0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0         0    0    0    0              0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0         0    -1   0    0              0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0         0    0    0    0              0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0         0    0    -1   0              0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0         0    0    0    0              0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0         0    0    0    -1             0    0    -1    # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1         0    0    0    0              0    0    0     # Beta 4
+
+9    17   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0         0    0    0    0              0    0    -4    # Beta 0
+0    0    1    0    0    0    0    0    0    0         -1   0    0    0              0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0         0    0    0    0              0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0         0    -1   0    0              0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0         0    0    0    0              0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0         0    0    -1   0              0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0         0    0    0    0              0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0         0    0    0    -1             0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1         0    0    0    0              0    0    -1    # Beta 4
+
+9    13   
+#    p0   p1   p2   p3   p4   p5   p6   p7   p8   
+0    1    0    0    0    0    0    0    0    0                   0    0    -5    # Beta 0
+0    0    1    0    0    0    0    0    0    0                   0    0    0     # Alpha & Gamma 1
+0    0    0    1    0    0    0    0    0    0                   0    0    0     # Beta 1
+0    0    0    0    1    0    0    0    0    0                   0    0    0     # Alpha & Gamma 2
+0    0    0    0    0    1    0    0    0    0                   0    0    0     # Beta 2
+0    0    0    0    0    0    1    0    0    0                   0    0    0     # Alpha & Gamma 3
+0    0    0    0    0    0    0    1    0    0                   0    0    0     # Beta 3
+0    0    0    0    0    0    0    0    1    0                   0    0    0     # Alpha & Gamma 4
+0    0    0    0    0    0    0    0    0    1                   0    0    0     # Beta 4
+
+1 # Set the scattering parameter names.
+p0 p1 p2 p3 p4 p5 p6 p7 p8 
+
+
+--------------030606060102070406010005--
+
+

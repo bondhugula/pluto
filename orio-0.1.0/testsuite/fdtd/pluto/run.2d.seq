@@ -1,0 +1,8 @@
+
+
+export OMP_NUM_THREADS=1
+
+icc -fast -openmp -I/usr/local/icc/include -lm 2d.pluto-seq.c -DREPS=1 -DTVAL=500 -DNXVAL=1000 -DNYVAL=1000
+./a.out
+rm a.out
+

@@ -1,0 +1,80 @@
+#
+# Example 1 in "Generating Efficient Tiled Code for Distributed Memory
+# Machines", Peiyi Tang and Jingling Xue.
+#
+
+# for (int i = 1; i <= 9; i++) {
+#    for (int j = 1; j <= 4; j++) {
+#       A[i,2*j] = A[i,2*j-2] + A[i-1,2*j-2];
+#    }
+# }
+#
+# We tile it with a tiling matrix H = [1/2  0]
+#                                     [-1/2 1/2]
+#
+# We get:
+#
+# for (int i = 0; i <= 9; i += 2) {
+#   for (int j = max(-1, -9 + i); j <= min(4, 3 + i); j++) {
+#     for (int k = max(1, i, i-j); k <= min(4 + i -j, 1 + i, 9); k++) {
+#       for (int l = max(-i + j + k, 1); l <= min(4, 1 -i + j + k); l++) {
+#         if (i % 2 == 0) {
+#           if ((i + j) % 2 == 0) {
+#             A[k, 2 * l] = A[k, -2 + 2 * l] + A[-1 + k, -2 + 2 * l];
+#           }
+#         }
+#       }
+#     }
+#   }
+# }
+#
+
+# language: C 
+c
+
+# parameter (none)
+1 2
+# 1
+1 1
+0 
+
+1 # number of statements
+
+1 
+#    -2i-2j   -l +4 >= 0
+#          -k +l    >= 0
+#    -2i   -k    +9 >= 0
+#           k       >= 0
+#     2i   +k    -1 >= 0
+#           k -l +1 >= 0
+#          -k    +1 >= 0
+#     2i+2j   +l-1  >= 0
+8 6 
+#  i  j  k  l  1
+1 -2 -2  0 -1  4
+1  0  0 -1  1  0
+1 -2  0 -1  0  9
+1  0  0  1  0  0
+1  2  0  1  0 -1
+1  0  0  1 -1  1
+1  0  0 -1  0  1
+1  2  2  0  1 -1
+0  0  0
+0
+
+1 
+
+# Scattering functions
+9 15
+# alpha=[2i, 2i+2j, 2i+k, 2i+2j+l] gamma=[0, 0, 0, 0] beta=[0, 0, 0, 0, 0, 0]
+# c1 c2 c3 c4 c5 c6 c7 c8 c9 i j k l 1
+0 -1  0  0  0  0  0  0  0  0 0 0 0 0 0
+0  0 -1  0  0  0  0  0  0  0 2 0 0 0 0
+0  0  0 -1  0  0  0  0  0  0 0 0 0 0 0
+0  0  0  0 -1  0  0  0  0  0 2 2 0 0 0
+0  0  0  0  0 -1  0  0  0  0 0 0 0 0 0
+0  0  0  0  0  0 -1  0  0  0 2 0 1 0 0
+0  0  0  0  0  0  0 -1  0  0 0 0 0 0 0
+0  0  0  0  0  0  0  0 -1  0 2 2 0 1 0
+0  0  0  0  0  0  0  0  0 -1 0 0 0 0 0
+0

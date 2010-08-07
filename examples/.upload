@@ -1,0 +1,11 @@
+#!/bin/bash
+
+ssh stdsun "rm -rf ~/WWW/pluto/examples; mkdir ~/WWW/pluto/examples"
+
+scp -r ../pluto-examples/* stdsun:WWW/pluto/examples/
+ssh stdsun "rm -rf ~/WWW/pluto/examples/CVS"
+ssh stdsun "cd ~/WWW/pluto/; tar cvf - examples | gzip > pluto-examples-0.0.1.tgz"
+
+ssh stdsun "chmod 755 ~/WWW/pluto/examples"
+ssh stdsun "chmod 755 ~/WWW/pluto/examples/*"
+ssh stdsun "find ~/WWW/pluto/examples -type f -exec chmod -R 644 {} \;"

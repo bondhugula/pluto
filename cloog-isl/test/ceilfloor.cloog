@@ -1,0 +1,21 @@
+# language: C
+c
+
+# Context
+1 3
+# M 1
+1 0 1
+0
+
+1 # Number of statements
+
+1
+# {j,N | 2j-1<=N<=2j}
+2 4
+#  j  M  1
+1  2 -1  0
+1 -2  1  1
+0  0  0
+0
+
+0 # Scattering functions

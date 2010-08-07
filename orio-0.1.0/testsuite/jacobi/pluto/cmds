@@ -1,0 +1,22 @@
+
+
+*** icc ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast jacobi-1d.base.c -DREPS=1 -DT=100 -DN=2500000
+par:
+  export OMP_NUM_THREADS=4; icc -fast -parallel jacobi-1d.base.c -DREPS=1 -DT=100 -DN=2500000
+
+*** pluto ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast jacobi-1d.pluto.seq.c -DREPS=1 -DT=100 -DN=2500000
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp jacobi-1d.pluto.par.c -DREPS=1 -DT=100 -DN=2500000
+
+*** pluto+orio ***
+seq:
+  export OMP_NUM_THREADS=1; icc -fast -openmp jacobi-1d.pluto_orio.seq_par.c -DREPS=1 -DT=100 -DN=2500000
+par:
+  export OMP_NUM_THREADS=4; icc -fast -openmp jacobi-1d.pluto_orio.seq_par.c -DREPS=1 -DT=100 -DN=2500000
+
+
+

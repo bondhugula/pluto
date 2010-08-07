@@ -1,0 +1,39 @@
+Dear Cedric Bastoul,
+
+
+>> As you may know, the code generator prototype is freely available at
+>> http://www.prism.uvsq.fr/~cedb/bastools/cloog.html
+>> then you can easily test the proposed improvements for code generation. 
+>> Please do not hesitate to ask me for further details.
+>> Best regards,
+>> 
+>> Cédric Bastoul
+
+
+
+thank you very much for the last information. I built already cloog static libraries and cloog, but I have still some troubles to make the shared library of cloog-0.12.2. I can work with the static version, but it may be also interesting to have a shared library too.
+
+I am using the polylib-library 5.20.0 (64 bit) and gcc version 2.95.3 (20010315). The error message is:
+
+             /*-----------------------------------------------*
+              *            MAKING ClooG (shared lib)          *
+              *-----------------------------------------------*/
+ld ./obj_sparc-sun-solaris2.9/cloog.o ./obj_sparc-sun-solaris2.9/program.o ./obj_sparc-sun-solaris2.9/loop.o ./obj_sparc-sun-solaris2.9/pprint.o ./obj_sparc-sun-solaris2.9/names.o ./obj_sparc-sun-solaris2.9/statement.o ./obj_sparc-sun-solaris2.9/domain.o ./obj_sparc-sun-solaris2.9/options.o  -o ./obj_sparc-sun-solaris2.9/libcloog.so.0.12.2 \
+-lc -shared -fPIC -L/project/suif/polylib-5.20.0/lib  -lpolylib64 -lc  
+ld: fatal: option -h and building a dynamic executable are incompatible
+ld: fatal: option -f and building a dynamic executable are incompatible
+ld: fatal: Flags processing errors
+gmake: *** [cloogsharedlib] Error 1
+
+Deleting the option -fPIC solve the problem with the second error message "option -f ..."
+
+Did you have any idea how to solve the problem ? I just called configure --with-polylib=... and then make. Polylib libraries (shared and static) are build successfully (all tests ran properly)
+
+Thank you in advance.
+
+Regards,
+
+Sergej Schwenk
+
+
+-- Sergej Schwenk University of Dortmund Department of Computer Science 12 (Embedded Systems Group) Otto-Hahn-Strasse 16 44221 Dortmund Germany 

@@ -1,0 +1,24 @@
+* * * * * * * *
+* Candl 0.4.0 *
+* * * * * * * *
+
+Install
+-------
+
+To install candl, PIPLib must be installed. Optionally, scoplib must
+be installed to enable SCoP support.
+
+$> ./configure --with-piplib=/path/to/piplib/install --with-scoplib=/path/to/scoplib/install
+
+$> make
+
+$> make install
+
+
+Support
+-------
+
+Please contact both:
+ Louis-Noel Pouchet <pouchet@cse.ohio-state.edu>, maintainer
+ Cedric Bastoul <cedric.bastoul@inria.fr>, author
+
