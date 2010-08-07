@@ -1,7 +1,0 @@
-#include "version.h"
-#define CLOOG_BITS "@BITS@"
-
-const char *cloog_version(void)
-{
-  return "CLooG "CLOOG_HEAD" "CLOOG_BITS" bits";
-}

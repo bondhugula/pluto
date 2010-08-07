@@ -1,0 +1,3 @@
+[submodule "cloog-isl"]
+	path = cloog-isl
+	url = git://repo.or.cz/cloog.git

@@ -1,3 +1,0 @@
-[submodule "piplib"]
-	path = piplib
-	url = git://repo.or.cz/piplib.git
