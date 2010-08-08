@@ -100,7 +100,7 @@ echo "=========================="
     #configureopts="--enable-mp-version --enable-static --disable-shared"
     #LIBS="-lpiplibMP $LIBS"
 #else
-    configureopts="--enable-llint-version --enable-static --disable-shared"
+    configureopts="--with-bits=64 --enable-static --disable-shared"
     LIBS="-lpiplib64 $LIBS"
 #fi
 (cd piplib-1.4.0/
