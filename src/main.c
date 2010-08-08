@@ -1,12 +1,17 @@
 /*
- * PLUTO: A automatic parallelizer + locality optimizer (experimental)
+ * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007 - 2008 Uday Kumar Bondhugula
+ * Copyright (C) 2007--2008 Uday Kumar Bondhugula
  *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
+ * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
  * `LICENSE' in the top-level directory of this distribution. 
@@ -153,7 +158,7 @@ int main(int argc, char *argv[])
                 options->ufactor = atoi(optarg);
                 break;
             case 'v':
-                printf("PLUTO 0.5.0 - An automatic parallelizer and locality optimizer\n\
+                printf("PLUTO 0.6.0 - An automatic parallelizer and locality optimizer\n\
 Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
 This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");

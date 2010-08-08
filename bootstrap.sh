@@ -1,9 +1,9 @@
 #! /bin/sh
 
+autoheader
 aclocal
 automake --gnu --add-missing
 autoconf
-autoheader
 
 cd candl-0.4.0/
 ./autogen.sh
