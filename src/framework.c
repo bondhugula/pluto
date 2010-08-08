@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * A copy of the GNU General Public Licence can be found in the 
- * top-level directory of this program (`COPYING') 
+ * A copy of the GNU General Public Licence can be found in the file
+ * `LICENSE' in the top-level directory of this distribution. 
  *
  */
 #include <stdio.h>
