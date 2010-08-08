@@ -1,3 +1,6 @@
 [submodule "cloog-isl"]
 	path = cloog-isl
 	url = git://repo.or.cz/cloog.git
+[submodule "piplib-1.4.0"]
+	path = piplib-1.4.0
+	url = git://repo.or.cz/piplib.git

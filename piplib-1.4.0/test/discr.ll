@@ -1,3 +1,0 @@
-((un discriminant de Newpip)
-()
-)
