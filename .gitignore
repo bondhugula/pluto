@@ -1,0 +1,13 @@
+# Ignore objects and archives.
+*.[oa]
+*.lo
+test/*.cloog
+test/*.pluto.c
+test/*.opt.c
+test/*.par.c
+test/*.tiled.c
+autom4te.cache
+polycc.sh
+src/pluto
+.libs
+.deps
