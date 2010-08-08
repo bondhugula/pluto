@@ -10,7 +10,7 @@ LOOPODIR = @SOURCE_DIR@
 RM = rm -f
 LN = ln -s
 
-SUBDIRS = piplib-1.4.0 polylib-5.22.3 cloog-isl clan-0.6.0 candl-0.4.0 src 
+SUBDIRS = piplib-1.4.0 polylib-5.22.5 cloog-isl clan-0.6.0 candl-0.4.0 src 
 
 dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`

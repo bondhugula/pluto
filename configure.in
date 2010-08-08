@@ -113,16 +113,16 @@ LDFLAGS="-L../piplib-1.4.0/.libs $LDFLAGS"
 
 dnl Configuring PolyLib (long long int is 64 bits)
 echo -e "\n=========================="
-echo "Configuring Polylib 5.22.3"
+echo "Configuring Polylib 5.22.5"
 echo "=========================="
 configureopts="--enable-longlongint-lib --without-libgmp --enable-static --disable-shared"
-(cd polylib-5.22.3/
+(cd polylib-5.22.5/
  $RM config.cache;
  ./configure ${configureopts} || exit 1
  )
 LIBS="-lpolylib64 $LIBS"
-CFLAGS="-I../polylib-5.22.3/include $CFLAGS"
-LDFLAGS="-L../polylib-5.22.3/.libs/ $LDFLAGS"
+CFLAGS="-I../polylib-5.22.5/include $CFLAGS"
+LDFLAGS="-L../polylib-5.22.5/.libs/ $LDFLAGS"
 
 
 dnl Configuring Clan 0.6.0
@@ -168,7 +168,7 @@ echo -e "\n=========================="
 if test $use_isl = "false"; then
 echo "Configuring CLooG 0.14.1 (polylib-64)"
 echo "=========================="
-    configureopts="--with-bits=64 --with-polylib-library=../polylib-5.22.3/.libs --with-polylib-include=../polylib-5.22.3/include --enable-static --disable-shared"
+    configureopts="--with-bits=64 --with-polylib-library=../polylib-5.22.5/.libs --with-polylib-include=../polylib-5.22.5/include --enable-static --disable-shared"
     (cd cloog-0.14.1/
      ./configure ${configureopts}
      )
