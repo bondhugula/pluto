@@ -152,8 +152,9 @@ echo "=========================="
 #configureopts="--enable-mp-version --enable-static --disable-shared --with-clan=$SOURCE_DIR/clan-0.6.0 --with-piplib=$SOURCE_DIR/piplib-1.4.0"
 #else
 configureopts="--enable-llint-version --enable-static --disable-shared \
---with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0"
-#--with-clan=$SOURCE_DIR/clan-0.6.0 --with-piplib=$SOURCE_DIR/piplib-1.4.0 \
+--with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
+--with-piplib=$SOURCE_DIR/piplib-1.4.0"
+#--with-clan=$SOURCE_DIR/clan-0.6.0 \
 #fi
 (cd candl-0.4.0/
  LDFLAGS="-L${SOURCE_DIR}/piplib-1.4.0/.libs" ./configure ${configureopts}
