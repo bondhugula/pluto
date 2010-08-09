@@ -1,4 +1,0 @@
-#!/bin/bash
-
-scp README stdsun:WWW/pluto/download/README
-scp pluto-0.2.1.tgz stdsun:WWW/pluto/download/
