@@ -13,20 +13,26 @@ dnl Offer --with-piplib.
               	             [DIR Location of PIPLib package]),
               [with_piplib=$withval;
 	       CPPFLAGS="${CPPFLAGS} -I$withval/include";
-	       LDFLAGS="${LDFLAGS} -L$withval/lib"
+	       LDFLAGS="${LDFLAGS} -L$withval/.libs"
 	      ],
               [with_piplib=yes])
 dnl Check for piplib existence.
-  AS_IF([test "x$with_piplib" != xno],
-	[AC_CHECK_LIB([piplib$BITS], [pip_solve],
-	 [LIBS="-lpiplib$BITS $LIBS";
-	 AC_DEFINE([HAVE_LIBPIPLIB], [1], [Define if you have libpiplib$BITS])
-         ],
-         [if test "x$with_piplib" != xcheck; then
-           AC_MSG_FAILURE([--with-piplib was given, but test for piplib failed])
-          fi
-         ])
-	])
+dnl UB: Do not check ofr piplib existence
+dnl It wouldn't have been built by now
+dnl  AS_IF([test "x$with_piplib" != xno],
+dnl	[AC_CHECK_LIB([piplib$BITS], [pip_solve],
+dnl	 [LIBS="-lpiplib$BITS $LIBS";
+dnl	 AC_DEFINE([HAVE_LIBPIPLIB], [1], [Define if you have libpiplib$BITS])
+dnl       ],
+dnl     [if test "x$with_piplib" != xcheck; then
+dnl           AC_MSG_FAILURE([--with-piplib was given, but test for piplib failed])
+dnl          fi
+dnl         ])
+dnl	])
+LIBS="-lpiplib$BITS $LIBS"
+
+dnl
+dnl
 dnl Offer --with-scoplib.
   AC_ARG_WITH(scoplib,
 	      AC_HELP_STRING([--with-scoplib=DIR],
