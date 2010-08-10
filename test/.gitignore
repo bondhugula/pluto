@@ -1,0 +1,4 @@
+*.cloog
+*.opt.c
+*.par.c
+*.tiled.c

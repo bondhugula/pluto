@@ -425,5 +425,5 @@ void usage_message(void)
     fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
     fprintf(stdout, "\n   Debugging\n");
     fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "\nTo report bugs, please send an email to the author <bondhugula.1@osu.edu>\n\n");
+    fprintf(stdout, "\nTo report bugs, please send an email to the author <udayreddy@gmail.com>\n\n");
 }

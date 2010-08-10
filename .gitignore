@@ -3,16 +3,20 @@
 *.lo
 # vim swap files
 *.swp
+# python byte compiled files in orio
+*.pyc
+
 test/*.cloog
 test/*.pluto.c
 test/*.opt.c
 test/*.par.c
 test/*.tiled.c
-autom4te.cache
-polycc.sh
 src/pluto
+src/Makefile
+src/Makefile.in
 .libs
 .deps
+autom4te.cache
 tags
 .body.c
 .linearized
@@ -94,13 +98,10 @@ clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.guess
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.sub
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/libtool.m4
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/texinfo.tex
-src/Makefile
-src/Makefile.in
 depcomp
 install-sh
 aclocal.m4
 config.h.in
-polycc
 config.guess
 config.sub
 ltmain.sh
@@ -112,3 +113,6 @@ configure
 stamp-h1
 Makefile
 Makefile.in
+parsetab.py
+polycc.sh
+polycc
