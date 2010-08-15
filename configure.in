@@ -162,6 +162,18 @@ LIBS="../candl-0.4.0/source/libcandl.la $LIBS"
 CFLAGS="-I../candl-0.4.0/include $CFLAGS"
 
 
+dnl Configuring isl
+echo -e "\n======================"
+echo "Configuring isl"
+echo "======================"
+configureopts="--enable-static --disable-shared"
+(cd isl/
+ ./configure ${configureopts}
+)
+LIBS="../isl/libisl.la $LIBS"
+CFLAGS="-I../isl/include $CFLAGS"
+
+
 dnl Configuring Cloog 0.14.1 (long long int)
 echo -e "\n=========================="
 if test $use_isl = "false"; then
@@ -177,7 +189,7 @@ echo "=========================="
 else
 echo "Configuring Cloog-isl"
 echo "=========================="
-    configureopts="--with-isl=bundled --with-polylib=no --with-piplib=no --enable-static --disable-shared"
+    configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
     (cd cloog-isl/
      ./configure ${configureopts}
      )
