@@ -12,6 +12,8 @@ LN = ln -s
 
 SUBDIRS = piplib-1.4.0 polylib-5.22.5 cloog-isl clan-0.6.0 candl-0.4.0 src 
 
+ACLOCAL_AMFLAGS = -I m4
+
 dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`
 

@@ -16,6 +16,8 @@ dnl
 
 AC_PREREQ(2.13)
 AC_INIT(pluto, [0.6.2], [udayreddy@gmail.com])
+AC_CONFIG_AUX_DIR([.])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE(pluto,0.6.2)
 AM_CONFIG_HEADER(config.h)
 
@@ -42,8 +44,8 @@ AC_PROG_CXX
 dnl AC_CHECK_PROG(CXX,g++,g++)
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
-AC_PROG_RANLIB
 AC_PROG_LN_S
+AC_PROG_LIBTOOL
 
 dnl check for some compiler characteristics
 dnl MC_CHECK_GUIDING_DECLS
@@ -101,14 +103,13 @@ echo "=========================="
     #LIBS="-lpiplibMP $LIBS"
 #else
     configureopts="--with-bits=64 --enable-static --disable-shared"
-    LIBS="-lpiplib64 $LIBS"
+    LIBS="../piplib-1.4.0/libpiplib64.la $LIBS"
 #fi
 (cd piplib-1.4.0/
  $RM config.cache;
  ./configure ${configureopts}
  )
 CFLAGS="-I../piplib-1.4.0/include $CFLAGS"
-LDFLAGS="-L../piplib-1.4.0/.libs $LDFLAGS"
 
 
 dnl Configuring PolyLib (long long int is 64 bits)
@@ -120,9 +121,8 @@ configureopts="--enable-longlongint-lib --without-libgmp --enable-static --disab
  $RM config.cache;
  ./configure ${configureopts} || exit 1
  )
-LIBS="-lpolylib64 $LIBS"
+LIBS="../polylib-5.22.5/libpolylib64.la $LIBS"
 CFLAGS="-I../polylib-5.22.5/include $CFLAGS"
-LDFLAGS="-L../polylib-5.22.5/.libs/ $LDFLAGS"
 
 
 dnl Configuring Clan 0.6.0
@@ -138,10 +138,9 @@ configureopts="--enable-llint-version --enable-static --disable-shared \
 (cd clan-0.6.0/
  ./configure ${configureopts}
  )
-LIBS="-lclan -lscoplib $LIBS"
+LIBS="../clan-0.6.0/source/libclan.la $LIBS"
 CFLAGS="-I../clan-0.6.0/include \
 -I../clan-0.6.0/scoplib/scoplib-0.2.0/include $CFLAGS"
-LDFLAGS="-L../clan-0.6.0/source/.libs -L../clan-0.6.0/scoplib/scoplib-0.2.0/source/.libs $LDFLAGS"
 
 
 dnl Configuring Candl 0.4.0 (long long int)
@@ -159,9 +158,8 @@ configureopts="--enable-llint-version --enable-static --disable-shared \
 (cd candl-0.4.0/
  ./configure ${configureopts}
  )
-LIBS="-lcandl $LIBS"
+LIBS="../candl-0.4.0/source/libcandl.la $LIBS"
 CFLAGS="-I../candl-0.4.0/include $CFLAGS"
-LDFLAGS="-L../candl-0.4.0/source/.libs $LDFLAGS"
 
 
 dnl Configuring Cloog 0.14.1 (long long int)
@@ -183,9 +181,8 @@ echo "=========================="
     (cd cloog-isl/
      ./configure ${configureopts}
      )
-    LIBS="-lcloog-isl -lisl -lgmp $LIBS"
+    LIBS="../cloog-isl/libcloog-isl.la $LIBS"
     CFLAGS="-I../cloog-isl/include $CFLAGS"
-    LDFLAGS="-L../cloog-isl/.libs/ -L../cloog-isl/isl/.libs/ $LDFLAGS"
 fi
 
 AC_PATH_PROGS(BASH, bash)
