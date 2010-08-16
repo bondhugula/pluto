@@ -116,3 +116,5 @@ Makefile.in
 parsetab.py
 polycc.sh
 polycc
+libtool
+m4

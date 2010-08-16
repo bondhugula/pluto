@@ -86,7 +86,7 @@ if test "$poly_cv_gmpfatal" = "yes"; then
 
 use_isl="true"
 dnl AC_ARG_ENABLE(isl,
-dnl [  --enable-isl     Enable isl instead of PolyLib],
+dnl [  --enable-isl     Use isl for Cloog instead of PolyLib],
 dnl use_isl="true")
 
 #if test $use_isl = "true"; then
@@ -97,14 +97,8 @@ dnl Configuring PipLib (long long int is 64 bits)
 echo -e "\n=========================="
 echo "Configuring PipLib 1.4.0"
 echo "=========================="
-
-#if test $use_isl = "true"; then
-    #configureopts="--enable-mp-version --enable-static --disable-shared"
-    #LIBS="-lpiplibMP $LIBS"
-#else
-    configureopts="--with-bits=64 --enable-static --disable-shared"
-    LIBS="../piplib-1.4.0/libpiplib64.la $LIBS"
-#fi
+configureopts="--with-bits=64 --enable-static --disable-shared"
+LIBS="../piplib-1.4.0/libpiplib64.la $LIBS"
 (cd piplib-1.4.0/
  $RM config.cache;
  ./configure ${configureopts}
@@ -129,12 +123,8 @@ dnl Configuring Clan 0.6.0
 echo -e "\n=========================="
 echo "Configuring Clan 0.6.0"
 echo "=========================="
-#if test $use_isl = "true"; then
-#configureopts="--enable-mp-version --enable-static --disable-shared"
-#else
 configureopts="--enable-llint-version --enable-static --disable-shared \
 --enable-internal-scoplib"
-#fi
 (cd clan-0.6.0/
  ./configure ${configureopts}
  )
@@ -147,14 +137,9 @@ dnl Configuring Candl 0.4.0 (long long int)
 echo -e "\n=========================="
 echo "Configuring Candl 0.4.0 "
 echo "=========================="
-#if test $use_isl = "true"; then
-#configureopts="--enable-mp-version --enable-static --disable-shared --with-clan=$SOURCE_DIR/clan-0.6.0 --with-piplib=$SOURCE_DIR/piplib-1.4.0"
-#else
 configureopts="--enable-llint-version --enable-static --disable-shared \
 --with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
 --with-piplib=$SOURCE_DIR/piplib-1.4.0"
-#--with-clan=$SOURCE_DIR/clan-0.6.0 \
-#fi
 (cd candl-0.4.0/
  ./configure ${configureopts}
  )
