@@ -450,11 +450,11 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 		while (!feof(lfp))	{
 			fgets(tmpstr, 256, nlfp);
 			fgets(linearized, 256, lfp);
-			printf("%s\n", tmpstr);
-			printf("%s\n", prog->stmts[i].text);
+			// printf("%s\n", tmpstr);
+			// printf("%s\n", prog->stmts[i].text);
 			if (strstr(tmpstr, prog->stmts[i].text))	{
-				printf("Found substring\n");
-				printf("%s\n", linearized);
+				// printf("Found substring\n");
+				// printf("%s\n", linearized);
 				prog->stmts[i].text = (char *) realloc(prog->stmts[i].text, sizeof(char)*(strlen(linearized)+1));
 				strcpy(prog->stmts[i].text, linearized);
 			}
