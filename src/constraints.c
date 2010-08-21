@@ -457,7 +457,7 @@ PlutoInequalities *pluto2pip(PlutoInequalities *cst, PlutoInequalities *pipcst)
 /*
  * Use PIP to solve these constraints
  */
-int *constraints_solve (PlutoInequalities *cst)
+int *constraints_solve(PlutoInequalities *cst)
 {
     int bignum, i;
     PipMatrix  *domain, *context;

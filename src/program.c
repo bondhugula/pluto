@@ -179,10 +179,12 @@ PlutoMatrix *candl_matrix_to_pluto_matrix(CandlMatrix *candlMatrix)
 }
 
 /* Read dependences from candl structures */
-static Dep *deps_read(CandlDependence *candlDeps, Stmt *stmts)
+static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 {
     int i, ndeps;
     Dep *deps;
+    int npar = prog->npar;
+    Stmt *stmts = prog->stmts;
 
     ndeps = candl_num_dependences(candlDeps);
 
@@ -283,7 +285,7 @@ void deps_print(FILE *fp, Dep *deps, int ndeps)
 
 
 /* Read statement info from Clan's structures */
-static Stmt *stmts_read(scoplib_scop_p scop)
+static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
 {
     int i, j;
     Stmt *stmts;
@@ -374,14 +376,14 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     prog->options = options;
 
     /* Set global variables first (they are used in stmts_read, deps_read too) */
-    npar = scop->nb_parameters;
+    prog->npar = scop->nb_parameters;
     scoplib_statement_p clan_stmt = scop->statement;
 
-    nvar = clan_stmt->nb_iterators;
+    prog->nvar = clan_stmt->nb_iterators;
 
     int i;
     for (i=0; i<prog->nstmts; i++) {
-        nvar = PLMAX(nvar, clan_stmt->nb_iterators);
+        prog->nvar = PLMAX(prog->nvar, clan_stmt->nb_iterators);
         clan_stmt = clan_stmt->next;
     }
 
@@ -400,8 +402,8 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 
     CandlDependence *candl_deps = candl_dependence(candl_program, candlOptions);
 
-    prog->stmts = stmts_read(scop);
-    prog->deps = deps_read(candl_deps, prog->stmts);
+    prog->stmts = stmts_read(scop, prog->npar, prog->nvar);
+    prog->deps = deps_read(candl_deps, prog);
     prog->ndeps = candl_num_dependences(candl_deps);
 
     candl_options_free(candlOptions);
@@ -418,8 +420,8 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     }
 
     /* Parameter names */
-    prog->params = (char **) malloc(sizeof(char *)*npar);
-    for (i=0; i<npar; i++)  {
+    prog->params = (char **) malloc(sizeof(char *)*prog->npar);
+    for (i=0; i<prog->npar; i++)  {
         prog->params[i] = (char *) malloc(sizeof(char)*64);
         strcpy(prog->params[i], scop->parameters[i]);
     }
@@ -482,7 +484,7 @@ void pluto_prog_free(PlutoProg *prog)
 
     free(prog->hProps);
 
-    for (i=0; i<npar; i++)  {
+    for (i=0; i<prog->npar; i++)  {
         free(prog->params[i]);
     }
     free(prog->params);

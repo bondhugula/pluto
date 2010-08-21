@@ -57,7 +57,7 @@ int deps_satisfaction_check(Dep *deps, int ndeps)
 /*
  * Returns the number of (new) satisfied dependences at this level
  */
-int dep_satisfaction_update (PlutoProg *prog, int level)
+int dep_satisfaction_update(PlutoProg *prog, int level)
 {
     int i;
     int num_new_carried;
@@ -71,7 +71,7 @@ int dep_satisfaction_update (PlutoProg *prog, int level)
     for (i=0; i<ndeps; i++) {
         dep = &deps[i];
         if (!dep_is_satisfied(dep))   {
-            dep->satisfied = dep_satisfaction_test(dep, prog->stmts, prog->nstmts, level);
+            dep->satisfied = dep_satisfaction_test(dep, prog, level);
             if (dep->satisfied)    { 
                 if (!IS_RAR(dep->type)) num_new_carried++;
                 dep->satisfaction_level = level;
@@ -139,8 +139,16 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation of the variables to get row-wise access
  */
-int *pluto_constraints_solve(PlutoInequalities *tmpcst, Stmt *stmts, int nstmts)
+int *pluto_constraints_solve(PlutoInequalities *tmpcst, PlutoProg *prog)
 {
+    Stmt *stmts;
+    int nstmts, nvar, npar;
+
+    stmts  = prog->stmts;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
     /* Remove redundant variables - that don't appear in your outer loops */
     int redun[MAX_PARS+MAX_STMTS*(MAX_VARS+1)];
     int i, j, k, q;
@@ -252,7 +260,7 @@ int *pluto_constraints_solve(PlutoInequalities *tmpcst, Stmt *stmts, int nstmts)
 
 
 /* Is there an edge between some vertex of SCC1 and some vertex of SCC2? */
-int ddg_sccs_direct_connected (Graph *g, PlutoProg *prog, int scc1, int scc2)
+int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2)
 {
     int i, j;
 
@@ -273,10 +281,12 @@ int ddg_sccs_direct_connected (Graph *g, PlutoProg *prog, int scc1, int scc2)
 
 /* Cut dependences between two SCCs 
  * Returns: number of dependences cut  */
-int cut_between_sccs (PlutoProg *prog, Graph *ddg, int scc1, int scc2)
+int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 {
     Stmt *stmts = prog->stmts;
     int nstmts = prog->nstmts;
+
+    int nvar = prog->nvar;
 
     int i, j, num_satisfied;
 
@@ -315,11 +325,12 @@ int cut_between_sccs (PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 /*
  * Cut dependences between all SCCs 
  */
-int cut_all_sccs (PlutoProg *prog, Graph *ddg)
+int cut_all_sccs(PlutoProg *prog, Graph *ddg)
 {
     int i, j, num_satisfied;
     Stmt *stmts = prog->stmts;
     int nstmts = prog->nstmts;
+    int nvar = prog->nvar;
 
     IF_DEBUG(printf("Cutting between all SCCs\n"));
 
@@ -353,10 +364,11 @@ int cut_all_sccs (PlutoProg *prog, Graph *ddg)
  * Two neighboring SCCs won't be cut if they are of the same
  * dimensionality
  */
-int cut_scc_dim_based (PlutoProg *prog, Graph *ddg)
+int cut_scc_dim_based(PlutoProg *prog, Graph *ddg)
 {
     int i, j, k, count;
     Stmt *stmts = prog->stmts;
+    int nvar = prog->nvar;
 
     if (ddg->num_sccs == 1) return 0;
 
@@ -389,7 +401,7 @@ int cut_scc_dim_based (PlutoProg *prog, Graph *ddg)
 
     int num_new_carried = dep_satisfaction_update(prog, stmts[0].trans->nrows-1);
 
-    if (num_new_carried > 0)   {
+    if (num_new_carried >= 1)   {
         ddg_update(ddg, prog);
     }
 
@@ -397,9 +409,9 @@ int cut_scc_dim_based (PlutoProg *prog, Graph *ddg)
 }
 
 
-/* Heuristic cut. Try to satisfy dependences */
+/* Heuristic cut */
 
-void cut_smart (PlutoProg *prog, Graph *ddg)
+void cut_smart(PlutoProg *prog, Graph *ddg)
 {
     if (ddg->num_sccs == 0) return;
 
@@ -408,7 +420,7 @@ void cut_smart (PlutoProg *prog, Graph *ddg)
     int num_new_carried = 0;
 
     /* First time, cut between SCCs of different dimensionalities */
-    if (cut_scc_dim_based (prog,ddg))   {
+    if (cut_scc_dim_based(prog,ddg))   {
         return;
     }
 
@@ -436,12 +448,12 @@ void cut_smart (PlutoProg *prog, Graph *ddg)
 }
 
 
-void cut_conservative (PlutoProg *prog, Graph *ddg)
+void cut_conservative(PlutoProg *prog, Graph *ddg)
 {
     int i, j;
 
-    if (cut_scc_dim_based (prog,ddg))   {
-        cut_scc_dim_based (prog,ddg);
+    if (cut_scc_dim_based(prog,ddg))   {
+        cut_scc_dim_based(prog,ddg);
         return;
     }
 
@@ -482,6 +494,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     int nstmts = prog->nstmts;
     Stmt *stmts = prog->stmts;
     Dep *deps = prog->deps;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
 
     HyperplaneProperties *hProps = prog->hProps;
 
@@ -500,7 +514,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
     orthcst = (PlutoInequalities ***) malloc (nstmts*sizeof(PlutoInequalities **));
 
-    basecst = get_permutability_constraints(deps, ndeps, stmts, nstmts);
+    basecst = get_permutability_constraints(deps, ndeps, prog);
 
     num_sols_found = 0;
     if (!currcst || currcst->alloc_nrows < basecst->nrows)   {
@@ -512,7 +526,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
     do{
         constraints_copy(basecst, currcst);
-        nzcst = get_non_trivial_sol_constraints(stmts, nstmts);
+        nzcst = get_non_trivial_sol_constraints(prog);
         constraints_add(currcst, nzcst);
         constraints_free(nzcst);
 
@@ -521,7 +535,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
         /* Get orthogonality constraints for each statement */
         for (j=0; j<nstmts; j++)    {
             orthcst[j] = get_stmt_ortho_constraints(&stmts[j], 
-                    nstmts, hProps, &orthonum[j]);
+                    prog, hProps, &orthonum[j]);
             // if (orthonum[j] > 0)    {
               //   if (orthoprod == 0) orthoprod = orthonum[j];
                 // else orthoprod = orthoprod*orthonum[j];
@@ -534,7 +548,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
         if (orthosum == 0)  {
             /* IF_DEBUG2(constraints_print(stdout, currcst)); */
-            bestsol = pluto_constraints_solve(currcst, stmts, nstmts);
+            bestsol = pluto_constraints_solve(currcst, prog);
 
         }else{
 #if 0
@@ -574,7 +588,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
             }
 
             // IF_DEBUG2(constraints_print(stdout, currcst));
-            sol = pluto_constraints_solve(currcst, stmts, nstmts);
+            sol = pluto_constraints_solve(currcst, prog);
 
             if (sol)    {
                 if (bestsol == NULL) bestsol = sol;
@@ -649,6 +663,8 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
 
     Stmt *stmts = prog->stmts;
     int nstmts = prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
 
     FILE *cutFp = fopen(".fst", "r");
 
@@ -789,7 +805,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
 }
 
 
-void detect_transformation_properties (PlutoProg *prog)
+void detect_transformation_properties(PlutoProg *prog)
 {
     int level, i, j;
     Stmt *stmts = prog->stmts;
@@ -803,7 +819,7 @@ void detect_transformation_properties (PlutoProg *prog)
     for (i=0; i<prog->ndeps; i++)   {
         for (level=0; level < stmts->trans->nrows; level++)  {
             deps[i].direction[level] = get_dep_direction(&deps[i], 
-                    prog->stmts, prog->nstmts, level);
+                    prog, level);
         }
     }
 
@@ -942,6 +958,9 @@ void print_dependence_directions (Dep *deps, int ndeps, int levels)
 void normalize_domains(PlutoProg *prog)
 {
     int i, j, k;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
 
     /* if a dep distance <= N and another <= M, how do you bound it, no
      * way to express max(N,M) as a single affine function ;-), when space is
@@ -1084,6 +1103,9 @@ void denormalize_domains(PlutoProg *prog)
 {
 	int i, j;
 
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+
 	for (i=0; i<prog->nstmts; i++)  {
 		Stmt *stmt = &prog->stmts[i];
 		int del_count = 0;
@@ -1105,7 +1127,7 @@ void denormalize_domains(PlutoProg *prog)
 
 
 /* Top-level automatic transformation algoritm */
-void pluto_auto_transform (PlutoProg *prog)
+void pluto_auto_transform(PlutoProg *prog)
 {
 	int nsols, i, j;
 	int sols_found, num_ind_sols, depth;
@@ -1143,7 +1165,7 @@ void pluto_auto_transform (PlutoProg *prog)
 		if (options->fuse == NO_FUSE)    {
 			cut_all_sccs(prog, ddg);
 		}else if (options->fuse == SMART_FUSE)    {
-			cut_scc_dim_based (prog,ddg);
+			cut_scc_dim_based(prog,ddg);
 		}
 	}
 
@@ -1295,6 +1317,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 
 	Stmt *stmts = prog->stmts;
 	int nstmts = prog->nstmts;
+    int npar = prog->npar;
 
 	fprintf(fp, "# CLooG script generated automatically by PLUTO\n");
 	fprintf(fp, "# language: C\n");
@@ -1632,7 +1655,7 @@ void ddg_update (Graph *g, PlutoProg *prog)
 /* 
  * Create the DDG (RAR deps not included)
  */
-Graph *ddg_create (PlutoProg *prog)
+Graph *ddg_create(PlutoProg *prog)
 {
 	Graph *g = graph_alloc(prog->nstmts);
 
@@ -1652,7 +1675,7 @@ Graph *ddg_create (PlutoProg *prog)
 /* 
  * Get the dimensionality of the stmt with max dimensionality in the SCC
  */
-static int get_max_dim_in_scc (PlutoProg *prog, int scc_id)
+static int get_max_dim_in_scc(PlutoProg *prog, int scc_id)
 {
 	int i;
 
@@ -1668,7 +1691,7 @@ static int get_max_dim_in_scc (PlutoProg *prog, int scc_id)
 }
 
 /* Number of vertices in a given SCC */
-static int get_scc_size (PlutoProg *prog, int scc_id)
+static int get_scc_size(PlutoProg *prog, int scc_id)
 {
 	int i;
 	Stmt *stmt;

@@ -284,50 +284,54 @@ struct plutoProg{
 
     /* Hyperplane properties */
     HyperplaneProperties *hProps;
+
+    /* Max domain dimensionality */
+    int nvar;
+
+    /* Number of program parameters */
+    int npar;
 };
 typedef struct plutoProg PlutoProg;
 
 
 /* Globally visible, easily accessible data */
-extern int npar;
-extern int nvar;
 extern PlutoOptions *options;
 
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
-bool dep_satisfaction_test (Dep *dep, Stmt *stmts, int nstmts, int level);
-int dep_satisfaction_update (PlutoProg *prog, int level);
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
+int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_is_satisfied(Dep *dep);
 
-PlutoInequalities *get_permutability_constraints(Dep *, int, Stmt *, int);
-PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, int, HyperplaneProperties *, int *);
-PlutoInequalities *get_non_trivial_sol_constraints(Stmt *stmts, int nstmts);
+PlutoInequalities *get_permutability_constraints(Dep *, int, PlutoProg *);
+PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *, HyperplaneProperties *, int *);
+PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *);
 
-void pluto_auto_transform (PlutoProg *prog);
-int  pluto_codegen (FILE *fp, FILE *outfp, PlutoProg *prog);
+void pluto_auto_transform(PlutoProg *prog);
+int  pluto_codegen(FILE *fp, FILE *outfp, PlutoProg *prog);
 
-int  find_permutable_hyperplanes (PlutoProg *prog, int max_sols);
+int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
-int  get_dep_direction (Dep *dep, Stmt *stmts, int nstmts, int level);
+int  get_dep_direction (Dep *dep, PlutoProg *prog, int level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 
 void print_cloog_file(FILE *fp, PlutoProg *prog);
-void cut_lightest_edge (Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
+void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
 void tile_scattering_dims(PlutoProg *, int, int, int *);
 bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD);
 
 int generate_openmp_pragmas(PlutoProg *prog);
 
-void   ddg_update (Graph *g, PlutoProg *prog);
-void   ddg_compute_scc (PlutoProg *prog);
-Graph *ddg_create (PlutoProg *prog);
-int    ddg_sccs_direct_conn (Graph *g, PlutoProg *prog, int scc1, int scc2);
+void   ddg_update(Graph *g, PlutoProg *prog);
+void   ddg_compute_scc(PlutoProg *prog);
+Graph *ddg_create(PlutoProg *prog);
+int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 
-void unroll_phis (PlutoProg *prog, int unroll_dim, int ufactor);
+void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 void pluto_print_transformations(PlutoProg *prog);
 
 void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level);

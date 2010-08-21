@@ -97,12 +97,16 @@ static PlutoInequalities *get_permutability_constraints_uniform_dep (Dep *dep)
 
 
 /* Builds legality constraints for a non-uniform dependence */
-static PlutoInequalities *get_permutability_constraints_nonuniform_dep (Dep *dep, Stmt *stmts,
-       int nstmts)
+static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep, PlutoProg *prog)
 {
     PlutoInequalities *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
     int src_offset, dest_offset;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+    Stmt *stmts = prog->stmts;
+    int nstmts = prog->nstmts;
 
     dest_stmt = dep->dest;
     src_stmt = dep->src;
@@ -389,12 +393,16 @@ static PlutoInequalities *get_permutability_constraints_nonuniform_dep (Dep *dep
 
 
 PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps, 
-        Stmt *stmts, int nstmts)
+        PlutoProg *prog)
 {
     int i, dest_stmt, src_stmt;
     Dep *dep;
     static PlutoInequalities *globcst = NULL;
     static PlutoInequalities **depcst = NULL;
+
+    int nstmts = prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
 
     if (!depcst)   {
         depcst = (PlutoInequalities **) malloc(ndeps*sizeof(PlutoInequalities *));
@@ -426,8 +434,7 @@ PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps,
                 // depcst[i] = get_permutability_constraints_uniform_dep(dep);
             // }else{
                 /* Non-uniform dependences */
-            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, 
-                    stmts, nstmts);
+            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog);
             // }
 
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
@@ -472,10 +479,15 @@ PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps,
 
 
 /* PlutoInequalities to avoid trivial solutions (all zeros) */
-PlutoInequalities *get_non_trivial_sol_constraints(Stmt *stmts, int nstmts)
+PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *prog)
 {
     PlutoInequalities *nzcst;
     int i, j, stmt_offset;
+
+    Stmt *stmts = prog->stmts;
+    int nstmts = prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
 
     nzcst = constraints_alloc(nstmts, CST_WIDTH);
     nzcst->ncols = CST_WIDTH;
@@ -523,12 +535,16 @@ static void eliminate_farkas_multipliers(PlutoInequalities *farkas_cst, int num_
 
 
 /* Returns linear independence constraints for a single statement */
-PlutoInequalities **get_stmt_ortho_constraints (Stmt *stmt, int nstmts, 
+PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         HyperplaneProperties *hProps,  int *orthonum)
 {
     int i, j, k, p, q;
     Matrix *h;
     PlutoInequalities **orthcst;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+    int nstmts = prog->nstmts;
 
     orthcst = (PlutoInequalities **) malloc(nvar*sizeof(PlutoInequalities *)); 
 
@@ -707,7 +723,7 @@ PlutoInequalities **get_stmt_ortho_constraints (Stmt *stmt, int nstmts,
 }
 
 
-/* Given H, Returns I - H(HH^T)H^T which is the subspace orthogonal to 
+/* Given H, Returns I - H^T(HH^T)H which is the subspace orthogonal to 
  * H: i.e., the null space of H */
 static PlutoMatrix *get_orthogonal_subspace(Matrix *h)
 {
@@ -776,10 +792,15 @@ static PlutoMatrix *get_orthogonal_subspace(Matrix *h)
  * (works whether the dep is const or non-const, inter-stmt or
  * self edge
  */
-bool dep_satisfaction_test (Dep *dep, Stmt *stmts, int nstmts, int level)
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     static PlutoInequalities *cst = NULL;
     int i, j, src, dest, *sol;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+
+    Stmt *stmts = prog->stmts;
 
     src = dep->src;
     dest = dep->dest;
@@ -828,10 +849,14 @@ bool dep_satisfaction_test (Dep *dep, Stmt *stmts, int nstmts, int level)
 }
 
 
-int get_dep_direction (Dep *dep, Stmt *stmts, int nstmts, int level)
+int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 {
     static PlutoInequalities *cst = NULL;
     int i, j, src, dest;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+    Stmt *stmts = prog->stmts;
 
     src = dep->src;
     dest = dep->dest;

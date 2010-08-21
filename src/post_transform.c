@@ -25,7 +25,7 @@
 #include "program.h"
 
 
-void interchange_scattering_dims (PlutoProg *prog, int level1, int level2)
+void interchange_scattering_dims(PlutoProg *prog, int level1, int level2)
 {
     int k, j, tmp;
     HyperplaneProperties hTmp;
@@ -65,7 +65,7 @@ int getDeepestNonScalarLoop(PlutoProg *prog)
 }
 
 
-int pre_vectorize (PlutoProg *prog)
+int pre_vectorize(PlutoProg *prog)
 {
     int lastloop, loop;
 
@@ -105,7 +105,7 @@ int pre_vectorize (PlutoProg *prog)
 
 
 /* Detect upto two loops to register tile (unroll-jam) */
-int detect_unrollable_loops (PlutoProg *prog)   
+int detect_unrollable_loops(PlutoProg *prog)   
 {
     int bandStart, bandEnd;
     int numUnrollableLoops;
@@ -197,12 +197,13 @@ int detect_unrollable_loops (PlutoProg *prog)
 }
 
 
-void unroll_phis (PlutoProg *prog, int unroll_dim, int ufactor)
+void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 {
     int i, j, k;
 
     Stmt *stmts = prog->stmts;
     int nstmts = prog->nstmts;
+    int npar = prog->npar;
 
     /*
      * Change the 'stmts' array from this

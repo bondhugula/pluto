@@ -78,7 +78,7 @@ void pluto_tile(PlutoProg *prog)
         for (j=0; j<prog->num_hyperplanes; j++)   {
             tile_sizes[j] = DEFAULT_L1_TILE_SIZE;
         }
-        for (j=0; j<nvar; j++)   {
+        for (j=0; j<prog->nvar; j++)   {
             /* L2 cache is around 64 times L1 cache */
             /* assuming 2-d - this tile size has to be eight
              * times the L1 tile size; NOTE: 8 and NOT

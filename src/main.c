@@ -37,9 +37,6 @@
 #include "ddg.h"
 #include "program.h"
 
-/* Global variables :-( */
-int npar;
-int nvar;
 PlutoOptions *options;
 
 void usage_message();
@@ -243,8 +240,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
         fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
         fprintf(stdout, "[Pluto] Number of deps: %d\n", prog->ndeps);
-        fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", nvar);
-        fprintf(stdout, "[Pluto] Number of parameters: %d\n", npar);
+        fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
+        fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
     }
 
     /* Auto transformation */
@@ -321,7 +318,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         FILE *paramsFP = fopen(".params", "w");
         if (paramsFP)   {
             int i;
-            for (i=0; i<npar; i++)  {
+            for (i=0; i<prog->npar; i++)  {
                 fprintf(paramsFP, "%s\n", prog->params[i]);
             }
             fclose(paramsFP);
@@ -357,7 +354,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     cloogfp = fopen(cloogFileName, "w+");
 
-    /* Remove the .c extension and append a new one */
+    /* Remove .c extension and append a new one */
     strcpy(outFileName, srcFileName);
     outFileName[strlen(srcFileName)-2] = '\0';
     strcat(outFileName, ".pluto.c");
@@ -373,9 +370,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Generate the .cloog file */
     IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
     print_cloog_file(cloogfp, prog);
-    /* Add the <irregular> tag from clan, if any. */
-    if (irroption != NULL)
-    {
+    /* Add the <irregular> tag from clan, if any */
+    if (irroption != NULL) {
         fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
         free(irroption);
     }
@@ -425,5 +421,5 @@ void usage_message(void)
     fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
     fprintf(stdout, "\n   Debugging\n");
     fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "\nTo report bugs, please send an email to the author <udayreddy@gmail.com>\n\n");
+    fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
 }

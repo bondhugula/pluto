@@ -19,7 +19,7 @@ dist-hook:
 
 
 bin_SCRIPTS = polycc vloog ploog plorc plutune
-CLEANFILES: $(bin_SCRIPTS)
+CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 
 polycc: polycc.sh

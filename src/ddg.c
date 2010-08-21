@@ -26,7 +26,7 @@
 #include "ddg.h"
 
 /* Allocate a graph */
-Graph *graph_alloc (int nVertices)
+Graph *graph_alloc(int nVertices)
 {
     Graph *g;
     int i, j;
@@ -61,7 +61,7 @@ Graph *graph_alloc (int nVertices)
 
 
 /* Print the strongly-connected components */
-void graph_print_sccs (Graph *g)
+void graph_print_sccs(Graph *g)
 {
     int i;
 
@@ -77,7 +77,7 @@ void graph_print_sccs (Graph *g)
 
 /* Return transpose of a graph G
  * G^T has an edge b/w u and v  iff G has an edge b/w v and u */
-Graph *graph_transpose (Graph *g)
+Graph *graph_transpose(Graph *g)
 {
     int i, j;
     Graph *gT;
@@ -97,7 +97,7 @@ Graph *graph_transpose (Graph *g)
 
 
 /* Depth first search from a given vertex */
-void dfs_vertex (Graph *g, Vertex *v, int *time)
+void dfs_vertex(Graph *g, Vertex *v, int *time)
 {
     int j;
 
@@ -121,7 +121,7 @@ void dfs_vertex (Graph *g, Vertex *v, int *time)
 
 
 /* Depth first search */
-void dfs (Graph *g)
+void dfs(Graph *g)
 {
     int i;
     int time = 0;
@@ -156,7 +156,7 @@ static int compar (const void *e1, const void *e2)
 
 /* Depth first search - this version stores additional data
  * that is useful for computing SCCs */
-void dfs_for_scc (Graph *g)
+void dfs_for_scc(Graph *g)
 {
     int i, j;
     int time = 0;
