@@ -1431,6 +1431,9 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, PlutoProg *prog)
 	// cloogOptions->csp = 1;
 	cloogOptions->strides = 1;
 
+    // Leads to better depth-based control optimization albeit code expansion
+    cloogOptions->backtrack = 1;
+
 	if (options->cloogf >= 1 && options->cloogl >= 1) {
 		cloogOptions->f = options->cloogf;
 		cloogOptions->l = options->cloogl;
