@@ -240,7 +240,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
             for (j=0; j<zstmt->dim; j++) {
                 if (unroll[j])  {
 
-                    pluto_matrix_add_col(&zstmt->domain, zstmt->dim);
+                    pluto_constraints_add_col(zstmt->domain, zstmt->dim);
                     /* Just put a dummy iterator name since Cloog will
                      * generate a remapping for this too */
                     sprintf(zstmt->iterators[zstmt->dim], "zU%d", j);
@@ -248,8 +248,8 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
                     /* Now add rows */
 
                     /* i = ufactor*x + k */
-                    pluto_matrix_zero_row (zstmt->domain, zstmt->domain->nrows);
-                    pluto_matrix_zero_row (zstmt->domain, zstmt->domain->nrows+1);
+                    pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows);
+                    pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows+1);
 
                     zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
                     zstmt->domain->val[zstmt->domain->nrows][j] = 1;
@@ -261,8 +261,8 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
                     zstmt->domain->nrows += 2;
 
                     /* 0 <= i - ufactor*x <= ufactor - 1 */
-                    pluto_matrix_zero_row (zstmt->domain, zstmt->domain->nrows);
-                    pluto_matrix_zero_row (zstmt->domain, zstmt->domain->nrows+1);
+                    pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows);
+                    pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows+1);
 
                     zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
                     zstmt->domain->val[zstmt->domain->nrows][j] = 1;

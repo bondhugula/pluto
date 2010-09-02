@@ -20,20 +20,54 @@
 #ifndef _CONSTRAINTS_H
 #define _CONSTRAINTS_H
 
-PlutoInequalities *constraints_alloc(int nrows, int ncols);
-void constraints_free(PlutoInequalities *cst);
-void constraints_print(FILE *fp, PlutoInequalities *);
-void constraints_pretty_print(FILE *fp, PlutoInequalities *);
-PlutoInequalities *constraints_copy(PlutoInequalities *, PlutoInequalities *);
+/* A system of linear inequalities and equalities; all inequalities in
+ * the >= 0 form. The constant term is on the LHS as well, i.e.,
+ *  c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= / = 0 */
+typedef struct {
+    /* Can be accessed as a double-subscripted array */
+    int **val;
 
-int best_elim_candidate(PlutoInequalities *, int);
-void fourier_motzkin_eliminate(PlutoInequalities *, int n);
+    /* Internal contigous buffer, val is set up to point into it */
+    int *buf;
 
-PlutoInequalities *pluto2pip(PlutoInequalities *, PlutoInequalities *pipcst);
+    /* Number of inequalities/equalities */
+    int nrows;
+    /* Number of columns (number of vars + 1) */
+    int ncols;
 
-PlutoInequalities *constraints_add(PlutoInequalities *, PlutoInequalities *);
-void constraints_simplify(PlutoInequalities *const cst);
+    /* Is row i an inequality? 1 yes, 0 no */
+    int *is_eq;
 
-int *constraints_solve(PlutoInequalities *);
+    /* Number of rows allocated a-priori */
+    int alloc_nrows;
+    int alloc_ncols;
+} PlutoConstraints;
+
+
+PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
+void pluto_constraints_free(PlutoConstraints *);
+void pluto_constraints_resize(PlutoConstraints *, int, int);
+PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src);
+
+int best_elim_candidate(PlutoConstraints *, int);
+void fourier_motzkin_eliminate(PlutoConstraints *, int n);
+
+PlutoMatrix *pluto2pip(PlutoConstraints *, PlutoMatrix *pipmat);
+
+PlutoConstraints *pluto_constraints_add(PlutoConstraints *, PlutoConstraints *);
+void pluto_constraints_simplify(PlutoConstraints *const cst);
+
+int *pluto_constraints_solve(PlutoConstraints *);
+void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
+void pluto_constraints_add_col(PlutoConstraints *cst, int pos);
+void pluto_constraints_remove_row(PlutoConstraints *, int);
+void pluto_constraints_remove_col(PlutoConstraints *, int);
+
+void pluto_constraints_zero_row(PlutoConstraints *, int);
+void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
+
+void pluto_constraints_pretty_print(FILE *fp, PlutoConstraints *cst);
+void pluto_constraints_print(FILE *fp, PlutoConstraints *);
+void pluto_constraints_dump_polylib(PlutoConstraints *cst);
 
 #endif

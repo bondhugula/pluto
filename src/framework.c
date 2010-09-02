@@ -29,7 +29,7 @@
 #include "polylib/polylib64.h"
 #include "candl/candl.h"
 
-static void eliminate_farkas_multipliers(PlutoInequalities *farkas_cst, int num_elim);
+static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
 static PlutoMatrix *get_orthogonal_subspace(Matrix *h);
 
 /**
@@ -44,11 +44,11 @@ static PlutoMatrix *get_orthogonal_subspace(Matrix *h);
  *
  */
 #if 0
-static PlutoInequalities *get_permutability_constraints_uniform_dep (Dep *dep)
+static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 {
     int cst_offset;
     int j, dest_stmt;
-    PlutoInequalities *cst;
+    PlutoConstraints *cst;
 
     /* constant dependences */
     /* uniform self-edge, no need to apply farkas */
@@ -97,9 +97,9 @@ static PlutoInequalities *get_permutability_constraints_uniform_dep (Dep *dep)
 
 
 /* Builds legality constraints for a non-uniform dependence */
-static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep, PlutoProg *prog)
+static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, PlutoProg *prog)
 {
-    PlutoInequalities *farkas_cst, *comm_farkas_cst, *cst;
+    PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
     int src_offset, dest_offset;
 
@@ -126,8 +126,8 @@ static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep,
      */
     if (src_stmt != dest_stmt)  {
         /* Inter-statement non-uniform dep */
-        farkas_cst = constraints_alloc(MAX_FARKAS_CST, 2*nvar+2+dep->dpolytope->nrows+2);
-        comm_farkas_cst = constraints_alloc(MAX_FARKAS_CST, npar+1+2*nvar+2+dep->dpolytope->nrows+2);
+        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, 2*nvar+2+dep->dpolytope->nrows+2);
+        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+2*nvar+2+dep->dpolytope->nrows+2);
 
         farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
         farkas_cst->ncols = 2*(nvar+1)+dep->dpolytope->nrows+2;
@@ -136,8 +136,8 @@ static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep,
         comm_farkas_cst->ncols = npar+1+2*(nvar+1)+dep->dpolytope->nrows+2;
     }else{
         /* Intra-statement non-uniform dependence */
-        farkas_cst = constraints_alloc(MAX_FARKAS_CST, nvar+1+dep->dpolytope->nrows+2);
-        comm_farkas_cst = constraints_alloc(MAX_FARKAS_CST, npar+1+nvar+1+dep->dpolytope->nrows+2);
+        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, nvar+1+dep->dpolytope->nrows+2);
+        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+nvar+1+dep->dpolytope->nrows+2);
 
         farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
         farkas_cst->ncols = (nvar+1)+dep->dpolytope->nrows+2;
@@ -315,7 +315,7 @@ static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep,
      * global format format */
 
     /* Initialize everything to zero */
-    cst = constraints_alloc(farkas_cst->nrows + comm_farkas_cst->nrows, CST_WIDTH);
+    cst = pluto_constraints_alloc(farkas_cst->nrows + comm_farkas_cst->nrows, CST_WIDTH);
     cst->ncols = CST_WIDTH;
 
     for (k=0; k<farkas_cst->nrows+comm_farkas_cst->nrows; k++)   {
@@ -385,27 +385,27 @@ static PlutoInequalities *get_permutability_constraints_nonuniform_dep(Dep *dep,
         }
     }
 
-    constraints_free(farkas_cst);
-    constraints_free(comm_farkas_cst);
+    pluto_constraints_free(farkas_cst);
+    pluto_constraints_free(comm_farkas_cst);
 
     return cst;
 }
 
 
-PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps, 
+PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps, 
         PlutoProg *prog)
 {
     int i, dest_stmt, src_stmt;
     Dep *dep;
-    static PlutoInequalities *globcst = NULL;
-    static PlutoInequalities **depcst = NULL;
+    static PlutoConstraints *globcst = NULL;
+    static PlutoConstraints **depcst = NULL;
 
     int nstmts = prog->nstmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
     if (!depcst)   {
-        depcst = (PlutoInequalities **) malloc(ndeps*sizeof(PlutoInequalities *));
+        depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
         for (i=0; i<ndeps; i++) {
             depcst[i] = NULL;
         }
@@ -442,7 +442,7 @@ PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps,
         }
     }
 
-    if (!globcst) globcst = constraints_alloc(total_cst_rows, CST_WIDTH);
+    if (!globcst) globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
@@ -460,17 +460,17 @@ PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps,
         if (dep_is_satisfied(dep)) continue;
 
         /* Subsequent calls can just use the old ones */
-        constraints_add(globcst, depcst[i]);
+        pluto_constraints_add(globcst, depcst[i]);
 
         IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, globcst->nrows));
         if (globcst->nrows >= 0.7*MAX_CONSTRAINTS)  {
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
         }
-        constraints_simplify(globcst);
-        IF_DEBUG2(constraints_print(stdout, globcst));
+        pluto_constraints_simplify(globcst);
+        IF_DEBUG2(pluto_constraints_print(stdout, globcst));
     }
 
-    constraints_simplify(globcst);
+    pluto_constraints_simplify(globcst);
 
     IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d\n", globcst->nrows));
 
@@ -478,10 +478,10 @@ PlutoInequalities *get_permutability_constraints(Dep *deps, int ndeps,
 }
 
 
-/* PlutoInequalities to avoid trivial solutions (all zeros) */
-PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *prog)
+/* PlutoConstraints to avoid trivial solutions (all zeros) */
+PlutoConstraints *get_non_trivial_sol_constraints(PlutoProg *prog)
 {
-    PlutoInequalities *nzcst;
+    PlutoConstraints *nzcst;
     int i, j, stmt_offset;
 
     Stmt *stmts = prog->stmts;
@@ -489,7 +489,7 @@ PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *prog)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    nzcst = constraints_alloc(nstmts, CST_WIDTH);
+    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
     nzcst->ncols = CST_WIDTH;
 
     for (i=0; i<nstmts; i++) {
@@ -515,7 +515,7 @@ PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *prog)
  * Eliminates the last num_elim variables from farkas_cst -- these are the
  * farkas multipliers
  */
-static void eliminate_farkas_multipliers(PlutoInequalities *farkas_cst, int num_elim)
+static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim)
 {
     int i;
     int best_elim;
@@ -535,21 +535,21 @@ static void eliminate_farkas_multipliers(PlutoInequalities *farkas_cst, int num_
 
 
 /* Returns linear independence constraints for a single statement */
-PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
+PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         HyperplaneProperties *hProps,  int *orthonum)
 {
     int i, j, k, p, q;
     Matrix *h;
-    PlutoInequalities **orthcst;
+    PlutoConstraints **orthcst;
 
     int nvar = prog->nvar;
     int npar = prog->npar;
     int nstmts = prog->nstmts;
 
-    orthcst = (PlutoInequalities **) malloc(nvar*sizeof(PlutoInequalities *)); 
+    orthcst = (PlutoConstraints **) malloc(nvar*sizeof(PlutoConstraints *)); 
 
     for (i=0; i<nvar; i++)  {
-        orthcst[i] = constraints_alloc(1, CST_WIDTH);
+        orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
         orthcst[i]->ncols = CST_WIDTH;
     }
 
@@ -708,7 +708,7 @@ PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
 
     /* Free the unnecessary ones */
     for (i=p; i<nvar; i++)    {
-        constraints_free(orthcst[i]);
+        pluto_constraints_free(orthcst[i]);
     }
 
     /* printf("Ortho constraints: %d\n", *orthonum); */
@@ -794,7 +794,7 @@ static PlutoMatrix *get_orthogonal_subspace(Matrix *h)
  */
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
-    static PlutoInequalities *cst = NULL;
+    static PlutoConstraints *cst = NULL;
     int i, j, src, dest, *sol;
 
     int nvar = prog->nvar;
@@ -809,9 +809,9 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     assert(level < stmts[dest].trans->nrows);
 
     if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows)   {
-        if (cst) constraints_free(cst);
+        if (cst) pluto_constraints_free(cst);
         /* rougly allocate twice to prevent frequent increase */
-        cst = constraints_alloc(2*(1+dep->dpolytope->nrows), 2*nvar+npar+1);
+        cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), 2*nvar+npar+1);
     }
     cst->ncols = 2*nvar+npar+1;
 
@@ -840,7 +840,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     /* if no solution exists, the dependence is carried, i.e., no points
      * satisfy \geq 0 */ 
-    sol = constraints_solve(cst);
+    sol = pluto_constraints_solve(cst);
 
     bool retval = (sol)? false:true;
     free(sol);
@@ -851,7 +851,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
 int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 {
-    static PlutoInequalities *cst = NULL;
+    static PlutoConstraints *cst = NULL;
     int i, j, src, dest;
 
     int nvar = prog->nvar;
@@ -865,9 +865,9 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
     assert(level < stmts[dest].trans->nrows);
 
     if (!cst || cst->alloc_nrows < 2+dep->dpolytope->nrows)   {
-        if (cst) constraints_free(cst);
+        if (cst) pluto_constraints_free(cst);
         /* Rougly allocate twice to prevent frequent increase */
-        cst = constraints_alloc(2*(2+dep->dpolytope->nrows), 2*nvar+npar+1);
+        cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 2*nvar+npar+1);
     }
     cst->ncols = 2*nvar+npar+1;
 
@@ -896,7 +896,7 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
     cst->nrows = 1+dep->dpolytope->nrows;
 
-    int *sol = constraints_solve(cst);
+    int *sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
         free(sol);
@@ -918,7 +918,7 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
         cst->nrows = 1+dep->dpolytope->nrows;
 
-        sol = constraints_solve(cst);
+        sol = pluto_constraints_solve(cst);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
@@ -952,7 +952,7 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
     cst->nrows = 1+dep->dpolytope->nrows;
 
-    sol = constraints_solve(cst);
+    sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
         free(sol);
@@ -984,7 +984,7 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
     cst->nrows = 1+dep->dpolytope->nrows;
 
-    sol = constraints_solve(cst);
+    sol = pluto_constraints_solve(cst);
 
     if (!sol)   {   
         free(sol);

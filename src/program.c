@@ -34,20 +34,20 @@
 #include "scoplib/statement.h"
 
 /* Return a copy of the statement */
-Stmt *stmt_copy (Stmt *src)
+Stmt *stmt_copy(Stmt *src)
 {
     Stmt *dest = (Stmt *) malloc(sizeof(Stmt));
 
     *dest = *src;
 
-    dest->domain = pluto_matrix_copy(src->domain);
+    dest->domain = pluto_constraints_copy(dest->domain, src->domain);
     dest->trans = pluto_matrix_copy(src->trans);
 
     return dest;
 }
 
 
-PlutoMatrix *clan_matrix_to_pluto_matrix(scoplib_matrix_p clanMatrix)
+PlutoConstraints *clan_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 {
     // candl_matrix_print(stdout, candlMatrix);
     int has_equalities = 0;
@@ -62,12 +62,13 @@ PlutoMatrix *clan_matrix_to_pluto_matrix(scoplib_matrix_p clanMatrix)
         }
     }
 
-    PlutoMatrix *pmat;
+    PlutoConstraints *pmat;
     if (has_equalities) {
-        pmat = pluto_matrix_alloc(clanMatrix->NbRows+1, clanMatrix->NbColumns-1);
+        /* An extra inequality will be added to capture the inequalities */
+        pmat = pluto_constraints_alloc(clanMatrix->NbRows+1, clanMatrix->NbColumns-1);
         pmat->nrows = clanMatrix->NbRows+1;
     }else{
-        pmat = pluto_matrix_alloc(clanMatrix->NbRows, clanMatrix->NbColumns-1);
+        pmat = pluto_constraints_alloc(clanMatrix->NbRows, clanMatrix->NbColumns-1);
         pmat->nrows = clanMatrix->NbRows;
     }
 
@@ -105,13 +106,12 @@ PlutoMatrix *clan_matrix_to_pluto_matrix(scoplib_matrix_p clanMatrix)
             }
         }
     }
-    // pluto_matrix_print(stdout, pmat);
 
     return pmat;
 }
 
 
-PlutoMatrix *candl_matrix_to_pluto_matrix(CandlMatrix *candlMatrix)
+PlutoConstraints *candl_matrix_to_pluto_constraints(CandlMatrix *candlMatrix)
 {
     // candl_matrix_print(stdout, candlMatrix);
     int has_equalities = 0;
@@ -130,12 +130,13 @@ PlutoMatrix *candl_matrix_to_pluto_matrix(CandlMatrix *candlMatrix)
         }
     }
 
-    PlutoMatrix *pmat;
+    PlutoConstraints *pmat;
     if (has_equalities) {
-        pmat = pluto_matrix_alloc(candlMatrix->NbRows+1, candlMatrix->NbColumns-1);
+        /* An extra inequality will be added to capture the inequalities */
+        pmat = pluto_constraints_alloc(candlMatrix->NbRows+1, candlMatrix->NbColumns-1);
         pmat->nrows = candlMatrix->NbRows+1;
     }else{
-        pmat = pluto_matrix_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
+        pmat = pluto_constraints_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
         pmat->nrows = candlMatrix->NbRows;
     }
 
@@ -204,7 +205,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         dep->id = i;
 
         // candl_matrix_print(stdout, candl_dep->domain);
-        dep->dpolytope = candl_matrix_to_pluto_matrix(candl_dep->domain);
+        dep->dpolytope = candl_matrix_to_pluto_constraints(candl_dep->domain);
 
         /* Get rid of rows that are all zero */
         int r, c;
@@ -225,7 +226,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         int del_count = 0;
         for (r=0; r<orig_nrows; r++) {
             if (remove[r])  {
-                pluto_matrix_remove_row(dep->dpolytope, r-del_count);
+                pluto_constraints_remove_row(dep->dpolytope, r-del_count);
                 del_count++;
             }
         }
@@ -271,7 +272,7 @@ void dep_print(FILE *fp, Dep *dep)
     fprintf(fp, "\n\n");
 
     fprintf(fp, "Dependence polyhedron\n");
-    pluto_inequalities_pretty_print(fp, dep->dpolytope);
+    pluto_constraints_pretty_print(fp, dep->dpolytope);
 }
 
 
@@ -307,7 +308,7 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
 
         assert(clan_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
-        stmt->domain = clan_matrix_to_pluto_matrix(clan_stmt->domain->elt);
+        stmt->domain = clan_matrix_to_pluto_constraints(clan_stmt->domain->elt);
 
         /* Initialization */
         stmt->num_tiled_loops = 0;
@@ -345,7 +346,7 @@ void stmts_print(FILE *fp, Stmt *stmts, int nstmts)
     for(i=0; i<nstmts; i++)  {
         Stmt stmt = stmts[i];
         fprintf(fp, "S%d %d-d index set\n", stmt.id+1, stmt.dim);
-        pluto_inequalities_pretty_print(fp, stmt.domain);
+        pluto_constraints_pretty_print(fp, stmt.domain);
     }
 }
 
@@ -353,13 +354,13 @@ void stmts_print(FILE *fp, Stmt *stmts, int nstmts)
 void stmt_free(Stmt *stmt)
 {
     pluto_matrix_free(stmt->trans);
-    pluto_matrix_free(stmt->domain);
+    pluto_constraints_free(stmt->domain);
 }
 
 
 void dep_free(Dep *dep)
 {
-    pluto_matrix_free(dep->dpolytope);
+    pluto_constraints_free(dep->dpolytope);
 }
 
 

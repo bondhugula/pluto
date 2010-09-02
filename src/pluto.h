@@ -159,7 +159,7 @@ enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, PIPE_PARALLEL_INNER_PARA
 struct statement{
     int id;
 
-    PlutoInequalities *domain;
+    PlutoConstraints *domain;
 
     /* Original iterator names */
     char **iterators;
@@ -218,7 +218,7 @@ struct dependence{
      * [src|dest|par|const] >= 0
      * [nvar|nvar|npar|1]
      */
-    PlutoInequalities *dpolytope;
+    PlutoConstraints *dpolytope;
 
     /* Dependence type from Candl (raw, war, or rar) */
     int type;
@@ -304,9 +304,9 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_is_satisfied(Dep *dep);
 
-PlutoInequalities *get_permutability_constraints(Dep *, int, PlutoProg *);
-PlutoInequalities **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *, HyperplaneProperties *, int *);
-PlutoInequalities *get_non_trivial_sol_constraints(PlutoProg *);
+PlutoConstraints *get_permutability_constraints(Dep *, int, PlutoProg *);
+PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *, HyperplaneProperties *, int *);
+PlutoConstraints *get_non_trivial_sol_constraints(PlutoProg *);
 
 void pluto_auto_transform(PlutoProg *prog);
 int  pluto_codegen(FILE *fp, FILE *outfp, PlutoProg *prog);

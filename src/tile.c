@@ -120,7 +120,7 @@ void pluto_tile(PlutoProg *prog)
 
 /* Manipulates statement domain and transformation to tile scattering 
  * dimensions from firstD to lastD */
-void tile_scattering_dims (PlutoProg *prog, int firstD, int lastD, int *tile_sizes)
+void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_sizes)
 {
     int i, j, k, s;
     int depth;
@@ -144,7 +144,7 @@ void tile_scattering_dims (PlutoProg *prog, int firstD, int lastD, int *tile_siz
 
             /* 1.2 make space for the supernode in the domain */
             for (k=0; k<num_tiled_scat_dims; k++)    {
-                pluto_matrix_add_col(&stmt->domain, 0);
+                pluto_constraints_add_col(stmt->domain, 0);
             }
 
             /* 1.3 specify tile shapes in the original domain */
@@ -152,12 +152,14 @@ void tile_scattering_dims (PlutoProg *prog, int firstD, int lastD, int *tile_siz
 
                 assert(tile_sizes[depth-firstD] != 0);
 
+                // printf("before adding\n");
+                // pluto_constraints_print(stdout, stmt->domain);
+
                 /* Add relation b/w tile space variable and intra-tile variables like
                  * 32*xt <= 2t+i <= 32xt + 31 */
-                pluto_matrix_add_row(&stmt->domain, stmt->domain->nrows);
+                pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
 
                 /* Lower bound */
-
                 for (j=num_supernodes; j<num_supernodes+stmt->dim; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         stmt->trans->val[depth][j-num_supernodes];
@@ -170,7 +172,7 @@ void tile_scattering_dims (PlutoProg *prog, int firstD, int lastD, int *tile_siz
                     stmt->trans->val[depth][stmt->dim];
 
                 /* Upper bound */
-                pluto_matrix_add_row(&stmt->domain, stmt->domain->nrows);
+                pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
                 for (j=num_supernodes; j<num_supernodes+stmt->dim; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         -stmt->trans->val[depth][j-num_supernodes];
@@ -182,6 +184,8 @@ void tile_scattering_dims (PlutoProg *prog, int firstD, int lastD, int *tile_siz
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
                     -stmt->trans->val[depth][stmt->dim]+tile_sizes[depth-firstD]-1;
 
+                // printf("after adding\n");
+                // pluto_constraints_print(stdout, stmt->domain);
             }
 
 

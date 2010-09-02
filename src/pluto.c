@@ -135,11 +135,11 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
 
 
 /*
- * This calls constraints_solve, but before doing that does some preprocessing
+ * This calls pluto_constraints_solve, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation of the variables to get row-wise access
  */
-int *pluto_constraints_solve(PlutoInequalities *tmpcst, PlutoProg *prog)
+int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
 {
     Stmt *stmts;
     int nstmts, nvar, npar;
@@ -153,12 +153,12 @@ int *pluto_constraints_solve(PlutoInequalities *tmpcst, PlutoProg *prog)
     int redun[MAX_PARS+MAX_STMTS*(MAX_VARS+1)];
     int i, j, k, q;
     int *sol, *fsol;
-    static PlutoInequalities *newcst = NULL;
+    static PlutoConstraints *newcst = NULL;
 
 
     if (!newcst || newcst->alloc_nrows < tmpcst->nrows)   {
-        if (newcst) constraints_free(newcst);
-        newcst = constraints_alloc(tmpcst->nrows, CST_WIDTH);
+        if (newcst) pluto_constraints_free(newcst);
+        newcst = pluto_constraints_alloc(tmpcst->nrows, CST_WIDTH);
     }
 
     for (i=0; i<npar+1; i++)    {
@@ -222,7 +222,7 @@ int *pluto_constraints_solve(PlutoInequalities *tmpcst, PlutoProg *prog)
     newcst->val = newcstmat->val;
 
     // IF_DEBUG(dump_poly(newcst));
-    sol = constraints_solve(newcst);
+    sol = pluto_constraints_solve(newcst);
     newcst->val = save;
 
     pluto_matrix_free(newcstmat);
@@ -486,9 +486,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     int num_sols_found, j, k;
     int *sol, *bestsol;
     int orthonum[MAX_STMTS];
-    PlutoInequalities *basecst, *nzcst;
-    static PlutoInequalities *currcst = NULL;
-    PlutoInequalities ***orthcst;
+    PlutoConstraints *basecst, *nzcst;
+    static PlutoConstraints *currcst = NULL;
+    PlutoConstraints ***orthcst;
 
     int ndeps = prog->ndeps;
     int nstmts = prog->nstmts;
@@ -502,7 +502,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 #if 0
     int orthoprod;
     int step;
-    PlutoInequalities *tmpcst;
+    PlutoConstraints *tmpcst;
     int num[MAX_STMTS];
 #endif
 
@@ -512,7 +512,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
     IF_DEBUG(fprintf(stdout, "Finding hyperplanes: max: %d\n", max_sols));
 
-    orthcst = (PlutoInequalities ***) malloc (nstmts*sizeof(PlutoInequalities **));
+    orthcst = (PlutoConstraints ***) malloc (nstmts*sizeof(PlutoConstraints **));
 
     basecst = get_permutability_constraints(deps, ndeps, prog);
 
@@ -520,15 +520,15 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     if (!currcst || currcst->alloc_nrows < basecst->nrows)   {
         /* We don't expect to add a lot to basecst - just ortho constraints
          * and trivial soln avoidance constraints */
-        if (currcst) constraints_free(currcst);
-        currcst = constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
+        if (currcst) pluto_constraints_free(currcst);
+        currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
     }
 
     do{
-        constraints_copy(basecst, currcst);
+        pluto_constraints_copy(currcst, basecst);
         nzcst = get_non_trivial_sol_constraints(prog);
-        constraints_add(currcst, nzcst);
-        constraints_free(nzcst);
+        pluto_constraints_add(currcst, nzcst);
+        pluto_constraints_free(nzcst);
 
         int orthosum = 0;
 
@@ -547,30 +547,30 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
         bestsol = NULL;
 
         if (orthosum == 0)  {
-            /* IF_DEBUG2(constraints_print(stdout, currcst)); */
-            bestsol = pluto_constraints_solve(currcst, prog);
+            /* IF_DEBUG2(pluto_constraints_print(stdout, currcst)); */
+            bestsol = pluto_prog_constraints_solve(currcst, prog);
 
         }else{
 #if 0
             /* Look at all orthants */
-            tmpcst = constraints_alloc(MAX_CONSTRAINTS, CST_WIDTH);
+            tmpcst = pluto_constraints_alloc(MAX_CONSTRAINTS, CST_WIDTH);
 
             /* Try all orthogonality cases one by one and keep the best */
             IF_DEBUG(fprintf(stdout, "Trying %d orthogonality cases\n", orthoprod));
 
             for (k=0; k<orthoprod; k++)  {
-                constraints_copy(currcst, tmpcst);
+                pluto_constraints_copy(tmpcst, currcst);
 
                 step=1;
                 for (j=0; j<nstmts; j++)    {
                     if (orthonum[j] > 0)    {
                         num[j] = (k/step)%orthonum[j];
                         step *= orthonum[j];
-                        constraints_add(tmpcst, orthcst[j][num[j]]);
+                        pluto_constraints_add(tmpcst, orthcst[j][num[j]]);
                     }
                 }
-                IF_DEBUG2(constraints_print(stdout, tmpcst));
-                sol = pluto_constraints_solve(tmpcst, stmts, nstmts);
+                IF_DEBUG2(pluto_constraints_print(stdout, tmpcst));
+                sol = pluto_prog_constraints_solve(tmpcst, prog);
 
                 if (sol)    {
                     if (bestsol == NULL) bestsol = sol;
@@ -578,17 +578,17 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
                 }
                 IF_DEBUG(if (k%50==0) fprintf(stdout, "- %d\n", k));
             }
-            constraints_free(tmpcst);
+            pluto_constraints_free(tmpcst);
 #endif 
             /* Just look at the "all non-negative" orthant */
             for (j=0; j<nstmts; j++)    {
                 for (k=0; k<orthonum[j]; k++)   {
-                    constraints_add(currcst, orthcst[j][k]);
+                    pluto_constraints_add(currcst, orthcst[j][k]);
                 }
             }
 
-            // IF_DEBUG2(constraints_print(stdout, currcst));
-            sol = pluto_constraints_solve(currcst, prog);
+            // IF_DEBUG2(pluto_constraints_print(stdout, currcst));
+            sol = pluto_prog_constraints_solve(currcst, prog);
 
             if (sol)    {
                 if (bestsol == NULL) bestsol = sol;
@@ -617,7 +617,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
         for (j=0; j<nstmts; j++)    {
             for (k=0; k<orthonum[j]; k++)   {
-                // constraints_free(orthcst[j][k]);
+                // pluto_constraints_free(orthcst[j][k]);
             }
             // free(orthcst[j]);
         }
@@ -979,11 +979,11 @@ void normalize_domains(PlutoProg *prog)
      */
     int count=0;
 	if (npar >= 1)	{
-		PlutoInequalities *context = constraints_alloc(prog->nstmts*npar, npar+1);
+		PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
 		for (i=0; i<prog->nstmts; i++)    {
-			PlutoInequalities *copy = 
-				constraints_alloc(2*prog->stmts[i].domain->nrows, prog->stmts[i].domain->ncols);
-			constraints_copy(prog->stmts[i].domain, copy);
+			PlutoConstraints *copy = 
+				pluto_constraints_alloc(2*prog->stmts[i].domain->nrows, prog->stmts[i].domain->ncols);
+			pluto_constraints_copy(copy, prog->stmts[i].domain);
 			for (j=0; j<prog->stmts[i].dim; j++)    {
 				fourier_motzkin_eliminate(copy, 0);
 			}
@@ -991,25 +991,25 @@ void normalize_domains(PlutoProg *prog)
 			count += copy->nrows;
 
 			if (count <= prog->nstmts*npar)    {
-				constraints_add(context, copy);
+				pluto_constraints_add(context, copy);
 			}else{
-				constraints_free(copy);
+				pluto_constraints_free(copy);
 				break;
 			}
-			constraints_free(copy);
+			pluto_constraints_free(copy);
 		}
-		constraints_simplify(context);
+		pluto_constraints_simplify(context);
 		if (options->debug) {
 			printf("Global constraint context\n");
-			constraints_print(stdout, context );
+			pluto_constraints_print(stdout, context );
 		}
 
 		/* Add context to every dep polyhedron */
 		for (i=0; i<prog->ndeps; i++) {
-			PlutoInequalities *dpolytope = prog->deps[i].dpolytope;
+			PlutoConstraints *dpolytope = prog->deps[i].dpolytope;
 
 			for (k=0; k<context->nrows; k++) {
-				pluto_matrix_add_row(&dpolytope, dpolytope->nrows);
+				pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
 
 				/* already initialized to zero */
 
@@ -1021,7 +1021,7 @@ void normalize_domains(PlutoProg *prog)
 			/* update the reference, add_row can resize */
 			prog->deps[i].dpolytope = dpolytope;
 		}
-		constraints_free(context);
+		pluto_constraints_free(context);
 	}else{
 		IF_DEBUG(printf("No global context\n"));
 	}
@@ -1032,7 +1032,7 @@ void normalize_domains(PlutoProg *prog)
 		Stmt *stmt = &prog->stmts[i];
 		for (j=stmt->dim; j<nvar; j++)  {
 			stmt->is_outer_loop[j] = 0;
-			pluto_matrix_add_col(&stmt->domain, stmt->dim);
+			pluto_constraints_add_col(stmt->domain, stmt->dim);
 		}
 	}
 
@@ -1043,21 +1043,21 @@ void normalize_domains(PlutoProg *prog)
 		int target_dim = prog->stmts[dep->dest].dim;
 
 		for (j=src_dim; j<nvar; j++)    {
-			pluto_matrix_add_col(&dep->dpolytope, src_dim);
+			pluto_constraints_add_col(dep->dpolytope, src_dim);
 		}
 
 		for (j=target_dim; j<nvar; j++)    {
-			pluto_matrix_add_col(&dep->dpolytope, nvar+target_dim);
+			pluto_constraints_add_col(dep->dpolytope, nvar+target_dim);
 		}
 	}
 
 	/* Normalize rows of dependence polyhedra */
 	for (k=0; k<prog->ndeps; k++)   {
 		/* Normalize by gcd */
-		PlutoInequalities *dpoly = prog->deps[k].dpolytope;
+		PlutoConstraints *dpoly = prog->deps[k].dpolytope;
 
 		for(i=0; i<dpoly->nrows; i++)   {
-			pluto_matrix_normalize_row(dpoly, i);
+			pluto_constraints_normalize_row(dpoly, i);
 		}
 	}
 
@@ -1066,7 +1066,7 @@ void normalize_domains(PlutoProg *prog)
 	bool *neg = malloc(sizeof(bool)*npar);
 	for (k=0; k<prog->ndeps; k++) {
 		Dep *dep = &prog->deps[k];
-		PlutoInequalities *dpoly = dep->dpolytope;
+		PlutoConstraints *dpoly = dep->dpolytope;
 
 		int j;
 		bzero(neg, npar*sizeof(bool));
@@ -1088,7 +1088,7 @@ void normalize_domains(PlutoProg *prog)
 
 		for (j=0; j<npar; j++)  {
 			if (neg[j])   {
-				pluto_matrix_add_row(&dpoly, dpoly->nrows);
+				pluto_constraints_add_inequality(dpoly, dpoly->nrows);
 				dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
 			}
 		}
@@ -1111,7 +1111,7 @@ void denormalize_domains(PlutoProg *prog)
 		int del_count = 0;
 		for (j=0; j<nvar; j++)  {
 			if (!stmt->is_outer_loop[j]) {
-				pluto_matrix_remove_col(stmt->domain, j-del_count);
+				pluto_constraints_remove_col(stmt->domain, j-del_count);
 				pluto_matrix_remove_col(stmt->trans, j-del_count);
 				del_count++;
 			}

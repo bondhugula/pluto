@@ -40,22 +40,17 @@ struct plutoMatrix{
 typedef struct plutoMatrix PlutoMatrix;
 
 
-/* A set of linear inequalities all in >= 0 form */
-/* i.e., c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= 0 */
-typedef PlutoMatrix PlutoInequalities;
-
 void pluto_matrix_print(FILE *, PlutoMatrix *);
 void pluto_matrix_read(FILE *, PlutoMatrix *);
 PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
-void pluto_matrix_free (PlutoMatrix *mat);
+void pluto_matrix_free(PlutoMatrix *mat);
 void pluto_matrix_add_col(PlutoMatrix **mat, int pos);
 void pluto_matrix_remove_col(PlutoMatrix *, int);
-PlutoMatrix * pluto_matrix_copy (PlutoMatrix *src);
-void pluto_matrix_add_row (PlutoMatrix **mat, int pos);
-void pluto_matrix_zero_row (PlutoMatrix *mat, int pos);
-void pluto_matrix_zero_col (PlutoMatrix *mat, int pos);
+PlutoMatrix * pluto_matrix_copy(const PlutoMatrix *src);
+void pluto_matrix_add_row(PlutoMatrix **mat, int pos);
+void pluto_matrix_zero_row(PlutoMatrix *mat, int pos);
+void pluto_matrix_zero_col(PlutoMatrix *mat, int pos);
 void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos);
-void pluto_inequalities_pretty_print(FILE *fp, PlutoInequalities *ineq);
 void pluto_matrix_remove_row(PlutoMatrix *mat, int pos);
 
 inline int lcm (int a, int b);

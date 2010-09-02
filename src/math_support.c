@@ -41,7 +41,6 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
         mat->val[i] = (int *) malloc(alloc_ncols*sizeof(int));
     }
 
-
     mat->alloc_nrows = alloc_nrows;
     mat->alloc_ncols = alloc_ncols;
 
@@ -97,14 +96,13 @@ void pluto_matrix_remove_row(PlutoMatrix *mat, int pos)
 
 PlutoMatrix *pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
 {
+    int i, j;
     PlutoMatrix *newMat;
 
     newMat = pluto_matrix_alloc(PLMAX(nrows,mat->alloc_nrows), PLMAX(ncols,mat->alloc_ncols));
 
     newMat->nrows = nrows;
     newMat->ncols = ncols;
-
-    int i, j;
 
     for (i=0; i<PLMIN(newMat->nrows, mat->nrows); i++) {
         for (j=0; j<PLMIN(newMat->ncols, mat->ncols); j++) {
@@ -174,7 +172,7 @@ void pluto_matrix_add_row(PlutoMatrix **mat, int pos)
 
 
 /* Return a copy of src */
-PlutoMatrix *pluto_matrix_copy (PlutoMatrix *src)
+PlutoMatrix *pluto_matrix_copy(const PlutoMatrix *src)
 {
     int i, j;
 
@@ -192,7 +190,7 @@ PlutoMatrix *pluto_matrix_copy (PlutoMatrix *src)
     return dest;
 }
 
-void pluto_matrix_zero_row (PlutoMatrix *mat, int pos)
+void pluto_matrix_zero_row(PlutoMatrix *mat, int pos)
 {
     int j;
 
@@ -213,7 +211,6 @@ void pluto_matrix_zero_col (PlutoMatrix *mat, int pos)
         mat->val[i][pos] = 0;
     }
 }
-
 
 
 void pluto_matrix_read(FILE *fp, PlutoMatrix *mat)
@@ -241,24 +238,8 @@ void pluto_matrix_print(FILE *fp, PlutoMatrix *mat)
     fprintf(fp, "\n");
 }
 
-void pluto_inequalities_pretty_print(FILE *fp, PlutoInequalities *ineq)
-{
-    int i, j;
 
-    fprintf(fp, "%d %d\n", ineq->nrows, ineq->ncols);
-
-    for (i=0; i<ineq->nrows; i++) {
-        for (j=0; j<ineq->ncols; j++) {
-            fprintf(fp, "%s%d ", ineq->val[i][j]>=0? " ":"", ineq->val[i][j]);
-        }
-        fprintf(fp, "\t >= 0\n");
-    }
-    fprintf(fp, "\n");
-}
-
-
-
-
+/* Normalize row by its gcd */
 void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
 {
     int i, j, k;
@@ -271,8 +252,8 @@ void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
             if (mat->val[i][j] == 0)  break;
             rowgcd = gcd(rowgcd,abs(mat->val[i][j]));
         }
-        if (i == mat->nrows)   {
-            if (rowgcd > 1)    {
+        if (i == mat->nrows) {
+            if (rowgcd > 1) {
                 for (k=0; k<mat->ncols; k++)    {
                     mat->val[i][k] /= rowgcd;
                 }
@@ -282,13 +263,13 @@ void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
 }
 
 
-inline int lcm (int a, int b)
+inline int lcm(int a, int b)
 {
     return (a*b)/gcd(a,b);
 }
 
 
-inline int gcd (int a, int b)
+inline int gcd(int a, int b)
 {
     a = abs(a);
     b = abs(b);
@@ -304,7 +285,7 @@ inline int gcd (int a, int b)
 }
 
 
-int *min_lexical (int *a, int *b, int num)   
+int *min_lexical(int *a, int *b, int num)   
 {
     int i;
 
@@ -316,5 +297,3 @@ int *min_lexical (int *a, int *b, int num)
     /* both are equal */
     return a;
 }
-
-
