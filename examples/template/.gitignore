@@ -1,0 +1,9 @@
+*.par.c
+*.tiled.c
+*.cloog
+*.pluto.c
+out_*
+tiled
+orig
+par
+opt
