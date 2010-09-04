@@ -50,8 +50,10 @@ for arg in $*; do
 done
 
 # some special processing for linearized accesses
+if [ "$SOURCEFILE" != "" ]; then
 grep __SPECIAL $SOURCEFILE > .nonlinearized
 grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
+fi
 
 $pluto $* || exit 1
 

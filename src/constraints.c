@@ -429,17 +429,17 @@ void pluto_constraints_print(FILE *fp, PlutoConstraints *cst)
 }
 
 
-void pluto_constraints_pretty_print(FILE *fp, PlutoConstraints *ineq)
+void pluto_constraints_pretty_print(FILE *fp, PlutoConstraints *cst)
 {
     int i, j;
 
-    fprintf(fp, "%d %d\n", ineq->nrows, ineq->ncols);
+    fprintf(fp, "%d %d\n", cst->nrows, cst->ncols);
 
-    for (i=0; i<ineq->nrows; i++) {
-        for (j=0; j<ineq->ncols; j++) {
-            fprintf(fp, "%s%d ", ineq->val[i][j]>=0? " ":"", ineq->val[i][j]);
+    for (i=0; i<cst->nrows; i++) {
+        for (j=0; j<cst->ncols; j++) {
+            fprintf(fp, "%s%d ", cst->val[i][j]>=0? " ":"", cst->val[i][j]);
         }
-        fprintf(fp, "\t >= 0\n");
+        fprintf(fp, "\t %s 0\n", cst->is_eq[i]? ">=": "==");
     }
     fprintf(fp, "\n");
 }
@@ -468,7 +468,7 @@ void pluto_constraints_pretty_print2(FILE *fp, PlutoConstraints *cst)
             }
             var++;
         }
-        fprintf(fp, ">= 0\n");
+        fprintf(fp, "%s 0\n", cst->is_eq[i]? ">=": "==");
     }
     fprintf(fp, "\n");
 }
@@ -582,7 +582,7 @@ void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
-    assert (pos <= cst->nrows);
+    assert (pos >= 0 && pos <= cst->nrows);
     assert (cst->nrows <= cst->alloc_nrows);
 
     // printf("add inequality at pos: %d; allocated: %d\n", pos, cst->alloc_nrows);
@@ -618,7 +618,7 @@ void pluto_constraints_remove_row(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
-    assert(pos <= cst->nrows-1);
+    assert(pos >= 0 && pos <= cst->nrows-1);
 
     for (i=pos; i<cst->nrows-1; i++) {
         for (j=0; j<cst->ncols; j++) {
@@ -664,6 +664,8 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos)
 {
     int i, j, k;
 
+       assert(pos >= 0 && pos <= cst->nrows-1);
+
     /* Normalize cst first */
     for (i=0; i<cst->nrows; i++)    {
         if (cst->val[i][0] == 0) continue;
@@ -689,7 +691,7 @@ void pluto_constraints_add_col(PlutoConstraints *cst, int pos)
     int i, j;
 
     /* Has to be a new variable */
-    assert(pos <= cst->ncols-1);
+    assert(pos >= 0 && pos <= cst->ncols-1);
 
     if (cst->ncols == cst->alloc_ncols)  {
         pluto_constraints_resize(cst, cst->nrows, cst->ncols+1);

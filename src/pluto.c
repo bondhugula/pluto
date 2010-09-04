@@ -478,7 +478,6 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
 }
 
 
-
 /* Find all independent permutable hyperplanes at a level. Corresponds to a
  * band of permutable loops in the transformed space */
 int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
@@ -626,7 +625,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
     free(orthcst);
 
-    /* same number of solutions are found for each stmt */
+    /* Same number of solutions are found for each stmt */
     return num_sols_found;
 }
 
@@ -1190,7 +1189,7 @@ void pluto_auto_transform(PlutoProg *prog)
 
 		if (sols_found > 0) {
 			for (j=0; j<sols_found; j++)      {
-				/* Mark dependences carried by this solution */
+                               /* Mark dependences satisfied by this solution */
 				dep_satisfaction_update(prog, stmts[0].trans->nrows-sols_found+j);
 				ddg_update(ddg, prog);
 			}
