@@ -558,11 +558,24 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         return orthcst;
     }
 
-    h = Matrix_Alloc(stmt->trans->nrows, nvar);
-
     /* Get rid of the variables that don't appear in the domain of this
      * statement and also beta rows
      */
+    for (i = 0, p = 0; i < nvar; i++)
+        if (stmt->is_outer_loop[i])
+           p++;
+    for (j = 0, q = 0; j < stmt->trans->nrows; j++)
+       if (hProps[j].type != H_SCALAR)
+           q++;
+
+    if (q == 0) {
+        /* no need to add any orthogonality constraints */
+        *orthonum = 0;
+        return orthcst;
+    }
+
+    h = Matrix_Alloc(q, p);
+
     p=0; 
     q=0;
     for (i=0; i<nvar; i++) {
@@ -579,15 +592,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         }
     }
 
-    h->NbRows = q;
-    h->NbColumns = p;
-
-    if (h->NbRows == 0) {
-        /* no need to add any orthogonality constraints */
-        *orthonum = 0;
-        Matrix_Free(h);
-        return orthcst;
-    }
 
     PlutoMatrix *ortho = get_orthogonal_subspace(h);
 
