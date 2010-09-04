@@ -305,7 +305,9 @@ int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_is_satisfied(Dep *dep);
 
 PlutoConstraints *get_permutability_constraints(Dep *, int, PlutoProg *);
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *, HyperplaneProperties *, int *);
+PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
+        HyperplaneProperties *hProps, const PlutoConstraints *currcst,
+       int *orthonum);
 PlutoConstraints *get_non_trivial_sol_constraints(PlutoProg *);
 
 void pluto_auto_transform(PlutoProg *prog);

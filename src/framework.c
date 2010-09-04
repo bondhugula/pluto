@@ -26,11 +26,12 @@
 #include "constraints.h"
 #include "pluto.h"
 
-#include "polylib/polylib64.h"
+#include <isl_constraint.h>
+#include <isl_mat.h>
+#include <isl_set.h>
 #include "candl/candl.h"
 
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
-static PlutoMatrix *get_orthogonal_subspace(Matrix *h);
 
 /**
  *
@@ -534,13 +535,118 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
 }
 
 
-/* Returns linear independence constraints for a single statement */
+/*
+ * Construct a PlutoMatrix with the same content as the given isl_mat.
+ */
+static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
+{
+    int i, j;
+    int rows, cols;
+    isl_int v;
+    PlutoMatrix *pluto;
+
+    rows = isl_mat_rows(mat);
+    cols = isl_mat_cols(mat);
+    pluto = pluto_matrix_alloc(rows, cols);
+
+    isl_int_init(v);
+
+    for (i = 0; i < rows; ++i)
+       for (j = 0; j < cols; ++j) {
+           isl_mat_get_element(mat, i, j, &v);
+           pluto->val[i][j] = isl_int_get_si(v);
+       }
+
+    isl_int_clear(v);
+
+    return pluto;
+}
+
+
+/*
+ * Construct a non-parametric basic set from the constraints in cst.
+ */
+static __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
+       isl_ctx *ctx, const PlutoConstraints *cst)
+{
+    int i, j;
+    isl_int v;
+    isl_dim *dim;
+    isl_constraint *c;
+    isl_basic_set *bset;
+
+    isl_int_init(v);
+
+    dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+    bset = isl_basic_set_universe(isl_dim_copy(dim));
+
+    for (i = 0; i < cst->nrows; ++i) {
+       if (cst->is_eq[i])
+           c = isl_equality_alloc(isl_dim_copy(dim));
+       else
+           c = isl_inequality_alloc(isl_dim_copy(dim));
+
+       isl_int_set_si(v, cst->val[i][cst->ncols - 1]);
+       isl_constraint_set_constant(c, v);
+
+       for (j = 0; j < cst->ncols - 1; ++j) {
+           isl_int_set_si(v, cst->val[i][j]);
+           isl_constraint_set_coefficient(c, isl_dim_set, j, v);
+       }
+
+       bset = isl_basic_set_add_constraint(bset, c);
+    }
+
+    isl_dim_free(dim);
+
+    isl_int_clear(v);
+
+    return bset;
+}
+
+
+/*
+ * Negate the single constraint in cst.
+ */
+static void negate_constraint(PlutoConstraints *cst)
+{
+    int i;
+
+    for (i = 0; i < cst->ncols; ++i)
+       cst->val[0][i] = -cst->val[0][i];
+}
+
+
+/*
+ * Returns linear independence constraints for a single statement.
+ *
+ * In particular, if H contains the first rows of an affine transformation
+ * then return a constraint on the coefficients of the next row that
+ * ensures that this next row is linearly independent of the first rows.
+ * Furthermore, the constraint is constructed in such a way that it allows
+ * for a solution when combined with the other constraints on the coefficients
+ * (currcst), provided any such constraint can be constructed.
+ *
+ * We do this by computing a basis for the null space of H and returning
+ * a constraint that enforces the sum of these linear expressions
+ * over the coefficients to be strictly greater than zero.
+ * In this sum, some of the linear expressions may be negated to ensure
+ * that a solution exists.
+ *
+ * The return value is a list of constraints, the first *orthonum corresponding
+ * to the linear expressions that form a basis of the null space
+ * and the final constraint the actual linear independence constraint.
+ */
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
-        HyperplaneProperties *hProps,  int *orthonum)
+        HyperplaneProperties *hProps, const PlutoConstraints *currcst,
+       int *orthonum)
 {
     int i, j, k, p, q;
-    Matrix *h;
     PlutoConstraints **orthcst;
+    isl_ctx *ctx;
+    isl_int v;
+    isl_mat *h;
+    isl_basic_set *isl_currcst;
 
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -574,7 +680,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         return orthcst;
     }
 
-    h = Matrix_Alloc(q, p);
+    ctx = isl_ctx_alloc();
+    assert(ctx);
+    isl_int_init(v);
+
+    h = isl_mat_alloc(ctx, q, p);
 
     p=0; 
     q=0;
@@ -584,7 +694,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
             for (j=0; j<stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
                 if (hProps[j].type != H_SCALAR)   {
-                    h->p[q][p] = stmt->trans->val[j][i];
+                   isl_int_set_si(v, stmt->trans->val[j][i]);
+                   h = isl_mat_set_element(h, q, p, v);
                     q++;
                 }
             }
@@ -592,8 +703,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         }
     }
 
+    h = isl_mat_right_kernel(h);
 
-    PlutoMatrix *ortho = get_orthogonal_subspace(h);
+    PlutoMatrix *ortho = pluto_matrix_from_isl_mat(h);
+
+    isl_mat_free(h);
 
     /* Initialize to zero */
     for (k=0; k<nvar; k++) {
@@ -633,26 +747,13 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
     }
     // pluto_matrix_print(stdout, ortho); 
 
+    isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+
+    assert(p == ortho->nrows);
     p=0;
-	assert(h->NbColumns == ortho->nrows);
-	assert(h->NbColumns == ortho->ncols);
     for (i=0; i<ortho->ncols; i++) {
-        for (j=0; j<ortho->nrows; j++) {
-            if (ortho->val[j][i] != 0) break;
-        }
-        /* Ignore all zero cols */
-        if (j==ortho->nrows) continue;
+       isl_basic_set *orthcst_i;
 
-        /* Ignore cols that are -ves of previous ones */
-		for (k=0; k<i; k++)	{
-            for (j=0; j<ortho->nrows; j++) {
-                if (ortho->val[j][i] != -ortho->val[j][k]) break;
-            }
-            if (j==ortho->nrows) break;
-        }
-		if (k < i)	continue;
-
-        /* We have a non-zero col */
         j=0;
         for (q=0; q<nvar; q++) {
             if (stmt->is_outer_loop[q])    {
@@ -661,7 +762,14 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
             }
         }
         orthcst[p]->nrows = 1;
+        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+       orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
+       orthcst_i = isl_basic_set_intersect(orthcst_i,
+                                           isl_basic_set_copy(isl_currcst));
+       if (isl_basic_set_is_empty(orthcst_i))
+           negate_constraint(orthcst[p]);
+       isl_basic_set_free(orthcst_i);
         p++;
         assert(p<=nvar-1);
     }
@@ -720,76 +828,14 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         // IF_DEBUG2(constraints_print(stdout, orthcst[i]));
     // }
 
-    Matrix_Free(h);
     pluto_matrix_free(ortho);
+    isl_int_clear(v);
+    isl_basic_set_free(isl_currcst);
+    isl_ctx_free(ctx);
 
     return orthcst;
 }
 
-
-/* Given H, Returns I - H^T(HH^T)H which is the subspace orthogonal to 
- * H: i.e., the null space of H */
-static PlutoMatrix *get_orthogonal_subspace(Matrix *h)
-{
-    int nrows, ncols;
-    PlutoMatrix *ortho;
-    int i, j;
-    int scale;
-    Matrix *htrans,  *inv, *mat1, *mat2, *mat3, *mat4, *save;
-
-    nrows = h->NbRows;
-    ncols = h->NbColumns;
-
-    // print_matrix(stdout, stmt->trans, stmt->trans->nrows, nvar+1);
-
-    htrans = Matrix_Alloc(ncols, nrows);
-    mat1 = Matrix_Alloc(nrows, nrows);
-    inv = Matrix_Alloc(nrows, nrows);
-    mat2 = Matrix_Alloc(nrows, nrows);
-    mat3 = Matrix_Alloc(nrows, ncols);
-    mat4 = Matrix_Alloc(ncols, ncols);
-    save = Matrix_Alloc(nrows, nrows);
-    ortho = pluto_matrix_alloc(ncols, ncols);
-
-    Matrix_Free(htrans);
-    htrans = Transpose(h);
-
-    // Matrix_Print(stdout, P_VALUE_FMT, h);
-    // Matrix_Print(stdout, P_VALUE_FMT, htrans);
-    /* compute H.H^T */
-    Matrix_Product(h, htrans, mat1);
-
-    /* HACK: polylib seems to be modifying its first argument to inverse;
-     * hence saving it */
-    for(i=0; i<nrows; i++)
-        for(j=0; j<nrows; j++)  {
-            save->p[i][j] = mat1->p[i][j];
-        }
-
-    Matrix_Inverse(mat1, inv);
-
-    Matrix_Product(inv, save, mat2);
-    scale = mat2->p[0][0];
-
-    Matrix_Product(inv, h, mat3);
-    Matrix_Product(htrans, mat3, mat4);
-
-
-    for (i=0; i<ncols; i++) {
-        for (j=0; j<ncols; j++)
-            ortho->val[i][j] = ((i==j)?scale: 0) - mat4->p[i][j];
-    }
-
-    Matrix_Free(htrans);
-    Matrix_Free(mat1);
-    Matrix_Free(mat2);
-    Matrix_Free(mat3);
-    Matrix_Free(mat4);
-    Matrix_Free(save);
-    Matrix_Free(inv);
-
-    return ortho;
-}
 
 /*
  * Check whether the dependence is carried at level 'level'

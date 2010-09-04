@@ -534,7 +534,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
         /* Get orthogonality constraints for each statement */
         for (j=0; j<nstmts; j++)    {
             orthcst[j] = get_stmt_ortho_constraints(&stmts[j], 
-                    prog, hProps, &orthonum[j]);
+                    prog, hProps, currcst, &orthonum[j]);
             // if (orthonum[j] > 0)    {
               //   if (orthoprod == 0) orthoprod = orthonum[j];
                 // else orthoprod = orthoprod*orthonum[j];
