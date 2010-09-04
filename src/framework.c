@@ -899,8 +899,6 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
     int *sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
-        free(sol);
-
         for (j=0; j<nvar; j++)    {
             cst->val[0][j] = stmts[src].trans->val[level][j];
         }
@@ -922,7 +920,6 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
-            free(sol);
             return DEP_ZERO;
         }
     }
@@ -952,10 +949,10 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
     cst->nrows = 1+dep->dpolytope->nrows;
 
+    free(sol);
     sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
-        free(sol);
         return DEP_PLUS;
     }
 
@@ -984,12 +981,14 @@ int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
 
     cst->nrows = 1+dep->dpolytope->nrows;
 
+    free(sol);
     sol = pluto_constraints_solve(cst);
 
     if (!sol)   {   
-        free(sol);
         return DEP_MINUS;
     }
+
+    free(sol);
 
     /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
     return DEP_STAR;
