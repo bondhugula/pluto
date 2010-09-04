@@ -21,7 +21,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE(pluto,0.6.2)
 AM_CONFIG_HEADER(config.h)
 
-dnl clan, polylib, candl, cloog are all configured with 64-bit data type support
+dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
 dnl being 32-bit/64-bit
 CFLAGS="-Wall -funroll-loops -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_LONG_LONG"
@@ -106,19 +106,6 @@ LIBS="../piplib-1.4.0/libpiplib64.la $LIBS"
 CFLAGS="-I../piplib-1.4.0/include $CFLAGS"
 
 
-dnl Configuring PolyLib (long long int is 64 bits)
-echo -e "\n=========================="
-echo "Configuring Polylib 5.22.5"
-echo "=========================="
-configureopts="--enable-longlongint-lib --without-libgmp --enable-static --disable-shared"
-(cd polylib-5.22.5/
- $RM config.cache;
- ./configure ${configureopts} || exit 1
- )
-LIBS="../polylib-5.22.5/libpolylib64.la $LIBS"
-CFLAGS="-I../polylib-5.22.5/include $CFLAGS"
-
-
 dnl Configuring Clan 0.6.0
 echo -e "\n=========================="
 echo "Configuring Clan 0.6.0"
@@ -161,26 +148,14 @@ CFLAGS="-I../isl/include $CFLAGS"
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo -e "\n=========================="
-if test $use_isl = "false"; then
-echo "Configuring CLooG 0.14.1 (polylib-64)"
-echo "=========================="
-    configureopts="--with-bits=64 --with-polylib-library=../polylib-5.22.5/.libs --with-polylib-include=../polylib-5.22.5/include --enable-static --disable-shared"
-    (cd cloog-0.14.1/
-     ./configure ${configureopts}
-     )
-    LIBS="-lcloog $LIBS"
-    CFLAGS="-I../cloog-0.14.1/include $CFLAGS"
-    LDFLAGS="-L../cloog-0.14.1/.libs/ $LDFLAGS"
-else
 echo "Configuring Cloog-isl"
 echo "=========================="
-    configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
-    (cd cloog-isl/
-     ./configure ${configureopts}
-     )
-    LIBS="../cloog-isl/libcloog-isl.la $LIBS"
-    CFLAGS="-I../cloog-isl/include $CFLAGS"
-fi
+configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
+(cd cloog-isl/
+ ./configure ${configureopts}
+ )
+LIBS="../cloog-isl/libcloog-isl.la $LIBS"
+CFLAGS="-I../cloog-isl/include $CFLAGS"
 
 AC_PATH_PROGS(BASH, bash)
 

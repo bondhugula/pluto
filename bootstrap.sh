@@ -14,10 +14,6 @@ cd clan-0.6.0/
 ./autogen.sh
 cd ..
 
-cd polylib-5.22.5
-./autogen.sh
-cd ..
-
 (cd isl; ./autogen.sh)
 
 cd cloog-isl
