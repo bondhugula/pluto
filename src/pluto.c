@@ -581,8 +581,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 #endif 
             /* Just look at the "all non-negative" orthant */
             for (j=0; j<nstmts; j++)    {
-                for (k=0; k<orthonum[j]; k++)   {
-                    pluto_constraints_add(currcst, orthcst[j][k]);
+                if (orthonum[j] >= 1)   {
+                    pluto_constraints_add(currcst, orthcst[j][orthonum[j]-1]);
                 }
             }
 
