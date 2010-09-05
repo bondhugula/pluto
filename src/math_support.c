@@ -213,7 +213,7 @@ void pluto_matrix_zero_col (PlutoMatrix *mat, int pos)
 }
 
 
-void pluto_matrix_read(FILE *fp, PlutoMatrix *mat)
+void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat)
 {
     int i, j;
 
@@ -223,7 +223,7 @@ void pluto_matrix_read(FILE *fp, PlutoMatrix *mat)
 }
 
 
-void pluto_matrix_print(FILE *fp, PlutoMatrix *mat)
+void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat)
 {
     int i, j;
 

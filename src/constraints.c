@@ -128,7 +128,7 @@ void pluto_constraints_resize(PlutoConstraints *cst, int nrows, int ncols)
 
 /* Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself */
 /* TODO: automatic non-destructive resizing */
-PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, PlutoConstraints *cst2)
+PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConstraints *cst2)
 {
     assert(cst1->ncols == cst2->ncols);
     assert(cst1->nrows+cst2->nrows <= cst1->alloc_nrows);
@@ -413,7 +413,7 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
 }
 
 
-void pluto_constraints_print(FILE *fp, PlutoConstraints *cst)
+void pluto_constraints_print(FILE *fp, const PlutoConstraints *cst)
 {
     int i, j;
 
@@ -429,7 +429,7 @@ void pluto_constraints_print(FILE *fp, PlutoConstraints *cst)
 }
 
 
-void pluto_constraints_pretty_print(FILE *fp, PlutoConstraints *cst)
+void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 {
     int i, j;
 
@@ -476,7 +476,7 @@ void pluto_constraints_pretty_print2(FILE *fp, PlutoConstraints *cst)
 
 /* Convert Pluto constraints into PIP format (first column is
  * 0/1 based on equality/inequality */
-PlutoMatrix *pluto2pip(PlutoConstraints *cst, PlutoMatrix *pmat)
+PlutoMatrix *pluto2pip(const PlutoConstraints *cst, PlutoMatrix *pmat)
 {
     int i, j;
 
@@ -497,7 +497,7 @@ PlutoMatrix *pluto2pip(PlutoConstraints *cst, PlutoMatrix *pmat)
 
 
 /* Use PIP to solve these constraints */
-int *pluto_constraints_solve(PlutoConstraints *cst)
+int *pluto_constraints_solve(const PlutoConstraints *cst)
 {
     int bignum, i;
     PipMatrix  *domain, *context;
@@ -726,7 +726,7 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb)
  * Returns the best candidate to eliminate (exact index in cst)
  * max_elim: maximum number of variables to eliminate (from the right)
  */
-int best_elim_candidate(PlutoConstraints *cst, int max_elim)
+int best_elim_candidate(const PlutoConstraints *cst, int max_elim)
 {
     int **csm, i, j, ub, lb, cost;
 

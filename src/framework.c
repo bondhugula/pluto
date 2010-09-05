@@ -98,7 +98,7 @@ static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 
 
 /* Builds legality constraints for a non-uniform dependence */
-static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, PlutoProg *prog)
+static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog)
 {
     PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
@@ -394,7 +394,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 
 
 PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps, 
-        PlutoProg *prog)
+        const PlutoProg *prog)
 {
     int i, dest_stmt, src_stmt;
     Dep *dep;
@@ -480,7 +480,7 @@ PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps,
 
 
 /* PlutoConstraints to avoid trivial solutions (all zeros) */
-PlutoConstraints *get_non_trivial_sol_constraints(PlutoProg *prog)
+PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
 {
     PlutoConstraints *nzcst;
     int i, j, stmt_offset;
@@ -637,7 +637,7 @@ static void negate_constraint(PlutoConstraints *cst)
  * to the linear expressions that form a basis of the null space
  * and the final constraint the actual linear independence constraint.
  */
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
+PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         HyperplaneProperties *hProps, const PlutoConstraints *currcst,
        int *orthonum)
 {
@@ -899,7 +899,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 }
 
 
-int get_dep_direction(Dep *dep, PlutoProg *prog, int level)
+int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {
     static PlutoConstraints *cst = NULL;
     int i, j, src, dest;

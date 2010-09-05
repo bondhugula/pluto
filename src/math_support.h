@@ -40,8 +40,8 @@ struct plutoMatrix{
 typedef struct plutoMatrix PlutoMatrix;
 
 
-void pluto_matrix_print(FILE *, PlutoMatrix *);
-void pluto_matrix_read(FILE *, PlutoMatrix *);
+void pluto_matrix_print(FILE *, const PlutoMatrix *);
+void pluto_matrix_read(FILE *, const PlutoMatrix *);
 PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
 void pluto_matrix_free(PlutoMatrix *mat);
 void pluto_matrix_add_col(PlutoMatrix **mat, int pos);
@@ -53,8 +53,8 @@ void pluto_matrix_zero_col(PlutoMatrix *mat, int pos);
 void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_remove_row(PlutoMatrix *mat, int pos);
 
-inline int lcm (int a, int b);
-inline int gcd (int a, int b);
-int *min_lexical (int *a, int *b, int num);
+inline int lcm(int a, int b);
+inline int gcd(int a, int b);
+int *min_lexical(int *a, int *b, int num);
 
 #endif

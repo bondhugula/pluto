@@ -304,18 +304,18 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_is_satisfied(Dep *dep);
 
-PlutoConstraints *get_permutability_constraints(Dep *, int, PlutoProg *);
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
+PlutoConstraints *get_permutability_constraints(Dep *, int, const PlutoProg *);
+PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         HyperplaneProperties *hProps, const PlutoConstraints *currcst,
-       int *orthonum);
-PlutoConstraints *get_non_trivial_sol_constraints(PlutoProg *);
+        int *orthonum);
+PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
 
 void pluto_auto_transform(PlutoProg *prog);
-int  pluto_codegen(FILE *fp, FILE *outfp, PlutoProg *prog);
+int  pluto_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
-int  get_dep_direction (Dep *dep, PlutoProg *prog, int level);
+int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);

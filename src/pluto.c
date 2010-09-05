@@ -1410,7 +1410,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 /* Call Cloog to generate code; also generate the necessary macros and
  * defintions for the transformed source. fp is the .cloog file that will 
  * be supplied to Cloog to generate code */
-int pluto_codegen(FILE *cloogfp, FILE *outfp, PlutoProg *prog)
+int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 { 
 	int i, j;
 	CloogProgram *program ;

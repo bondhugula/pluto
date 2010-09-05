@@ -49,15 +49,15 @@ void pluto_constraints_free(PlutoConstraints *);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src);
 
-int best_elim_candidate(PlutoConstraints *, int);
+int best_elim_candidate(const PlutoConstraints *, int);
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
 
-PlutoMatrix *pluto2pip(PlutoConstraints *, PlutoMatrix *pipmat);
+PlutoMatrix *pluto2pip(const PlutoConstraints *, PlutoMatrix *pipmat);
 
-PlutoConstraints *pluto_constraints_add(PlutoConstraints *, PlutoConstraints *);
+PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int *pluto_constraints_solve(PlutoConstraints *);
+int *pluto_constraints_solve(const PlutoConstraints *);
 void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_col(PlutoConstraints *cst, int pos);
 void pluto_constraints_remove_row(PlutoConstraints *, int);
@@ -66,8 +66,8 @@ void pluto_constraints_remove_col(PlutoConstraints *, int);
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
 
-void pluto_constraints_pretty_print(FILE *fp, PlutoConstraints *cst);
-void pluto_constraints_print(FILE *fp, PlutoConstraints *);
+void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
+void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_dump_polylib(PlutoConstraints *cst);
 
 #endif
