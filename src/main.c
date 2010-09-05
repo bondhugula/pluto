@@ -175,8 +175,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 3;
     }
 
-       printf("Input file: %s\n", srcFileName);
-
     src_fp  = fopen(srcFileName, "r");
 
     if (!src_fp)   {
