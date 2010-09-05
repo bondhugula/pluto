@@ -483,7 +483,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
 int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 {
     int num_sols_found, j, k;
-    int *sol, *bestsol;
+    int *bestsol;
     int orthonum[MAX_STMTS];
     PlutoConstraints *basecst, *nzcst;
     static PlutoConstraints *currcst = NULL;
@@ -587,15 +587,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
             }
 
             // IF_DEBUG2(pluto_constraints_print(stdout, currcst));
-            sol = pluto_prog_constraints_solve(currcst, prog);
+            bestsol = pluto_prog_constraints_solve(currcst, prog);
 
-            if (sol)    {
-                if (bestsol == NULL) bestsol = sol;
-                else{ 
-                    bestsol = min_lexical(sol, bestsol, npar+1);
-                    free(sol);
-                }
-            }
         }
         if (bestsol != NULL)    {
             IF_DEBUG(fprintf(stdout, "Found a hyperplane\n"));
@@ -616,9 +609,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
         for (j=0; j<nstmts; j++)    {
             for (k=0; k<orthonum[j]; k++)   {
-                // pluto_constraints_free(orthcst[j][k]);
+                pluto_constraints_free(orthcst[j][k]);
             }
-            // free(orthcst[j]);
+            free(orthcst[j]);
         }
 
     }while (num_sols_found < max_sols && bestsol != NULL);

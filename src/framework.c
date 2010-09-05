@@ -620,7 +620,7 @@ static void negate_constraint(PlutoConstraints *cst)
 /*
  * Returns linear independence constraints for a single statement.
  *
- * In particular, if H contains the first rows of an affine transformation
+ * In particular, if H contains the first rows of an affine transformation,
  * then return a constraint on the coefficients of the next row that
  * ensures that this next row is linearly independent of the first rows.
  * Furthermore, the constraint is constructed in such a way that it allows
@@ -636,6 +636,9 @@ static void negate_constraint(PlutoConstraints *cst)
  * The return value is a list of constraints, the first *orthonum corresponding
  * to the linear expressions that form a basis of the null space
  * and the final constraint the actual linear independence constraint.
+ *
+ * If the null space is 0-dimensional, *orthonum is zero and the return
+ * value is NULL
  */
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         HyperplaneProperties *hProps, const PlutoConstraints *currcst,
@@ -652,16 +655,9 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
     int npar = prog->npar;
     int nstmts = prog->nstmts;
 
-    orthcst = (PlutoConstraints **) malloc(nvar*sizeof(PlutoConstraints *)); 
-
-    for (i=0; i<nvar; i++)  {
-        orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
-        orthcst[i]->ncols = CST_WIDTH;
-    }
-
     if (stmt->num_ind_sols >= stmt->dim) {
         *orthonum = 0;
-        return orthcst;
+        return NULL;
     }
 
     /* Get rid of the variables that don't appear in the domain of this
@@ -677,7 +673,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
     if (q == 0) {
         /* no need to add any orthogonality constraints */
         *orthonum = 0;
-        return orthcst;
+        return NULL;
     }
 
     ctx = isl_ctx_alloc();
@@ -709,13 +705,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
 
     isl_mat_free(h);
 
-    /* Initialize to zero */
-    for (k=0; k<nvar; k++) {
-        for (i=0; i<1; i++) {
-            for (j=0; j<orthcst[k]->ncols; j++) {
-                orthcst[k]->val[i][j] = 0;
-            }
-        }
+    orthcst = (PlutoConstraints **) malloc(nvar*sizeof(PlutoConstraints *)); 
+
+    for (i=0; i<nvar; i++)  {
+        orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
+        orthcst[i]->ncols = CST_WIDTH;
     }
 
     /* Positive orthant only */
@@ -752,7 +746,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
     assert(p == ortho->nrows);
     p=0;
     for (i=0; i<ortho->ncols; i++) {
-       isl_basic_set *orthcst_i;
+        isl_basic_set *orthcst_i;
 
         j=0;
         for (q=0; q<nvar; q++) {
@@ -763,13 +757,13 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, PlutoProg *prog,
         }
         orthcst[p]->nrows = 1;
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
-       orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
-       orthcst_i = isl_basic_set_intersect(orthcst_i,
-                                           isl_basic_set_copy(isl_currcst));
-       if (isl_basic_set_is_empty(orthcst_i))
-           negate_constraint(orthcst[p]);
-       isl_basic_set_free(orthcst_i);
+        orthcst_i = isl_basic_set_intersect(orthcst_i,
+                isl_basic_set_copy(isl_currcst));
+        if (isl_basic_set_is_empty(orthcst_i))
+            negate_constraint(orthcst[p]);
+        isl_basic_set_free(orthcst_i);
         p++;
         assert(p<=nvar-1);
     }
