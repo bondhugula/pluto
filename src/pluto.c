@@ -870,7 +870,7 @@ void detect_transformation_properties(PlutoProg *prog)
                     IF_DEBUG(print_dependence_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
                     IF_DEBUG(pluto_print_transformations(prog));
                     fprintf(stderr, "\tUnfortunately, the transformation computed has violated a dependence.\n");
-                    fprintf(stderr, "\tPlease make sure there in no inconsistent/illegal .fst file in your working directory.\n");
+                    fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor rarely a bug in Pluto's auto transformation.\n");
                     fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
