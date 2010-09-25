@@ -189,7 +189,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     scop = clan_scop_extract(src_fp, clanOptions);
 
-    if (!scop->statement)   {
+    if (!scop || !scop->statement)   {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
         return 1;
