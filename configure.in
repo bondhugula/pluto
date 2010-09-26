@@ -98,12 +98,10 @@ echo -e "\n=========================="
 echo "Configuring PipLib 1.4.0"
 echo "=========================="
 configureopts="--with-bits=64 --enable-static --disable-shared"
-LIBS="../piplib-1.4.0/libpiplib64.la $LIBS"
 (cd piplib-1.4.0/
  $RM config.cache;
  ./configure ${configureopts}
  )
-CFLAGS="-I../piplib-1.4.0/include $CFLAGS"
 
 
 dnl Configuring Clan 0.6.0
@@ -115,9 +113,6 @@ configureopts="--enable-llint-version --enable-static --disable-shared \
 (cd clan-0.6.0/
  ./configure ${configureopts}
  )
-LIBS="../clan-0.6.0/source/libclan.la $LIBS"
-CFLAGS="-I../clan-0.6.0/include \
--I../clan-0.6.0/scoplib/scoplib-0.2.0/include $CFLAGS"
 
 
 dnl Configuring Candl 0.4.0 (long long int)
@@ -130,8 +125,6 @@ configureopts="--enable-llint-version --enable-static --disable-shared \
 (cd candl-0.4.0/
  ./configure ${configureopts}
  )
-LIBS="../candl-0.4.0/source/libcandl.la $LIBS"
-CFLAGS="-I../candl-0.4.0/include $CFLAGS"
 
 
 dnl Configuring isl
@@ -142,8 +135,6 @@ configureopts="--enable-static --disable-shared"
 (cd isl/
  ./configure ${configureopts}
 )
-LIBS="../isl/libisl.la $LIBS"
-CFLAGS="-I../isl/include $CFLAGS"
 
 
 dnl Configuring Cloog 0.14.1 (long long int)
@@ -154,8 +145,6 @@ configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
 (cd cloog-isl/
  ./configure ${configureopts}
  )
-LIBS="../cloog-isl/libcloog-isl.la $LIBS"
-CFLAGS="-I../cloog-isl/include $CFLAGS"
 
 AC_PATH_PROGS(BASH, bash)
 
