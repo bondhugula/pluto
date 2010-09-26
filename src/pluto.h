@@ -140,6 +140,9 @@ struct plutoOptions{
     /* Force this for cloog's -l */
     int cloogl;
 
+    /* Use isl to compute dependences */
+    int isldep;
+
     /* Use candl lastwriter */
     int lastwriter;
 

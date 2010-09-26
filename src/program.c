@@ -33,6 +33,12 @@
 
 #include "scoplib/statement.h"
 
+#include <isl_map.h>
+#include <isl_mat.h>
+#include <isl_set.h>
+#include <isl_flow.h>
+#include <isl_union_map.h>
+
 /* Return a copy of the statement */
 Stmt *stmt_copy(Stmt *src)
 {
@@ -365,6 +371,500 @@ void dep_free(Dep *dep)
 }
 
 
+/* Convert an isl_basic_map to a PlutoConstraints object.
+ * Although a PlutoConstraints object is able to represent equalities,
+ * later stages in Pluto don't seem to handle equalities very well.
+ * If there are any equalities in "bmap", we therefore add them
+ * as inequalities and add an extra inequality that is the sum
+ * of the opposites of these inequalities.
+ */
+static PlutoConstraints *isl_basic_map_to_pluto_inequalities(
+    __isl_keep isl_basic_map *bmap)
+{
+    int i, j;
+    int eq_row;
+    int ineq_row;
+    int n_col;
+    isl_int v;
+    isl_mat *eq, *ineq;
+    PlutoConstraints *cons;
+
+    isl_int_init(v);
+
+    eq = isl_basic_map_equalities_matrix(bmap,
+            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
+    ineq = isl_basic_map_inequalities_matrix(bmap,
+            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
+
+    eq_row = isl_mat_rows(eq);
+    ineq_row = isl_mat_rows(ineq);
+    n_col = isl_mat_cols(eq);
+
+    cons = pluto_constraints_alloc(!!eq_row + eq_row + ineq_row, n_col);
+    cons->nrows = !!eq_row + eq_row + ineq_row;
+
+    for (i = 0; i < eq_row; ++i) {
+        for (j = 0; j < n_col; ++j) {
+            isl_mat_get_element(eq, i, j, &v);
+            cons->val[1 + i][j] = isl_int_get_si(v);
+            cons->val[0][j] -= isl_int_get_si(v);
+        }
+    }
+
+    for (i = 0; i < ineq_row; ++i) {
+        for (j = 0; j < n_col; ++j) {
+            isl_mat_get_element(ineq, i, j, &v);
+            cons->val[!!eq_row + eq_row + i][j] = isl_int_get_si(v);
+        }
+    }
+
+    isl_mat_free(eq);
+    isl_mat_free(ineq);
+
+    isl_int_clear(v);
+
+    return cons;
+}
+
+
+/* Set the dimension names of type "type" according to the elements
+ * in the array "names".
+ */
+static __isl_give isl_dim *set_names(__isl_take isl_dim *dim,
+        enum isl_dim_type type, char **names)
+{
+    int i;
+
+    for (i = 0; i < isl_dim_size(dim, type); ++i)
+        dim = isl_dim_set_name(dim, type, i, names[i]);
+
+    return dim;
+}
+
+
+/* Convert a scoplib_matrix_p containing the constraints of a domain
+ * to an isl_set.
+ */
+static __isl_give isl_set *scoplib_matrix_to_isl_set(scoplib_matrix_p matrix,
+        __isl_take isl_dim *dim)
+{
+    int i, j;
+    int n_eq = 0, n_ineq = 0;
+    isl_ctx *ctx;
+    isl_mat *eq, *ineq;
+    isl_int v;
+    isl_basic_set *bset;
+
+    isl_int_init(v);
+
+    ctx = isl_dim_get_ctx(dim);
+
+    for (i = 0; i < matrix->NbRows; ++i)
+        if (SCOPVAL_zero_p(matrix->p[i][0]))
+            n_eq++;
+        else
+            n_ineq++;
+
+    eq = isl_mat_alloc(ctx, n_eq, matrix->NbColumns - 1);
+    ineq = isl_mat_alloc(ctx, n_ineq, matrix->NbColumns - 1);
+
+    n_eq = n_ineq = 0;
+    for (i = 0; i < matrix->NbRows; ++i) {
+        isl_mat **m;
+        int row;
+
+        if (SCOPVAL_zero_p(matrix->p[i][0])) {
+            m = &eq;
+            row = n_eq++;
+        } else {
+            m = &ineq;
+            row = n_ineq++;
+        }
+
+        for (j = 0; j < matrix->NbColumns - 1; ++j) {
+            int t = SCOPVAL_get_si(matrix->p[i][1 + j]);
+            isl_int_set_si(v, t);
+            *m = isl_mat_set_element(*m, row, j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
+                isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
+    return isl_set_from_basic_set(bset);
+}
+
+
+/* Convert a scoplib_matrix_list_p describing a union of domains
+ * to an isl_set.
+ */
+static __isl_give isl_set *scoplib_matrix_list_to_isl_set(
+        scoplib_matrix_list_p list, __isl_take isl_dim *dim)
+{
+    isl_set *set;
+
+    set = isl_set_empty(isl_dim_copy(dim));
+    for (; list; list = list->next) {
+        isl_set *set_i;
+        set_i = scoplib_matrix_to_isl_set(list->elt, isl_dim_copy(dim));
+        set = isl_set_union(set, set_i);
+    }
+
+    isl_dim_free(dim);
+    return set;
+}
+
+
+/* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *extract_equalities(isl_ctx *ctx,
+        scoplib_matrix_p matrix, int first, int n)
+{
+    int i, j;
+    int n_col;
+    isl_int v;
+    isl_mat *eq;
+
+    n_col = matrix->NbColumns;
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n, n + n_col - 1);
+
+    for (i = 0; i < n; ++i) {
+        isl_int_set_si(v, 0);
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element(eq, i, j, v);
+        isl_int_set_si(v, -1);
+        eq = isl_mat_set_element(eq, i, i, v);
+        for (j = 0; j < n_col - 1; ++j) {
+            int t = SCOPVAL_get_si(matrix->p[first + i][1 + j]);
+            isl_int_set_si(v, t);
+            eq = isl_mat_set_element(eq, i, n + j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    return eq;
+}
+
+
+/* Convert a scoplib_matrix_p schedule [0 A c] to
+ * the isl_map { i -> A i + c } in the space prescribed by "dim".
+ */
+static __isl_give isl_map *scoplib_schedule_to_isl_map(
+        scoplib_matrix_p schedule, __isl_take isl_dim *dim)
+{
+    int n_row, n_col;
+    isl_ctx *ctx;
+    isl_mat *eq, *ineq;
+    isl_basic_map *bmap;
+
+    ctx = isl_dim_get_ctx(dim);
+    n_row = schedule->NbRows;
+    n_col = schedule->NbColumns;
+
+    ineq = isl_mat_alloc(ctx, 0, n_row + n_col - 1);
+    eq = extract_equalities(ctx, schedule, 0, n_row);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    return isl_map_from_basic_map(bmap);
+}
+
+
+/* Return the number of lines until the next non-zero element
+ * in the first column of "access" or until the end of the matrix.
+ */
+static int access_len(scoplib_matrix_p access, int first)
+{
+    int i;
+
+    for (i = first + 1; i < access->NbRows; ++i)
+        if (!SCOPVAL_zero_p(access->p[i][0]))
+            break;
+
+    return i - first;
+}
+
+
+/* Convert a scoplib_matrix_p describing a series of accesses
+ * to an isl_union_map with domain "dom" (in space "D").
+ * Each access in "access" has a non-zero integer in the first column
+ * of the first row identifying the array being accessed.  The remaining
+ * entries of the first column are zero.
+ * Let "A" be array identified by the first entry.
+ * The remaining columns have the form [B c].
+ * Each such access is converted to a map { D[i] -> A[B i + c] } * dom.
+ *
+ * Note that each access in the input is described by at least one row,
+ * which means that there is no way of distinguishing between an access
+ * to a scalar and an access to the first element of a 1-dimensional array.
+ */
+static __isl_give isl_union_map *scoplib_access_to_isl_union_map(
+        scoplib_matrix_p access, __isl_take isl_set *dom, char **arrays)
+{
+    int i, len, n_col;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_mat *eq, *ineq;
+    isl_union_map *res;
+
+    ctx = isl_set_get_ctx(dom);
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+    res = isl_union_map_empty(dim);
+
+    n_col = access->NbColumns;
+
+    for (i = 0; i < access->NbRows; i += len) {
+        isl_basic_map *bmap;
+        isl_map *map;
+        int arr = SCOPVAL_get_si(access->p[i][0]) - 1;
+
+        len = access_len(access, i);
+
+        dim = isl_set_get_dim(dom);
+        dim = isl_dim_from_domain(dim);
+        dim = isl_dim_add(dim, isl_dim_out, len);
+        dim = isl_dim_set_tuple_name(dim, isl_dim_out, arrays[arr]);
+
+        ineq = isl_mat_alloc(ctx, 0, len + n_col - 1);
+        eq = extract_equalities(ctx, access, i, len);
+
+        bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+        map = isl_map_from_basic_map(bmap);
+        map = isl_map_intersect_domain(map, isl_set_copy(dom));
+        res = isl_union_map_union(res, isl_union_map_from_map(map));
+    }
+
+    isl_set_free(dom);
+
+    return res;
+}
+
+
+static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
+{
+    int *count = user;
+
+    *count += 1;
+    isl_basic_map_free(bmap);
+    return 0;
+}
+
+
+static int map_count(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    r = isl_map_foreach_basic_map(map, &basic_map_count, user);
+    isl_map_free(map);
+    return r;
+}
+
+
+/* Temporary data structure used inside extract_deps.
+ *
+ * deps points to the array of Deps being constructed
+ * type is the type of the next Dep
+ * index is the index of the next Dep in the array.
+ */
+struct pluto_extra_dep_info {
+    Dep *deps;
+    int type;
+    int index;
+};
+
+
+/* Convert an isl_basic_map describing part of a dependence to a Dep.
+ * The names of the input and output spaces are of the form S_d
+ * with d an integer identifying the statement.
+ */
+static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
+{
+    Dep *dep;
+    struct pluto_extra_dep_info *info;
+    info = (struct pluto_extra_dep_info *)user;
+
+    bmap = isl_basic_map_remove_divs(bmap);
+
+    dep = &info->deps[info->index];
+
+    dep->id = info->index;
+    dep->dpolytope = isl_basic_map_to_pluto_inequalities(bmap);
+    dep->type = info->type;
+    dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
+    dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
+
+    /* Initialize other fields used for auto transform */
+    dep->satisfied = false;
+    dep->satisfaction_level = -1;
+
+    info->index++;
+    isl_basic_map_free(bmap);
+    return 0;
+}
+
+
+static int map_extract(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    r = isl_map_foreach_basic_map(map, &basic_map_extract, user);
+    isl_map_free(map);
+    return r;
+}
+
+
+static int extract_deps(Dep *deps, int first, __isl_keep isl_union_map *umap,
+    int type)
+{
+    struct pluto_extra_dep_info info = { deps, type, first };
+
+    isl_union_map_foreach_map(umap, &map_extract, &info);
+
+    return info.index - first;
+}
+
+
+/* Compute dependences based on the iteration domain and access
+ * information in "scop" and put the result in "prog".
+ *
+ * If options->lastwriter is false, then
+ *      RAW deps are those from any earlier write to a read
+ *      WAW deps are those from any earlier write to a write
+ *      WAR deps are those from any earlier read to a write
+ * If options->lastwriter is true, then
+ *      RAW deps are those from the last write to a read
+ *      WAW deps are those from the last write to a write
+ *      WAR deps are those from an earlier read not masked by another write
+ *      to a write
+ */
+static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
+        PlutoOptions *options)
+{
+    int i;
+    int nstmts = scoplib_statement_number(scop->statement);
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_set *context;
+    isl_union_map *empty;
+    isl_union_map *write;
+    isl_union_map *read;
+    isl_union_map *schedule;
+    isl_union_map *dep_raw, *dep_war, *dep_waw;
+    scoplib_statement_p stmt;
+
+    ctx = isl_ctx_alloc();
+    assert(ctx);
+
+    dim = isl_dim_set_alloc(ctx, scop->nb_parameters, 0);
+    dim = set_names(dim, isl_dim_param, scop->parameters);
+    context = scoplib_matrix_to_isl_set(scop->context, isl_dim_copy(dim));
+
+    empty = isl_union_map_empty(isl_dim_copy(dim));
+    write = isl_union_map_empty(isl_dim_copy(dim));
+    read = isl_union_map_empty(isl_dim_copy(dim));
+    schedule = isl_union_map_empty(dim);
+
+    for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
+        isl_set *dom;
+        isl_map *schedule_i;
+        isl_union_map *read_i;
+        isl_union_map *write_i;
+        char name[20];
+
+        snprintf(name, sizeof(name), "S_%d", i);
+
+        dim = isl_dim_set_alloc(ctx, scop->nb_parameters, stmt->nb_iterators);
+        dim = set_names(dim, isl_dim_param, scop->parameters);
+        dim = set_names(dim, isl_dim_set, stmt->iterators);
+        dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+        dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
+        dom = isl_set_intersect(dom, isl_set_copy(context));
+
+        dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
+                            2 * stmt->nb_iterators + 1);
+        dim = set_names(dim, isl_dim_param, scop->parameters);
+        dim = set_names(dim, isl_dim_in, stmt->iterators);
+        dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+        schedule_i = scoplib_schedule_to_isl_map(stmt->schedule, dim);
+
+        read_i = scoplib_access_to_isl_union_map(stmt->read, isl_set_copy(dom),
+                                                 scop->arrays);
+        write_i = scoplib_access_to_isl_union_map(stmt->write, dom,
+                                                 scop->arrays);
+
+        read = isl_union_map_union(read, read_i);
+        write = isl_union_map_union(write, write_i);
+        schedule = isl_union_map_union(schedule,
+                                        isl_union_map_from_map(schedule_i));
+
+    }
+
+    if (options->lastwriter) {
+        isl_union_map_compute_flow(isl_union_map_copy(read),
+                            isl_union_map_copy(write),
+                            isl_union_map_copy(empty),
+                            isl_union_map_copy(schedule),
+                            &dep_raw, NULL, NULL, NULL);
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                            isl_union_map_copy(write),
+                            isl_union_map_copy(read),
+                            isl_union_map_copy(schedule),
+                            &dep_waw, &dep_war, NULL, NULL);
+    } else {
+        isl_union_map_compute_flow(isl_union_map_copy(read),
+                            isl_union_map_copy(empty),
+                            isl_union_map_copy(write),
+                            isl_union_map_copy(schedule),
+                            NULL, &dep_raw, NULL, NULL);
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                            isl_union_map_copy(empty),
+                            isl_union_map_copy(read),
+                            isl_union_map_copy(schedule),
+                            NULL, &dep_war, NULL, NULL);
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                            isl_union_map_copy(empty),
+                            isl_union_map_copy(write),
+                            isl_union_map_copy(schedule),
+                            NULL, &dep_waw, NULL, NULL);
+    }
+
+    dep_raw = isl_union_map_coalesce(dep_raw);
+    dep_war = isl_union_map_coalesce(dep_war);
+    dep_waw = isl_union_map_coalesce(dep_waw);
+
+    prog->ndeps = 0;
+    isl_union_map_foreach_map(dep_raw, &map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_war, &map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_waw, &map_count, &prog->ndeps);
+
+    prog->deps = (Dep *)malloc(prog->ndeps * sizeof(Dep));
+    prog->ndeps = 0;
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_raw, CANDL_RAW);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_war, CANDL_WAR);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_waw, CANDL_WAW);
+
+    isl_union_map_free(dep_raw);
+    isl_union_map_free(dep_war);
+    isl_union_map_free(dep_waw);
+
+    isl_union_map_free(empty);
+    isl_union_map_free(write);
+    isl_union_map_free(read);
+    isl_union_map_free(schedule);
+    isl_set_free(context);
+
+    isl_ctx_free(ctx);
+}
+
+
 /* 
  * Extract necessary information from clan_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto. 
@@ -405,8 +905,12 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     CandlDependence *candl_deps = candl_dependence(candl_program, candlOptions);
 
     prog->stmts = stmts_read(scop, prog->npar, prog->nvar);
-    prog->deps = deps_read(candl_deps, prog);
-    prog->ndeps = candl_num_dependences(candl_deps);
+    if (options->isldep) {
+        compute_deps(scop, prog, options);
+    } else {
+        prog->deps = deps_read(candl_deps, prog);
+        prog->ndeps = candl_num_dependences(candl_deps);
+    }
 
     candl_options_free(candlOptions);
     candl_dependence_free(candl_deps);
@@ -552,6 +1056,8 @@ PlutoOptions *pluto_options_alloc()
     options->context = -1;
 
     options->bee = 0;
+
+    options->isldep = 0;
 
     options->lastwriter = 0;
 

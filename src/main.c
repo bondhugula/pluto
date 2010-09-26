@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
         {"lastwriter", no_argument, &options->lastwriter, 1},
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
+        {"isldep", no_argument, &options->isldep, 1},
         {0, 0, 0, 0}
     };
 
