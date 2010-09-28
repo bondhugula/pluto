@@ -1,5 +1,5 @@
 /*
- * PLuTo: An automatic parallelier and locality optimizer
+ * PLuTo: An automatic parallelizer and locality optimizer
  * 
  * Copyright (C) 2007 Uday Kumar Bondhugula
  *
