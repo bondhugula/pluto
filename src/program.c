@@ -739,11 +739,15 @@ static int extract_deps(Dep *deps, int first, __isl_keep isl_union_map *umap,
  *      RAW deps are those from any earlier write to a read
  *      WAW deps are those from any earlier write to a write
  *      WAR deps are those from any earlier read to a write
+ *      RAR deps are those from any earlier read to a read
  * If options->lastwriter is true, then
  *      RAW deps are those from the last write to a read
  *      WAW deps are those from the last write to a write
- *      WAR deps are those from an earlier read not masked by another write
- *      to a write
+ *      WAR deps are those from any earlier read not masked by an intermediate
+ *      write to a write
+ *      RAR deps are those from the last read to a read
+ *
+ * The RAR deps are only computed if options->rar is set.
  */
 static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
         PlutoOptions *options)
@@ -757,7 +761,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map *write;
     isl_union_map *read;
     isl_union_map *schedule;
-    isl_union_map *dep_raw, *dep_war, *dep_waw;
+    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
     scoplib_statement_p stmt;
 
     ctx = isl_ctx_alloc();
@@ -767,6 +771,8 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     dim = set_names(dim, isl_dim_param, scop->parameters);
     context = scoplib_matrix_to_isl_set(scop->context, isl_dim_copy(dim));
 
+    if (!options->rar)
+        dep_rar = isl_union_map_empty(isl_dim_copy(dim));
     empty = isl_union_map_empty(isl_dim_copy(dim));
     write = isl_union_map_empty(isl_dim_copy(dim));
     read = isl_union_map_empty(isl_dim_copy(dim));
@@ -818,6 +824,12 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                             isl_union_map_copy(read),
                             isl_union_map_copy(schedule),
                             &dep_waw, &dep_war, NULL, NULL);
+        if (options->rar)
+            isl_union_map_compute_flow(isl_union_map_copy(read),
+                                isl_union_map_copy(read),
+                                isl_union_map_copy(empty),
+                                isl_union_map_copy(schedule),
+                                &dep_rar, NULL, NULL, NULL);
     } else {
         isl_union_map_compute_flow(isl_union_map_copy(read),
                             isl_union_map_copy(empty),
@@ -834,26 +846,36 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                             isl_union_map_copy(write),
                             isl_union_map_copy(schedule),
                             NULL, &dep_waw, NULL, NULL);
+        if (options->rar)
+            isl_union_map_compute_flow(isl_union_map_copy(read),
+                                isl_union_map_copy(empty),
+                                isl_union_map_copy(read),
+                                isl_union_map_copy(schedule),
+                                NULL, &dep_rar, NULL, NULL);
     }
 
     dep_raw = isl_union_map_coalesce(dep_raw);
     dep_war = isl_union_map_coalesce(dep_war);
     dep_waw = isl_union_map_coalesce(dep_waw);
+    dep_rar = isl_union_map_coalesce(dep_rar);
 
     prog->ndeps = 0;
     isl_union_map_foreach_map(dep_raw, &map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_war, &map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_waw, &map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_rar, &map_count, &prog->ndeps);
 
     prog->deps = (Dep *)malloc(prog->ndeps * sizeof(Dep));
     prog->ndeps = 0;
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_raw, CANDL_RAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_war, CANDL_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_waw, CANDL_WAW);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_rar, CANDL_RAR);
 
     isl_union_map_free(dep_raw);
     isl_union_map_free(dep_war);
     isl_union_map_free(dep_waw);
+    isl_union_map_free(dep_rar);
 
     isl_union_map_free(empty);
     isl_union_map_free(write);
