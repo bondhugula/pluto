@@ -24,7 +24,7 @@ AM_CONFIG_HEADER(config.h)
 dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
 dnl being 32-bit/64-bit
-CFLAGS="-Wall -funroll-loops -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_LONG_LONG"
+CFLAGS="-Wall -funroll-loops"
 
 debug="false"
 dnl debugging flag
