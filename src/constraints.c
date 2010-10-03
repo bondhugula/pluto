@@ -585,13 +585,8 @@ void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos)
     assert (pos >= 0 && pos <= cst->nrows);
     assert (cst->nrows <= cst->alloc_nrows);
 
-    // printf("add inequality at pos: %d; allocated: %d\n", pos, cst->alloc_nrows);
-    // pluto_constraints_print(stdout, cst);
-
     if (cst->nrows == cst->alloc_nrows)   {
         pluto_constraints_resize(cst, cst->nrows+1, cst->ncols);
-        // printf("after resizing\n");
-        // pluto_constraints_print(stdout, cst);
     }else{
         cst->nrows++;
     }
@@ -608,9 +603,36 @@ void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos)
     }
     cst->is_eq[pos] = 0;
 
-    // printf("after add\n");
-    // pluto_constraints_print(stdout, cst);
 }
+
+
+/* Add an equality; initialize it to all zero */
+void pluto_constraints_add_equality(PlutoConstraints *cst, int pos)
+{
+    int i, j;
+
+    assert (pos >= 0 && pos <= cst->nrows);
+    assert (cst->nrows <= cst->alloc_nrows);
+
+    if (cst->nrows == cst->alloc_nrows)   {
+        pluto_constraints_resize(cst, cst->nrows+1, cst->ncols);
+    }else{
+        cst->nrows++;
+    }
+
+    for (i=cst->nrows-2; i>=pos; i--) {
+        for (j=0; j<cst->ncols; j++) {
+            cst->val[i+1][j] = cst->val[i][j];
+        }
+        cst->is_eq[i+1] = cst->is_eq[i];
+    }
+
+    for (j=0; j<cst->ncols; j++) {
+        cst->val[pos][j] = 0;
+    }
+    cst->is_eq[pos] = 1;
+}
+
 
 
 /* Remove a row */
@@ -721,6 +743,19 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb)
     cst->val[cst->nrows][varnum] = 1;
     cst->val[cst->nrows][cst->ncols] = -lb;
 }
+
+/* Set a value for a variable: varnum: 0-indexed */
+void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)
+{
+    assert(varnum >=0 && varnum <= cst->ncols-2);
+
+    pluto_constraints_add_equality(cst, cst->nrows);
+
+    cst->val[cst->nrows][varnum] = 1;
+    cst->val[cst->nrows][cst->ncols] = -val;
+}
+
+
 
 /*
  * Returns the best candidate to eliminate (exact index in cst)

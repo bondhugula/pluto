@@ -59,9 +59,13 @@ void pluto_constraints_simplify(PlutoConstraints *const cst);
 
 int *pluto_constraints_solve(const PlutoConstraints *);
 void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
+void pluto_constraints_add_equality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_col(PlutoConstraints *cst, int pos);
 void pluto_constraints_remove_row(PlutoConstraints *, int);
 void pluto_constraints_remove_col(PlutoConstraints *, int);
+
+void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb);
+void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val);
 
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
