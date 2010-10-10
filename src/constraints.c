@@ -740,8 +740,8 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb)
 
     pluto_constraints_add_inequality(cst, cst->nrows);
 
-    cst->val[cst->nrows][varnum] = 1;
-    cst->val[cst->nrows][cst->ncols] = -lb;
+    cst->val[cst->nrows-1][varnum] = 1;
+    cst->val[cst->nrows-1][cst->ncols] = -lb;
 }
 
 /* Set a value for a variable: varnum: 0-indexed */
@@ -751,8 +751,8 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)
 
     pluto_constraints_add_equality(cst, cst->nrows);
 
-    cst->val[cst->nrows][varnum] = 1;
-    cst->val[cst->nrows][cst->ncols] = -val;
+    cst->val[cst->nrows-1][varnum] = 1;
+    cst->val[cst->nrows-1][cst->ncols] = -val;
 }
 
 
