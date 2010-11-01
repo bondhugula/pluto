@@ -12,6 +12,8 @@
 # those loops. .vectorize is created by the pluto core.
 #
 # Author: Uday Bondhugula
+
+# Available under GNU GPL v2 or (at your option) any later version
 #
 # This script is called by polycc
 # 

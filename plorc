@@ -2,7 +2,8 @@
 #
 # Copyright (C) 2008 Uday Bondhugula
 # 
-# Available under GNU GPL v2
+# Available under GNU GPL v2 or (at your option) any later version
+# See file COPYING for details
 #
 # Automatic annotation generation for unrolling
 # Unroll/jammable loops are detected in the transformation

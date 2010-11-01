@@ -4,6 +4,8 @@
 # to insert comes from the pluto core through the .pragmas file
 #
 # Copyright (C) 2007-2008 Uday Bondhugula 
+
+# Available under GNU GPL v2 or (at your option) any later version
 #
 
 if [ $# -ne 1 ]; then
