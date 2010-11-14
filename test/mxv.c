@@ -1,8 +1,9 @@
-CONSTANT n;
 
-DO i = 1, n
+#pragma scop
+for (i=0; i<N; i++) {
     y[i] = 0;
-    DO j = 1, n
-        y[i] = y[i] + a[i,j]*x[j];
-    END DO
-END DO
+    for (j=0; j<N; j++) {
+        y[i] = y[i] + a[i][j]*x[j];
+    }
+}
+#pragma endscop
