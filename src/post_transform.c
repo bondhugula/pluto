@@ -240,7 +240,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
             for (j=0; j<zstmt->dim; j++) {
                 if (unroll[j])  {
 
-                    pluto_constraints_add_col(zstmt->domain, zstmt->dim);
+                    pluto_constraints_add_dim(zstmt->domain, zstmt->dim);
                     /* Just put a dummy iterator name since Cloog will
                      * generate a remapping for this too */
                     sprintf(zstmt->iterators[zstmt->dim], "zU%d", j);

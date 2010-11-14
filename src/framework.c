@@ -374,12 +374,12 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
     /* Coefficients of those variables that don't appear in the outer loop
      * are useless */
     for (k=0; k<nvar; k++)    {
-        if (!stmts[src_stmt].is_outer_loop[k])  {
+        if (!stmts[src_stmt].is_orig_loop[k])  {
             for (j=0; j < cst->nrows; j++)   {
                 cst->val[j][src_offset+k] = 0;
             }
         }
-        if (src_stmt != dest_offset && !stmts[dest_stmt].is_outer_loop[k])  {
+        if (src_stmt != dest_offset && !stmts[dest_stmt].is_orig_loop[k])  {
             for (j=0; j < farkas_cst->nrows+comm_farkas_cst->nrows; j++)   {
                 cst->val[j][dest_offset+k] = 0;
             }
@@ -501,7 +501,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
         }
         stmt_offset = npar+1+i*(nvar+1);
         for (j=0; j<nvar; j++)  {
-            if (stmts[i].is_outer_loop[j] == 1)
+            if (stmts[i].is_orig_loop[j] == 1)
                 nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
         }
         nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
@@ -664,7 +664,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
      * statement and also beta rows
      */
     for (i = 0, p = 0; i < nvar; i++)
-        if (stmt->is_outer_loop[i])
+        if (stmt->is_orig_loop[i])
            p++;
     for (j = 0, q = 0; j < stmt->trans->nrows; j++)
        if (hProps[j].type != H_SCALAR)
@@ -685,7 +685,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     p=0; 
     q=0;
     for (i=0; i<nvar; i++) {
-        if (stmt->is_outer_loop[i])    {
+        if (stmt->is_orig_loop[i])    {
             q=0;
             for (j=0; j<stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
@@ -750,7 +750,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
         j=0;
         for (q=0; q<nvar; q++) {
-            if (stmt->is_outer_loop[q])    {
+            if (stmt->is_orig_loop[q])    {
                 orthcst[p]->val[0][npar+1+(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
                 j++;
             }

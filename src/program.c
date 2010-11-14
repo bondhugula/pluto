@@ -325,7 +325,7 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
         }
 
         for (j=0; j<stmt->dim; j++)  {
-            stmt->is_outer_loop[j] = true;
+            stmt->is_orig_loop[j] = true;
         }
 
         stmt->trans = pluto_matrix_alloc(MAX_TRANS_ROWS, 

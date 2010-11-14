@@ -30,7 +30,7 @@
 #include "constraints.h"
 #include "post_transform.h"
 #include "program.h"
-
+#include "transforms.h"
 #include "ddg.h"
 
 
@@ -167,7 +167,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
 
     for (i=0; i<nstmts; i++)    {
         for (j=0; j<nvar; j++)    {
-            redun[npar+1+i*(nvar+1)+j] = !stmts[i].is_outer_loop[j];
+            redun[npar+1+i*(nvar+1)+j] = !stmts[i].is_orig_loop[j];
         }
         redun[npar+1+i*(nvar+1)+nvar] = 0;
     }
@@ -739,7 +739,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     assert(ignore == 0);
 
                     for (j=0; j<nvar; j++)    {
-                        if (stmts[i].is_outer_loop[j])  {
+                        if (stmts[i].is_orig_loop[j])  {
                             fscanf(precut, "%d", &stmts[i].trans->val[stmts[i].trans->nrows][j]);
                         }else{
                             stmts[i].trans->val[stmts[i].trans->nrows][j] = 0;
@@ -955,7 +955,7 @@ void normalize_domains(PlutoProg *prog)
     int npar = prog->npar;
 
     /* if a dep distance <= N and another <= M, how do you bound it, no
-     * way to express max(N,M) as a single affine function ;-), when space is
+     * way to express max(N,M) as a single affine function, when space is
      * built for each dependence, it doesn't know anything about a parameter
      * that does not appear in its dpolyhedron, and so it will assign the
      * coeff corresponding to that param in the bounding function constraints
@@ -1022,9 +1022,9 @@ void normalize_domains(PlutoProg *prog)
 	/* Add padding dimensions to statement domains */
 	for (i=0; i<prog->nstmts; i++)    {
 		Stmt *stmt = &prog->stmts[i];
-		for (j=stmt->dim; j<nvar; j++)  {
-			stmt->is_outer_loop[j] = 0;
-			pluto_constraints_add_col(stmt->domain, stmt->dim);
+        int orig_depth = stmt->dim;
+		for (j=orig_depth; j<nvar; j++)  {
+            pluto_sink_statement(stmt, stmt->dim, 0);
 		}
 	}
 
@@ -1035,11 +1035,11 @@ void normalize_domains(PlutoProg *prog)
 		int target_dim = prog->stmts[dep->dest].dim;
 
 		for (j=src_dim; j<nvar; j++)    {
-			pluto_constraints_add_col(dep->dpolytope, src_dim);
+			pluto_constraints_add_dim(dep->dpolytope, src_dim);
 		}
 
 		for (j=target_dim; j<nvar; j++)    {
-			pluto_constraints_add_col(dep->dpolytope, nvar+target_dim);
+			pluto_constraints_add_dim(dep->dpolytope, nvar+target_dim);
 		}
 	}
 
@@ -1090,7 +1090,7 @@ void normalize_domains(PlutoProg *prog)
 }
 
 
-/* Remove padding columns that were added */
+/* Remove padding dimensions that were added earlier */
 void denormalize_domains(PlutoProg *prog)
 {
 	int i, j;
@@ -1102,8 +1102,9 @@ void denormalize_domains(PlutoProg *prog)
 		Stmt *stmt = &prog->stmts[i];
 		int del_count = 0;
 		for (j=0; j<nvar; j++)  {
-			if (!stmt->is_outer_loop[j]) {
-				pluto_constraints_remove_col(stmt->domain, j-del_count);
+			if (!stmt->is_orig_loop[j]) {
+                /* TODO: should actually eliminate the variable */
+				pluto_constraints_remove_dim(stmt->domain, j-del_count);
 				pluto_matrix_remove_col(stmt->trans, j-del_count);
 				del_count++;
 			}
@@ -1112,7 +1113,7 @@ void denormalize_domains(PlutoProg *prog)
 		assert(stmt->domain->ncols == stmt->dim+npar+1);
 
 		for (j=0; j<stmt->dim; j++)  {
-			stmt->is_outer_loop[j] = 1;
+			stmt->is_orig_loop[j] = 1;
 		}
 	}
 }

@@ -8,7 +8,7 @@ SUBDIRS =
 MAINTAINERCLEANFILES = Makefile.in
 
 bin_PROGRAMS = pluto
-pluto_SOURCES = constraints.c math_support.c ddg.c pluto.c post_transform.c framework.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c
+pluto_SOURCES = constraints.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c
 pluto_CPPFLAGS = -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../piplib-1.4.0/include \
    -I../clan-0.6.0/include \

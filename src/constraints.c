@@ -653,7 +653,7 @@ void pluto_constraints_remove_row(PlutoConstraints *cst, int pos)
 
 
 /* Remove a variable */
-void pluto_constraints_remove_col(PlutoConstraints *cst, int pos)
+void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
@@ -707,8 +707,8 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos)
 }
 
 
-/* Add a variable/column; resize if necessary */
-void pluto_constraints_add_col(PlutoConstraints *cst, int pos)
+/* Add a variable; resize if necessary */
+void pluto_constraints_add_dim(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
@@ -752,7 +752,7 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)
     pluto_constraints_add_equality(cst, cst->nrows);
 
     cst->val[cst->nrows-1][varnum] = 1;
-    cst->val[cst->nrows-1][cst->ncols] = -val;
+    cst->val[cst->nrows-1][cst->ncols-1] = -val;
 }
 
 

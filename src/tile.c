@@ -5,7 +5,7 @@
 #include "post_transform.h"
 
 /* Read tile sizes from file tile.sizes */
-int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
+static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
         int num_tile_dims, HyperplaneProperties *hProps, int firstLoop)
 {
     FILE *tsfile = fopen("tile.sizes", "r");
@@ -144,7 +144,7 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
 
             /* 1.2 make space for the supernode in the domain */
             for (k=0; k<num_tiled_scat_dims; k++)    {
-                pluto_constraints_add_col(stmt->domain, 0);
+                pluto_constraints_add_dim(stmt->domain, 0);
             }
 
             /* 1.3 specify tile shapes in the original domain */
@@ -230,9 +230,9 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             /* 3. Update is_outer_loop */
             for (k=0; k<num_supernodes; k++)  {
                 for (i=0; i<stmt->dim; i++) {
-                    stmt->is_outer_loop[i+1] = stmt->is_outer_loop[i];
+                    stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
                 }
-                stmt->is_outer_loop[0] = true;
+                stmt->is_orig_loop[0] = true;
                 stmt->dim++;
             }
 
