@@ -29,8 +29,8 @@ for file in $TESTS; do
 	./polycc $file $* 
     if [ $? -ne 0 ]; then
         echo Failed!
+        exit
     #else
-		# Silence on success - viva la Unix
         # echo -e "Successful!"
     fi
 done
