@@ -411,6 +411,8 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
+    fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
     fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
     fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
     fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
@@ -422,5 +424,6 @@ void usage_message(void)
     fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
     fprintf(stdout, "\n   Debugging\n");
     fprintf(stdout, "       --debug        Verbose output\n");
+    fprintf(stdout, "       --moredebug    More verbose output\n");
     fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
 }

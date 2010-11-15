@@ -136,6 +136,12 @@ COMMAND-LINE OPTIONS
     --indent
     Indents generated code
 
+    --isldep
+    See usage message (run polycc with no arguments)
+
+    --lastwriter
+    See usage message (run polycc with no arguments)
+
     --version
     Print version number and exit
 
