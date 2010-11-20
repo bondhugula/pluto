@@ -274,8 +274,6 @@ inline int gcd(int a, int b)
     a = abs(a);
     b = abs(b);
 
-    assert(a>=0 || b>=0);
-
     if (a==0)   return b;
     if (b==0)   return a;
 
