@@ -33,11 +33,11 @@
 
 #include "scoplib/statement.h"
 
-#include <isl_map.h>
-#include <isl_mat.h>
-#include <isl_set.h>
-#include <isl_flow.h>
-#include <isl_union_map.h>
+#include <isl/map.h>
+#include <isl/mat.h>
+#include <isl/set.h>
+#include <isl/flow.h>
+#include <isl/union_map.h>
 
 /* Return a copy of the statement */
 Stmt *stmt_copy(Stmt *src)

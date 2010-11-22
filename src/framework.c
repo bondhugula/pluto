@@ -26,9 +26,9 @@
 #include "constraints.h"
 #include "pluto.h"
 
-#include <isl_constraint.h>
-#include <isl_mat.h>
-#include <isl_set.h>
+#include <isl/constraint.h>
+#include <isl/mat.h>
+#include <isl/set.h>
 #include "candl/candl.h"
 
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
