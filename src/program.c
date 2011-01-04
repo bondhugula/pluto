@@ -1100,6 +1100,8 @@ PlutoOptions *pluto_options_alloc()
 
     options->isldep = 0;
 
+    options->readscoplib = 0;
+
     options->lastwriter = 0;
 
     options->nobound = 0;

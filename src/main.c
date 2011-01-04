@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
+        {"readscoplib", no_argument, &options->readscoplib, 1},
         {0, 0, 0, 0}
     };
 
@@ -188,7 +189,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     clan_options_p clanOptions = clan_options_malloc();
 
-    scop = clan_scop_extract(src_fp, clanOptions);
+    if (options->readscoplib)
+      scop = scoplib_scop_read(src_fp);
+    else
+      scop = clan_scop_extract(src_fp, clanOptions);
 
     if (!scop || !scop->statement)   {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
@@ -412,6 +416,7 @@ void usage_message(void)
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
+    fprintf(stdout, "       --readscoplib          Read the input from a scoplib file\n");
     fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
     fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
     fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");

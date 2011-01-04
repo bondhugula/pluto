@@ -154,6 +154,9 @@ struct plutoOptions{
 
     /* No output from Pluto if everything goes right */
     int silent;
+
+    /* Read input from a scoplib file */
+    int readscoplib;
 };
 typedef struct plutoOptions PlutoOptions;
 
