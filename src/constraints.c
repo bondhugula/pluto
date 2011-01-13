@@ -741,8 +741,21 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb)
     pluto_constraints_add_inequality(cst, cst->nrows);
 
     cst->val[cst->nrows-1][varnum] = 1;
-    cst->val[cst->nrows-1][cst->ncols] = -lb;
+    cst->val[cst->nrows-1][cst->ncols-1] = -lb;
 }
+
+/* Add an upper bound for 'varnum' variable: varnum: 0-indexed */
+void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int ub)
+{
+    assert(varnum >=0 && varnum <= cst->ncols-2);
+
+    pluto_constraints_add_inequality(cst, cst->nrows);
+
+    cst->val[cst->nrows-1][varnum] = -1;
+    cst->val[cst->nrows-1][cst->ncols-1] = ub;
+}
+
+
 
 /* Set a value for a variable: varnum: 0-indexed */
 void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)

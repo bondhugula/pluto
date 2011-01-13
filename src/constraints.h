@@ -65,6 +65,7 @@ void pluto_constraints_remove_row(PlutoConstraints *, int);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 
 void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb);
+void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int ub);
 void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val);
 
 void pluto_constraints_zero_row(PlutoConstraints *, int);
