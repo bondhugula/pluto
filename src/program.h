@@ -36,5 +36,6 @@ void pluto_prog_free(PlutoProg *prog);
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
+int get_coeff_upper_bound(PlutoProg *prog);
 
 #endif

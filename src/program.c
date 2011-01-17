@@ -994,6 +994,25 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     return prog;
 }
 
+/* Get an upper bound for transformation coefficients to prevent spurious
+ * transformations that represent shifts or skews proportional to trip counts:
+ * this happens when loop bounds are constants
+ */
+int get_coeff_upper_bound(PlutoProg *prog)
+{
+    int max, i, r;
+
+    max = 0;
+    for (i=0; i<prog->nstmts; i++)  {
+        Stmt *stmt = &prog->stmts[i];
+        for (r=0; r<stmt->domain->nrows; r++) {
+            max  = PLMAX(max,stmt->domain->val[r][stmt->domain->ncols-1]);
+        }
+    }
+
+    return max-1;
+}
+
 
 void pluto_prog_free(PlutoProg *prog)
 {

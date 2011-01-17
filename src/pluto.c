@@ -47,10 +47,10 @@ int deps_satisfaction_check(Dep *deps, int ndeps)
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i].type)) continue;
         if (!dep_is_satisfied(&deps[i]))    {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 
@@ -139,7 +139,7 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation of the variables to get row-wise access
  */
-int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
+int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt *stmts;
     int nstmts, nvar, npar;
@@ -156,9 +156,9 @@ int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
     static PlutoConstraints *newcst = NULL;
 
 
-    if (!newcst || newcst->alloc_nrows < tmpcst->nrows)   {
+    if (!newcst || newcst->alloc_nrows < cst->nrows)   {
         if (newcst) pluto_constraints_free(newcst);
-        newcst = pluto_constraints_alloc(tmpcst->nrows, CST_WIDTH);
+        newcst = pluto_constraints_alloc(cst->nrows, CST_WIDTH);
     }
 
     for (i=0; i<npar+1; i++)    {
@@ -174,16 +174,32 @@ int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
     redun[npar+1+nstmts*(nvar+1)] = 0;
 
     q=0;
-    for (j=0; j<tmpcst->ncols; j++) {
+    for (j=0; j<cst->ncols; j++) {
         if (!redun[j])  {
-            for (i=0; i<tmpcst->nrows; i++) {
-                newcst->val[i][q] = tmpcst->val[i][j];
+            for (i=0; i<cst->nrows; i++) {
+                newcst->val[i][q] = cst->val[i][j];
             }
             q++;
         }
     }
-    newcst->nrows = tmpcst->nrows;
+    newcst->nrows = cst->nrows;
     newcst->ncols = q;
+
+    /* Add upper bounds for transformation coefficients */
+    int ub = get_coeff_upper_bound(prog);
+
+    /* Putting too small an upper bound can prevent useful transformations;
+     * also, note that an upper bound is added for all statements globally due
+     * to the lack of an easy way to determine bounds for each coefficient to
+     * prevent spurious transformations that involve shifts proportional to
+     * loop bounds
+     */
+    if (ub >= 10)   {
+        for (i=0; i<newcst->ncols-npar-1-1; i++)  {
+            // printf("Adding upper bound %d for transformation coefficients\n", ub);
+            pluto_constraints_add_ub(newcst, npar+1+i, ub);
+        }
+    }
 
     /* Reverse the variable order for stmts */
     PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);
@@ -218,11 +234,13 @@ int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
     /* matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
     /* matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
+    /* save it so that it can be put back and freed correctly */
     int **save = newcst->val;
     newcst->val = newcstmat->val;
 
     // IF_DEBUG(dump_poly(newcst));
     sol = pluto_constraints_solve(newcst);
+    /* Put it back so that it can be freed correctly */
     newcst->val = save;
 
     pluto_matrix_free(newcstmat);
@@ -239,10 +257,10 @@ int *pluto_prog_constraints_solve(PlutoConstraints *tmpcst, PlutoProg *prog)
         }
         free(sol);
 
-        fsol = (int *)malloc(tmpcst->ncols*sizeof(int));
+        fsol = (int *)malloc(cst->ncols*sizeof(int));
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
-        for (j=0; j<tmpcst->ncols-1; j++) {
+        for (j=0; j<cst->ncols-1; j++) {
             if (redun[j])  {
                 fsol[j] = 0;
             }else{
