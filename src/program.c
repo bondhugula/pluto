@@ -911,33 +911,30 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         clan_stmt = clan_stmt->next;
     }
 
-    /* Calculate dependences using Candl */
-
-    candl_program_p candl_program = candl_program_convert_scop(scop, NULL);
-
-    CandlOptions *candlOptions = candl_options_malloc();
-    if (options->rar)   {
-        candlOptions->rar = 1;
-    }
-    candlOptions->lastwriter = options->lastwriter;
-    candlOptions->scalar_privatization = options->scalpriv;
-    // candlOptions->verbose = 1;
-
-
-    CandlDependence *candl_deps = candl_dependence(candl_program, candlOptions);
-
     prog->stmts = stmts_read(scop, prog->npar, prog->nvar);
     if (options->isldep) {
         compute_deps(scop, prog, options);
     } else {
+        /* Calculate dependences using Candl */
+
+        candl_program_p candl_program = candl_program_convert_scop(scop, NULL);
+
+        CandlOptions *candlOptions = candl_options_malloc();
+        if (options->rar)   {
+            candlOptions->rar = 1;
+        }
+        candlOptions->lastwriter = options->lastwriter;
+        candlOptions->scalar_privatization = options->scalpriv;
+        // candlOptions->verbose = 1;
+
+        CandlDependence *candl_deps = candl_dependence(candl_program,
+                                                       candlOptions);
         prog->deps = deps_read(candl_deps, prog);
         prog->ndeps = candl_num_dependences(candl_deps);
+        candl_options_free(candlOptions);
+        candl_dependence_free(candl_deps);
+        candl_program_free(candl_program);
     }
-
-    candl_options_free(candlOptions);
-    candl_dependence_free(candl_deps);
-    candl_program_free(candl_program);
-
 
     /* Allocate and initialize hProps */
     prog->hProps = (HyperplaneProperties *) 
