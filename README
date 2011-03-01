@@ -10,7 +10,9 @@ INSTALLING PLUTO
 Requirements: A Linux distribution. Pluto has been tested on x86 and 
 x86-64 machines running Fedora Core {4,5,7,8,9}, Ubuntu, and RedHat  
 Enterprise Server 5.x. Solaris should also be fine if you have GNU 
-utilities.
+utilities. If want to use the development version from the git 
+repository, you will need automatic build system tools including 
+autoconf, automake, and libtool. 
 
 Pluto includes all libraries that it depends on.  autoconf/automake 
 system will take care of automatically building everything. Nothing else 
@@ -18,6 +20,8 @@ needs to be downloaded and installed separately.
 
 
 BUILDING PLUTO
+
+Stable release
 
 Run 'install from Pluto's top-level directory
 
@@ -33,6 +37,18 @@ $ cd pluto-0.6.0/
 $ ./configure [--enable-debug]
 $ make
 $ make test
+
+Development version from Git
+
+$ git clone git://repo.or.cz/pluto.git
+$ cd pluto/
+$ git submodule init 
+$ git submodule update
+$ ./bootstrap.sh
+$ ./configure [--enable-debug]
+$ make
+$ make test
+
 
 If you do not have ICC, uncomment line 7 and comment line 8 of 
 examples/common.mk.
