@@ -234,7 +234,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     /* matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
     /* matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
-    /* save it so that it can be put back and freed correctly */
+    /* Save it so that it can be put back and freed correctly */
     int **save = newcst->val;
     newcst->val = newcstmat->val;
 
@@ -956,7 +956,7 @@ void print_dependence_directions (Dep *deps, int ndeps, int levels)
                 printf("%d %d\n", deps[i].satisfaction_level, deps[i].satisfied);
                 fprintf(stderr, "\tUnfortunately, the transformation computed has violated a dependence.\n");
                 fprintf(stderr, "\tThis usually is a result of a bug in the dependence tester,\n");
-                fprintf(stderr, "\tor very rarely a bug in Pluto's auto transformation.\n");
+                fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
                 fprintf(stderr, "\tPlease send the input file to the author if possible.\n");
                 exit(EXIT_FAILURE);
             }

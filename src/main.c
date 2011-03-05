@@ -416,7 +416,7 @@ void usage_message(void)
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
-    fprintf(stdout, "       --readscoplib          Read the input from a scoplib file\n");
+    fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
     fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
     fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
     fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
