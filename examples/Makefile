@@ -36,7 +36,7 @@ orig_par:
 
 tiled:
 	@-for d in $(DIRS); do \
-		make -C $$d par; \
+		make -C $$d tiled; \
 		done
 
 test:
