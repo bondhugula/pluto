@@ -20,6 +20,8 @@
 #ifndef _CONSTRAINTS_H
 #define _CONSTRAINTS_H
 
+#include "isl/set.h"
+
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
  *  c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= / = 0 */
@@ -75,4 +77,9 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_dump_polylib(PlutoConstraints *cst);
 
+/*
+ * Construct a non-parametric basic set from the constraints in cst.
+ */
+__isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
+  const PlutoConstraints *cst);
 #endif

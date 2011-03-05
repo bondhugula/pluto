@@ -28,6 +28,9 @@
 #include "math_support.h"
 #include "constraints.h"
 #include "pluto.h"
+#include "isl/map.h"
+#include "isl/set.h"
+#include "isl/constraint.h"
 
 #ifdef PIP_WIDTH_MP
 #include "piplib/piplibMP.h"
@@ -492,9 +495,91 @@ PlutoMatrix *pluto2pip(const PlutoConstraints *cst, PlutoMatrix *pmat)
     return pmat;
 }
 
+/*
+ * Construct a non-parametric basic set from the constraints in cst.
+ */
+__isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
+       isl_ctx *ctx, const PlutoConstraints *cst)
+{
+    int i, j;
+    isl_int v;
+    isl_dim *dim;
+    isl_constraint *c;
+    isl_basic_set *bset;
+
+    isl_int_init(v);
+
+    dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+    bset = isl_basic_set_universe(isl_dim_copy(dim));
+
+    for (i = 0; i < cst->nrows; ++i) {
+       if (cst->is_eq[i])
+           c = isl_equality_alloc(isl_dim_copy(dim));
+       else
+           c = isl_inequality_alloc(isl_dim_copy(dim));
+
+       isl_int_set_si(v, cst->val[i][cst->ncols - 1]);
+       isl_constraint_set_constant(c, v);
+
+       for (j = 0; j < cst->ncols - 1; ++j) {
+           isl_int_set_si(v, cst->val[i][j]);
+           isl_constraint_set_coefficient(c, isl_dim_set, j, v);
+       }
+
+       bset = isl_basic_set_add_constraint(bset, c);
+    }
+
+    isl_dim_free(dim);
+
+    isl_int_clear(v);
+
+    return bset;
+}
+
+/* Use isl to solve these constraints */
+int *pluto_constraints_solve_isl(const PlutoConstraints *cst) {
+  int i, *sol;
+  isl_ctx *ctx;
+  isl_basic_set *bset, *all_positive;
+  isl_set *domain, *all_positive_set, *lexmin;
+
+  ctx = isl_ctx_alloc();
+  bset = isl_basic_set_from_pluto_constraints(ctx, cst);
+  domain = isl_set_from_basic_set(bset);
+
+  // Allow only positive values.
+  all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
+  all_positive_set = isl_set_from_basic_set(all_positive);
+  domain = isl_set_intersect(domain, all_positive_set);
+
+  lexmin = isl_set_lexmin(domain);
+
+  if (isl_set_is_empty(lexmin))
+    return NULL;
+
+  int num_dimensions = isl_set_n_dim(lexmin);
+  sol = (int *) malloc((num_dimensions)*sizeof(int));
+
+  // As the set is non parametric, there is only a single point in the set.
+  // This point is the lexicographic minimum of the set.
+  isl_point *p = isl_set_sample_point(lexmin);
+
+  for (i = 0; i < num_dimensions; i++) {
+    isl_int v;
+    isl_int_init(v);
+    isl_point_get_coordinate(p, isl_dim_set, i, &v);
+    sol[i] = isl_int_get_si(v);
+    isl_int_clear(v);
+  }
+
+  isl_point_free(p);
+  isl_ctx_free(ctx);
+
+  return sol;
+}
 
 /* Use PIP to solve these constraints */
-int *pluto_constraints_solve(const PlutoConstraints *cst)
+int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 {
     int bignum, i;
     PipMatrix  *domain, *context;
@@ -556,6 +641,13 @@ int *pluto_constraints_solve(const PlutoConstraints *cst)
     return sol;
 }
 
+/* Solve these constraints */
+int *pluto_constraints_solve(const PlutoConstraints *cst) {
+  if (0)
+    return pluto_constraints_solve_pip(cst);
+  else
+    return pluto_constraints_solve_isl(cst);
+}
 
 /* Dump in polylib format */
 void pluto_constraints_dump_polylib(PlutoConstraints *cst)

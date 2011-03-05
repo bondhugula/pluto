@@ -564,48 +564,6 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
 
 
 /*
- * Construct a non-parametric basic set from the constraints in cst.
- */
-static __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
-       isl_ctx *ctx, const PlutoConstraints *cst)
-{
-    int i, j;
-    isl_int v;
-    isl_dim *dim;
-    isl_constraint *c;
-    isl_basic_set *bset;
-
-    isl_int_init(v);
-
-    dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
-    bset = isl_basic_set_universe(isl_dim_copy(dim));
-
-    for (i = 0; i < cst->nrows; ++i) {
-       if (cst->is_eq[i])
-           c = isl_equality_alloc(isl_dim_copy(dim));
-       else
-           c = isl_inequality_alloc(isl_dim_copy(dim));
-
-       isl_int_set_si(v, cst->val[i][cst->ncols - 1]);
-       isl_constraint_set_constant(c, v);
-
-       for (j = 0; j < cst->ncols - 1; ++j) {
-           isl_int_set_si(v, cst->val[i][j]);
-           isl_constraint_set_coefficient(c, isl_dim_set, j, v);
-       }
-
-       bset = isl_basic_set_add_constraint(bset, c);
-    }
-
-    isl_dim_free(dim);
-
-    isl_int_clear(v);
-
-    return bset;
-}
-
-
-/*
  * Negate the single constraint in cst.
  */
 static void negate_constraint(PlutoConstraints *cst)
