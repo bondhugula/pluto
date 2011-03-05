@@ -392,13 +392,16 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int n)
 }
 
 
-/* Copy constraints from src into dest; dest should have enough space */
+/* Copy constraints from src into dest; if dest does not have enough space,
+ * resize it */
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src)
 {
     int i;
 
-    assert(src->nrows <= dest->alloc_nrows);
-    assert(src->ncols <= dest->alloc_ncols);
+    if (src->nrows > dest->alloc_nrows || src->ncols > dest->alloc_ncols) {
+        pluto_constraints_resize(dest, PLMAX(src->nrows,dest->alloc_nrows), 
+                PLMAX(src->ncols,dest->alloc_ncols));
+    }   
 
     dest->nrows = src->nrows;
     dest->ncols = src->ncols;
