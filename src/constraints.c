@@ -382,12 +382,6 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int n)
 
     pluto_constraints_simplify(newcst);
 
-    if (cst->alloc_nrows <= newcst->nrows)   {
-        fprintf(stderr, "[FM eliminated] Not sufficient space allocated by caller\n");
-        fprintf(stderr, "Aborting\n");
-        exit(2);
-    }
-
     pluto_constraints_copy(cst, newcst);
 }
 
