@@ -642,11 +642,11 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 }
 
 /* Solve these constraints */
-int *pluto_constraints_solve(const PlutoConstraints *cst) {
-  if (0)
-    return pluto_constraints_solve_pip(cst);
-  else
+int *pluto_constraints_solve(const PlutoConstraints *cst, int use_isl) {
+  if (use_isl)
     return pluto_constraints_solve_isl(cst);
+  else
+    return pluto_constraints_solve_pip(cst);
 }
 
 /* Dump in polylib format */

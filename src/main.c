@@ -98,6 +98,7 @@ int main(int argc, char *argv[])
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
         {"readscoplib", no_argument, &options->readscoplib, 1},
+        {"islsolve", no_argument, &options->islsolve, 1},
         {0, 0, 0, 0}
     };
 
@@ -250,7 +251,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Auto transformation */
-    pluto_auto_transform(prog);
+    pluto_auto_transform(prog, options->islsolve);
 
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
@@ -416,6 +417,7 @@ void usage_message(void)
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
+    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
     fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
     fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
     fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");

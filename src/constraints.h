@@ -59,7 +59,7 @@ PlutoMatrix *pluto2pip(const PlutoConstraints *, PlutoMatrix *pipmat);
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int *pluto_constraints_solve(const PlutoConstraints *);
+int *pluto_constraints_solve(const PlutoConstraints *, int use_isl);
 void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_equality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos);

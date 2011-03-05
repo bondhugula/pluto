@@ -157,6 +157,9 @@ struct plutoOptions{
 
     /* Read input from a scoplib file */
     int readscoplib;
+
+    /* Use isl as ilp solver. */
+    int islsolve;
 };
 typedef struct plutoOptions PlutoOptions;
 
@@ -305,8 +308,8 @@ extern PlutoOptions *options;
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
-int dep_satisfaction_update(PlutoProg *prog, int level);
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl);
+int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl);
 bool dep_is_satisfied(Dep *dep);
 
 PlutoConstraints *get_permutability_constraints(Dep *, int, const PlutoProg *);
@@ -315,12 +318,13 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         int *orthonum);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
 
-void pluto_auto_transform(PlutoProg *prog);
+void pluto_auto_transform(PlutoProg *prog, int use_isl);
 int  pluto_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
-int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
+int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl);
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
-int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
+int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
+                       int use_isl);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
