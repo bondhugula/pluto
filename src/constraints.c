@@ -439,7 +439,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
         for (j=0; j<cst->ncols; j++) {
             fprintf(fp, "%s%d ", cst->val[i][j]>=0? " ":"", cst->val[i][j]);
         }
-        fprintf(fp, "\t %s 0\n", cst->is_eq[i]? ">=": "==");
+        fprintf(fp, "\t %s 0\n", cst->is_eq[i]? "==": ">=");
     }
     fprintf(fp, "\n");
 }
