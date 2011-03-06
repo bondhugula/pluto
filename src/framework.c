@@ -719,7 +719,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
         orthcst_i = isl_basic_set_intersect(orthcst_i,
                 isl_basic_set_copy(isl_currcst));
-        if (isl_basic_set_is_empty(orthcst_i))
+        if (isl_basic_set_fast_is_empty(orthcst_i))
             negate_constraint(orthcst[p]);
         isl_basic_set_free(orthcst_i);
         p++;
