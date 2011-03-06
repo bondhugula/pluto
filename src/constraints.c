@@ -30,7 +30,6 @@
 #include "pluto.h"
 #include "isl/map.h"
 #include "isl/set.h"
-#include "isl/constraint.h"
 
 #ifdef PIP_WIDTH_MP
 #include "piplib/piplibMP.h"
@@ -502,37 +501,48 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
        isl_ctx *ctx, const PlutoConstraints *cst)
 {
     int i, j;
+    int n_eq = 0, n_ineq = 0;
     isl_int v;
     isl_dim *dim;
-    isl_constraint *c;
+    isl_mat *eq, *ineq;
     isl_basic_set *bset;
 
     isl_int_init(v);
 
+    for (i = 0; i < cst->nrows; ++i)
+        if (cst->is_eq[i])
+            n_eq++;
+        else
+            n_ineq++;
+
+    eq = isl_mat_alloc(ctx, n_eq, cst->ncols);
+    ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
+
     dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
-    bset = isl_basic_set_universe(isl_dim_copy(dim));
 
+    n_eq = n_ineq = 0;
     for (i = 0; i < cst->nrows; ++i) {
-       if (cst->is_eq[i])
-           c = isl_equality_alloc(isl_dim_copy(dim));
-       else
-           c = isl_inequality_alloc(isl_dim_copy(dim));
+        isl_mat **m;
+        int row;
 
-       isl_int_set_si(v, cst->val[i][cst->ncols - 1]);
-       isl_constraint_set_constant(c, v);
+        if (cst->is_eq[i]) {
+            m = &eq;
+            row = n_eq++;
+        } else {
+            m = &ineq;
+            row = n_ineq++;
+        }
 
-       for (j = 0; j < cst->ncols - 1; ++j) {
-           isl_int_set_si(v, cst->val[i][j]);
-           isl_constraint_set_coefficient(c, isl_dim_set, j, v);
-       }
-
-       bset = isl_basic_set_add_constraint(bset, c);
+        for (j = 0; j < cst->ncols; ++j) {
+            isl_int_set_si(v, cst->val[i][j]);
+            *m = isl_mat_set_element(*m, row, j, v);
+        }
     }
-
-    isl_dim_free(dim);
 
     isl_int_clear(v);
 
+    bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
+                isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
     return bset;
 }
 
