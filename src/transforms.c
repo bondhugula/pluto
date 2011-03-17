@@ -21,15 +21,22 @@
 #include "constraints.h"
 #include "transforms.h"
 
+#include "assert.h"
+
 /* Sink statement; depth: 0-indexed */
-void pluto_sink_statement(Stmt *stmt, int depth, int val)
+void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val)
 {
     int d;
 
+    assert(stmt->dim == stmt->domain->ncols-npar-1);
+
     pluto_constraints_add_dim(stmt->domain, depth);
-    for (d=depth; d<stmt->domain->ncols-2; d++) {
+    stmt->is_orig_loop = realloc(stmt->is_orig_loop, (stmt->dim+1)*sizeof(bool));
+    for (d=depth; d<stmt->dim; d++) {
         stmt->is_orig_loop[d+1] = stmt->is_orig_loop[d];
     }
-    stmt->is_orig_loop[depth] = 0;
+    stmt->is_orig_loop[depth] = false;
     pluto_constraints_set_var(stmt->domain, depth, val);
+
+    stmt->dim++;
 }

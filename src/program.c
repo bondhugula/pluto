@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <assert.h>
 
 #include "pluto.h"
@@ -311,16 +312,18 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
         stmt->id = i;
 
         stmt->dim = clan_stmt->nb_iterators;
+        stmt->dim_orig = clan_stmt->nb_iterators;
+
+        stmt->is_orig_loop = (bool *) malloc(stmt->dim*sizeof(bool));
+        stmt->is_supernode = (bool *) malloc(MAX_TRANS_ROWS*sizeof(bool));
 
         assert(clan_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
         stmt->domain = clan_matrix_to_pluto_constraints(clan_stmt->domain->elt);
 
-        /* Initialization */
         stmt->num_tiled_loops = 0;
 
-        /* May tile two more times */
-        for (j=0; j<3*nvar; j++)  {
+        for (j=0; j<MAX_TRANS_ROWS; j++)  {
             stmt->is_supernode[j] = false;
         }
 
@@ -362,6 +365,9 @@ void stmt_free(Stmt *stmt)
 {
     pluto_matrix_free(stmt->trans);
     pluto_constraints_free(stmt->domain);
+
+    free(stmt->is_supernode);
+    free(stmt->is_orig_loop);
 }
 
 
@@ -1009,6 +1015,7 @@ int get_coeff_upper_bound(PlutoProg *prog)
 
     return max-1;
 }
+
 
 
 void pluto_prog_free(PlutoProg *prog)

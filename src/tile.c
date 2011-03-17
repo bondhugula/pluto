@@ -55,8 +55,8 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
  * --parallel is on */
 void pluto_tile(PlutoProg *prog)
 {
-    int tile_sizes[MAX_VARS];
-    int l2_tile_size_ratios[MAX_VARS];
+    int tile_sizes[prog->nvar];
+    int l2_tile_size_ratios[prog->nvar];
     int j;
 
     /* Tiling */
@@ -197,6 +197,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
                 pluto_matrix_add_col(&stmt->trans, 0);
             }
             /* 2.1.2 new rows - as many scattering dims we are tiling */
+            stmt->is_supernode = (bool *) realloc(stmt->is_supernode,
+                    (stmt->trans->nrows + num_supernodes)*sizeof(bool));
             for (k=0; k<num_tiled_scat_dims; k++)  {
                 for (i=stmt->trans->nrows-1; i>=firstD; i--) {
                     for (j=0; j<stmt->trans->ncols; j++) {
@@ -228,6 +230,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             }
 
             /* 3. Update is_outer_loop */
+            stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
+                    sizeof(bool)*(stmt->dim+num_supernodes));
             for (k=0; k<num_supernodes; k++)  {
                 for (i=0; i<stmt->dim; i++) {
                     stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];

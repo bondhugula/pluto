@@ -22,6 +22,6 @@
 
 #include "pluto.h"
 
-void pluto_sink_statement(Stmt *stmt, int depth, int val);
+void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val);
 
 #endif

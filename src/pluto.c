@@ -151,7 +151,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
     npar = prog->npar;
 
     /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[MAX_PARS+MAX_STMTS*(MAX_VARS+1)];
+    int redun[npar+nstmts*nvar+1];
     int i, j, k, q;
     int *sol, *fsol;
     static PlutoConstraints *newcst = NULL;
@@ -216,11 +216,11 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
 
     j=npar+1;
     for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+stmts[i].dim; k++) {
-            perm_mat->val[k][2*j+stmts[i].dim-k-1] = 1;
+        for (k=j; k<j+stmts[i].dim_orig; k++) {
+            perm_mat->val[k][2*j+stmts[i].dim_orig-k-1] = 1;
         }
         perm_mat->val[k][k] = 1;
-        j += stmts[i].dim+1;
+        j += stmts[i].dim_orig+1;
     }
     perm_mat->val[j][j] = 1;
 
@@ -509,7 +509,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
 {
     int num_sols_found, j, k;
     int *bestsol;
-    int orthonum[MAX_STMTS];
     PlutoConstraints *basecst, *nzcst;
     static PlutoConstraints *currcst = NULL;
     PlutoConstraints ***orthcst;
@@ -521,13 +520,15 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
+    int orthonum[nstmts];
+
     HyperplaneProperties *hProps = prog->hProps;
 
 #if 0
     int orthoprod;
     int step;
     PlutoConstraints *tmpcst;
-    int num[MAX_STMTS];
+    int num[nstmts];
 #endif
 
     assert(max_sols >= 0);
@@ -669,8 +670,11 @@ int get_loop_type (Stmt *stmt, int level)
 bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 {
     int ncomps;
-    int stmtGrp[MAX_STMTS][MAX_STMTS];
-    int grpCount[MAX_STMTS];
+
+    int nstmts = prog->nstmts;
+
+    int stmtGrp[nstmts][nstmts];
+    int grpCount[nstmts];
 
     HyperplaneProperties *hProps = prog->hProps;
 
@@ -679,7 +683,6 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
     if (depth != 0) return false;
 
     Stmt *stmts = prog->stmts;
-    int nstmts = prog->nstmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
@@ -707,7 +710,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
             }
             fscanf(cutFp, "%d", &tile);
             for (j=0; j<grpCount[i]; j++)    
-                for (k=0; k<stmts[stmtGrp[i][j]].dim; k++)
+                for (k=0; k<stmts[stmtGrp[i][j]].dim_orig; k++)
                     stmts[stmtGrp[i][j]].tile = tile;
         }
 
@@ -757,7 +760,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 
                     /* Careful here; transformation is in LooPo
                      * format <global_nvar>+<npar>+1 */
-                    assert(cols == 1+stmts[i].dim+npar+1);
+                    assert(cols == 1+stmts[i].dim_orig+npar+1);
 
                     /* For equality - ignore the zero */
                     fscanf(precut, "%d", &ignore);
@@ -1002,7 +1005,7 @@ void normalize_domains(PlutoProg *prog)
 			PlutoConstraints *copy = 
 				pluto_constraints_alloc(2*prog->stmts[i].domain->nrows, prog->stmts[i].domain->ncols);
 			pluto_constraints_copy(copy, prog->stmts[i].domain);
-			for (j=0; j<prog->stmts[i].dim; j++)    {
+			for (j=0; j<prog->stmts[i].dim_orig; j++)    {
 				fourier_motzkin_eliminate(copy, 0);
 			}
 			assert(copy->ncols == npar+1);
@@ -1048,17 +1051,17 @@ void normalize_domains(PlutoProg *prog)
 	/* Add padding dimensions to statement domains */
 	for (i=0; i<prog->nstmts; i++)    {
 		Stmt *stmt = &prog->stmts[i];
-        int orig_depth = stmt->dim;
+        int orig_depth = stmt->dim_orig;
 		for (j=orig_depth; j<nvar; j++)  {
-            pluto_sink_statement(stmt, stmt->dim, 0);
+            pluto_sink_statement(stmt, npar, stmt->dim, 0);
 		}
 	}
 
 	/* Add padding dimensions for the dependence polyhedra */
 	for (i=0; i<prog->ndeps; i++)    {
 		Dep *dep = &prog->deps[i];
-		int src_dim = prog->stmts[dep->src].dim;
-		int target_dim = prog->stmts[dep->dest].dim;
+		int src_dim = prog->stmts[dep->src].dim_orig;
+		int target_dim = prog->stmts[dep->dest].dim_orig;
 
 		for (j=src_dim; j<nvar; j++)    {
 			pluto_constraints_add_dim(dep->dpolytope, src_dim);
@@ -1133,6 +1136,7 @@ void denormalize_domains(PlutoProg *prog)
 				pluto_constraints_remove_dim(stmt->domain, j-del_count);
 				pluto_matrix_remove_col(stmt->trans, j-del_count);
 				del_count++;
+                stmt->dim--;
 			}
 		}
 
@@ -1208,6 +1212,12 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 			// detect_hyperplane_type(prog->stmts, prog->nstmts, prog->deps, prog->ndeps, i, sols_found, depth);
 			hProps[i].type = H_LOOP;
 		}
+
+		for (i=0; i<prog->nstmts; i++)    {
+            for (j=stmts[0].trans->nrows-sols_found; j<stmts[0].trans->nrows; j++) {
+                stmts[i].is_supernode[j] = false;
+            }
+        }
 
 		if (sols_found > 0) {
 			for (j=0; j<sols_found; j++)      {
@@ -1817,7 +1827,8 @@ void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
  * Pretty prints a one-dimensional affine transformation */
 void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 {
-	char var[MAX_DIM][128];
+	char var[stmt->domain->ncols-1][128];
+
 	int j;
 
 	for (j=0; j<stmt->dim; j++)  {

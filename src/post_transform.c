@@ -220,8 +220,12 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 
         Stmt *stmt = &stmts[i];
 
-        int unroll[MAX_VARS] = {0};
+        int unroll[prog->nvar];
         int num_unroll = 0;
+
+        for (j=0; j<prog->nvar; j++)    {
+            unroll[j] = 0;
+        }
 
         /* 1.1 which original dimensions to unroll */
         for (j=0; j<stmt->dim; j++)    {

@@ -36,13 +36,6 @@
 /* Something in between the above two */
 #define SMART_FUSE 2
 
-/* max for various things */
-#define MAX_VARS 100
-#define MAX_PARS 100
-#define MAX_STMTS 100
-#define H_MAX_ROWS 100
-#define MAX_DIM 20
-
 #define MAX_CONSTRAINTS 10000
 #define MAX_FARKAS_CST  2000
 
@@ -179,10 +172,13 @@ struct statement{
     /* Does this dimension appear in the statement's original domain? 
      * dummy dimensions added (sinking) will have is_orig_loop as false
      */
-    bool is_orig_loop[MAX_VARS];
+    bool *is_orig_loop;
 
-    /* Actual dimensionality of the statement's domain */
+    /* Dimensionality of statement's domain */
     int dim;
+
+    /* Original dimensionality of statement's domain */
+    int dim_orig;
 
     /* Should you tile even if it's tilable? */
     int tile;
@@ -194,7 +190,7 @@ struct statement{
     PlutoMatrix *trans;
 
     /* Is this loop a tile-space loop (supernode) or not? */
-    bool is_supernode[MAX_VARS];
+    bool *is_supernode;
 
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
