@@ -460,6 +460,27 @@ PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps,
          */ 
         if (dep_is_satisfied(dep)) continue;
 
+        FILE *fp = fopen("skipdeps.txt", "r");
+
+        if (fp) {
+            int num;
+            int found = 0;
+
+            while(!feof(fp)) {
+                fscanf(fp, "%d", &num);
+                if (i == num-1) {
+                    found = 1;
+                    break;
+                }
+            }
+            fclose(fp);
+            if (found)  {
+                printf("Skipping dep %d\n", num);
+              
+                continue;
+            }
+        }
+
         /* Subsequent calls can just use the old ones */
         pluto_constraints_add(globcst, depcst[i]);
 
