@@ -151,10 +151,12 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
     npar = prog->npar;
 
     /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[npar+nstmts*nvar+1];
+    int redun[npar+1+nstmts*(nvar+1)+1];
     int i, j, k, q;
     int *sol, *fsol;
     static PlutoConstraints *newcst = NULL;
+
+    assert(cst->ncols-1 == npar+1+nstmts*(nvar+1));
 
 
     if (!newcst || newcst->alloc_nrows < cst->nrows)   {
