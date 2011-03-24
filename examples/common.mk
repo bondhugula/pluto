@@ -4,8 +4,8 @@
 # Gets included after the local Makefile in an example sub-directory
 #
 
-CC=icc
-#CC=gcc
+#CC=icc
+CC=gcc
 
 # Intel MKL and AMD ACML library paths
 MKL=/usr/local/mkl
@@ -13,9 +13,13 @@ ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
 	OPT_FLAGS=-O3 -I/usr/include -fp-model strict
+	PAR_FLAGS := -parallel
+	OMP_FLAGS := -openmp
 else
 	# for gcc
-	OPT_FLAGS :=-fopenmp -O3 -ftree-vectorize -msse3 #-ftree-parallelize-loops=4;
+	OPT_FLAGS := -O3 -ftree-vectorize -msse3 
+	PAR_FLAGS := -ftree-parallelize-loops=4;
+	OMP_FLAGS := -fopenmp
 endif
 
 CFLAGS = -DTIME -lm
@@ -36,7 +40,7 @@ orig: $(SRC).c decls.h  util.h
 	$(CC) $(OPT_FLAGS) -lm $(SRC).c -o orig $(CFLAGS)
 
 orig_par: decls.h  util.h $(SRC).c
-	$(CC) -parallel $(OPT_FLAGS) -lm $(SRC).c -o orig_par $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(PAR_FLAGS) -lm $(SRC).c -o orig_par $(CFLAGS)
 
 $(SRC).opt.c: 
 	$(PLC) $(SRC).c $(PLCFLAGS) 
@@ -54,7 +58,7 @@ tiled: $(SRC).tiled.c decls.h  util.h
 	$(CC) $(OPT_FLAGS) -lm $(SRC).tiled.c -o tiled  $(CFLAGS)
 
 par: $(SRC).par.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) -openmp -lm $(SRC).par.c -o par  $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(OMP_FLAGS) -lm $(SRC).par.c -o par  $(CFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
