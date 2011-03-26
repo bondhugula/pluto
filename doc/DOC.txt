@@ -134,13 +134,19 @@ COMMAND-LINE OPTIONS
     at each level. 
 
     --indent
-    Indents generated code
+    Indent generated code
+
+    --islsolve
+    Use ISL for solving ILPs
 
     --isldep
     See usage message (run polycc with no arguments)
 
     --lastwriter
     See usage message (run polycc with no arguments)
+
+    --readscoplib
+    Read input from a scoplib file
 
     --version
     Print version number and exit
@@ -149,13 +155,13 @@ COMMAND-LINE OPTIONS
 	UNIX-style silence: no output as long as everything goes fine
 
     Besides these, 'tile.sizes' and '.fst' files allow the user to force 
-    certain things. See doc/DOC.txt for these.
+    certain things.
 
     Other options will only make sense to power users. See comments in 
     src/pluto.h for details.
 
 
-SPECIFYING CUSTOM TILE SIZES THROUGH 'TILE.SIZES'
+SPECIFYING CUSTOM TILE SIZES THROUGH 'tile.sizes'
 
 Use a file tile.sizes in your current working directory if you want to 
 manually specify tile sizes.  First specify L1 tile sizes, then L2:L1 
