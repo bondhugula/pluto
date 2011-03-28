@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
                 break;
             case 'h':
                 usage_message();
-                return 1;
+                return 2;
             case 'i':
                 /* Handled in polycc */
                 break;
@@ -162,10 +162,12 @@ int main(int argc, char *argv[])
 Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
 This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n");
-                return 1;
+                pluto_options_free(options);
+                return 3;
             default:
                 usage_message();
-                return 2;
+                pluto_options_free(options);
+                return 4;
         }
     }
 
@@ -175,14 +177,16 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }else{
         /* No non-option argument was specified */
         usage_message();
-        return 3;
+        pluto_options_free(options);
+        return 5;
     }
 
     src_fp  = fopen(srcFileName, "r");
 
     if (!src_fp)   {
         fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
-        return 5;
+        pluto_options_free(options);
+        return 6;
     }
 
     /* Extract polyhedral representation from input program */
@@ -198,7 +202,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (!scop || !scop->statement)   {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
-        return 1;
+        pluto_options_free(options);
+        return 7;
     }
 
     /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
@@ -320,7 +325,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->unroll || options->polyunroll)    {
         /* Will generate a .unroll file */
-        /* plann needs a .params */
+        /* plann/plorc needs a .params */
         FILE *paramsFP = fopen(".params", "w");
         if (paramsFP)   {
             int i;
@@ -369,7 +374,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (!cloogfp)   {
         fprintf(stderr, "Can't open .cloog file: %s\n", cloogFileName);
-        return 2;
+        pluto_options_free(options);
+        pluto_prog_free(prog);
+        return 8;
     }
 
 
@@ -385,7 +392,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (!outfp) {
         fprintf(stderr, "Can't open file %s for writing\n", outFileName);
-        return 1;
+        pluto_options_free(options);
+        pluto_prog_free(prog);
+        return 9;
     }
 
     /* Generate code using Cloog and add necessary stuff before/after code */
