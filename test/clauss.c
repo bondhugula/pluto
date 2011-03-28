@@ -8,6 +8,7 @@ int main(void)
   int **a,**b;
 
 
+#pragma scop
   for(i=0; i<3*N-1; i++)
     for(j=0; j<N; j++)
       {
@@ -16,6 +17,7 @@ int main(void)
 	if((i+j>=2*N-1) && (i+j<=4*N-2))
 	  b[i][j] = a[i-N][j];
       }
+#pragma endscop
   /*
   for(i=0; i<2; i++)
       {

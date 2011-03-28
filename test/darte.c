@@ -2,7 +2,6 @@
  * S1 will be shifted forward by 1 (relative to S2) and appear after
  * S2 in the transformed body */
 
-/* pluto start (n) */
 #pragma scop
 for (i=0; i<n; i++) {
     for (j=0; j<n; j++){
@@ -11,4 +10,3 @@ for (i=0; i<n; i++) {
     }
 }
 #pragma endscop
-/* pluto end */

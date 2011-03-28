@@ -1,10 +1,8 @@
 
-/* pluto start (T,N) */
-
-DO t=1,T-1
-  DO i=1,N-2
+#pragma scop
+for(t=1; t<=T-1; t++){
+    for(i=1; i<=N-1; i++){
       u[t][i] = 0.333*(u[t-1][i-1] + u[t-1][i] + u[t-1][i+1]);
-  END DO
-END DO
-
-/* pluto end */
+    }
+}
+#pragma endscop

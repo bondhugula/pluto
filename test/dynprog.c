@@ -19,6 +19,7 @@ int main (int argc, char* argv[])
   for (iter=0; iter<NITER; iter++) {
 
   /* pluto start (length) */
+#pragma scop
   for( i=0; i<=length-1; i++)
     for( j=0; j<=length-1; j++)
       c[i][j] = 0;
@@ -35,7 +36,7 @@ int main (int argc, char* argv[])
       c[i][j] = sum_c[i][j][j-1] + W[i][j];
     }
   }
-  /* pluto end */
+#pragma endscop
 
   out[0] += c[0][length-1];
   }
