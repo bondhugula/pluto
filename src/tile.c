@@ -55,8 +55,8 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
  * --parallel is on */
 void pluto_tile(PlutoProg *prog)
 {
-    int tile_sizes[prog->nvar];
-    int l2_tile_size_ratios[prog->nvar];
+    int tile_sizes[prog->num_hyperplanes];
+    int l2_tile_size_ratios[prog->num_hyperplanes];
     int j;
 
     /* Tiling */
