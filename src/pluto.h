@@ -233,7 +233,7 @@ struct dependence{
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
 
-    /* Dependence direction in the transformed space */
+    /* Dependence direction in transformed space */
     int direction[MAX_TRANS_ROWS];
 
 };
@@ -289,7 +289,7 @@ struct plutoProg{
     /* Hyperplane properties */
     HyperplaneProperties *hProps;
 
-    /* Max domain dimensionality */
+    /* Max (original) domain dimensionality */
     int nvar;
 
     /* Number of program parameters */

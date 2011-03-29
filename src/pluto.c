@@ -474,6 +474,7 @@ void cut_smart(PlutoProg *prog, Graph *ddg, int use_isl)
 }
 
 
+/* Distribute conservatively to maximize (rather random) fusion chance */
 void cut_conservative(PlutoProg *prog, Graph *ddg, int use_isl)
 {
     int i, j;
@@ -1160,6 +1161,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	Stmt *stmts = prog->stmts;
 
 	Graph *ddg = prog->ddg;
+    int nvar = prog->nvar;
 
 	HyperplaneProperties *hProps = prog->hProps;
 
@@ -1244,7 +1246,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 				fprintf(stderr, "\tThis is usually a result of either (1) a bug in the dependence tester,\n");
 				fprintf(stderr, "\tor (2) very rarely a bug in Pluto's auto transformation,\n");
 				fprintf(stderr, "\tor (3) an illegal or inconsistent .fst/.precut in your working directory.\n");
-				fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
+				fprintf(stderr, "\tPlease send input to author if possible.\n");
 				assert(ddg->num_sccs >= 2 && depth <= 32);
 			}
 
@@ -1255,7 +1257,8 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 				cut_smart(prog, ddg, use_isl);
 			}else{
 				/* Max fuse */
-				cut_conservative(prog, ddg, use_isl);
+                if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg, use_isl);
+                else cut_conservative(prog, ddg, use_isl);
 			}
 		}
 		depth++;

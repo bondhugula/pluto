@@ -98,12 +98,13 @@ COMMAND-LINE OPTIONS
     of the same dimensionality. 
 
     --nofuse
-    Separate all strongly-connected components in the dependence graphs 
-    to start with, i.e., no fusion across SCCs, and at any level inside.
+    Separate all strongly-connected components (SCCs) in the dependence
+    graphs to start with, i.e., no fusion across SCCs, and at any level
+    inside.
 
     --maxfuse 
-    This is geared towards maximal fusion (but not actually maximal 
-    fusion). Fusion is done across SCCs.
+    This is geared towards maximal fusion, but maximal fusion is not
+    guaranteed. Fusion is done across SCCs.
 
     --[no]unroll
     Automatically identify and unroll-jam up to two loops. Not enabled 
