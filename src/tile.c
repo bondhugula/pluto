@@ -78,7 +78,7 @@ void pluto_tile(PlutoProg *prog)
         for (j=0; j<prog->num_hyperplanes; j++)   {
             tile_sizes[j] = DEFAULT_L1_TILE_SIZE;
         }
-        for (j=0; j<prog->nvar; j++)   {
+        for (j=0; j<prog->num_hyperplanes; j++)   {
             /* L2 cache is around 64 times L1 cache */
             /* assuming 2-d - this tile size has to be eight
              * times the L1 tile size; NOTE: 8 and NOT
@@ -150,9 +150,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             /* 1.3 specify tile shapes in the original domain */
             for (depth=firstD; depth<=lastD; depth++)    {
 
-                assert(tile_sizes[depth-firstD] != 0);
+                assert(tile_sizes[depth-firstD] >= 1);
 
-                // printf("before adding\n");
                 // pluto_constraints_print(stdout, stmt->domain);
 
                 /* Add relation b/w tile space variable and intra-tile variables like
