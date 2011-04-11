@@ -516,7 +516,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
 
     for (i=0; i<nstmts; i++) {
         /* Don't add the constraint if enough solutions have been found */
-        if (stmts[i].num_ind_sols >= stmts[i].dim)   {
+        if (stmts[i].num_ind_sols >= stmts[i].dim_orig)   {
             IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
             continue;
         }
@@ -634,7 +634,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int npar = prog->npar;
     int nstmts = prog->nstmts;
 
-    if (stmt->num_ind_sols >= stmt->dim) {
+    if (stmt->num_ind_sols >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
     }
