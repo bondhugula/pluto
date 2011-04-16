@@ -972,27 +972,27 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         clan_stmt = clan_stmt->next;
     }
 
-	// hack for linearized accesses
-	FILE *lfp = fopen(".linearized", "r");
-	FILE *nlfp = fopen(".nonlinearized", "r");
-	char tmpstr[256];
-	char linearized[256];
-       if (lfp && nlfp) {
-               for (i=0; i<prog->nstmts; i++)    {
-                       rewind(lfp);
-                       rewind(nlfp);
-                       while (!feof(lfp))      {
-                               fgets(tmpstr, 256, nlfp);
-                               fgets(linearized, 256, lfp);
-                               if (strstr(tmpstr, prog->stmts[i].text))        {
-                                       prog->stmts[i].text = (char *) realloc(prog->stmts[i].text, sizeof(char)*(strlen(linearized)+1));
-                                       strcpy(prog->stmts[i].text, linearized);
-                               }
-			}
-		}
-               fclose(lfp);
-               fclose(nlfp);
-	}
+    // hack for linearized accesses
+    FILE *lfp = fopen(".linearized", "r");
+    FILE *nlfp = fopen(".nonlinearized", "r");
+    char tmpstr[256];
+    char linearized[256];
+    if (lfp && nlfp) {
+        for (i=0; i<prog->nstmts; i++)    {
+            rewind(lfp);
+            rewind(nlfp);
+            while (!feof(lfp) && !feof(nlfp))      {
+                fgets(tmpstr, 256, nlfp);
+                fgets(linearized, 256, lfp);
+                if (strstr(tmpstr, prog->stmts[i].text))        {
+                    prog->stmts[i].text = (char *) realloc(prog->stmts[i].text, sizeof(char)*(strlen(linearized)+1));
+                    strcpy(prog->stmts[i].text, linearized);
+                }
+            }
+        }
+        fclose(lfp);
+        fclose(nlfp);
+    }
 
     return prog;
 }

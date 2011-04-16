@@ -1027,6 +1027,7 @@ void normalize_domains(PlutoProg *prog)
 			pluto_constraints_print(stdout, context );
 		}
 
+#if 0
 		/* Add context to every dep polyhedron */
 		for (i=0; i<prog->ndeps; i++) {
 			PlutoConstraints *dpolytope = prog->deps[i].dpolytope;
@@ -1034,16 +1035,17 @@ void normalize_domains(PlutoProg *prog)
 			for (k=0; k<context->nrows; k++) {
 				pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
 
-				/* already initialized to zero */
+				/* Already initialized to zero */
 
 				for (j=0; j<npar+1; j++){
 					dpolytope->val[dpolytope->nrows-1][j+dpolytope->ncols-(npar+1)] = 
 						context->val[k][j];
 				}
 			}
-			/* update the reference, add_row can resize */
+			/* Update reference, add_row can resize */
 			prog->deps[i].dpolytope = dpolytope;
 		}
+#endif
 		pluto_constraints_free(context);
 	}else{
 		IF_DEBUG(printf("No global context\n"));
