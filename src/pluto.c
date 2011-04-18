@@ -338,8 +338,14 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
         stmts[i].trans->nrows++;
     }
     num_satisfied =  dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
-                                             use_isl);
-    ddg_update(ddg, prog);
+            use_isl);
+    if (num_satisfied >= 1) {
+        ddg_update(ddg, prog);
+    }else{
+        for (i=0; i<nstmts; i++) {
+            stmts[i].trans->nrows--;
+        }
+    }
 
     return num_satisfied;
 }
@@ -411,7 +417,6 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
         }
 
         for (i=0; i<prog->nstmts; i++) {
-
             if (stmts[i].scc_id == k)  {
                 for (j=0; j<nvar; j++)  {
                     stmts[i].trans->val[stmts[i].trans->nrows][j] = 0;
@@ -422,12 +427,15 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
         }
     }
 
-
     int num_new_carried = dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
                                                   use_isl);
 
     if (num_new_carried >= 1)   {
         ddg_update(ddg, prog);
+    }else{
+        for (i=0; i<prog->nstmts; i++) {
+            stmts[i].trans->nrows--;
+        }
     }
 
     return num_new_carried;
@@ -435,7 +443,6 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
 
 
 /* Heuristic cut */
-
 void cut_smart(PlutoProg *prog, Graph *ddg, int use_isl)
 {
     if (ddg->num_sccs == 0) return;
@@ -479,7 +486,6 @@ void cut_conservative(PlutoProg *prog, Graph *ddg, int use_isl)
     int i, j;
 
     if (cut_scc_dim_based(prog,ddg, use_isl))   {
-        cut_scc_dim_based(prog,ddg, use_isl);
         return;
     }
 
@@ -1196,14 +1202,14 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 
 	do{
 
-		if (options->fuse == NO_FUSE)	{
-			ddg_compute_scc(prog);
-			cut_all_sccs(prog, ddg, use_isl);
-		}
+        if (options->fuse == NO_FUSE)	{
+            ddg_compute_scc(prog);
+            cut_all_sccs(prog, ddg, use_isl);
+        }
 
-                sols_found = find_permutable_hyperplanes(prog,
-                                                         nsols-num_ind_sols,
-                                                         use_isl);
+        sols_found = find_permutable_hyperplanes(prog,
+                nsols-num_ind_sols,
+                use_isl);
 
 		IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
 					depth, sols_found));
@@ -1252,6 +1258,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 				/* No fuse */
 				cut_all_sccs(prog, ddg, use_isl);
 			}else if (options->fuse == SMART_FUSE)  {
+                /* Smart fuse (default) */
 				cut_smart(prog, ddg, use_isl);
 			}else{
 				/* Max fuse */
