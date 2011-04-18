@@ -1713,7 +1713,7 @@ Graph *ddg_create(PlutoProg *prog)
 /* 
  * Get the dimensionality of the stmt with max dimensionality in the SCC
  */
-static int get_max_dim_in_scc(PlutoProg *prog, int scc_id)
+static int get_max_orig_dim_in_scc(PlutoProg *prog, int scc_id)
 {
 	int i;
 
@@ -1721,7 +1721,7 @@ static int get_max_dim_in_scc(PlutoProg *prog, int scc_id)
 	for (i=0; i<prog->nstmts; i++)  {
 		Stmt *stmt = &prog->stmts[i];
 		if (stmt->scc_id == scc_id) {
-			max = PLMAX(max,stmt->dim);
+			max = PLMAX(max,stmt->dim_orig);
 		}
 	}
 
@@ -1769,7 +1769,7 @@ void ddg_compute_scc(PlutoProg *prog)
 	}
 
 	for (i=0; i<g->num_sccs; i++)  {
-		g->sccs[i].max_dim = get_max_dim_in_scc(prog, i);
+		g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
 		g->sccs[i].size = get_scc_size (prog, i);
 		g->sccs[i].id = gT->sccs[i].id;
 	}
