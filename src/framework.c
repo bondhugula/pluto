@@ -516,7 +516,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
 
     for (i=0; i<nstmts; i++) {
         /* Don't add the constraint if enough solutions have been found */
-        if (stmts[i].num_ind_sols >= stmts[i].dim)   {
+        if (stmts[i].num_ind_sols >= stmts[i].dim_orig)   {
             IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
             continue;
         }
@@ -542,15 +542,19 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
     int i;
     int best_elim;
 
-    /* printf("To start with: %d constraints, %d to be eliminated out of %d\n", 
-            farkas_cst->nrows, num_elim, farkas_cst->ncols-1); */
+    if (options->moredebug) {
+        printf("To start with: %d constraints, %d to be eliminated out of %d vars\n", 
+                farkas_cst->nrows, num_elim, farkas_cst->ncols-1);
+    }
 
     for (i=0; i<num_elim; i++)  {
         best_elim = best_elim_candidate(farkas_cst, num_elim-i);
         fourier_motzkin_eliminate(farkas_cst, best_elim);
-        /* printf("After elimination of %d variable: %d constraints\n", 
-                num_elim-i, farkas_cst->nrows); */
-        /* constraints_print(stdout, farkas_cst); */
+        if (options->moredebug) {
+            printf("After elimination of %d variable: %d constraints\n", 
+                    num_elim-i, farkas_cst->nrows); 
+        }
+        // pluto_constraints_print(stdout, farkas_cst);
     }
 
 }
@@ -634,7 +638,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int npar = prog->npar;
     int nstmts = prog->nstmts;
 
-    if (stmt->num_ind_sols >= stmt->dim) {
+    if (stmt->num_ind_sols >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
     }

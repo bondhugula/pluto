@@ -338,8 +338,14 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
         stmts[i].trans->nrows++;
     }
     num_satisfied =  dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
-                                             use_isl);
-    ddg_update(ddg, prog);
+            use_isl);
+    if (num_satisfied >= 1) {
+        ddg_update(ddg, prog);
+    }else{
+        for (i=0; i<nstmts; i++) {
+            stmts[i].trans->nrows--;
+        }
+    }
 
     return num_satisfied;
 }
@@ -411,7 +417,6 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
         }
 
         for (i=0; i<prog->nstmts; i++) {
-
             if (stmts[i].scc_id == k)  {
                 for (j=0; j<nvar; j++)  {
                     stmts[i].trans->val[stmts[i].trans->nrows][j] = 0;
@@ -422,12 +427,15 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
         }
     }
 
-
     int num_new_carried = dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
                                                   use_isl);
 
     if (num_new_carried >= 1)   {
         ddg_update(ddg, prog);
+    }else{
+        for (i=0; i<prog->nstmts; i++) {
+            stmts[i].trans->nrows--;
+        }
     }
 
     return num_new_carried;
@@ -435,7 +443,6 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
 
 
 /* Heuristic cut */
-
 void cut_smart(PlutoProg *prog, Graph *ddg, int use_isl)
 {
     if (ddg->num_sccs == 0) return;
@@ -480,7 +487,6 @@ void cut_conservative(PlutoProg *prog, Graph *ddg, int use_isl)
     int i, j;
 
     if (cut_scc_dim_based(prog,ddg, use_isl))   {
-        cut_scc_dim_based(prog,ddg, use_isl);
         return;
     }
 
@@ -1035,14 +1041,14 @@ void normalize_domains(PlutoProg *prog)
 			for (k=0; k<context->nrows; k++) {
 				pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
 
-				/* already initialized to zero */
+				/* Already initialized to zero */
 
 				for (j=0; j<npar+1; j++){
 					dpolytope->val[dpolytope->nrows-1][j+dpolytope->ncols-(npar+1)] = 
 						context->val[k][j];
 				}
 			}
-			/* update the reference, add_row can resize */
+			/* Update reference, add_row can resize */
 			prog->deps[i].dpolytope = dpolytope;
 		}
 		pluto_constraints_free(context);
@@ -1198,14 +1204,14 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 
 	do{
 
-		if (options->fuse == NO_FUSE)	{
-			ddg_compute_scc(prog);
-			cut_all_sccs(prog, ddg, use_isl);
-		}
+        if (options->fuse == NO_FUSE)	{
+            ddg_compute_scc(prog);
+            cut_all_sccs(prog, ddg, use_isl);
+        }
 
-                sols_found = find_permutable_hyperplanes(prog,
-                                                         nsols-num_ind_sols,
-                                                         use_isl);
+        sols_found = find_permutable_hyperplanes(prog,
+                nsols-num_ind_sols,
+                use_isl);
 
 		IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
 					depth, sols_found));
@@ -1254,6 +1260,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 				/* No fuse */
 				cut_all_sccs(prog, ddg, use_isl);
 			}else if (options->fuse == SMART_FUSE)  {
+                /* Smart fuse (default) */
 				cut_smart(prog, ddg, use_isl);
 			}else{
 				/* Max fuse */
@@ -1716,7 +1723,7 @@ Graph *ddg_create(PlutoProg *prog)
 /* 
  * Get the dimensionality of the stmt with max dimensionality in the SCC
  */
-static int get_max_dim_in_scc(PlutoProg *prog, int scc_id)
+static int get_max_orig_dim_in_scc(PlutoProg *prog, int scc_id)
 {
 	int i;
 
@@ -1724,7 +1731,7 @@ static int get_max_dim_in_scc(PlutoProg *prog, int scc_id)
 	for (i=0; i<prog->nstmts; i++)  {
 		Stmt *stmt = &prog->stmts[i];
 		if (stmt->scc_id == scc_id) {
-			max = PLMAX(max,stmt->dim);
+			max = PLMAX(max,stmt->dim_orig);
 		}
 	}
 
@@ -1772,7 +1779,7 @@ void ddg_compute_scc(PlutoProg *prog)
 	}
 
 	for (i=0; i<g->num_sccs; i++)  {
-		g->sccs[i].max_dim = get_max_dim_in_scc(prog, i);
+		g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
 		g->sccs[i].size = get_scc_size (prog, i);
 		g->sccs[i].id = gT->sccs[i].id;
 	}
