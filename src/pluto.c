@@ -1275,7 +1275,6 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	detect_transformation_properties(prog, use_isl);
 
 	denormalize_domains(prog);
-
 }
 
 
@@ -1666,7 +1665,7 @@ int generate_openmp_pragmas(PlutoProg *prog)
 		}
 	}
 
-	IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loops parallel\n", num_parallel_loops));
+	IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n", num_parallel_loops));
 
 	fclose(outfp);
 
@@ -1787,6 +1786,27 @@ void ddg_compute_scc(PlutoProg *prog)
 	graph_free(gT);
 
 	graph_print_sccs(g);
+}
+
+void print_transformations(PlutoProg *prog)
+{
+    int nstmts, i;
+
+    nstmts = prog->nstmts;
+    Stmt *stmts = prog->stmts;
+
+    for (i=0; i<nstmts; i++) {
+        fprintf(stdout, "T(S%d): ", i+1);
+        int level;
+        printf("(");
+        for (level=0; level<prog->num_hyperplanes; level++) {
+            if (level > 0) printf(", ");
+            pretty_print_affine_function(stdout, &stmts[i], level);
+        }
+        printf(")\n");
+
+        pluto_matrix_print(stdout, stmts[i].trans);
+    }
 }
 
 

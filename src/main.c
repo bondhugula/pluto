@@ -262,24 +262,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
     }
 
-    Stmt *stmts = prog->stmts;
-    int nstmts = prog->nstmts;
-
     /* Print out the transformations */
     if (!options->silent)   {
-        for (i=0; i<nstmts; i++) {
-            fprintf(stdout, "T(S%d): ", i+1);
-            int level;
-            printf("(");
-            for (level=0; level<prog->num_hyperplanes; level++) {
-                if (level > 0) printf(", ");
-                pretty_print_affine_function(stdout, &stmts[i], level);
-            }
-            printf(")\n");
-
-            pluto_matrix_print(stdout, stmts[i].trans);
-        }
-
+        print_transformations(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 
@@ -299,9 +284,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
          * parallelization
          */
         if (retval && options->tile == 0)   {
-            printf("WARNING: --tile is not used and there is pipelined parallelism\n");
-            printf("\t This leads to finer grained parallelism; add --tile to the list\n");
-            printf("\t of cmd-line options for a better coarse-grained parallelized code.\n");
+            printf("WARNING: --tile is not used and pipelined parallelism exists;\n");
+            printf("this leads to finer grained parallelism; add --tile to cmdline args\n");
+            printf("for a better coarse-grained parallelized code.\n");
+            print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
         }
     }
 
@@ -314,6 +300,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile && !options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
+        print_transformations(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 
