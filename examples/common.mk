@@ -22,7 +22,8 @@ else
 	OMP_FLAGS := -fopenmp
 endif
 
-CFLAGS = -DTIME -lm
+CFLAGS = -DTIME
+LDFLAGS = -lm
 PLCFLAGS +=
 TILEFLAGS += 
 
@@ -37,10 +38,10 @@ PLC=../../polycc
 all: orig tiled par
 
 orig: $(SRC).c decls.h  util.h
-	$(CC) $(OPT_FLAGS) -lm $(SRC).c -o orig $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o orig $(CFLAGS) $(LDFLAGS)
 
 orig_par: decls.h  util.h $(SRC).c
-	$(CC) $(OPT_FLAGS) $(PAR_FLAGS) -lm $(SRC).c -o orig_par $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o orig_par $(LDFLAGS)
 
 $(SRC).opt.c: 
 	$(PLC) $(SRC).c $(PLCFLAGS) 
@@ -52,13 +53,13 @@ $(SRC).par.c:
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS) 
 
 opt: $(SRC).opt.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) -lm $(SRC).opt.c -o opt $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).opt.c -o opt $(LDFLAGS)
 
 tiled: $(SRC).tiled.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) -lm $(SRC).tiled.c -o tiled  $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o tiled $(LDFLAGS)
 
 par: $(SRC).par.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(OMP_FLAGS) -lm $(SRC).par.c -o par  $(CFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o par  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
