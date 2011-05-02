@@ -38,7 +38,7 @@ PLC=../../polycc
 all: orig tiled par
 
 orig: $(SRC).c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o orig $(CFLAGS) $(LDFLAGS)
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o orig $(LDFLAGS)
 
 orig_par: decls.h  util.h $(SRC).c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o orig_par $(LDFLAGS)
