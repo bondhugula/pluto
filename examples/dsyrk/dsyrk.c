@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 
+#include "decls.h"
+
 #ifdef TIME
 #define IF_TIME(foo) foo;
 #else
@@ -23,10 +25,6 @@ double rtclock()
 }
 #endif
 
-#define NMAX 3000
-#define MEASURE_TIME 1
-
-static double a[NMAX][NMAX], c[NMAX][NMAX];
 
 void dsyrk(long N) 
 {

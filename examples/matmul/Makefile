@@ -13,7 +13,7 @@ atlas: dgemm.f decls.h
 	gfortran -m64 -O dgemm.f -L /usr/local/ATLAS/lib -o atlas -llapack -lcblas -lf77blas -latlas -lpthread
 
 mkl: matmul.blas.c decls.h
-	$(CC) -O3 $(CFLAGS) -I/usr/local/mkl/include matmul.blas.c -L /usr/local/mkl/lib/em64t -lmkl_em64t -lmkl -lguide -lpthread -o mkl
+	$(CC) -O3 $(CFLAGS) -I$(MKL)/include matmul.blas.c -L $(MKL)/lib/ia32 -lmkl_intel -lpthread -o mkl
 
 acml: matmul.blas.c decls.h
 	$(CC) -O3 -c -I $(ACML)/ifort64_mp/include -openmp matmul.acml.c -DTIME
