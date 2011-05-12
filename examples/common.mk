@@ -8,11 +8,11 @@
 CC=gcc
 
 # Intel MKL and AMD ACML library paths
-MKL=/usr/local/mkl
+MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS=-O3 -I/usr/include -fp-model strict
+	OPT_FLAGS=-O3 -I/usr/include -fp-model precise
 	PAR_FLAGS := -parallel
 	OMP_FLAGS := -openmp
 else
@@ -86,8 +86,8 @@ opt-test: orig opt
 	diff -q out_orig out_opt
 
 clean:
-	rm -f out_* *.tiled.c *.opt.c opt orig tiled  sched \
-		sched hopt hopt *.par.c par *.par2d.c orig_par *.out.* \
+	rm -f out_* *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
+		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog
 
