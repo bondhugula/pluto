@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
+#include "decls.h"
 
 #define TIME 1
 
@@ -21,9 +22,6 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-#define NMAX 2000
-
-static double a[NMAX][NMAX], b[NMAX][NMAX], c[NMAX][NMAX];
 
 void ssymm(long N) {
   int i,j,k;

@@ -1,2 +1,4 @@
-#define N 1000
-double f[N][N+13];
+#define NMAX 2000
+
+static double a[NMAX][NMAX], b[NMAX][NMAX];
+
