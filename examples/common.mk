@@ -18,7 +18,7 @@ ifeq ($(CC), icc)
 else
 	# for gcc
 	OPT_FLAGS := -O3 -ftree-vectorize -msse3 
-	PAR_FLAGS := -ftree-parallelize-loops=4;
+	PAR_FLAGS := -ftree-parallelize-loops=4
 	OMP_FLAGS := -fopenmp
 endif
 
