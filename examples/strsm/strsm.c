@@ -14,10 +14,6 @@
 #define IF_TIME(foo)
 #endif
 
-
-
-
-
 void strsm(long N) {
 	int i,j,k;
 
@@ -51,8 +47,8 @@ int main()
             for (j = 0; j < N; j++) {
                 fprintf(stdout, "%lf ",  b[i][j]);
             }
+            fprintf(stdout, "\n");
         }
-        fprintf(stdout, "\n");
     }
 
     return 0;

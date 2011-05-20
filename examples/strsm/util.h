@@ -9,8 +9,10 @@
 
 void init_array()
 {
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < N; j++) {
+    int i, j;
+
+    for (i = 0; i < NMAX; i++) {
+        for (j = 0; j < NMAX; j++) {
             b[i][j] = i*j*0.3+1;
             a[i][j] = i+j+1;
         }
