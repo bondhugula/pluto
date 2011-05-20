@@ -1,4 +1,4 @@
-#define N 4000
+#define N 8000
 
 #define alpha 1
 #define beta 1
