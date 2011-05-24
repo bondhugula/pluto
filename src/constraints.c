@@ -422,30 +422,30 @@ void pluto_constraints_print(FILE *fp, const PlutoConstraints *cst)
         for (j=0; j<cst->ncols; j++) {
             fprintf(fp, "%s%d ", cst->val[i][j]>=0? " ":"", cst->val[i][j]);
         }
-        fprintf(fp, "%s0\n", cst->is_eq[i]? " == ": ">= ");
-    }
-    fprintf(fp, "\n");
-}
-
-
-void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
-{
-    int i, j;
-
-    fprintf(fp, "%d %d\n", cst->nrows, cst->ncols);
-
-    for (i=0; i<cst->nrows; i++) {
-        for (j=0; j<cst->ncols; j++) {
-            fprintf(fp, "%s%d ", cst->val[i][j]>=0? " ":"", cst->val[i][j]);
-        }
         fprintf(fp, "\t %s 0\n", cst->is_eq[i]? "==": ">=");
     }
     fprintf(fp, "\n");
 }
 
 
-/* Little more than */
-void pluto_constraints_pretty_print2(FILE *fp, PlutoConstraints *cst)
+/* Print in polylib format */
+void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst)
+{
+    int i, j;
+
+    printf("%d %d\n", cst->nrows, cst->ncols+1);
+
+    for (i=0; i<cst->nrows; i++)    {
+        printf("%s ", cst->is_eq[i]? "0": "1");
+        for (j=0; j<cst->ncols; j++)    {
+            printf("%d ", cst->val[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+
+void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 {
     int i, j, var;
 
@@ -562,6 +562,7 @@ int *pluto_constraints_solve_isl(const PlutoConstraints *cst) {
   all_positive_set = isl_set_from_basic_set(all_positive);
   domain = isl_set_intersect(domain, all_positive_set);
 
+  // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
   lexmin = isl_set_lexmin(domain);
 
   if (isl_set_is_empty(lexmin))
@@ -659,22 +660,6 @@ int *pluto_constraints_solve(const PlutoConstraints *cst, int use_isl) {
     return pluto_constraints_solve_pip(cst);
 }
 
-/* Dump in polylib format */
-void pluto_constraints_dump_polylib(PlutoConstraints *cst)
-{
-    int i, j;
-
-    printf("%d %d\n", cst->nrows, cst->ncols+1);
-
-    for (i=0; i<cst->nrows; i++)    {
-        printf("%s ", cst->is_eq[i]? "0": "1");
-        for (j=0; j<cst->ncols; j++)    {
-            printf("%d ", cst->val[i][j]);
-        }
-        printf("\n");
-    }
-}
-
 
 /* Add an inequality (>= 0); initialize it to all zero */
 void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos)
@@ -734,7 +719,7 @@ void pluto_constraints_add_equality(PlutoConstraints *cst, int pos)
 
 
 
-/* Remove a row */
+/* Remove a row; pos is 0-indexed */
 void pluto_constraints_remove_row(PlutoConstraints *cst, int pos) 
 {
     int i, j;
@@ -921,4 +906,52 @@ PipMatrix *pip_matrix_populate(int **cst, int nrows, int ncols)
         }
     }
     return matrix ;
+}
+
+PlutoConstraints *pluto_constraints_select_row(PlutoConstraints *cst, int pos)
+{
+    int j;
+
+    PlutoConstraints *row = pluto_constraints_alloc(1, cst->ncols);
+    row->is_eq[0] = cst->is_eq[pos];
+    for (j=0; j<cst->ncols-1; j++)  {
+        row->val[0][j] = cst->val[pos][j];
+
+    }
+    return row;
+}
+
+void pluto_constraints_negate_row(PlutoConstraints *cst, int pos)
+{
+    int j;
+
+    for (j=0; j<cst->ncols; j++)    {
+        cst->val[pos][j] = -cst->val[pos][j];
+    }
+    cst->val[pos][cst->ncols-1]--;
+}
+
+void check_redundancy(PlutoConstraints *cst)
+{
+    int i;
+    PlutoConstraints *check = pluto_constraints_alloc(cst->nrows, cst->ncols);
+    int count;
+
+    count = 0;
+
+    for (i=0; i<cst->nrows; i++)    {
+        pluto_constraints_copy(check, cst);
+        PlutoConstraints *row = pluto_constraints_select_row(cst, i); 
+        pluto_constraints_remove_row(check, i); 
+        pluto_constraints_negate_row(row, 0);
+        pluto_constraints_add(check, row);
+        if (!pluto_constraints_solve(check, options->islsolve))  {
+            // printf("%dth constraint is redundant\n", i);
+            count++;
+        }else{
+            // printf("%dth constraint is not redundant\n", i);
+        }
+        pluto_constraints_free(row);
+    }
+    printf("%d constraints redundant\n", count);
 }

@@ -73,9 +73,9 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val);
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
 
-void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
-void pluto_constraints_dump_polylib(PlutoConstraints *cst);
+void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
+void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
 
 /*
  * Construct a non-parametric basic set from the constraints in cst.
