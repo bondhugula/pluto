@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <string.h>
 #include <getopt.h>
+#include <libgen.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -51,9 +52,8 @@ int main(int argc, char *argv[])
     int option_index = 0;
 
     char srcFileName[256];
-    char outFileName[256] = "";
-
     char cloogFileName[256];
+
     FILE *cloogfp, *outfp;
 
     if (argc <= 1)  {
@@ -352,10 +352,22 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     cloogfp = fopen(cloogFileName, "w+");
 
-    /* Remove .c extension and append a new one */
-    strcpy(outFileName, srcFileName);
-    outFileName[strlen(srcFileName)-2] = '\0';
-    strcat(outFileName, ".pluto.c");
+    /* Get basename, remove .c extension and append a new one */
+    char *basec, *bname;
+
+    basec = strdup(srcFileName);
+    bname = basename(basec);
+
+    char outFileName[strlen(bname)+strlen(".pluto.c")+1];
+
+    if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+        strncpy(outFileName, bname, strlen(bname)-2);
+        outFileName[strlen(bname)-2] = '\0';
+        strcat(outFileName, ".pluto.c");
+    }else{
+        strcpy(outFileName, bname);
+        strcat(outFileName, ".pluto.c");
+    }
 
     outfp = fopen(outFileName, "w");
 

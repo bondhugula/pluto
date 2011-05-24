@@ -61,16 +61,16 @@ dirname=`dirname  $SOURCEFILE`
 basename=`basename $SOURCEFILE`
 prefix=`basename $SOURCEFILE .c`
 
-INFILE=$dirname/$prefix.pluto.c
+INFILE=$prefix.pluto.c
 
 if [ "$MULTIPAR" == "1" ]; then
-    OUTFILE=$dirname/$prefix.par2d.c
+    OUTFILE=$prefix.par2d.c
 elif [ "$PARALLEL" == "1" ]; then
-    OUTFILE=$dirname/$prefix.par.c
+    OUTFILE=$prefix.par.c
 elif [ "$TILE" == "1" ]; then
-    OUTFILE=$dirname/$prefix.tiled.c
+    OUTFILE=$prefix.tiled.c
 else
-    OUTFILE=$dirname/$prefix.opt.c
+    OUTFILE=$prefix.opt.c
 fi
 
 # run the syntactic #pragma inserter
