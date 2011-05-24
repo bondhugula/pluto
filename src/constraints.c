@@ -433,14 +433,14 @@ void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst)
 {
     int i, j;
 
-    printf("%d %d\n", cst->nrows, cst->ncols+1);
+    fprintf(fp, "%d %d\n", cst->nrows, cst->ncols+1);
 
     for (i=0; i<cst->nrows; i++)    {
-        printf("%s ", cst->is_eq[i]? "0": "1");
+        fprintf(fp, "%s ", cst->is_eq[i]? "0": "1");
         for (j=0; j<cst->ncols; j++)    {
-            printf("%d ", cst->val[i][j]);
+            fprintf(fp, "%d ", cst->val[i][j]);
         }
-        printf("\n");
+        fprintf(fp, "\n");
     }
 }
 
