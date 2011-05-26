@@ -52,7 +52,6 @@ int main(int argc, char *argv[])
     int option_index = 0;
 
     char srcFileName[256];
-    char cloogFileName[256];
 
     FILE *cloogfp, *outfp;
 
@@ -336,9 +335,26 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    /* The .cloog file name */
-    strcpy(cloogFileName, srcFileName);
-    cloogFileName[strlen(srcFileName)-2] = '\0';
+    /* Get basename, remove .c extension and append a new one */
+    char *basec, *bname;
+
+    basec = strdup(srcFileName);
+    bname = basename(basec);
+
+    char outFileName[strlen(bname)+strlen(".pluto.c")+1];
+    char cloogFileName[strlen(bname)+strlen(".tiled.cloog")+1];
+
+    if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+        strncpy(outFileName, bname, strlen(bname)-2);
+        strncpy(cloogFileName, bname, strlen(bname)-2);
+        outFileName[strlen(bname)-2] = '\0';
+        cloogFileName[strlen(bname)-2] = '\0';
+        strcat(outFileName, ".pluto.c");
+    }else{
+        strcpy(outFileName, bname);
+        strcpy(cloogFileName, bname);
+        strcat(outFileName, ".pluto.c");
+    }
 
     if (options->parallel && options->multipipe)   {
         strcat(cloogFileName, ".par2d.cloog");
@@ -350,26 +366,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         strcat(cloogFileName, ".opt.cloog");
     }
 
-    cloogfp = fopen(cloogFileName, "w+");
-
-    /* Get basename, remove .c extension and append a new one */
-    char *basec, *bname;
-
-    basec = strdup(srcFileName);
-    bname = basename(basec);
-
-    char outFileName[strlen(bname)+strlen(".pluto.c")+1];
-
-    if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-        strncpy(outFileName, bname, strlen(bname)-2);
-        outFileName[strlen(bname)-2] = '\0';
-        strcat(outFileName, ".pluto.c");
-    }else{
-        strcpy(outFileName, bname);
-        strcat(outFileName, ".pluto.c");
-    }
-
     outfp = fopen(outFileName, "w");
+    cloogfp = fopen(cloogFileName, "w+");
 
     if (!cloogfp)   {
         fprintf(stderr, "Can't open .cloog file: %s\n", cloogFileName);
@@ -378,9 +376,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 8;
     }
 
-
-    /* Generate the .cloog file */
-    IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
+    /* Generate .cloog file */
     print_cloog_file(cloogfp, prog);
     /* Add the <irregular> tag from clan, if any */
     if (irroption != NULL) {

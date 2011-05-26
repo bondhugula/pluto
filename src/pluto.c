@@ -1363,6 +1363,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 	int nstmts = prog->nstmts;
     int npar = prog->npar;
 
+    IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
 	fprintf(fp, "# CLooG script generated automatically by PLUTO\n");
 	fprintf(fp, "# language: C\n");
 	fprintf(fp, "c\n\n");
@@ -1432,7 +1433,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 			for (k=0; k<stmts[i].trans->ncols-1; k++)   {
 				fprintf(fp, "%d ", -stmts[i].trans->val[j][k]);
 			}
-			/* we don't have coefficients for params in affine mappings */
+			/* We don't have coefficients for params in affine mappings */
 			for (k=0; k<npar; k++)   {
 				fprintf(fp, "0 ");
 			}
