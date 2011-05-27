@@ -65,12 +65,16 @@ INFILE=$prefix.pluto.c
 
 if [ "$MULTIPAR" == "1" ]; then
     OUTFILE=$prefix.par2d.c
+    CLOOGFILE=$prefix.par2d.cloog
 elif [ "$PARALLEL" == "1" ]; then
     OUTFILE=$prefix.par.c
+    CLOOGFILE=$prefix.par.cloog
 elif [ "$TILE" == "1" ]; then
     OUTFILE=$prefix.tiled.c
+    CLOOGFILE=$prefix.tiled.cloog
 else
     OUTFILE=$prefix.opt.c
+    CLOOGFILE=$prefix.opt.cloog
 fi
 
 # run the syntactic #pragma inserter
@@ -95,7 +99,7 @@ $vloog $INFILE
 @SOURCE_DIR@/inscop $SOURCEFILE $INFILE $OUTFILE
 
 if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE
 fi
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
