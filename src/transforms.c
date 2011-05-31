@@ -18,6 +18,7 @@
  *
  */
 #include "pluto.h"
+#include "program.h"
 #include "constraints.h"
 #include "transforms.h"
 
@@ -39,4 +40,32 @@ void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val)
     pluto_constraints_set_var(stmt->domain, depth, val);
 
     stmt->dim++;
+}
+
+
+void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode)
+{
+    pluto_stmt_add_dim(stmt, 0, dim, supernode);
+
+    PlutoConstraints *domain = stmt->domain;
+
+    int pos;
+
+    pos = domain->nrows;
+    pluto_constraints_add_inequality(domain, domain->nrows);
+    domain->val[domain->nrows-1][0] = -factor;
+    assert(stmt->trans->ncols == domain->ncols);
+    int i;
+    for (i=0; i<stmt->trans->ncols-1; i++)   {
+        domain->val[domain->nrows-1][i+1] = stmt->trans->val[dim][i];
+    }
+
+    pluto_constraints_add_inequality(domain, domain->nrows);
+    domain->val[domain->nrows-1][0] = factor;
+    assert(stmt->trans->ncols == domain->ncols);
+    for (i=0; i<stmt->trans->ncols-1; i++)   {
+        domain->val[domain->nrows-1][i+1] = -stmt->trans->val[dim][i];
+    }
+    domain->val[domain->nrows-1][stmt->trans->ncols] += factor;
+
 }

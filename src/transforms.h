@@ -23,5 +23,6 @@
 #include "pluto.h"
 
 void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val);
+void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode);
 
 #endif
