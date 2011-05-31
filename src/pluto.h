@@ -193,9 +193,6 @@ struct statement{
 
     PlutoConstraints *transineq;
 
-    /* Is this loop a tile-space loop (supernode) or not? */
-    bool *is_supernode;
-
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
 

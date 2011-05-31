@@ -315,17 +315,12 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
         stmt->dim_orig = clan_stmt->nb_iterators;
 
         stmt->is_orig_loop = (bool *) malloc(stmt->dim*sizeof(bool));
-        stmt->is_supernode = (bool *) malloc(nvar*sizeof(bool));
 
         assert(clan_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
         stmt->domain = clan_matrix_to_pluto_constraints(clan_stmt->domain->elt);
 
         stmt->num_tiled_loops = 0;
-
-        for (j=0; j<nvar; j++)  {
-            stmt->is_supernode[j] = false;
-        }
 
         for (j=0; j<stmt->dim; j++)  {
             stmt->is_orig_loop[j] = true;
@@ -371,7 +366,6 @@ void stmt_free(Stmt *stmt)
     pluto_constraints_free(stmt->domain);
     pluto_constraints_free(stmt->transineq);
 
-    free(stmt->is_supernode);
     free(stmt->is_orig_loop);
 }
 
@@ -1167,15 +1161,6 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter)
         stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
     }
     stmt->is_orig_loop[0] = true;
-
-    stmt->is_supernode = (bool *) realloc(stmt->is_supernode,
-            (stmt->trans->nrows)*sizeof(bool));
-
-    for (i=stmt->trans->nrows-2; i>=time_pos; i--) {
-        stmt->is_supernode[i+1] = stmt->is_supernode[i];
-    }
-
-    stmt->is_supernode[time_pos] = 1;
 }
 
 

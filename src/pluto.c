@@ -1207,7 +1207,6 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	}
 
 	do{
-
         if (options->fuse == NO_FUSE)	{
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg, use_isl);
@@ -1221,12 +1220,6 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 					depth, sols_found));
 		IF_DEBUG2(pluto_print_transformations(prog));
 		num_ind_sols += sols_found;
-
-		for (i=0; i<prog->nstmts; i++)    {
-            for (j=stmts[0].trans->nrows-sols_found; j<stmts[0].trans->nrows; j++) {
-                stmts[i].is_supernode[j] = false;
-            }
-        }
 
 		if (sols_found > 0) {
 			for (j=0; j<sols_found; j++)      {
@@ -1812,7 +1805,6 @@ void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
 
     if (numH == 0)  {
 		fprintf(stdout, "No hyperplanes\n");
-
     }
 
 	/* Note that loop properties are calculated for each dimension in the
