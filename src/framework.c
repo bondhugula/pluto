@@ -638,8 +638,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int nstmts = prog->nstmts;
     HyperplaneProperties *hProps = prog->hProps;
 
-    print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
-
     if (stmt->num_ind_sols >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
@@ -657,7 +655,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     if (q == 0) {
         /* No need to add any orthogonality constraints */
-        printf("No ortho constraints: %d\n", *orthonum);
         *orthonum = 0;
         return NULL;
     }

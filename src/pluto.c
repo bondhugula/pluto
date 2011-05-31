@@ -629,10 +629,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
             IF_DEBUG(fprintf(stdout, "Found a hyperplane\n"));
             num_sols_found++;
 
-            print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
             prog->hProps[prog->num_hyperplanes-1].type = H_LOOP;
-            print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
 
             for (j=0; j<nstmts; j++)    {
                 Stmt *stmt = &stmts[j];
