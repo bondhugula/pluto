@@ -791,7 +791,7 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos)
 }
 
 
-/* Add a variable; resize if necessary */
+/* Add a variable; resize if necessary; initialize to zero */
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos)
 {
     int i, j;

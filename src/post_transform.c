@@ -69,7 +69,6 @@ int pre_vectorize(PlutoProg *prog)
 {
     int lastloop, loop;
 
-    Stmt *stmts = prog->stmts;
     HyperplaneProperties *hProps = prog->hProps;
 
     /* find the deepest parallel loop NOT belonging to the outermost band that
@@ -82,8 +81,7 @@ int pre_vectorize(PlutoProg *prog)
         // printf("%d\n",  loop);
         if ((hProps[loop].dep_prop == PARALLEL 
                     || hProps[loop].dep_prop == PIPE_PARALLEL_INNER_PARALLEL) 
-                && !stmts[0].is_supernode[loop]) {
-
+                && (hProps[loop].type != H_TILE_SPACE_LOOP)) {
             if (!options->silent)   {
                 fprintf(stdout, "[Pluto post transform] pre-vectorize: moving dimension t%d in\n", 
                         loop+1);
@@ -145,16 +143,16 @@ int detect_unrollable_loops(PlutoProg *prog)
         /* Leave alone the vectorizable loop */
         if (hProps[bandEnd].dep_prop == PARALLEL && options->prevector == 1)  {
             for (i=PLMAX(bandEnd-2, bandStart); i<=bandEnd-1; i++)    {
-                if (stmts[0].is_supernode[i])   continue;
+                if (hProps[i].type == H_TILE_SPACE_LOOP)   continue;
                 prog->hProps[i].unroll = UNROLLJAM;
                 numUnrollableLoops++;
             }
         }else{
-            if (!stmts[0].is_supernode[bandEnd-1]) {
+            if (hProps[bandEnd-1].type != H_TILE_SPACE_LOOP) {
                 hProps[bandEnd-1].unroll = UNROLLJAM;
                 numUnrollableLoops++;
             }
-            if (!stmts[0].is_supernode[bandEnd]) {
+            if (hProps[bandEnd].type != H_TILE_SPACE_LOOP) {
                 hProps[bandEnd].unroll = UNROLL;
                 numUnrollableLoops++;
             }
@@ -171,7 +169,7 @@ int detect_unrollable_loops(PlutoProg *prog)
     if (numUnrollableLoops < 2) {
         /* Any parallel loop at any level can be unrolled */
         for (loop=bandStart-1; loop>=0; loop--)    {
-            if (hProps[loop].dep_prop == PARALLEL && stmts[0].is_supernode[loop] == 0) {
+            if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_TILE_SPACE_LOOP) {
                 hProps[loop].unroll = UNROLLJAM;
                 numUnrollableLoops++;
                 if (numUnrollableLoops == UNROLLJAM) break;
