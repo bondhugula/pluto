@@ -1191,8 +1191,8 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
         prog->hProps[i+1] = prog->hProps[i];
     }
     /* Initialize some */
-    prog->hProps[prog->num_hyperplanes-1].unroll = NO_UNROLL;
-    prog->hProps[prog->num_hyperplanes-1].band_num = -1;
-    prog->hProps[prog->num_hyperplanes-1].dep_prop = UNKNOWN;
-    prog->hProps[prog->num_hyperplanes-1].type = H_UNKNOWN;
+    prog->hProps[pos].unroll = NO_UNROLL;
+    prog->hProps[pos].band_num = -1;
+    prog->hProps[pos].dep_prop = UNKNOWN;
+    prog->hProps[pos].type = H_UNKNOWN;
 }
