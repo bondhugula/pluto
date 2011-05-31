@@ -20,6 +20,6 @@ cd cloog-isl
 ./autogen.sh
 cd ..
 
-cd piplib-1.4.0
+cd piplib
 ./autogen.sh
 cd ..

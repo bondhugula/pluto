@@ -95,10 +95,10 @@ dnl use_isl="true")
 
 dnl Configuring PipLib (long long int is 64 bits)
 echo -e "\n=========================="
-echo "Configuring PipLib 1.4.0"
+echo "Configuring PipLib"
 echo "=========================="
 configureopts="--with-bits=64 --enable-static --disable-shared"
-(cd piplib-1.4.0/
+(cd piplib/
  $RM config.cache;
  ./configure ${configureopts}
  )
@@ -121,7 +121,7 @@ echo "Configuring Candl 0.4.0 "
 echo "=========================="
 configureopts="--enable-llint-version --enable-static --disable-shared \
 --with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
---with-piplib=$SOURCE_DIR/piplib-1.4.0"
+--with-piplib=$SOURCE_DIR/piplib"
 (cd candl-0.4.0/
  ./configure ${configureopts}
  )
