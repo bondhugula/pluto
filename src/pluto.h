@@ -39,9 +39,6 @@
 #define MAX_CONSTRAINTS 10000
 #define MAX_FARKAS_CST  2000
 
-/* Maximum number of rows in the transformation matrix of a stmt */
-#define MAX_TRANS_ROWS 256
-
 #define MAX_TILING_LEVELS 2
 
 #define DEFAULT_L1_TILE_SIZE 32
@@ -53,6 +50,7 @@
 #define DEP_MINUS -1
 #define DEP_STAR 2
 
+#define H_UNKNOWN 0
 #define H_LOOP 1
 #define H_TILE_SPACE_LOOP 2
 #define H_SCALAR 3
@@ -153,6 +151,8 @@ struct plutoOptions{
 
     /* Use isl as ilp solver. */
     int islsolve;
+
+    int distmem;
 };
 typedef struct plutoOptions PlutoOptions;
 
@@ -186,8 +186,12 @@ struct statement{
     /* Affine transformation matrix that will be completed step by step */
     /* this captures the A/B/G notation of the INRIA group - except that
      * we don't have parametric shifts
+     * Size: nvar+npar+1 columns inside auto_transform
+     *       stmt->dim + npar + 1 after auto_transform (after denormalize)
      */
     PlutoMatrix *trans;
+
+    PlutoConstraints *transineq;
 
     /* Is this loop a tile-space loop (supernode) or not? */
     bool *is_supernode;
@@ -234,7 +238,7 @@ struct dependence{
     int satisfaction_level;
 
     /* Dependence direction in transformed space */
-    int direction[MAX_TRANS_ROWS];
+    int *direction;
 
 };
 typedef struct dependence Dep;
@@ -310,7 +314,7 @@ bool dep_is_satisfied(Dep *dep);
 
 PlutoConstraints *get_permutability_constraints(Dep *, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-        HyperplaneProperties *hProps, const PlutoConstraints *currcst,
+        const PlutoConstraints *currcst,
         int *orthonum);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
 

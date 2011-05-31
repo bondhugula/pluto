@@ -29,13 +29,15 @@ Stmt *stmt_copy (Stmt *src);
 
 void deps_print (FILE *, Dep *, int);
 
-int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios);
-
 PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
 void pluto_prog_free(PlutoProg *prog);
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 int get_coeff_upper_bound(PlutoProg *prog);
+
+void pluto_add_parameter(PlutoProg *prog, char *param);
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter);
+void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
 #endif

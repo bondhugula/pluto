@@ -624,8 +624,7 @@ static void negate_constraint(PlutoConstraints *cst)
  * value is NULL
  */
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-        HyperplaneProperties *hProps, const PlutoConstraints *currcst,
-       int *orthonum)
+        const PlutoConstraints *currcst, int *orthonum)
 {
     int i, j, k, p, q;
     PlutoConstraints **orthcst;
@@ -637,6 +636,9 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int nvar = prog->nvar;
     int npar = prog->npar;
     int nstmts = prog->nstmts;
+    HyperplaneProperties *hProps = prog->hProps;
+
+    print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
 
     if (stmt->num_ind_sols >= stmt->dim_orig) {
         *orthonum = 0;
@@ -654,7 +656,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
            q++;
 
     if (q == 0) {
-        /* no need to add any orthogonality constraints */
+        /* No need to add any orthogonality constraints */
+        printf("No ortho constraints: %d\n", *orthonum);
         *orthonum = 0;
         return NULL;
     }
@@ -795,15 +798,15 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     *orthonum = p;
 
+    // printf("Ortho constraints: %d\n", *orthonum);
+    // for (i=0; i<*orthonum; i++) {
+        // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+    // }
+
     /* Free the unnecessary ones */
     for (i=p; i<nvar; i++)    {
         pluto_constraints_free(orthcst[i]);
     }
-
-    /* printf("Ortho constraints: %d\n", *orthonum); */
-    // for (i=0; i<*orthonum; i++) {
-        // IF_DEBUG2(constraints_print(stdout, orthcst[i]));
-    // }
 
     pluto_matrix_free(ortho);
     isl_int_clear(v);
@@ -855,7 +858,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
         cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        stmts[src].trans->val[level][nvar] - stmts[dest].trans->val[level][nvar];
+        stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar];
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -914,7 +917,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
         cst->val[0][j] = stmts[dest].trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        -stmts[src].trans->val[level][nvar] + stmts[dest].trans->val[level][nvar]-1;
+        -stmts[src].trans->val[level][nvar+npar] + stmts[dest].trans->val[level][nvar+npar]-1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -934,7 +937,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
             cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
         }
         cst->val[0][2*nvar+npar] = 
-            stmts[src].trans->val[level][nvar] - stmts[dest].trans->val[level][nvar]-1;
+            stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar]-1;
 
         for (i=0; i<dep->dpolytope->nrows; i++)  {
             for (j=0; j<2*nvar+npar+1; j++)  {
@@ -967,7 +970,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
         cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        stmts[src].trans->val[level][nvar] - stmts[dest].trans->val[level][nvar] -1;
+        stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar] -1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -999,7 +1002,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
         cst->val[0][j] = stmts[dest].trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        -stmts[src].trans->val[level][nvar] + stmts[dest].trans->val[level][nvar] -1;
+        -stmts[src].trans->val[level][nvar+npar] + stmts[dest].trans->val[level][nvar+npar] -1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {

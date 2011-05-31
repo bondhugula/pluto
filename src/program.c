@@ -315,7 +315,7 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
         stmt->dim_orig = clan_stmt->nb_iterators;
 
         stmt->is_orig_loop = (bool *) malloc(stmt->dim*sizeof(bool));
-        stmt->is_supernode = (bool *) malloc(MAX_TRANS_ROWS*sizeof(bool));
+        stmt->is_supernode = (bool *) malloc(nvar*sizeof(bool));
 
         assert(clan_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
@@ -323,7 +323,7 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
 
         stmt->num_tiled_loops = 0;
 
-        for (j=0; j<MAX_TRANS_ROWS; j++)  {
+        for (j=0; j<nvar; j++)  {
             stmt->is_supernode[j] = false;
         }
 
@@ -331,11 +331,15 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
             stmt->is_orig_loop[j] = true;
         }
 
-        stmt->trans = pluto_matrix_alloc(MAX_TRANS_ROWS, 
-                MAX_TILING_LEVELS*nvar+nvar+1);
+        /* Is resized when necessary */
+        stmt->trans = pluto_matrix_alloc(2*nvar+1, nvar+npar+1);
 
         stmt->trans->nrows = 0;
-        stmt->trans->ncols = nvar+1;
+        stmt->trans->ncols = nvar+npar+1;
+        
+        /* Do not know the size yet */
+        stmt->transineq = pluto_constraints_alloc(0, stmt->dim+npar+1);
+
 
         stmt->num_ind_sols = 0;
 
@@ -365,6 +369,7 @@ void stmt_free(Stmt *stmt)
 {
     pluto_matrix_free(stmt->trans);
     pluto_constraints_free(stmt->domain);
+    pluto_constraints_free(stmt->transineq);
 
     free(stmt->is_supernode);
     free(stmt->is_orig_loop);
@@ -942,13 +947,10 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         candl_program_free(candl_program);
     }
 
-    /* Allocate and initialize hProps */
-    prog->hProps = (HyperplaneProperties *) 
-        malloc(MAX_TRANS_ROWS*sizeof(HyperplaneProperties));
-
-    for (i=0; i<MAX_TRANS_ROWS; i++)    {
-        prog->hProps[i].unroll = NO_UNROLL;
-    }
+    /* Allocate and initialize hProps (size doesn't matter; will resize when
+     * necessary */
+    prog->hProps = NULL;
+    prog->num_hyperplanes = 0;
 
     /* Parameter names */
     prog->params = (char **) malloc(sizeof(char *)*prog->npar);
@@ -1073,6 +1075,7 @@ PlutoOptions *pluto_options_alloc()
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
+    options->distmem = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */
@@ -1119,8 +1122,77 @@ PlutoOptions *pluto_options_alloc()
     return options;
 }
 
+void pluto_add_parameter(PlutoProg *prog, char *param)
+{
+    int i;
+
+    for (i=0; i<prog->nstmts; i++) {
+        Stmt *stmt = &prog->stmts[i];
+        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1);
+        pluto_matrix_add_col(&stmt->trans, stmt->trans->ncols-1);
+    }
+    prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
+    prog->params[prog->npar] = strdup(param);
+    prog->npar++;
+}
+
 
 void pluto_options_free(PlutoOptions *options)
 {
     free(options);
+}
+
+
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter)
+{
+    int i;
+
+    pluto_constraints_add_dim(stmt->domain, pos);
+    stmt->dim++;
+    stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
+    for (i=stmt->dim-2; i>=pos; i--) {
+        stmt->iterators[i+1] = stmt->iterators[i];
+    }
+    stmt->iterators[pos] = strdup(iter);
+
+    pluto_matrix_add_col(&stmt->trans, pos);
+    pluto_matrix_add_row(&stmt->trans, time_pos);
+
+    stmt->trans->val[time_pos][pos] = 1;
+
+    /* Update is_orig_loop */
+    stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
+            sizeof(bool)*stmt->dim);
+    for (i=stmt->dim-2; i>=pos; i--) {
+        stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
+    }
+    stmt->is_orig_loop[0] = true;
+
+    stmt->is_supernode = (bool *) realloc(stmt->is_supernode,
+            (stmt->trans->nrows)*sizeof(bool));
+
+    for (i=stmt->trans->nrows-2; i>=time_pos; i--) {
+        stmt->is_supernode[i+1] = stmt->is_supernode[i];
+    }
+
+    stmt->is_supernode[time_pos] = 1;
+}
+
+
+void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
+{
+    int i;
+
+    prog->num_hyperplanes++;
+    prog->hProps = (HyperplaneProperties *) realloc(prog->hProps, 
+            prog->num_hyperplanes*sizeof(HyperplaneProperties));
+
+    for (i=prog->num_hyperplanes-2; i>=pos; i--) {
+        prog->hProps[i+1] = prog->hProps[i];
+    }
+    /* Initialize some */
+    prog->hProps[prog->num_hyperplanes-1].unroll = NO_UNROLL;
+    prog->hProps[prog->num_hyperplanes-1].band_num = -1;
+    prog->hProps[prog->num_hyperplanes-1].dep_prop = UNKNOWN;
+    prog->hProps[prog->num_hyperplanes-1].type = H_UNKNOWN;
 }

@@ -3,6 +3,7 @@
 
 #include "pluto.h"
 #include "post_transform.h"
+#include "program.h"
 
 /* Read tile sizes from file tile.sizes */
 static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
@@ -125,8 +126,6 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
     int i, j, k, s;
     int depth;
 
-    HyperplaneProperties *hProps = prog->hProps;
-
     assert(lastD-firstD+1 <= prog->num_hyperplanes);
 
     int num_tiled_scat_dims = lastD - firstD + 1;
@@ -142,12 +141,14 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             /* 1. Specify tiles in the original domain. 
              * NOTE: tile shape info comes in here */
 
-            /* 1.2 make space for the supernode in the domain */
+            /* 1.1 Add additional dimensions */
             for (k=0; k<num_tiled_scat_dims; k++)    {
-                pluto_constraints_add_dim(stmt->domain, 0);
+                char iter[5];
+                sprintf(iter, "zT%d", stmt->dim);
+                pluto_stmt_add_dim(stmt, 0, firstD, iter);
             }
 
-            /* 1.3 specify tile shapes in the original domain */
+            /* 1.2 specify tile shapes in the original domain */
             for (depth=firstD; depth<=lastD; depth++)    {
 
                 assert(tile_sizes[depth-firstD] >= 1);
@@ -161,27 +162,27 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
                 /* Lower bound */
                 for (j=num_supernodes; j<num_supernodes+stmt->dim; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
-                        stmt->trans->val[depth][j-num_supernodes];
+                        stmt->trans->val[num_supernodes+depth][j];
                 }
 
                 stmt->domain->val[stmt->domain->nrows-1][depth-firstD] = 
                     -tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
-                    stmt->trans->val[depth][stmt->dim];
+                    stmt->trans->val[num_supernodes+depth][stmt->dim+prog->npar];
 
                 /* Upper bound */
                 pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
                 for (j=num_supernodes; j<num_supernodes+stmt->dim; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
-                        -stmt->trans->val[depth][j-num_supernodes];
+                        -stmt->trans->val[num_supernodes+depth][j];
                 }
 
                 stmt->domain->val[stmt->domain->nrows-1][depth-firstD] 
                     = tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
-                    -stmt->trans->val[depth][stmt->dim]+tile_sizes[depth-firstD]-1;
+                    -stmt->trans->val[num_supernodes+depth][stmt->dim+prog->npar]+tile_sizes[depth-firstD]-1;
 
                 // printf("after adding\n");
                 // pluto_constraints_print(stdout, stmt->domain);
@@ -189,35 +190,6 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
 
 
             /* 2. Update the transformation / scattering functions */
-
-            /* 2.1 make space for the tile space scatterings */
-            /* 2.1.1 new columns */
-            for (k=0; k<num_supernodes; k++)  {
-                pluto_matrix_add_col(&stmt->trans, 0);
-            }
-            /* 2.1.2 new rows - as many scattering dims we are tiling */
-            stmt->is_supernode = (bool *) realloc(stmt->is_supernode,
-                    (stmt->trans->nrows + num_supernodes)*sizeof(bool));
-            for (k=0; k<num_tiled_scat_dims; k++)  {
-                for (i=stmt->trans->nrows-1; i>=firstD; i--) {
-                    for (j=0; j<stmt->trans->ncols; j++) {
-                        stmt->trans->val[i+1][j] = stmt->trans->val[i][j];
-                    }
-                    // stmt->trans_loop_type[i+1] = stmt->trans_loop_type[i];
-                    stmt->is_supernode[i+1] = stmt->is_supernode[i];
-                    // stmt->trans_band_level[i+1] = stmt->trans_band_level[i];
-                }
-                for (j=0; j<stmt->trans->ncols; j++) {
-                    stmt->trans->val[firstD][j] = 0;
-                }
-                /* This tile space loop has the same property (parallel, fwd dep, or
-                 * seq as the original one */
-                // stmt->trans_loop_type[firstD] = stmt->trans_loop_type[firstD+num_tiled_scat_dims];
-                // stmt->trans_band_level[firstD] = stmt->trans_band_level[firstD+num_tiled_scat_dims];
-                stmt->is_supernode[firstD] = true;
-                stmt->trans->nrows++;
-            }
-            /* 2.2 Duplicate the scatterings for the tile space */
             for (depth=firstD; depth < firstD+num_tiled_scat_dims; depth++) {
                 for (j=0; j<stmt->trans->ncols; j++)    {
                     if (depth - firstD == j)   {
@@ -227,18 +199,6 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
                     }
                 }
             }
-
-            /* 3. Update is_outer_loop */
-            stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
-                    sizeof(bool)*(stmt->dim+num_supernodes));
-            for (k=0; k<num_supernodes; k++)  {
-                for (i=0; i<stmt->dim; i++) {
-                    stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
-                }
-                stmt->is_orig_loop[0] = true;
-                stmt->dim++;
-            }
-
             stmt->num_tiled_loops += lastD-firstD+1;
         }else{
             /* stmt->tile is zero */
@@ -246,8 +206,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             /* Make space for the tile space scatterings */
             /* no need of new columns */
 
-            /* 2.1.2 new rows - as many scattering dims we are tiling */
             for (k=0; k<num_tiled_scat_dims; k++)  {
+                /* All zero */
                 pluto_matrix_add_row(&stmt->trans, stmt->trans->nrows);
 
                 stmt->is_supernode[stmt->trans->nrows+k] = false;
@@ -256,19 +216,16 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
     }
 
     for (k=0; k<num_tiled_scat_dims; k++)  {
-        for (i=prog->num_hyperplanes-1; i>=firstD; i--) {
-            hProps[i+1] = hProps[i];
-        }
+        pluto_prog_add_hyperplane(prog, firstD);
         /* This tile space loop has the same property (parallel, fwd dep, or
          * seq as the original one */
-        hProps[firstD] = hProps[firstD+num_tiled_scat_dims];
-        hProps[firstD].type = (hProps[firstD+num_tiled_scat_dims].type == H_SCALAR)?
+        prog->hProps[firstD] = prog->hProps[firstD+num_tiled_scat_dims];
+        prog->hProps[firstD].type = (prog->hProps[firstD+num_tiled_scat_dims].type == H_SCALAR)?
             H_SCALAR:H_TILE_SPACE_LOOP;
-        prog->num_hyperplanes++;
     }
 
     for (i=firstD; i<firstD+num_tiled_scat_dims; i++)   {
-        if (hProps[i].type == H_SCALAR)    {
+        if (prog->hProps[i].type == H_SCALAR)    {
             /* Fix it */
             for (k=0; k<prog->nstmts; k++)    {
                 for (j=0; j<prog->stmts[k].trans->ncols; j++)    {
@@ -277,10 +234,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
             }
 
         }
-
     }
     // dump_hyperplanes(prog->stmts);
-
     //print_hyperplane_properties(prog->stmts);
 }
 
