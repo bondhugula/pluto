@@ -19,7 +19,6 @@ int main()
 {
 	int t, i, j, k, l, m, n;
 
-
 	init_array() ;
 
 #ifdef PERFCTR
@@ -50,8 +49,9 @@ int main()
 #ifdef PERFCTR
     PERF_EXIT;
 #endif
-#ifdef TEST
+
+  if (fopen(".test", "r")) {
     print_array();
-#endif
+  }
     return 0;
 }
