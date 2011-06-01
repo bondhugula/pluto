@@ -192,7 +192,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
     int i, ndeps;
     Dep *deps;
     int npar = prog->npar;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
 
     ndeps = candl_num_dependences(candlDeps);
 
@@ -247,8 +247,8 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         dep->src = src_stmt_id;
         dep->dest = target_stmt_id;
 
-        int src_dim = stmts[src_stmt_id].dim;
-        int target_dim = stmts[target_stmt_id].dim;
+        int src_dim = stmts[src_stmt_id]->dim;
+        int target_dim = stmts[target_stmt_id]->dim;
 
         assert(candl_dep->domain->NbColumns-1 == src_dim+target_dim+npar+1);
 
@@ -293,21 +293,22 @@ void deps_print(FILE *fp, Dep *deps, int ndeps)
 
 
 /* Read statement info from Clan's structures */
-static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
+static Stmt **stmts_read(scoplib_scop_p scop, int npar, int nvar)
 {
     int i, j;
-    Stmt *stmts;
+    Stmt **stmts;
     Stmt *stmt;
 
     int nstmts = scoplib_statement_number(scop->statement);
 
     /* Allocate more to account for unroll/jamming later on */
-    stmts = (Stmt *) malloc(nstmts*sizeof(Stmt));
+    stmts = (Stmt **) malloc(nstmts*sizeof(Stmt *));
 
     scoplib_statement_p clan_stmt = scop->statement;
 
     for(i=0; i<nstmts; i++)  {
-        stmt = &stmts[i];
+        stmts[i] = (Stmt *) malloc(sizeof(Stmt));
+        stmt = stmts[i];
 
         stmt->id = i;
 
@@ -348,14 +349,14 @@ static Stmt *stmts_read(scoplib_scop_p scop, int npar, int nvar)
 }
 
 
-void stmts_print(FILE *fp, Stmt *stmts, int nstmts)
+void stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 {
     int i;
 
     for(i=0; i<nstmts; i++)  {
-        Stmt stmt = stmts[i];
-        fprintf(fp, "S%d %d-d index set\n", stmt.id+1, stmt.dim);
-        pluto_constraints_pretty_print(fp, stmt.domain);
+        Stmt *stmt = stmts[i];
+        fprintf(fp, "S%d %d-d index set\n", stmt->id+1, stmt->dim);
+        pluto_constraints_pretty_print(fp, stmt->domain);
     }
 }
 
@@ -956,15 +957,15 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     /* Iterator names and statement text */
     clan_stmt = scop->statement;
     for (i=0; i<prog->nstmts; i++)    {
-        prog->stmts[i].iterators = (char **) malloc(sizeof(char *)*prog->stmts[i].dim);
+        prog->stmts[i]->iterators = (char **) malloc(sizeof(char *)*prog->stmts[i]->dim);
         int j;
-        for (j=0; j<prog->stmts[i].dim; j++)    {
-            prog->stmts[i].iterators[j] = (char *) malloc(sizeof(char)*64);
-            strcpy(prog->stmts[i].iterators[j], clan_stmt->iterators[j]);
+        for (j=0; j<prog->stmts[i]->dim; j++)    {
+            prog->stmts[i]->iterators[j] = (char *) malloc(sizeof(char)*64);
+            strcpy(prog->stmts[i]->iterators[j], clan_stmt->iterators[j]);
         }
         /* Statement text */
-        prog->stmts[i].text = (char *) malloc(sizeof(char)*(strlen(clan_stmt->body)+1));
-        strcpy(prog->stmts[i].text, clan_stmt->body);
+        prog->stmts[i]->text = (char *) malloc(sizeof(char)*(strlen(clan_stmt->body)+1));
+        strcpy(prog->stmts[i]->text, clan_stmt->body);
         clan_stmt = clan_stmt->next;
     }
 
@@ -980,9 +981,9 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
             while (!feof(lfp) && !feof(nlfp))      {
                 fgets(tmpstr, 256, nlfp);
                 fgets(linearized, 256, lfp);
-                if (strstr(tmpstr, prog->stmts[i].text))        {
-                    prog->stmts[i].text = (char *) realloc(prog->stmts[i].text, sizeof(char)*(strlen(linearized)+1));
-                    strcpy(prog->stmts[i].text, linearized);
+                if (strstr(tmpstr, prog->stmts[i]->text))        {
+                    prog->stmts[i]->text = (char *) realloc(prog->stmts[i]->text, sizeof(char)*(strlen(linearized)+1));
+                    strcpy(prog->stmts[i]->text, linearized);
                 }
             }
         }
@@ -1003,7 +1004,7 @@ int get_coeff_upper_bound(PlutoProg *prog)
 
     max = 0;
     for (i=0; i<prog->nstmts; i++)  {
-        Stmt *stmt = &prog->stmts[i];
+        Stmt *stmt = prog->stmts[i];
         for (r=0; r<stmt->domain->nrows; r++) {
             max  = PLMAX(max,stmt->domain->val[r][stmt->domain->ncols-1]);
         }
@@ -1037,19 +1038,19 @@ void pluto_prog_free(PlutoProg *prog)
     /* Iterator names and statement text */
     for (i=0; i<prog->nstmts; i++)    {
         int j;
-        for (j=0; j<prog->stmts[i].dim; j++)    {
+        for (j=0; j<prog->stmts[i]->dim; j++)    {
             /* TODO: increase iterators while tiling */
-            // free(prog->stmts[i].iterators[j]);
+            // free(prog->stmts[i]->iterators[j]);
         }
-        free(prog->stmts[i].iterators);
+        free(prog->stmts[i]->iterators);
 
         /* Statement text */
-        free(prog->stmts[i].text);
+        free(prog->stmts[i]->text);
     }
 
     /* Statements */
     for (i=0; i<prog->nstmts; i++) {
-        stmt_free(&prog->stmts[i]);
+        stmt_free(prog->stmts[i]);
     }
     free(prog->stmts);
 
@@ -1121,7 +1122,7 @@ void pluto_add_parameter(PlutoProg *prog, char *param)
     int i;
 
     for (i=0; i<prog->nstmts; i++) {
-        Stmt *stmt = &prog->stmts[i];
+        Stmt *stmt = prog->stmts[i];
         pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1);
         pluto_matrix_add_col(&stmt->trans, stmt->trans->ncols-1);
     }

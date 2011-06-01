@@ -142,7 +142,7 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
 int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
                                   int use_isl)
 {
-    Stmt *stmts;
+    Stmt **stmts;
     int nstmts, nvar, npar;
 
     stmts  = prog->stmts;
@@ -170,7 +170,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
 
     for (i=0; i<nstmts; i++)    {
         for (j=0; j<nvar; j++)    {
-            redun[npar+1+i*(nvar+1)+j] = !stmts[i].is_orig_loop[j];
+            redun[npar+1+i*(nvar+1)+j] = !stmts[i]->is_orig_loop[j];
         }
         redun[npar+1+i*(nvar+1)+nvar] = 0;
     }
@@ -218,11 +218,11 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
 
     j=npar+1;
     for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+stmts[i].dim_orig; k++) {
-            perm_mat->val[k][2*j+stmts[i].dim_orig-k-1] = 1;
+        for (k=j; k<j+stmts[i]->dim_orig; k++) {
+            perm_mat->val[k][2*j+stmts[i]->dim_orig-k-1] = 1;
         }
         perm_mat->val[k][k] = 1;
-        j += stmts[i].dim_orig+1;
+        j += stmts[i]->dim_orig+1;
     }
     perm_mat->val[j][j] = 1;
 
@@ -286,9 +286,9 @@ int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2)
     int i, j;
 
     for (i=0; i<prog->nstmts; i++)  {
-        if (prog->stmts[i].scc_id == scc1)  {
+        if (prog->stmts[i]->scc_id == scc1)  {
             for (j=0; j<prog->nstmts; j++)  {
-                if (prog->stmts[j].scc_id == scc2)  {
+                if (prog->stmts[j]->scc_id == scc2)  {
                     if (g->adj->val[i][j] > 0)  {
                         return 1;
                     }
@@ -305,7 +305,7 @@ int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2)
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
                      int use_isl)
 {
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
     int nvar = prog->nvar;
@@ -323,24 +323,24 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
     prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
 
     for (i=0; i<nstmts; i++) {
-        pluto_matrix_add_row(&stmts[i].trans, stmts[i].trans->nrows);
+        pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
         for (j=0; j<nvar+npar; j++)  {
-            stmts[i].trans->val[stmts[i].trans->nrows-1][j] = 0;
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
         }
-        if (stmts[i].scc_id < scc2)   {
-            stmts[i].trans->val[stmts[i].trans->nrows-1][nvar+npar] = 0;
+        if (stmts[i]->scc_id < scc2)   {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 0;
         }else{
-            stmts[i].trans->val[stmts[i].trans->nrows-1][nvar+npar] = 1;
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 1;
         }
 
     }
-    num_satisfied =  dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
+    num_satisfied =  dep_satisfaction_update(prog, stmts[0]->trans->nrows-1,
             use_isl);
     if (num_satisfied >= 1) {
         ddg_update(ddg, prog);
     }else{
         for (i=0; i<nstmts; i++) {
-            stmts[i].trans->nrows--;
+            stmts[i]->trans->nrows--;
         }
         prog->num_hyperplanes--;
     }
@@ -355,7 +355,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
 int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
 {
     int i, j, num_satisfied;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -371,14 +371,14 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
     prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
 
     for (i=0; i<nstmts; i++)    {
-        pluto_matrix_add_row(&stmts[i].trans, stmts[i].trans->nrows);
+        pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
         for (j=0; j<nvar+npar; j++)  {
-            stmts[i].trans->val[stmts[i].trans->nrows-1][j] = 0;
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
         }
-        stmts[i].trans->val[stmts[i].trans->nrows-1][nvar+npar] = stmts[i].scc_id;
+        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = stmts[i]->scc_id;
 
     }
-    num_satisfied = dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
+    num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1,
                                             use_isl);
     ddg_update(ddg, prog);
 
@@ -396,7 +396,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
 int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
 {
     int i, j, k, count;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
@@ -418,24 +418,24 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
         }
 
         for (i=0; i<prog->nstmts; i++) {
-            if (stmts[i].scc_id == k)  {
-                pluto_matrix_add_row(&stmts[i].trans, stmts[i].trans->nrows);
+            if (stmts[i]->scc_id == k)  {
+                pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
                 for (j=0; j<nvar; j++)  {
-                    stmts[i].trans->val[stmts[i].trans->nrows-1][j] = 0;
+                    stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
                 }
-                stmts[i].trans->val[stmts[i].trans->nrows-1][nvar+npar] = count;
+                stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = count;
             }
         }
     }
 
-    int num_new_carried = dep_satisfaction_update(prog, stmts[0].trans->nrows-1,
+    int num_new_carried = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1,
                                                   use_isl);
 
     if (num_new_carried >= 1)   {
         ddg_update(ddg, prog);
     }else{
         for (i=0; i<prog->nstmts; i++) {
-            stmts[i].trans->nrows--;
+            stmts[i]->trans->nrows--;
         }
         prog->num_hyperplanes--;
     }
@@ -467,7 +467,7 @@ void cut_smart(PlutoProg *prog, Graph *ddg, int use_isl)
     /* Cut between SCCs that are far away */
     for (i=0; i<ddg->num_sccs-1; i++) {
         for (j=ddg->num_sccs-1; j>=i+1; j--) {
-            if (prog->stmts[0].trans->nrows <= 4*prog->nvar+2)   {
+            if (prog->stmts[0]->trans->nrows <= 4*prog->nvar+2)   {
                 if (ddg_sccs_direct_connected(ddg, prog, i, j))    {
                     // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
                         num_new_carried += cut_between_sccs(prog,ddg,i,j,
@@ -501,7 +501,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg, int use_isl)
     /* Cut between SCCs that are far away */
     for (i=0; i<ddg->num_sccs-1; i++) {
         for (j=ddg->num_sccs-1; j>=i+1; j--) {
-            if (prog->stmts[0].trans->nrows <= 4*prog->nvar+2)   {
+            if (prog->stmts[0]->trans->nrows <= 4*prog->nvar+2)   {
                 if (cut_between_sccs(prog,ddg,i,j, use_isl)) {
                     return;
                 }
@@ -526,7 +526,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
 
     int ndeps = prog->ndeps;
     int nstmts = prog->nstmts;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     Dep *deps = prog->deps;
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -568,7 +568,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
 
         /* Get orthogonality constraints for each statement */
         for (j=0; j<nstmts; j++)    {
-            orthcst[j] = get_stmt_ortho_constraints(&stmts[j], 
+            orthcst[j] = get_stmt_ortho_constraints(stmts[j], 
                     prog, currcst, &orthonum[j]);
             // if (orthonum[j] > 0)    {
               //   if (orthoprod == 0) orthoprod = orthonum[j];
@@ -633,17 +633,17 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
             prog->hProps[prog->num_hyperplanes-1].type = H_LOOP;
 
             for (j=0; j<nstmts; j++)    {
-                Stmt *stmt = &stmts[j];
+                Stmt *stmt = stmts[j];
                 pluto_matrix_add_row(&stmt->trans, stmt->trans->nrows);
                 for (k=0; k<nvar; k++)    {
-                    stmt->trans->val[stmts[j].trans->nrows-1][k] = 
+                    stmt->trans->val[stmts[j]->trans->nrows-1][k] = 
                         bestsol[npar+1+j*(nvar+1)+k];
                 }
                 /* No parameteric shifts */
                 for (k=nvar; k<nvar+npar; k++)    {
-                    stmt->trans->val[stmts[j].trans->nrows-1][k] = 0;
+                    stmt->trans->val[stmts[j]->trans->nrows-1][k] = 0;
                 }
-                stmt->trans->val[stmts[j].trans->nrows-1][nvar+npar] = 
+                stmt->trans->val[stmts[j]->trans->nrows-1][nvar+npar] = 
                     bestsol[npar+1+j*(nvar+1)+nvar];
                 stmt->num_ind_sols++;
             }
@@ -699,7 +699,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 
     if (depth != 0) return false;
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
@@ -727,29 +727,29 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
             }
             fscanf(cutFp, "%d", &tile);
             for (j=0; j<grpCount[i]; j++)    
-                for (k=0; k<stmts[stmtGrp[i][j]].dim_orig; k++)
-                    stmts[stmtGrp[i][j]].tile = tile;
+                for (k=0; k<stmts[stmtGrp[i][j]]->dim_orig; k++)
+                    stmts[stmtGrp[i][j]]->tile = tile;
         }
 
         fclose(cutFp);
 
         /* Update transformation matrices */
         for (i=0; i<nstmts; i++)    {
-            pluto_matrix_add_row(&stmts[i].trans, stmts[i].trans->nrows);
+            pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
         }
         for (i=0; i<ncomps; i++)    {
             for (j=0; j<grpCount[i]; j++)    {
                 int id = stmtGrp[i][j];
                 for (k=0; k<nvar+npar; k++)  {
-                    stmts[id].trans->val[stmts[id].trans->nrows-1][k] = 0;
+                    stmts[id]->trans->val[stmts[id]->trans->nrows-1][k] = 0;
                 }
-                stmts[id].trans->val[stmts[id].trans->nrows-1][nvar+npar] = i;
+                stmts[id]->trans->val[stmts[id]->trans->nrows-1][nvar+npar] = i;
                 // stmts[id].trans_loop_type[stmts[id].trans->nrows] = SCALAR;
             }
         }
-        prog->hProps[stmts->trans->nrows-1].type = H_SCALAR;
+        prog->hProps[stmts[0]->trans->nrows-1].type = H_SCALAR;
 
-        dep_satisfaction_update(prog, stmts[0].trans->nrows-1, use_isl);
+        dep_satisfaction_update(prog, stmts[0]->trans->nrows-1, use_isl);
         ddg_update(ddg, prog);
 
         return true;
@@ -777,30 +777,30 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 
                     /* Careful here; transformation is in LooPo
                      * format <global_nvar>+<npar>+1 */
-                    assert(cols == 1+stmts[i].dim_orig+npar+1);
+                    assert(cols == 1+stmts[i]->dim_orig+npar+1);
 
                     /* For equality - ignore the zero */
                     fscanf(precut, "%d", &ignore);
                     assert(ignore == 0);
 
-                    pluto_matrix_add_row(&stmts[i].trans, stmts[i].trans->nrows);
+                    pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
 
                     for (j=0; j<nvar; j++)    {
-                        if (stmts[i].is_orig_loop[j])  {
-                            fscanf(precut, "%d", &stmts[i].trans->val[stmts[i].trans->nrows-1][j]);
+                        if (stmts[i]->is_orig_loop[j])  {
+                            fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][j]);
                         }else{
-                            stmts[i].trans->val[stmts[i].trans->nrows-1][j] = 0;
+                            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
                         }
                     }
                     for (j=0; j<npar; j++)    {
                         fscanf(precut, "%d", &ignore);
-                        stmts[i].trans->val[stmts[i].trans->nrows-1][nvar] = 0;
+                        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar] = 0;
                     }
                     /* Constant part */
-                    fscanf(precut, "%d", &stmts[i].trans->val[stmts[i].trans->nrows-1][nvar]);
+                    fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
 
-                    // stmts[i].trans_loop_type[stmts[i].trans->nrows] = 
-                        // (get_loop_type(&stmts[i], stmts[i].trans->nrows) 
+                    // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] = 
+                        // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
                          // == H_SCALAR)? SCALAR:LOOP;
                 }
 
@@ -812,23 +812,23 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
                 for (j=0; j<tiling_depth; j++)    {
                     fscanf(precut, "%d", &tile);
                 }
-                stmts[i].tile = tile;
+                stmts[i]->tile = tile;
             }
 
             /* Set hProps correctly and update satisfied dependences */
             for (k=0; k<rows; k++)  {
                 for (i=0; i<nstmts; i++)    {
-                    if (get_loop_type(&stmts[i], stmts->trans->nrows-rows+k)
+                    if (get_loop_type(stmts[i], stmts[0]->trans->nrows-rows+k)
                             == H_LOOP)  {
-                        hProps[stmts->trans->nrows-rows+k].type = H_LOOP;
+                        hProps[stmts[0]->trans->nrows-rows+k].type = H_LOOP;
                         break;
                     }
                 }
                 if (i == nstmts)    {
-                    hProps[stmts->trans->nrows-rows+k].type = H_SCALAR;
+                    hProps[stmts[0]->trans->nrows-rows+k].type = H_SCALAR;
                 }
 
-                dep_satisfaction_update(prog, stmts[0].trans->nrows-rows+k,
+                dep_satisfaction_update(prog, stmts[0]->trans->nrows-rows+k,
                                         use_isl);
                 ddg_update(ddg, prog);
             }
@@ -845,17 +845,17 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 void detect_transformation_properties(PlutoProg *prog, int use_isl)
 {
     int level, i, j;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     Dep *deps = prog->deps;
     int band, num_loops_in_band;
 
     HyperplaneProperties *hProps = prog->hProps;
 
-    prog->num_hyperplanes = stmts->trans->nrows;
+    prog->num_hyperplanes = stmts[0]->trans->nrows;
 
     for (i=0; i<prog->ndeps; i++)   {
-        deps[i].direction = (int *)malloc(stmts->trans->nrows*sizeof(int));
-        for (level=0; level < stmts->trans->nrows; level++)  {
+        deps[i].direction = (int *)malloc(stmts[0]->trans->nrows*sizeof(int));
+        for (level=0; level < stmts[0]->trans->nrows; level++)  {
             deps[i].direction[level] = get_dep_direction(&deps[i], 
                     prog, level, use_isl);
         }
@@ -933,7 +933,7 @@ void detect_transformation_properties(PlutoProg *prog, int use_isl)
             }
 
         }
-    }while (level < stmts->trans->nrows);
+    }while (level < stmts[0]->trans->nrows);
 
     if (num_loops_in_band == 1) {
         if (hProps[level-1].dep_prop == PIPE_PARALLEL)
@@ -1015,9 +1015,9 @@ void normalize_domains(PlutoProg *prog)
 		PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
 		for (i=0; i<prog->nstmts; i++)    {
 			PlutoConstraints *copy = 
-				pluto_constraints_alloc(2*prog->stmts[i].domain->nrows, prog->stmts[i].domain->ncols);
-			pluto_constraints_copy(copy, prog->stmts[i].domain);
-			for (j=0; j<prog->stmts[i].dim_orig; j++)    {
+				pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, prog->stmts[i]->domain->ncols);
+			pluto_constraints_copy(copy, prog->stmts[i]->domain);
+			for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
 				fourier_motzkin_eliminate(copy, 0);
 			}
 			assert(copy->ncols == npar+1);
@@ -1062,7 +1062,7 @@ void normalize_domains(PlutoProg *prog)
 
 	/* Add padding dimensions to statement domains */
 	for (i=0; i<prog->nstmts; i++)    {
-		Stmt *stmt = &prog->stmts[i];
+		Stmt *stmt = prog->stmts[i];
         int orig_depth = stmt->dim_orig;
 		for (j=orig_depth; j<nvar; j++)  {
             pluto_sink_statement(stmt, npar, stmt->dim, 0);
@@ -1072,8 +1072,8 @@ void normalize_domains(PlutoProg *prog)
 	/* Add padding dimensions for the dependence polyhedra */
 	for (i=0; i<prog->ndeps; i++)    {
 		Dep *dep = &prog->deps[i];
-		int src_dim = prog->stmts[dep->src].dim_orig;
-		int target_dim = prog->stmts[dep->dest].dim_orig;
+		int src_dim = prog->stmts[dep->src]->dim_orig;
+		int target_dim = prog->stmts[dep->dest]->dim_orig;
 
 		for (j=src_dim; j<nvar; j++)    {
 			pluto_constraints_add_dim(dep->dpolytope, src_dim);
@@ -1141,7 +1141,7 @@ void denormalize_domains(PlutoProg *prog)
     int npar = prog->npar;
 
 	for (i=0; i<prog->nstmts; i++)  {
-		Stmt *stmt = &prog->stmts[i];
+		Stmt *stmt = prog->stmts[i];
 		int del_count = 0;
 		for (j=0; j<nvar; j++)  {
 			if (!stmt->is_orig_loop[j]) {
@@ -1168,7 +1168,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	int nsols, i, j;
 	int sols_found, num_ind_sols, depth;
 
-	Stmt *stmts = prog->stmts;
+	Stmt **stmts = prog->stmts;
 
 	Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
@@ -1181,7 +1181,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	 * statement */
 	nsols = 0;
 	for (i=0; i<prog->nstmts; i++)    {
-		nsols = PLMAX(nsols, stmts[i].dim);
+		nsols = PLMAX(nsols, stmts[i]->dim);
 	}
 
 	num_ind_sols = 0;
@@ -1190,7 +1190,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 	if (precut(prog, ddg, depth, use_isl))   {
 		/* Precutting succeeded */
 		printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
-		for (i=0; i<stmts->trans->nrows; i++)   {
+		for (i=0; i<stmts[0]->trans->nrows; i++)   {
 			if (hProps[i].type == H_LOOP) {
 				/* Already some independent solns to start with */
 				num_ind_sols++;
@@ -1225,7 +1225,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 			for (j=0; j<sols_found; j++)      {
                 /* Mark dependences satisfied by this solution */
                 dep_satisfaction_update(prog,
-                        stmts[0].trans->nrows-sols_found+j,
+                        stmts[0]->trans->nrows-sols_found+j,
                         use_isl);
                 ddg_update(ddg, prog);
 			}
@@ -1324,12 +1324,12 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 
 	if (j==ndeps)   {
 		for (i=0; i<nstmts; i++)    {
-			stmt = &stmts[i];
+			stmt = stmts[i];
 			stmt->trans_loop_type[hnum] = PARALLEL;
 		}
 	}else{
 		for (i=0; i<nstmts; i++)    {
-			stmt = &stmts[i];
+			stmt = stmts[i];
 			if (sols_found > 1) {
 				/* is pipelined parallel, can be inner parallel as well */
 				stmt->trans_loop_type[hnum] = PIPE_PARALLEL;
@@ -1337,7 +1337,7 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 		}
 	}
 	for (i=0; i<nstmts; i++)    {
-		stmt = &stmts[i];
+		stmt = stmts[i];
 	}
 	hProps[hnum].type = H_LOOP;
 }
@@ -1351,7 +1351,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 	int i, j, k;
 	int num_scat_dims;
 
-	Stmt *stmts = prog->stmts;
+	Stmt **stmts = prog->stmts;
 	int nstmts = prog->nstmts;
     int npar = prog->npar;
 
@@ -1393,11 +1393,11 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 	/* Print statement domains */
 	for (i=0; i<nstmts; i++)    {
 		fprintf(fp, "%d # of domains\n", 1);
-		fprintf(fp, "%d %d\n", stmts[i].domain->nrows, stmts[i].domain->ncols+1);
-		for (j=0; j<stmts[i].domain->nrows; j++)    {
+		fprintf(fp, "%d %d\n", stmts[i]->domain->nrows, stmts[i]->domain->ncols+1);
+		for (j=0; j<stmts[i]->domain->nrows; j++)    {
 			fprintf(fp, "1 ");
-			for (k=0; k<stmts[i].domain->ncols; k++)    {
-				fprintf(fp, "%d ", stmts[i].domain->val[j][k]);
+			for (k=0; k<stmts[i]->domain->ncols; k++)    {
+				fprintf(fp, "%d ", stmts[i]->domain->val[j][k]);
 			}
 			fprintf(fp, "\n");
 		}
@@ -1411,9 +1411,9 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 
 	/* Print scattering functions */
 	for (i=0; i<nstmts; i++)    {
-		num_scat_dims=stmts[i].trans->nrows;
+		num_scat_dims=stmts[i]->trans->nrows;
 		fprintf(fp, "%d %d\n", 
-				num_scat_dims, 1+num_scat_dims+stmts[i].dim+npar+1);
+				num_scat_dims, 1+num_scat_dims+stmts[i]->dim+npar+1);
 		for (j=0; j<num_scat_dims; j++)  {
 			fprintf(fp, "0 ");
 			for (k=0; k<num_scat_dims; k++)   {
@@ -1422,18 +1422,18 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 				}
 				else fprintf(fp, "0 ");
 			}
-			for (k=0; k<stmts[i].trans->ncols-1; k++)   {
-				fprintf(fp, "%d ", -stmts[i].trans->val[j][k]);
+			for (k=0; k<stmts[i]->trans->ncols-1; k++)   {
+				fprintf(fp, "%d ", -stmts[i]->trans->val[j][k]);
 			}
-			fprintf(fp, "%d\n", -stmts[i].trans->val[j][stmts[i].trans->ncols-1]);
+			fprintf(fp, "%d\n", -stmts[i]->trans->val[j][stmts[i]->trans->ncols-1]);
 		}
 		fprintf(fp, "\n");
 	}
 
 	/* Setting target loop names */
 	fprintf(fp, "# we will set the scattering dimension names\n");
-	fprintf(fp, "%d\n", stmts->trans->nrows);
-	for (i=0; i<stmts->trans->nrows; i++) {
+	fprintf(fp, "%d\n", stmts[0]->trans->nrows);
+	for (i=0; i<stmts[0]->trans->nrows; i++) {
 		fprintf(fp, "t%d ", i+1);
 	}
 	fprintf(fp, "\n");
@@ -1451,7 +1451,7 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	CloogOptions *cloogOptions ;
 	CloogState *state;
 
-	Stmt *stmts = prog->stmts;
+	Stmt **stmts = prog->stmts;
 	int nstmts = prog->nstmts;
 
 	state = cloog_state_malloc();
@@ -1473,16 +1473,16 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	}else{
 		if (options->tile)   {
 			if (options->ft == -1)  {
-				if (stmts[0].num_tiled_loops < 4)   {
-					cloogOptions->f = stmts[0].num_tiled_loops+1;
-					cloogOptions->l = stmts[0].trans->nrows;
+				if (stmts[0]->num_tiled_loops < 4)   {
+					cloogOptions->f = stmts[0]->num_tiled_loops+1;
+					cloogOptions->l = stmts[0]->trans->nrows;
 				}else{
-					cloogOptions->f = stmts[0].num_tiled_loops+1;
-					cloogOptions->l = stmts[0].trans->nrows;
+					cloogOptions->f = stmts[0]->num_tiled_loops+1;
+					cloogOptions->l = stmts[0]->trans->nrows;
 				}
 			}else{
-				cloogOptions->f = stmts[0].num_tiled_loops+options->ft+1;
-				cloogOptions->l = stmts[0].trans->nrows;
+				cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
+				cloogOptions->l = stmts[0]->trans->nrows;
 			}
 		}else{
 			/* Default */
@@ -1516,9 +1516,9 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	for (i=0; i<nstmts; i++)    {
 		fprintf(outfp, "\t#define S%d", i+1);
 		fprintf(outfp, "(");
-		for (j=0; j<stmts[i].dim; j++)  {
+		for (j=0; j<stmts[i]->dim; j++)  {
 			if (j!=0)   fprintf(outfp, ",");
-			fprintf(outfp, "%s", stmts[i].iterators[j]);
+			fprintf(outfp, "%s", stmts[i]->iterators[j]);
 		}
 		fprintf(outfp, ")");
 		// fprintf(outfp, "\t{");
@@ -1527,15 +1527,15 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 		/* Generate pragmas for Bee/Cl@k */
 		if (options->bee)   {
 			fprintf(outfp, " schedule");
-			for (j=0; j<stmts[i].trans->nrows; j++)    {
+			for (j=0; j<stmts[i]->trans->nrows; j++)    {
 				fprintf(outfp, "[");
-				pretty_print_affine_function(outfp, &stmts[i], j);
+				pretty_print_affine_function(outfp, stmts[i], j);
 				fprintf(outfp, "]");
 			}
 			fprintf(outfp, " _NL_DELIMIT_ ");
 		}
-		// fprintf(outfp, "%s;}\n", stmts[i].text);
-		fprintf(outfp, "%s\n", stmts[i].text);
+		// fprintf(outfp, "%s;}\n", stmts[i]->text);
+		fprintf(outfp, "%s\n", stmts[i]->text);
 	}
 	fprintf(outfp, "\n");
 
@@ -1548,7 +1548,7 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 
 	/* Scattering iterators. */
 	fprintf(outfp, "\t\tint ");
-	for (i=0; i<stmts[0].trans->nrows; i++)  {
+	for (i=0; i<stmts[0]->trans->nrows; i++)  {
 		if (i!=0) fprintf(outfp, ", ");
 		fprintf(outfp, "t%d", i+1);
 		if (prog->hProps[i].unroll)   {
@@ -1716,7 +1716,7 @@ static int get_max_orig_dim_in_scc(PlutoProg *prog, int scc_id)
 
 	int max = -1;
 	for (i=0; i<prog->nstmts; i++)  {
-		Stmt *stmt = &prog->stmts[i];
+		Stmt *stmt = prog->stmts[i];
 		if (stmt->scc_id == scc_id) {
 			max = PLMAX(max,stmt->dim_orig);
 		}
@@ -1733,7 +1733,7 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
 
 	int num = 0;
 	for (i=0; i<prog->nstmts; i++)  {
-		stmt = &prog->stmts[i];
+		stmt = prog->stmts[i];
 		if (stmt->scc_id == scc_id) {
 			num++;
 		}
@@ -1762,7 +1762,7 @@ void ddg_compute_scc(PlutoProg *prog)
 		g->vertices[i].scc_id = gT->vertices[i].scc_id;
 		int stmt_id = gT->vertices[i].id;
 		assert(stmt_id == i);
-		prog->stmts[i].scc_id = g->vertices[i].scc_id;
+		prog->stmts[i]->scc_id = g->vertices[i].scc_id;
 	}
 
 	for (i=0; i<g->num_sccs; i++)  {
@@ -1783,7 +1783,7 @@ void print_transformations(PlutoProg *prog)
     nstmts = prog->nstmts;
 
     for (i=0; i<nstmts; i++) {
-        Stmt *stmt = &prog->stmts[i];
+        Stmt *stmt = prog->stmts[i];
         fprintf(stdout, "T(S%d): ", i+1);
         int level;
         printf("(");
@@ -1890,6 +1890,6 @@ void pluto_print_transformations(PlutoProg *prog)
 
 	for (i=0; i<prog->nstmts; i++)    {
 		printf("T_(S%d) \n", i);
-		pluto_matrix_print(stdout, prog->stmts[i].trans);
+		pluto_matrix_print(stdout, prog->stmts[i]->trans);
 	}
 }

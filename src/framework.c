@@ -106,7 +106,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 
     int nvar = prog->nvar;
     int npar = prog->npar;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
     dest_stmt = dep->dest;
@@ -374,12 +374,12 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
     /* Coefficients of those variables that don't appear in the outer loop
      * are useless */
     for (k=0; k<nvar; k++)    {
-        if (!stmts[src_stmt].is_orig_loop[k])  {
+        if (!stmts[src_stmt]->is_orig_loop[k])  {
             for (j=0; j < cst->nrows; j++)   {
                 cst->val[j][src_offset+k] = 0;
             }
         }
-        if (src_stmt != dest_offset && !stmts[dest_stmt].is_orig_loop[k])  {
+        if (src_stmt != dest_offset && !stmts[dest_stmt]->is_orig_loop[k])  {
             for (j=0; j < farkas_cst->nrows+comm_farkas_cst->nrows; j++)   {
                 cst->val[j][dest_offset+k] = 0;
             }
@@ -506,7 +506,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
     PlutoConstraints *nzcst;
     int i, j, stmt_offset;
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -516,13 +516,13 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
 
     for (i=0; i<nstmts; i++) {
         /* Don't add the constraint if enough solutions have been found */
-        if (stmts[i].num_ind_sols >= stmts[i].dim_orig)   {
+        if (stmts[i]->num_ind_sols >= stmts[i]->dim_orig)   {
             IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
             continue;
         }
         stmt_offset = npar+1+i*(nvar+1);
         for (j=0; j<nvar; j++)  {
-            if (stmts[i].is_orig_loop[j] == 1)
+            if (stmts[i]->is_orig_loop[j] == 1)
                 nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
         }
         nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
@@ -827,13 +827,13 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
 
     src = dep->src;
     dest = dep->dest;
 
-    assert(level < stmts[src].trans->nrows);
-    assert(level < stmts[dest].trans->nrows);
+    assert(level < stmts[src]->trans->nrows);
+    assert(level < stmts[dest]->trans->nrows);
 
     if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows)   {
         if (cst) pluto_constraints_free(cst);
@@ -849,13 +849,13 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
      */
 
     for (j=0; j<nvar; j++)    {
-        cst->val[0][j] = stmts[src].trans->val[level][j];
+        cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
     for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar];
+        stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar];
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -884,13 +884,13 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
 
     int nvar = prog->nvar;
     int npar = prog->npar;
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
 
     src = dep->src;
     dest = dep->dest;
 
-    assert(level < stmts[src].trans->nrows);
-    assert(level < stmts[dest].trans->nrows);
+    assert(level < stmts[src]->trans->nrows);
+    assert(level < stmts[dest]->trans->nrows);
 
     if (!cst || cst->alloc_nrows < 2+dep->dpolytope->nrows)   {
         if (cst) pluto_constraints_free(cst);
@@ -908,13 +908,13 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      */
 
     for (j=0; j<nvar; j++)    {
-        cst->val[0][j] = -stmts[src].trans->val[level][j];
+        cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
     for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = stmts[dest].trans->val[level][j-nvar];
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        -stmts[src].trans->val[level][nvar+npar] + stmts[dest].trans->val[level][nvar+npar]-1;
+        -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar]-1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -928,13 +928,13 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
 
     if (!sol)   {
         for (j=0; j<nvar; j++)    {
-            cst->val[0][j] = stmts[src].trans->val[level][j];
+            cst->val[0][j] = stmts[src]->trans->val[level][j];
         }
         for (j=nvar; j<2*nvar; j++)    {
-            cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
+            cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
         }
         cst->val[0][2*nvar+npar] = 
-            stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar]-1;
+            stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar]-1;
 
         for (i=0; i<dep->dpolytope->nrows; i++)  {
             for (j=0; j<2*nvar+npar+1; j++)  {
@@ -961,13 +961,13 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      */
 
     for (j=0; j<nvar; j++)    {
-        cst->val[0][j] = stmts[src].trans->val[level][j];
+        cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
     for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = -stmts[dest].trans->val[level][j-nvar];
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        stmts[src].trans->val[level][nvar+npar] - stmts[dest].trans->val[level][nvar+npar] -1;
+        stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar] -1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {
@@ -993,13 +993,13 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      */
 
     for (j=0; j<nvar; j++)    {
-        cst->val[0][j] = -stmts[src].trans->val[level][j];
+        cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
     for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = stmts[dest].trans->val[level][j-nvar];
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-nvar];
     }
     cst->val[0][2*nvar+npar] = 
-        -stmts[src].trans->val[level][nvar+npar] + stmts[dest].trans->val[level][nvar+npar] -1;
+        -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar] -1;
 
     for (i=0; i<dep->dpolytope->nrows; i++)  {
         for (j=0; j<2*nvar+npar+1; j++)  {

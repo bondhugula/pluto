@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
+        {"distmem", no_argument, &options->distmem, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -227,7 +228,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     int dim_sum=0;
     for (i=0; i<prog->nstmts; i++) {
-        dim_sum += prog->stmts[i].dim;
+        dim_sum += prog->stmts[i]->dim;
     }
 
     /* Make options consistent */
@@ -269,6 +270,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile)   {
         pluto_tile(prog);
+    }
+
+    if (options->distmem)   {
+        distmem();
     }
 
     if (options->parallel)   {

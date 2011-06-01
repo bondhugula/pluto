@@ -23,7 +23,7 @@
 #include "clan/clan.h"
 #include "candl/candl.h"
 
-void stmts_print(FILE *fp, Stmt *, int);
+void stmts_print(FILE *fp, Stmt **, int);
 void stmt_free(Stmt *stmt);
 Stmt *stmt_copy (Stmt *src);
 

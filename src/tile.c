@@ -132,7 +132,7 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
 
     for (s=0; s<prog->nstmts; s++)    {
 
-        Stmt *stmt = &prog->stmts[s];
+        Stmt *stmt = prog->stmts[s];
 
         if (stmt->tile) {
 
@@ -226,8 +226,8 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
         if (prog->hProps[i].type == H_SCALAR)    {
             /* Fix it */
             for (k=0; k<prog->nstmts; k++)    {
-                for (j=0; j<prog->stmts[k].trans->ncols; j++)    {
-                    prog->stmts[k].trans->val[i][j] = prog->stmts[k].trans->val[i+num_tiled_scat_dims][j];
+                for (j=0; j<prog->stmts[k]->trans->ncols; j++)    {
+                    prog->stmts[k]->trans->val[i][j] = prog->stmts[k]->trans->val[i+num_tiled_scat_dims][j];
                 }
             }
 
@@ -259,7 +259,7 @@ bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD)
         assert(hProps[firstD].dep_prop == PIPE_PARALLEL || 
                 hProps[firstD].dep_prop == PARALLEL);
         for (i=0; i<prog->nstmts; i++)    {
-            stmt = &prog->stmts[i];
+            stmt = prog->stmts[i];
             /* Parallel loop - do a final tile space transformation for a tile schedule 
              * if necessary */
 

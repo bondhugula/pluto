@@ -30,14 +30,14 @@ void interchange_scattering_dims(PlutoProg *prog, int level1, int level2)
     int k, j, tmp;
     HyperplaneProperties hTmp;
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
     for (k=0; k<nstmts; k++)    {
-        for (j=0; j<stmts[k].trans->ncols; j++)   {
-            tmp = stmts[k].trans->val[level1][j];
-            stmts[k].trans->val[level1][j] = stmts[k].trans->val[level2][j];
-            stmts[k].trans->val[level2][j] = tmp;
+        for (j=0; j<stmts[k]->trans->ncols; j++)   {
+            tmp = stmts[k]->trans->val[level1][j];
+            stmts[k]->trans->val[level1][j] = stmts[k]->trans->val[level2][j];
+            stmts[k]->trans->val[level2][j] = tmp;
         }
 
         // tmp = trans_loop_type[level1];
@@ -111,7 +111,7 @@ int detect_unrollable_loops(PlutoProg *prog)
 
     FILE *unrollfp = fopen(".unroll", "w");
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     HyperplaneProperties *hProps = prog->hProps;
 
     if (!unrollfp)  {
@@ -177,7 +177,7 @@ int detect_unrollable_loops(PlutoProg *prog)
         }
     }
 
-    for (i=0; i<stmts->trans->nrows; i++) {
+    for (i=0; i<stmts[0]->trans->nrows; i++) {
         if (hProps[i].unroll == UNROLL)  {
             fprintf(unrollfp, "t%d Unroll %d\n", i+1, options->ufactor);
         }else if (hProps[i].unroll == UNROLLJAM)    {
@@ -199,7 +199,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 {
     int i, j, k;
 
-    Stmt *stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
     int npar = prog->npar;
 
@@ -216,7 +216,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
      */
     for (i=nstmts-1; i>=0; i--)   {
 
-        Stmt *stmt = &stmts[i];
+        Stmt *stmt = stmts[i];
 
         int unroll[prog->nvar];
         int num_unroll = 0;
@@ -236,7 +236,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
         }
 
         for (k=ufactor-1; k>=0; k--)   {
-            Stmt *zstmt = stmt_copy(&stmts[i]);
+            Stmt *zstmt = stmt_copy(stmts[i]);
 
 
             for (j=0; j<zstmt->dim; j++) {
@@ -296,7 +296,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 
             /* Add the statement to the list of statements */
 
-            stmts[i*ufactor + k] =  *zstmt;
+            stmts[i*ufactor + k] =  zstmt;
         }
     }
     nstmts = nstmts*ufactor;
