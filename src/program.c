@@ -900,6 +900,8 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
  */
 PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 {
+    int i;
+
     PlutoProg *prog = (PlutoProg *) malloc(sizeof(PlutoProg));
 
     prog->nstmts = scoplib_statement_number(scop->statement);
@@ -907,11 +909,21 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 
     /* Set global variables first (they are used in stmts_read, deps_read too) */
     prog->npar = scop->nb_parameters;
+
+    prog->context = clan_matrix_to_pluto_constraints(scop->context);
+
+	if (options->context != -1)	{
+		for (i=0; i<prog->npar; i++)  {
+            pluto_constraints_add_inequality(prog->context, prog->context->nrows);
+            prog->context->val[i][i] = 1;
+            prog->context->val[i][prog->context->ncols-1] = -options->context;
+		}
+	}
+
     scoplib_statement_p clan_stmt = scop->statement;
 
     prog->nvar = clan_stmt->nb_iterators;
 
-    int i;
     for (i=0; i<prog->nstmts; i++) {
         prog->nvar = PLMAX(prog->nvar, clan_stmt->nb_iterators);
         clan_stmt = clan_stmt->next;
@@ -920,7 +932,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     prog->stmts = stmts_read(scop, prog->npar, prog->nvar);
     if (options->isldep) {
         compute_deps(scop, prog, options);
-    } else {
+    }else{
         /* Calculate dependences using Candl */
 
         candl_program_p candl_program = candl_program_convert_scop(scop, NULL);
@@ -1054,6 +1066,8 @@ void pluto_prog_free(PlutoProg *prog)
     }
     free(prog->stmts);
 
+    free(prog->context);
+
     free(prog);
 }
 
@@ -1070,7 +1084,6 @@ PlutoOptions *pluto_options_alloc()
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
-    options->distmem = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */

@@ -74,7 +74,6 @@ int main(int argc, char *argv[])
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
-        {"distmem", no_argument, &options->distmem, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -272,10 +271,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_tile(prog);
     }
 
-    if (options->distmem)   {
-        distmem();
-    }
-
     if (options->parallel)   {
         int outermostBandStart, outermostBandEnd;
         getOutermostTilableBand(prog, &outermostBandStart, &outermostBandEnd);
@@ -382,7 +377,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Generate .cloog file */
-    print_cloog_file(cloogfp, prog);
+    generate_cloog_file(cloogfp, prog);
     /* Add the <irregular> tag from clan, if any */
     if (irroption != NULL) {
         fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);

@@ -151,8 +151,6 @@ struct plutoOptions{
 
     /* Use isl as ilp solver. */
     int islsolve;
-
-    int distmem;
 };
 typedef struct plutoOptions PlutoOptions;
 
@@ -295,6 +293,9 @@ struct plutoProg{
 
     /* Number of program parameters */
     int npar;
+
+    /* Param context */
+    PlutoConstraints *context;
 };
 typedef struct plutoProg PlutoProg;
 
@@ -326,7 +327,7 @@ int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 
-void print_cloog_file(FILE *fp, PlutoProg *prog);
+void generate_cloog_file(FILE *fp, PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
 void tile_scattering_dims(PlutoProg *, int, int, int *);

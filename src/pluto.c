@@ -1345,8 +1345,8 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 #endif
 
 
-/* Print .cloog file from the transformations computed */
-void print_cloog_file(FILE *fp, PlutoProg *prog)
+/* Generate and print .cloog file from the transformations computed */
+void generate_cloog_file(FILE *fp, PlutoProg *prog)
 {
 	int i, j, k;
 	int num_scat_dims;
@@ -1361,24 +1361,8 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 	fprintf(fp, "c\n\n");
 
 	/* Context: setting conditions on parameters */
+    pluto_constraints_print_polylib(fp, prog->context);
 
-	if (options->context == -1)	{
-		fprintf(fp, "# No context\n");
-		fprintf(fp, "%d %d\n", 0, npar+2);
-	}else{
-		fprintf(fp, "# User supplied context\n");
-		fprintf(fp, "%d %d\n", npar, npar+2);
-
-		for (i=0; i<npar; i++)  {
-			fprintf(fp, "1 ");
-			for (j=0; j<npar; j++)  {
-				if (j == i) {
-					fprintf(fp, "1 ");
-				}else fprintf(fp, "0 ");
-			}
-			fprintf(fp, "-%d\n", options->context);
-		}
-	}
 
 	/* Setting parameter names */
 	fprintf(fp, "\n1\n");
@@ -1430,7 +1414,7 @@ void print_cloog_file(FILE *fp, PlutoProg *prog)
 		fprintf(fp, "\n");
 	}
 
-	/* Setting target loop names */
+	/* Setting target loop names (all stmts have same number of hyperplanes */
 	fprintf(fp, "# we will set the scattering dimension names\n");
 	fprintf(fp, "%d\n", stmts[0]->trans->nrows);
 	for (i=0; i<stmts[0]->trans->nrows; i++) {
