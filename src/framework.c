@@ -489,7 +489,7 @@ PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps,
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
         }
         pluto_constraints_simplify(globcst);
-        IF_DEBUG2(pluto_constraints_print(stdout, globcst));
+        // IF_DEBUG2(pluto_constraints_print(stdout, globcst));
     }
 
     pluto_constraints_simplify(globcst);

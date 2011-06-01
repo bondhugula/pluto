@@ -279,7 +279,7 @@ void dep_print(FILE *fp, Dep *dep)
     fprintf(fp, "\n\n");
 
     fprintf(fp, "Dependence polyhedron\n");
-    pluto_constraints_pretty_print(fp, dep->dpolytope);
+    pluto_constraints_print(fp, dep->dpolytope);
 }
 
 
@@ -356,7 +356,7 @@ void stmts_print(FILE *fp, Stmt **stmts, int nstmts)
     for(i=0; i<nstmts; i++)  {
         Stmt *stmt = stmts[i];
         fprintf(fp, "S%d %d-d index set\n", stmt->id+1, stmt->dim);
-        pluto_constraints_pretty_print(fp, stmt->domain);
+        pluto_constraints_print(fp, stmt->domain);
     }
 }
 
