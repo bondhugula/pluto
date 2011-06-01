@@ -281,13 +281,13 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 
             /* Now update the scatterings */
             /* for the new variable added to the domain */
-            pluto_matrix_add_col(&zstmt->trans, zstmt->trans->ncols-1);
+            pluto_matrix_add_col(zstmt->trans, zstmt->trans->ncols-1);
 
             /* 1. Align the sub-domains (z-polyhedra) */
             zstmt->trans->val[unroll_dim][zstmt->trans->ncols-1] -= k;
 
             /* Add a new dimension */
-            pluto_matrix_add_row(&zstmt->trans, zstmt->trans->nrows);
+            pluto_matrix_add_row(zstmt->trans, zstmt->trans->nrows);
 
             zstmt->trans->val[zstmt->trans->nrows-1][zstmt->trans->ncols-1] = k;
 

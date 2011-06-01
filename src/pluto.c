@@ -323,7 +323,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
     prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
 
     for (i=0; i<nstmts; i++) {
-        pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
+        pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
         for (j=0; j<nvar+npar; j++)  {
             stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
         }
@@ -371,7 +371,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
     prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
 
     for (i=0; i<nstmts; i++)    {
-        pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
+        pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
         for (j=0; j<nvar+npar; j++)  {
             stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
         }
@@ -419,7 +419,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
 
         for (i=0; i<prog->nstmts; i++) {
             if (stmts[i]->scc_id == k)  {
-                pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
+                pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
                 for (j=0; j<nvar; j++)  {
                     stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
                 }
@@ -634,7 +634,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
 
             for (j=0; j<nstmts; j++)    {
                 Stmt *stmt = stmts[j];
-                pluto_matrix_add_row(&stmt->trans, stmt->trans->nrows);
+                pluto_matrix_add_row(stmt->trans, stmt->trans->nrows);
                 for (k=0; k<nvar; k++)    {
                     stmt->trans->val[stmts[j]->trans->nrows-1][k] = 
                         bestsol[npar+1+j*(nvar+1)+k];
@@ -735,7 +735,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 
         /* Update transformation matrices */
         for (i=0; i<nstmts; i++)    {
-            pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
+            pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
         }
         for (i=0; i<ncomps; i++)    {
             for (j=0; j<grpCount[i]; j++)    {
@@ -783,7 +783,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
                     fscanf(precut, "%d", &ignore);
                     assert(ignore == 0);
 
-                    pluto_matrix_add_row(&stmts[i]->trans, stmts[i]->trans->nrows);
+                    pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
 
                     for (j=0; j<nvar; j++)    {
                         if (stmts[i]->is_orig_loop[j])  {
@@ -1463,6 +1463,7 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	cloogOptions->esp = 1;
 	// cloogOptions->csp = 1;
 	cloogOptions->strides = 1;
+
 
     // Leads to better depth-based control optimization albeit code expansion
     cloogOptions->backtrack = 1;

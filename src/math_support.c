@@ -94,77 +94,80 @@ void pluto_matrix_remove_row(PlutoMatrix *mat, int pos)
 }
 
 
-PlutoMatrix *pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
+void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
 {
-    int i, j;
-    PlutoMatrix *newMat;
+    int i;
 
-    newMat = pluto_matrix_alloc(PLMAX(nrows,mat->alloc_nrows), PLMAX(ncols,mat->alloc_ncols));
+    int alloc_nrows = PLMAX(nrows,mat->alloc_nrows);
+    int alloc_ncols = PLMAX(ncols,mat->alloc_ncols);
 
-    newMat->nrows = nrows;
-    newMat->ncols = ncols;
+    mat->val = (int **) realloc(mat->val, alloc_nrows*sizeof(int *));
 
-    for (i=0; i<PLMIN(newMat->nrows, mat->nrows); i++) {
-        for (j=0; j<PLMIN(newMat->ncols, mat->ncols); j++) {
-            newMat->val[i][j]= mat->val[i][j];
-        }
+    for (i=mat->alloc_nrows; i<alloc_nrows; i++)    {
+        mat->val[i] = NULL;
     }
 
-    pluto_matrix_free(mat);
+    for (i=0; i<alloc_nrows; i++) {
+        mat->val[i] = (int *) realloc(mat->val[i], alloc_ncols*sizeof(int));
+    }
 
-    return newMat;
+    mat->alloc_nrows = alloc_nrows;
+    mat->alloc_ncols = alloc_ncols;
+
+    mat->nrows = nrows;
+    mat->ncols = ncols;
 }
 
 
 /* Add column to the matrix at <pos>: pos starts from 0;
  * New column is initialized to zero */
-void pluto_matrix_add_col(PlutoMatrix **mat, int pos)
+void pluto_matrix_add_col(PlutoMatrix *mat, int pos)
 {
     int i, j;
 
-    assert(pos <= (*mat)->ncols);
+    assert(pos <= mat->ncols);
 
-    if ((*mat)->ncols == (*mat)->alloc_ncols)  {
-        *mat = pluto_matrix_resize(*mat, (*mat)->nrows, (*mat)->ncols+1);
+    if (mat->ncols == mat->alloc_ncols)  {
+        pluto_matrix_resize(mat, mat->nrows, mat->ncols+1);
     }else{
-        (*mat)->ncols++;
+        mat->ncols++;
     }
 
-    for (j=(*mat)->ncols-2; j>=pos; j--) {
-        for (i=0; i<(*mat)->nrows; i++) {
-            (*mat)->val[i][j+1] = (*mat)->val[i][j];
+    for (j=mat->ncols-2; j>=pos; j--) {
+        for (i=0; i<mat->nrows; i++) {
+            mat->val[i][j+1] = mat->val[i][j];
         }
     }
 
     /* Initialize to zero */
-    for (i=0; i<(*mat)->nrows; i++) {
-        (*mat)->val[i][pos] = 0;
+    for (i=0; i<mat->nrows; i++) {
+        mat->val[i][pos] = 0;
     }
 }
 
 
 /* Add row to the matrix at <pos>: pos starts from 0; row is
  * initialized to zero */
-void pluto_matrix_add_row(PlutoMatrix **mat, int pos)
+void pluto_matrix_add_row(PlutoMatrix *mat, int pos)
 {
     int i, j;
 
-    assert (pos <= (*mat)->nrows);
+    assert (pos <= mat->nrows);
 
-    if ((*mat)->nrows == (*mat)->alloc_nrows)   {
-        *mat = pluto_matrix_resize(*mat, (*mat)->nrows+1, (*mat)->ncols);
+    if (mat->nrows == mat->alloc_nrows)   {
+        pluto_matrix_resize(mat, mat->nrows+1, mat->ncols);
     }else{
-        (*mat)->nrows++;
+        mat->nrows++;
     }
 
-    for (i=(*mat)->nrows-2; i>=pos; i--) {
-        for (j=0; j<(*mat)->ncols; j++) {
-            (*mat)->val[i+1][j] = (*mat)->val[i][j];
+    for (i=mat->nrows-2; i>=pos; i--) {
+        for (j=0; j<mat->ncols; j++) {
+            mat->val[i+1][j] = mat->val[i][j];
         }
     }
 
-    for (j=0; j<(*mat)->ncols; j++) {
-        (*mat)->val[pos][j] = 0;
+    for (j=0; j<mat->ncols; j++) {
+        mat->val[pos][j] = 0;
     }
 
 }

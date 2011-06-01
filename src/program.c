@@ -1124,7 +1124,7 @@ void pluto_add_parameter(PlutoProg *prog, char *param)
     for (i=0; i<prog->nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
         pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1);
-        pluto_matrix_add_col(&stmt->trans, stmt->trans->ncols-1);
+        pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1);
     }
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
     prog->params[prog->npar] = strdup(param);
@@ -1150,8 +1150,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter)
     }
     stmt->iterators[pos] = strdup(iter);
 
-    pluto_matrix_add_col(&stmt->trans, pos);
-    pluto_matrix_add_row(&stmt->trans, time_pos);
+    pluto_matrix_add_col(stmt->trans, pos);
+    pluto_matrix_add_row(stmt->trans, time_pos);
 
     stmt->trans->val[time_pos][pos] = 1;
 

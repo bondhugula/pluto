@@ -208,7 +208,7 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
 
             for (k=0; k<num_tiled_scat_dims; k++)  {
                 /* All zero */
-                pluto_matrix_add_row(&stmt->trans, stmt->trans->nrows);
+                pluto_matrix_add_row(stmt->trans, stmt->trans->nrows);
             }
         }
     }
