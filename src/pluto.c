@@ -851,7 +851,7 @@ void detect_transformation_properties(PlutoProg *prog, int use_isl)
 
     HyperplaneProperties *hProps = prog->hProps;
 
-    prog->num_hyperplanes = stmts[0]->trans->nrows;
+    assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
 
     for (i=0; i<prog->ndeps; i++)   {
         deps[i].direction = (int *)malloc(stmts[0]->trans->nrows*sizeof(int));
