@@ -1459,11 +1459,9 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 
 	cloogOptions->name = "CLooG file produced by PLUTO";
 	cloogOptions->compilable = 0;
-	// cloogOptions->cpp = 1;
 	cloogOptions->esp = 1;
-	// cloogOptions->csp = 1;
 	cloogOptions->strides = 1;
-
+    cloogOptions->quiet = options->silent;
 
     // Leads to better depth-based control optimization albeit code expansion
     cloogOptions->backtrack = 1;
