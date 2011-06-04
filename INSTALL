@@ -6,6 +6,21 @@
 # udayreddy@gmail.com
 #
 
+
+REQUIREMENTS
+
+A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
+running Fedora Core {4,5,7,8,9,10,11,12,13,14}, Ubuntu, and RedHat  
+Enterprise Server 5.x. Solaris should also be fine if you have GNU 
+utilities. In order to use the development version from Pluto's git 
+repository, automatic build system tools including autoconf, automake, 
+and libtool are needed. GMP (GNU multi precision arithmetic library) is 
+needed by ISL (one of the included libraries). If it's not already on 
+your system, it can be installed easily with, for eg., 
+'sudo yum -y install gmp gmp-devel' on a Fedora, or
+'sudo apt-get install libgmp3-dev' on an Ubuntu. 
+
+
 QUICK INSTALL
 
 $ tar zxvf pluto-0.6.0.tgz
