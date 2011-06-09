@@ -1,3 +1,11 @@
+0.7.0
+
+From git commit 'Update version to 0.7.0'
+8cce20118b895b0ea538df65894fc7c85806d1c9
+See git history for a log of changes. Bug fixes, better data structuring, more
+modular. 
+
+
 0.6.0 BETA
 
 1. Switch to Cloog-isl (from Cloog-polylib). ISL (Author: Sven Verdoolaege) is 
