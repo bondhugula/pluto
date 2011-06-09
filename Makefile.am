@@ -4,8 +4,6 @@
 # Copyright (C) 2007 Uday Bondhugula 
 # 
 #
-#
-LOOPODIR = @SOURCE_DIR@
 
 RM = rm -f
 LN = ln -s
