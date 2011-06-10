@@ -369,6 +369,14 @@ void pluto_stmt_free(Stmt *stmt)
 
     free(stmt->is_orig_loop);
 
+    free(stmt->text);
+
+    int j;
+    for (j=0; j<stmt->dim; j++)    {
+        free(stmt->iterators[j]);
+    }
+    free(stmt->iterators);
+
     free(stmt);
 }
 
@@ -975,8 +983,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         prog->stmts[i]->iterators = (char **) malloc(sizeof(char *)*prog->stmts[i]->dim);
         int j;
         for (j=0; j<prog->stmts[i]->dim; j++)    {
-            prog->stmts[i]->iterators[j] = (char *) malloc(sizeof(char)*64);
-            strcpy(prog->stmts[i]->iterators[j], clan_stmt->iterators[j]);
+            prog->stmts[i]->iterators[j] = strdup(clan_stmt->iterators[j]);
         }
         /* Statement text */
         prog->stmts[i]->text = (char *) malloc(sizeof(char)*(strlen(clan_stmt->body)+1));
@@ -1049,19 +1056,6 @@ void pluto_prog_free(PlutoProg *prog)
         free(prog->params[i]);
     }
     free(prog->params);
-
-    /* Iterator names and statement text */
-    for (i=0; i<prog->nstmts; i++)    {
-        int j;
-        for (j=0; j<prog->stmts[i]->dim; j++)    {
-            /* TODO: increase iterators while tiling */
-            // free(prog->stmts[i]->iterators[j]);
-        }
-        free(prog->stmts[i]->iterators);
-
-        /* Statement text */
-        free(prog->stmts[i]->text);
-    }
 
     /* Statements */
     for (i=0; i<prog->nstmts; i++) {
