@@ -24,7 +24,7 @@
 #include "candl/candl.h"
 
 void stmts_print(FILE *fp, Stmt **, int);
-void stmt_free(Stmt *stmt);
+void pluto_stmt_free(Stmt *stmt);
 Stmt *stmt_copy (Stmt *src);
 
 void deps_print (FILE *, Dep *, int);

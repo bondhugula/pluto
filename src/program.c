@@ -361,19 +361,22 @@ void stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 }
 
 
-void stmt_free(Stmt *stmt)
+void pluto_stmt_free(Stmt *stmt)
 {
     pluto_matrix_free(stmt->trans);
     pluto_constraints_free(stmt->domain);
     pluto_constraints_free(stmt->transineq);
 
     free(stmt->is_orig_loop);
+
+    free(stmt);
 }
 
 
-void dep_free(Dep *dep)
+void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
+    free(dep->direction);
 }
 
 
@@ -1033,7 +1036,7 @@ void pluto_prog_free(PlutoProg *prog)
 
     /* Free the dependences */
     for (i=0; i<prog->ndeps; i++) {
-        dep_free(&prog->deps[i]);
+        pluto_dep_free(&prog->deps[i]);
     }
     free(prog->deps);
 
@@ -1062,11 +1065,11 @@ void pluto_prog_free(PlutoProg *prog)
 
     /* Statements */
     for (i=0; i<prog->nstmts; i++) {
-        stmt_free(prog->stmts[i]);
+        pluto_stmt_free(prog->stmts[i]);
     }
     free(prog->stmts);
 
-    free(prog->context);
+    pluto_constraints_free(prog->context);
 
     free(prog);
 }
