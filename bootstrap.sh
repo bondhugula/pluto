@@ -3,7 +3,7 @@
 libtoolize -c
 aclocal -I m4
 autoheader
-automake --gnu --add-missing
+automake --gnu --add-missing -c
 autoconf
 
 cd candl-0.4.0/
