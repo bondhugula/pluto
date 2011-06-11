@@ -32,6 +32,7 @@
 #include "program.h"
 #include "transforms.h"
 #include "ddg.h"
+#include "version.h"
 
 
 void pretty_print_affine_function (FILE *fp, Stmt *stmt, int level);
@@ -1356,7 +1357,7 @@ void generate_cloog_file(FILE *fp, PlutoProg *prog)
     int npar = prog->npar;
 
     IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
-	fprintf(fp, "# CLooG script generated automatically by PLUTO\n");
+	fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
 	fprintf(fp, "# language: C\n");
 	fprintf(fp, "c\n\n");
 
@@ -1441,7 +1442,7 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	state = cloog_state_malloc();
 	cloogOptions = cloog_options_malloc(state);
 
-	cloogOptions->name = "CLooG file produced by PLUTO";
+	cloogOptions->name = "PLUTO-generated CLOOG file";
 	cloogOptions->compilable = 0;
 	cloogOptions->esp = 1;
 	cloogOptions->strides = 1;
@@ -1477,8 +1478,6 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	if (!options->silent)   {
 		printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
 	}
-
-	cloogOptions->name = "PLUTO-produced CLooG file";
 
 	/* No need of headers - now inserted from inscop */
 	/* Useful headers. */

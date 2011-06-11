@@ -16,7 +16,7 @@ dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`
 
 
-bin_SCRIPTS = polycc vloog ploog plorc plutune
+bin_SCRIPTS = polycc vloog ploog plorc plutune getversion.sh
 CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 

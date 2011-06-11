@@ -15,10 +15,12 @@ dnl `COPYING' file in the top-level directory.
 dnl
 
 AC_PREREQ(2.13)
-AC_INIT(pluto, [0.7.0], [udayreddy@gmail.com])
+
+AC_INIT(pluto, 0.7.0, [udayreddy@gmail.com])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE(pluto,0.7.0)
+
+AM_INIT_AUTOMAKE()
 AM_CONFIG_HEADER(config.h)
 
 dnl clan, candl, cloog are all configured with 64-bit data type support
@@ -147,6 +149,10 @@ configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
  )
 
 AC_PATH_PROGS(BASH, bash)
+
+AC_CONFIG_FILES([getversion.sh], [chmod +x ./getversion.sh])
+AC_CONFIG_COMMANDS([version.h],
+                   [echo '#define PLUTO_VERSION "'`./getversion.sh`'"' > src/version.h])
 
 AC_OUTPUT(Makefile \
           src/Makefile \
