@@ -1138,6 +1138,7 @@ void pluto_add_parameter(PlutoProg *prog, char *param)
     }
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
     prog->params[prog->npar] = strdup(param);
+    pluto_constraints_add_dim(prog->context, prog->context->ncols-1);
     prog->npar++;
 }
 
