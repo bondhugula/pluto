@@ -616,7 +616,7 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 
     domain = pip_matrix_populate(pipmat->val, pipmat->nrows, 
             pipmat->ncols);
-    pipOptions = pip_options_init() ;
+    pipOptions = pip_options_init();
 
     /* IF_DEBUG2(fprintf(stdout, "Calling PIP on a %dx%d formulation\n", 
                 pipmat->nrows, pipmat->ncols)); */

@@ -356,6 +356,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         strcpy(cloogFileName, bname);
         strcat(outFileName, ".pluto.c");
     }
+    free(basec);
 
     if (options->parallel && options->multipipe)   {
         strcat(cloogFileName, ".par2d.cloog");
