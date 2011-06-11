@@ -1,3 +1,4 @@
 # just for developer's convenience
 CVS
 .cvsignore
+version.h

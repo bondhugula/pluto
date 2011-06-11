@@ -111,10 +111,11 @@ config.log
 config.status
 configure
 stamp-h1
-./Makefile
+Makefile
 Makefile.in
 parsetab.py
 polycc.sh
 polycc
 libtool
 m4
+getversion.sh
