@@ -56,15 +56,15 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode)
     domain->val[domain->nrows-1][0] = -factor;
     assert(stmt->trans->ncols == domain->ncols);
     int i;
-    for (i=0; i<stmt->trans->ncols-1; i++)   {
-        domain->val[domain->nrows-1][i+1] = stmt->trans->val[dim][i];
+    for (i=1; i<stmt->trans->ncols-1; i++)   {
+        domain->val[domain->nrows-1][i] = stmt->trans->val[dim+1][i];
     }
 
     pluto_constraints_add_inequality(domain, domain->nrows);
     domain->val[domain->nrows-1][0] = factor;
     assert(stmt->trans->ncols == domain->ncols);
-    for (i=0; i<stmt->trans->ncols-1; i++)   {
-        domain->val[domain->nrows-1][i+1] = -stmt->trans->val[dim][i];
+    for (i=1; i<stmt->trans->ncols-1; i++)   {
+        domain->val[domain->nrows-1][i] = -stmt->trans->val[dim+1][i];
     }
     domain->val[domain->nrows-1][stmt->trans->ncols] += factor;
 
