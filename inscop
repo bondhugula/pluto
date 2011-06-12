@@ -2,6 +2,8 @@
 
 # arguments
 # inscop <original> <transformed_kernel> <output_file>
+# transformed_kernel and output_file can be the same
+#
 
 MAXLINES=`wc -l $1 | awk '{print $1}'`
 

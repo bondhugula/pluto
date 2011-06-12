@@ -88,10 +88,10 @@ for num in $LINE_NUMBERS; do
     sed -n -e ''$(($num+5*$j))'p' $1 | tr -d ' ' | sed -e 's/for/for /' > .vecloop
 
     # lower and upper bounds
-    echo -ne "{\n\tlbv="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .vecloop`"; " > .lb
-    echo -e "\tubv="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .vecloop`";" > .ub
+    echo -ne "{\n\tlbv="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .vecloop`"; " > .lbv
+    echo -e "\tubv="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .vecloop`";" > .ubv
 
-    cat .header .lb .ub > $1
+    cat .header .lbv .ubv > $1
     echo -e "#pragma ivdep\n#pragma vector always\n\tfor ($VECDIM=lbv; $VECDIM<=ubv; $VECDIM++) {" >> $1
     cat .body >> $1
     echo "}" >> $1
@@ -101,4 +101,4 @@ for num in $LINE_NUMBERS; do
 done
 echo "[Vloog] added vectorization pragmas on $j loop(s)"
 
-rm -f .header .lb .ub .header .footer .vecloop .footer .body closenum
+rm -f .header .lbv .ubv .header .footer .vecloop .footer .body closenum

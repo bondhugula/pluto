@@ -1124,6 +1124,8 @@ PlutoOptions *pluto_options_alloc()
 
     options->silent = 0;
 
+    options->out_file = NULL;
+
     return options;
 }
 
@@ -1145,6 +1147,9 @@ void pluto_add_parameter(PlutoProg *prog, char *param)
 
 void pluto_options_free(PlutoOptions *options)
 {
+    if (options->out_file != NULL)  {
+        free(options->out_file);
+    }
     free(options);
 }
 

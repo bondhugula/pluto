@@ -151,6 +151,8 @@ struct plutoOptions{
 
     /* Use isl as ilp solver. */
     int islsolve;
+    /* Output file name supplied from -o */
+    char *out_file;
 };
 typedef struct plutoOptions PlutoOptions;
 

@@ -35,9 +35,16 @@ Using PLUTO
 - Use '#pragma scop' and '#pragma endscop' around the section of code 
   you want to parallelize/optimize.
 
-- Then, just run 
+- Then, run 
     
     ./polycc <C source file> --parallel --tile
+
+    <C source file> should have a '.c' extension
+
+    The output file will be named <original prefix>.pluto.c unless '-o 
+    <filename>" is supplied. When --debug is used, the .cloog used to 
+    generate code is not deleted and is named in a similar way.
+
 
 The following describe the kind of code you can put '#pragma scop' and 
 '#pragma endscop' around, though the polyhedral model is not restricted 
@@ -68,6 +75,9 @@ For more details, see clan-0.5.0/doc/. Do a 'make pdf' and see clan.pdf.
 
 
 COMMAND-LINE OPTIONS
+    -o output
+    Output to file 'output'. Without -o, name of the output file is 
+    determined as described earlier (under 'Using PLUTO')
 
     --help 
     List all available options with one-line summary

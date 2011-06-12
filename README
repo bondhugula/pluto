@@ -3,6 +3,7 @@
 #
 # Uday Bondhugula
 # udayreddy@gmail.com
+# uday@csa.iisc.ernet.in
 #
 
 INSTALLING PLUTO
@@ -52,7 +53,6 @@ $ ./bootstrap.sh
 $ ./configure [--enable-debug]
 $ make
 $ make test
-
 
 If you do not have ICC, uncomment line 7 and comment line 8 of 
 examples/common.mk.
@@ -171,7 +171,8 @@ with orig for all examples, in the examples/ directory, run
 
 MORE INFO
 
-* See doc/DOC.txt for an overview of the system and more details
+* See doc/DOC.txt for an overview of the system and details on all 
+command-line options.
 
 * For specifying custom tile sizes through 'tile.sizes' file, see 
 doc/DOC.txt

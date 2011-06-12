@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     int option;
     int option_index = 0;
 
-    char srcFileName[256];
+    char *srcFileName;
 
     FILE *cloogfp, *outfp;
 
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
     /* Read command-line options */
     while (1) {
-        option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:", pluto_options,
+        option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:o:", pluto_options,
                 &option_index);
 
         if (option == -1)   {
@@ -147,12 +147,15 @@ int main(int argc, char *argv[])
                 break;
             case 'n':
                 break;
-            case 's':
+            case 'o':
+                options->out_file = strdup(optarg);
                 break;
             case 'p':
                 break;
             case 'q':
                 options->silent = 1;
+                break;
+            case 's':
                 break;
             case 'u':
                 options->ufactor = atoi(optarg);
@@ -173,7 +176,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
 
     if (optind <= argc-1)   {
-        strncpy(srcFileName, argv[optind], 250);
+        srcFileName = alloca(strlen(argv[optind])+1);
+        strcpy(srcFileName, argv[optind]);
     }else{
         /* No non-option argument was specified */
         usage_message();
@@ -186,6 +190,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (!src_fp)   {
         fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
         pluto_options_free(options);
+        free(srcFileName);
         return 6;
     }
 
@@ -203,9 +208,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
         pluto_options_free(options);
+        free(srcFileName);
         return 7;
     }
-
+    FILE *srcfp = fopen(".srcfilename", "w");
+    if (srcfp)    {
+        fprintf(srcfp, "%s\n", srcFileName);
+        fclose(srcfp);
+    }
+        
     /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
 
     /* Convert clan scop to Pluto program */
@@ -336,37 +347,37 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
+
+    char *outFileName;
+    char *cloogFileName;
+    if (options->out_file == NULL)  {
     /* Get basename, remove .c extension and append a new one */
     char *basec, *bname;
-
     basec = strdup(srcFileName);
     bname = basename(basec);
 
-    char outFileName[strlen(bname)+strlen(".pluto.c")+1];
-    char cloogFileName[strlen(bname)+strlen(".tiled.cloog")+1];
+        /* max size when tiled.* */
+        outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
+        cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
 
     if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
         strncpy(outFileName, bname, strlen(bname)-2);
         strncpy(cloogFileName, bname, strlen(bname)-2);
         outFileName[strlen(bname)-2] = '\0';
         cloogFileName[strlen(bname)-2] = '\0';
-        strcat(outFileName, ".pluto.c");
     }else{
         strcpy(outFileName, bname);
         strcpy(cloogFileName, bname);
+        }
         strcat(outFileName, ".pluto.c");
-    }
     free(basec);
-
-    if (options->parallel && options->multipipe)   {
-        strcat(cloogFileName, ".par2d.cloog");
-    }else if (options->parallel)   {
-        strcat(cloogFileName, ".par.cloog");
-    }else if (options->tile)  {
-        strcat(cloogFileName, ".tiled.cloog");
     }else{
-        strcat(cloogFileName, ".opt.cloog");
+        outFileName = options->out_file;
+        cloogFileName = alloca(strlen(options->out_file)+1);
+        strcpy(cloogFileName, options->out_file);
     }
+
+    strcat(cloogFileName, ".pluto.cloog");
 
     outfp = fopen(outFileName, "w");
     cloogfp = fopen(cloogFileName, "w+");
@@ -397,7 +408,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Generate code using Cloog and add necessary stuff before/after code */
     pluto_codegen(cloogfp, outfp, prog);
 
+    FILE *tmpfp = fopen(".outfilename", "w");
+    if (tmpfp)    {
+        fprintf(tmpfp, "%s\n", outFileName);
+        fclose(tmpfp);
+    }
+
     fclose(cloogfp);
+    fclose(outfp);
 
     pluto_options_free(options);
 
@@ -409,7 +427,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
 void usage_message(void)
 {
-    fprintf(stdout, "Usage: polycc <input.c> [options]\n");
+    fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
     fprintf(stdout, "       --tile                 Tile for locality\n");
     fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");

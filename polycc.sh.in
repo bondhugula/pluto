@@ -28,8 +28,6 @@ for arg in $*; do
         PARALLEL=1
     elif [ $arg == "--tile" ]; then
         TILE=1
-    elif [ $arg == "--multipipe" ]; then
-        MULTIPAR=1
     elif [ $arg == "--unroll" ]; then
         UNROLL=1
     elif [ $arg == "--debug" ]; then
@@ -40,66 +38,53 @@ for arg in $*; do
         INDENT=1
     elif [ $arg == "--indent" ]; then
         INDENT=1
-    elif [ $arg == "--rar" ]; then
-        RAR=1
     elif [ $arg == "--silent" ]; then
         SILENT=1
-    elif [ ${arg:0:1} != "-" ]; then
-        SOURCEFILE=$arg;
     fi
 done
 
 # some special processing for linearized accesses
-if [ "$SOURCEFILE" != "" ]; then
-grep __SPECIAL $SOURCEFILE > .nonlinearized
-grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
-fi
+#if [ "$SOURCEFILE" != "" ]; then
+#grep __SPECIAL $SOURCEFILE > .nonlinearized
+#grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
+#fi
 
 $pluto $* || exit 1
+
+SOURCEFILE=`cat .srcfilename`
+OUTFILE=`cat .outfilename`
 
 dirname=`dirname  $SOURCEFILE`
 basename=`basename $SOURCEFILE`
 prefix=`basename $SOURCEFILE .c`
 
-INFILE=$prefix.pluto.c
+CLOOGFILE=$prefix.pluto.cloog
+PLUTOOUT=$OUTFILE
 
-if [ "$MULTIPAR" == "1" ]; then
-    OUTFILE=$prefix.par2d.c
-    CLOOGFILE=$prefix.par2d.cloog
-elif [ "$PARALLEL" == "1" ]; then
-    OUTFILE=$prefix.par.c
-    CLOOGFILE=$prefix.par.cloog
-elif [ "$TILE" == "1" ]; then
-    OUTFILE=$prefix.tiled.c
-    CLOOGFILE=$prefix.tiled.cloog
-else
-    OUTFILE=$prefix.opt.c
-    CLOOGFILE=$prefix.opt.cloog
-fi
 
 # run the syntactic #pragma inserter
 if [ "$PARALLEL" == 1 ]; then
-    $ploog $INFILE || exit 1
+    $ploog $PLUTOOUT || exit 1
 fi
 
 # generate and insert unrolling annotations, run ancc on it,
 if [ "$UNROLL" == 1 ]; then
-    $plorc $INFILE @SOURCE_DIR@/orio-0.1.0
+    $plorc $PLUTOOUT @SOURCE_DIR@/orio-0.1.0
 fi
 
 #if [ "$UNROLL" == 1 ]; then
-    #$plann $INFILE @SOURCE_DIR@/annotations
+    #$plann $PLUTOOUT @SOURCE_DIR@/annotations
 #fi
 
 # pre vectorize (#pragma ivdep and scalar bound rep for the 
 # vectorizable innermost loop if it was detected)
-$vloog $INFILE
+$vloog $PLUTOOUT
 
 # put the original skeleton around the transformed code
-@SOURCE_DIR@/inscop $SOURCEFILE $INFILE $OUTFILE
+@SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
 if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename
 fi
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then

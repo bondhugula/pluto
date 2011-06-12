@@ -37,20 +37,20 @@ PLC=../../polycc
 
 all: orig tiled par
 
+$(SRC).opt.c: 
+	$(PLC) $(SRC).c $(PLCFLAGS)  -o $@
+
+$(SRC).tiled.c: 
+	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+
+$(SRC).par.c: 
+	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
+
 orig: $(SRC).c decls.h  util.h
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o orig $(LDFLAGS)
 
 orig_par: decls.h  util.h $(SRC).c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o orig_par $(LDFLAGS)
-
-$(SRC).opt.c: 
-	$(PLC) $(SRC).c $(PLCFLAGS) 
-
-$(SRC).tiled.c: 
-	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS) 
-
-$(SRC).par.c: 
-	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS) 
 
 opt: $(SRC).opt.c decls.h  util.h
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).opt.c -o opt $(LDFLAGS)
