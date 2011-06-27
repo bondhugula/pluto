@@ -346,7 +346,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 void pluto_print_transformations(PlutoProg *prog);
 
 void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level);
-void print_transformations(PlutoProg *prog);
+void pluto_print_transformations(PlutoProg *prog);
 void print_hyperplane_properties(HyperplaneProperties *hProps, int num_hyperplanes);
 
 #endif

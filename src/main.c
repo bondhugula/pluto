@@ -275,7 +275,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Print out the transformations */
     if (!options->silent)   {
-        print_transformations(prog);
+        pluto_print_transformations(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 
@@ -311,7 +311,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile && !options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
-        print_transformations(prog);
+        pluto_print_transformations(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 

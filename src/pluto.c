@@ -1758,7 +1758,7 @@ void ddg_compute_scc(PlutoProg *prog)
 	graph_print_sccs(g);
 }
 
-void print_transformations(PlutoProg *prog)
+void pluto_print_transformations(PlutoProg *prog)
 {
     int nstmts, i;
 
@@ -1866,16 +1866,5 @@ void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 
 	for (j=0; j<stmt->dim; j++)  {
         free(var[j]);
-	}
-}
-
-
-void pluto_print_transformations(PlutoProg *prog)
-{
-	int i;
-
-	for (i=0; i<prog->nstmts; i++)    {
-		printf("T_(S%d) \n", i);
-		pluto_matrix_print(stdout, prog->stmts[i]->trans);
 	}
 }
