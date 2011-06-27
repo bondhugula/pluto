@@ -1833,12 +1833,12 @@ void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
  * Pretty prints a one-dimensional affine transformation */
 void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 {
-	char var[stmt->domain->ncols-1][128];
+	char *var[stmt->domain->ncols-1];
 
 	int j;
 
 	for (j=0; j<stmt->dim; j++)  {
-        strncpy(var[j], stmt->iterators[j], 128);
+        var[j] = strdup(stmt->iterators[j]);
 	}
 
 	int flag = 0;
@@ -1857,11 +1857,15 @@ void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 			flag = 1;
 		}
 	}
-	if (stmt->trans->val[level][stmt->dim] > 0)  {
+	if (stmt->trans->val[level][stmt->trans->ncols-1] > 0)  {
 		if (flag) fprintf(fp, "+");
-		fprintf(fp, "%d", stmt->trans->val[level][stmt->dim]);
+		fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
 	}else{
-		if (!flag) fprintf(fp, "%d", stmt->trans->val[level][stmt->dim]);
+		if (!flag) fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
+	}
+
+	for (j=0; j<stmt->dim; j++)  {
+        free(var[j]);
 	}
 }
 
