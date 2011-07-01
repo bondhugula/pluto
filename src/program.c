@@ -48,7 +48,7 @@ Stmt *stmt_copy(Stmt *src)
     *dest = *src;
 
     dest->domain = pluto_constraints_copy(dest->domain, src->domain);
-    dest->trans = pluto_matrix_copy(src->trans);
+    dest->trans = pluto_matrix_dup(src->trans);
 
     return dest;
 }

@@ -27,6 +27,8 @@
 
 /*
  * Allocated; not initialized
+ *
+ * nrows set to allocated number of rows
  */
 PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
 {
@@ -94,6 +96,7 @@ void pluto_matrix_remove_row(PlutoMatrix *mat, int pos)
 }
 
 
+/* Non-destructive resize */
 void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
 {
     int i;
@@ -125,7 +128,7 @@ void pluto_matrix_add_col(PlutoMatrix *mat, int pos)
 {
     int i, j;
 
-    assert(pos <= mat->ncols);
+    assert(pos >= 0 && pos <= mat->ncols);
 
     if (mat->ncols == mat->alloc_ncols)  {
         pluto_matrix_resize(mat, mat->nrows, mat->ncols+1);
@@ -142,6 +145,32 @@ void pluto_matrix_add_col(PlutoMatrix *mat, int pos)
     /* Initialize to zero */
     for (i=0; i<mat->nrows; i++) {
         mat->val[i][pos] = 0;
+    }
+}
+
+/* Negate entire row; pos is 0-indexed */
+void pluto_matrix_negate_row(PlutoMatrix *mat, int pos)
+{
+    int j;
+
+    for (j=0; j<mat->ncols; j++)    {
+        mat->val[pos][j] = -mat->val[pos][j];
+    }
+}
+
+/* Add rows of mat2 to mat1 */
+void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2)
+{
+    int i, j;
+
+    assert(mat1->ncols == mat2->ncols);
+
+    pluto_matrix_resize(mat1, mat1->nrows+mat2->nrows, mat1->ncols);
+
+    for (i=mat1->nrows-mat2->nrows; i<mat1->nrows; i++) {
+        for (j=0; j<mat1->ncols; j++)   {
+            mat1->val[i][j] = mat2->val[i-(mat1->nrows-mat2->nrows)][j];
+        }
     }
 }
 
@@ -174,25 +203,39 @@ void pluto_matrix_add_row(PlutoMatrix *mat, int pos)
 
 
 
-/* Return a copy of src */
-PlutoMatrix *pluto_matrix_copy(const PlutoMatrix *src)
+/* Return a duplicate of src */
+PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src)
 {
     int i, j;
 
-    PlutoMatrix *dest = pluto_matrix_alloc(src->alloc_nrows, src->alloc_ncols);
+    PlutoMatrix *dup = pluto_matrix_alloc(src->alloc_nrows, src->alloc_ncols);
 
     for (i=0; i<src->nrows; i++)    {
         for (j=0; j<src->ncols; j++)    {
-            dest->val[i][j] = src->val[i][j];
+            dup->val[i][j] = src->val[i][j];
         }
     }
 
-    dest->nrows = src->nrows;
-    dest->ncols = src->ncols;
+    dup->nrows = src->nrows;
+    dup->ncols = src->ncols;
 
-    return dest;
+    return dup;
 }
 
+/* Initialize matrix with val */
+void pluto_matrix_initialize(PlutoMatrix *mat, int val)
+{
+    int i, j;
+
+    for (i=0; i<mat->nrows; i++)    {
+        for (j=0; j<mat->ncols; j++)    {
+            mat->val[i][j] = val;
+        }
+    }
+}
+
+
+/* Zero out a row */
 void pluto_matrix_zero_row(PlutoMatrix *mat, int pos)
 {
     int j;
@@ -204,7 +247,8 @@ void pluto_matrix_zero_row(PlutoMatrix *mat, int pos)
     }
 }
 
-void pluto_matrix_zero_col (PlutoMatrix *mat, int pos)
+/* Zero out a column */
+void pluto_matrix_zero_col(PlutoMatrix *mat, int pos)
 {
     int i;
 
