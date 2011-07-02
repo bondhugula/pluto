@@ -227,7 +227,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     scoplib_scop_free(scop);
 
     IF_DEBUG2(deps_print(stdout, prog->deps, prog->ndeps));
-    IF_DEBUG2(stmts_print(stdout, prog->stmts, prog->nstmts));
+    IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);

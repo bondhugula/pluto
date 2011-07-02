@@ -41,20 +41,37 @@
 #include <isl/union_map.h>
 
 /* Return a copy of the statement */
-Stmt *stmt_copy(Stmt *src)
+/* NO LONGER MAINTAINED: do not use */
+Stmt *pluto_stmt_dup(const Stmt *src)
 {
-    Stmt *dest = (Stmt *) malloc(sizeof(Stmt));
+    Stmt *dest = pluto_stmt_alloc(src->dim, src->domain);
 
     *dest = *src;
 
-    dest->domain = pluto_constraints_copy(dest->domain, src->domain);
     dest->trans = pluto_matrix_dup(src->trans);
 
     return dest;
 }
 
 
-PlutoConstraints *clan_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
+PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
+{
+    int i, j;
+
+    PlutoMatrix *mat;
+
+    mat = pluto_matrix_alloc(smat->NbRows, smat->NbColumns);
+    for (i=0; i<smat->NbRows; i++)  {
+        for (j=0; j<smat->NbColumns; j++)  {
+            mat->val[i][j] = smat->p[i][j];
+        }
+    }
+
+    return mat;
+}
+
+
+PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 {
     // candl_matrix_print(stdout, candlMatrix);
     int has_equalities = 0;
@@ -99,10 +116,11 @@ PlutoConstraints *clan_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 
         for (i=0; i<clanMatrix->NbRows; i++)   {
 #ifdef PIP_WIDTH_MP
-            if (mpz_get_si(clanMatrix->p[i][0]) == 0) {
+            if (mpz_get_si(clanMatrix->p[i][0]) == 0) 
 #else
-            if (clanMatrix->p[i][0] == 0) {
+            if (clanMatrix->p[i][0] == 0) 
 #endif
+            {
                 for (j=0; j<pmat->ncols; j++)   {
 #ifdef PIP_WIDTH_MP
                     pmat->val[pmat->nrows-1][j] -= mpz_get_si(clanMatrix->p[i][j+1]);
@@ -292,93 +310,86 @@ void deps_print(FILE *fp, Dep *deps, int ndeps)
 }
 
 
-/* Read statement info from Clan's structures */
-static Stmt **stmts_read(scoplib_scop_p scop, int npar, int nvar)
+/* Read statement info from scoplib structures (nvar: max domain dim) */
+static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
 {
     int i, j;
     Stmt **stmts;
-    Stmt *stmt;
+    int npar, nvar, nstmts;
+    scoplib_statement_p scop_stmt;
 
-    int nstmts = scoplib_statement_number(scop->statement);
+    npar = scop->nb_parameters;
+    nstmts = scoplib_statement_number(scop->statement);
+
+    /* Max dom dimensionality */
+    nvar = -1;
+    if (nstmts >= 1)    {
+        scop_stmt = scop->statement;
+        for (i=0; i<nstmts; i++) {
+            nvar = PLMAX(nvar, scop_stmt->nb_iterators);
+            scop_stmt = scop_stmt->next;
+        }
+    }
 
     /* Allocate more to account for unroll/jamming later on */
     stmts = (Stmt **) malloc(nstmts*sizeof(Stmt *));
 
-    scoplib_statement_p clan_stmt = scop->statement;
+    scop_stmt = scop->statement;
 
     for(i=0; i<nstmts; i++)  {
-        stmts[i] = (Stmt *) malloc(sizeof(Stmt));
-        stmt = stmts[i];
+        PlutoConstraints *domain = 
+            scoplib_matrix_to_pluto_constraints(scop_stmt->domain->elt);
+
+        stmts[i] = pluto_stmt_alloc(scop_stmt->nb_iterators, domain);
+        Stmt *stmt = stmts[i];
+
+        pluto_constraints_free(domain);
 
         stmt->id = i;
 
-        stmt->dim = clan_stmt->nb_iterators;
-        stmt->dim_orig = clan_stmt->nb_iterators;
-
-        stmt->is_orig_loop = (bool *) malloc(stmt->dim*sizeof(bool));
-
-        assert(clan_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
-
-        stmt->domain = clan_matrix_to_pluto_constraints(clan_stmt->domain->elt);
-
-        stmt->num_tiled_loops = 0;
+        assert(scop_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
         for (j=0; j<stmt->dim; j++)  {
             stmt->is_orig_loop[j] = true;
         }
 
-        /* Is resized when necessary */
+        /* Is resized when necessary (pre-allocate) */
         stmt->trans = pluto_matrix_alloc(2*nvar+1, nvar+npar+1);
-
         stmt->trans->nrows = 0;
+        /* using nvar for uniformity instead of stmt->dim + npar + 1; will 
+         * be reduced to stmt->dim + npar + 1 at the end of pluto sched */
         stmt->trans->ncols = nvar+npar+1;
         
-        /* Do not know the size yet */
-        stmt->transineq = pluto_constraints_alloc(0, stmt->dim+npar+1);
-
-
         stmt->num_ind_sols = 0;
 
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
-        clan_stmt = clan_stmt->next;
+        for (j=0; j<stmt->dim; j++)    {
+            stmt->iterators[j] = strdup(scop_stmt->iterators[j]);
+        }
+        /* Statement text */
+        stmt->text = (char *) malloc(sizeof(char)*(strlen(scop_stmt->body)+1));
+        strcpy(stmt->text, scop_stmt->body);
+
+        scop_stmt = scop_stmt->next;
     }
 
     return stmts;
 }
 
 
-void stmts_print(FILE *fp, Stmt **stmts, int nstmts)
+void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 {
     int i;
 
     for(i=0; i<nstmts; i++)  {
-        Stmt *stmt = stmts[i];
+        const Stmt *stmt = stmts[i];
         fprintf(fp, "S%d %d-d index set\n", stmt->id+1, stmt->dim);
         pluto_constraints_print(fp, stmt->domain);
     }
 }
 
-
-void pluto_stmt_free(Stmt *stmt)
-{
-    pluto_matrix_free(stmt->trans);
-    pluto_constraints_free(stmt->domain);
-    pluto_constraints_free(stmt->transineq);
-
-    free(stmt->is_orig_loop);
-
-    free(stmt->text);
-
-    int j;
-    for (j=0; j<stmt->dim; j++)    {
-        free(stmt->iterators[j]);
-    }
-    free(stmt->iterators);
-
-    free(stmt);
-}
 
 
 void pluto_dep_free(Dep *dep)
@@ -913,7 +924,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 {
     int i;
 
-    PlutoProg *prog = (PlutoProg *) malloc(sizeof(PlutoProg));
+    PlutoProg *prog = pluto_prog_alloc();
 
     prog->nstmts = scoplib_statement_number(scop->statement);
     prog->options = options;
@@ -921,7 +932,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     /* Set global variables first (they are used in stmts_read, deps_read too) */
     prog->npar = scop->nb_parameters;
 
-    prog->context = clan_matrix_to_pluto_constraints(scop->context);
+    prog->context = scoplib_matrix_to_pluto_constraints(scop->context);
 
 	if (options->context != -1)	{
 		for (i=0; i<prog->npar; i++)  {
@@ -931,21 +942,21 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 		}
 	}
 
-    scoplib_statement_p clan_stmt = scop->statement;
+    scoplib_statement_p scop_stmt = scop->statement;
 
-    prog->nvar = clan_stmt->nb_iterators;
-
+    prog->nvar = scop_stmt->nb_iterators;
     for (i=0; i<prog->nstmts; i++) {
-        prog->nvar = PLMAX(prog->nvar, clan_stmt->nb_iterators);
-        clan_stmt = clan_stmt->next;
+        prog->nvar = PLMAX(prog->nvar, scop_stmt->nb_iterators);
+        scop_stmt = scop_stmt->next;
     }
 
-    prog->stmts = stmts_read(scop, prog->npar, prog->nvar);
+    prog->stmts = scoplib_to_pluto_stmts(scop);
+
+    /* Compute dependences */
     if (options->isldep) {
         compute_deps(scop, prog, options);
     }else{
-        /* Calculate dependences using Candl */
-
+        /*  Using Candl */
         candl_program_p candl_program = candl_program_convert_scop(scop, NULL);
 
         CandlOptions *candlOptions = candl_options_malloc();
@@ -971,24 +982,11 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     prog->num_hyperplanes = 0;
 
     /* Parameter names */
-    prog->params = (char **) malloc(sizeof(char *)*prog->npar);
-    for (i=0; i<prog->npar; i++)  {
-        prog->params[i] = (char *) malloc(sizeof(char)*64);
-        strcpy(prog->params[i], scop->parameters[i]);
+    if (prog->npar >= 1)    {
+        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
     }
-
-    /* Iterator names and statement text */
-    clan_stmt = scop->statement;
-    for (i=0; i<prog->nstmts; i++)    {
-        prog->stmts[i]->iterators = (char **) malloc(sizeof(char *)*prog->stmts[i]->dim);
-        int j;
-        for (j=0; j<prog->stmts[i]->dim; j++)    {
-            prog->stmts[i]->iterators[j] = strdup(clan_stmt->iterators[j]);
-        }
-        /* Statement text */
-        prog->stmts[i]->text = (char *) malloc(sizeof(char)*(strlen(clan_stmt->body)+1));
-        strcpy(prog->stmts[i]->text, clan_stmt->body);
-        clan_stmt = clan_stmt->next;
+    for (i=0; i<prog->npar; i++)  {
+        prog->params[i] = strdup(scop->parameters[i]);
     }
 
     // hack for linearized accesses
@@ -1036,18 +1034,38 @@ int get_coeff_upper_bound(PlutoProg *prog)
 }
 
 
+PlutoProg *pluto_prog_alloc()
+{
+    PlutoProg *prog = (PlutoProg *) malloc(sizeof(PlutoProg));
+
+    prog->nstmts = 0;
+    prog->stmts = NULL;
+    prog->npar = 0;
+    prog->num_hyperplanes = 0;
+    prog->params = NULL;
+    prog->context = pluto_constraints_alloc(0, prog->npar+1);
+    prog->iternames = NULL;
+    prog->deps = NULL;
+    prog->ndeps = 0;
+
+    return prog;
+}
+
+
 
 void pluto_prog_free(PlutoProg *prog)
 {
     int i;
 
-    /* Free the dependences */
+    /* Free dependences */
     for (i=0; i<prog->ndeps; i++) {
         pluto_dep_free(&prog->deps[i]);
     }
-    free(prog->deps);
+    if (prog->deps != NULL) {
+        free(prog->deps);
+    }
 
-    /* Free the DDG */
+    /* Free DDG */
     graph_free(prog->ddg);
 
     free(prog->hProps);
@@ -1055,15 +1073,23 @@ void pluto_prog_free(PlutoProg *prog)
     for (i=0; i<prog->npar; i++)  {
         free(prog->params[i]);
     }
-    free(prog->params);
+    if (prog->npar >= 1)    {
+        free(prog->params);
+    }
 
     /* Statements */
     for (i=0; i<prog->nstmts; i++) {
         pluto_stmt_free(prog->stmts[i]);
     }
-    free(prog->stmts);
+    if (prog->nstmts >= 1)  {
+        free(prog->stmts);
+    }
 
     pluto_constraints_free(prog->context);
+
+    if (prog->iternames != NULL)    {
+        free(prog->iternames);
+    }
 
     free(prog);
 }
@@ -1129,7 +1155,7 @@ PlutoOptions *pluto_options_alloc()
     return options;
 }
 
-void pluto_add_parameter(PlutoProg *prog, char *param)
+void pluto_add_parameter(PlutoProg *prog, const char *param)
 {
     int i;
 
@@ -1154,7 +1180,7 @@ void pluto_options_free(PlutoOptions *options)
 }
 
 
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter)
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter)
 {
     int i;
 
@@ -1197,4 +1223,94 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
     prog->hProps[pos].band_num = -1;
     prog->hProps[pos].dep_prop = UNKNOWN;
     prog->hProps[pos].type = H_UNKNOWN;
+}
+
+
+void pluto_add_stmt(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        const PlutoMatrix *trans,
+        const char * const * const iterators,
+        const char *text
+        )
+{
+    int i, nstmts;
+
+    nstmts = prog->nstmts;
+
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
+
+    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain);
+
+    stmt->id = nstmts;
+    if (trans != NULL)  stmt->trans = pluto_matrix_dup(trans);
+    else stmt->trans = NULL;
+
+    stmt->text = strdup(text);
+
+    for (i=0; i<stmt->dim; i++) {
+        stmt->iterators[i] = strdup(iterators[i]);
+    }
+
+    prog->stmts[nstmts] = stmt;
+    prog->nstmts++;
+}
+
+
+/* Only dimensionality and domain are essential */
+Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
+{
+    int i;
+
+    Stmt *stmt = (Stmt *) malloc(sizeof(Stmt));
+
+    stmt->dim = dim;
+    stmt->dim_orig = dim;
+    stmt->domain = pluto_constraints_dup(domain);
+    stmt->trans = NULL;
+    stmt->text = NULL;
+    stmt->tile =  1;
+    stmt->num_tiled_loops = 0;
+
+    if (dim >= 1)   {
+        stmt->is_orig_loop = (bool *) malloc(dim*sizeof(bool));
+        stmt->iterators = (char **) malloc(sizeof(char *)*dim);
+        for (i=0; i<stmt->dim; i++) {
+            stmt->iterators[i] = NULL;
+        }
+    }else{
+        stmt->is_orig_loop = NULL;
+        stmt->iterators = NULL;
+    }
+
+    return stmt;
+}
+
+
+void pluto_stmt_free(Stmt *stmt)
+{
+    int j;
+
+    pluto_constraints_free(stmt->domain);
+
+    if (stmt->trans != NULL)    {
+        pluto_matrix_free(stmt->trans);
+    }
+
+    if (stmt->text != NULL) {
+        free(stmt->text);
+    }
+
+    for (j=0; j<stmt->dim; j++)    {
+        if (stmt->iterators[j] != NULL) {
+            free(stmt->iterators[j]);
+        }
+    }
+
+    /* If dim is zero, iterators, is_orig_loop are NULL */
+    if (stmt->iterators != NULL)    {
+        free(stmt->iterators);
+        free(stmt->is_orig_loop);
+    }
+
+    free(stmt);
 }

@@ -191,16 +191,19 @@ struct statement{
      */
     PlutoMatrix *trans;
 
-    PlutoConstraints *transineq;
-
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
+
+    /***/
+    /* Used by scheduling algo */
+    /***/
 
     /* Num of independent soln's needed */
     int num_ind_sols;
 
-    /* ID of the SCC this statement belongs to */
+    /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
+
 };
 typedef struct statement Stmt;
 
@@ -298,6 +301,10 @@ struct plutoProg{
 
     /* Param context */
     PlutoConstraints *context;
+
+    /* Iterator names to be used for original domains (provide all in one string
+     * separated by whitespace) */
+    char *iternames;
 };
 typedef struct plutoProg PlutoProg;
 

@@ -22,22 +22,25 @@
 #include "pluto.h"
 #include "clan/clan.h"
 #include "candl/candl.h"
+#include "constraints.h"
 
-void stmts_print(FILE *fp, Stmt **, int);
+Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain);
 void pluto_stmt_free(Stmt *stmt);
-Stmt *stmt_copy (Stmt *src);
+void pluto_stmts_print(FILE *fp, Stmt **, int);
+Stmt *pluto_stmt_dup(const Stmt *src);
 
-void deps_print (FILE *, Dep *, int);
+void deps_print(FILE *, Dep *, int);
 
-PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
+PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
+PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 int get_coeff_upper_bound(PlutoProg *prog);
 
-void pluto_add_parameter(PlutoProg *prog, char *param);
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, char *iter);
+void pluto_add_parameter(PlutoProg *prog, const char *param);
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
 #endif
