@@ -48,8 +48,10 @@ typedef struct {
 
 PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
+PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src);
+PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 
 int best_elim_candidate(const PlutoConstraints *, int);
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
@@ -76,6 +78,7 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
+PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
 
 /*
  * Construct a non-parametric basic set from the constraints in cst.
