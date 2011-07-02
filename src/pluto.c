@@ -1389,6 +1389,7 @@ void generate_cloog_file(FILE *fp, PlutoProg *prog)
 		fprintf(fp, "0 0 0\n\n");
 	}
 
+    fprintf(fp, "# we want cloog to set the iterator names\n");
 	fprintf(fp, "0\n\n");
 
 	fprintf(fp, "# of scattering functions\n");
