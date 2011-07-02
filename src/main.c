@@ -190,7 +190,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (!src_fp)   {
         fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
         pluto_options_free(options);
-        free(srcFileName);
         return 6;
     }
 
@@ -199,16 +198,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     clan_options_p clanOptions = clan_options_malloc();
 
-    if (options->readscoplib)
-      scop = scoplib_scop_read(src_fp);
-    else
-      scop = clan_scop_extract(src_fp, clanOptions);
+    if (options->readscoplib) scop = scoplib_scop_read(src_fp);
+    else scop = clan_scop_extract(src_fp, clanOptions);
 
     if (!scop || !scop->statement)   {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
         pluto_options_free(options);
-        free(srcFileName);
         return 7;
     }
     FILE *srcfp = fopen(".srcfilename", "w");
@@ -226,7 +222,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Backup irregular program portion in .scop. */
     char* irroption = scoplib_scop_tag_content(scop, "<irregular>",
-                                            "</irregular>");
+            "</irregular>");
 
     scoplib_scop_free(scop);
 
@@ -351,26 +347,26 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     char *outFileName;
     char *cloogFileName;
     if (options->out_file == NULL)  {
-    /* Get basename, remove .c extension and append a new one */
-    char *basec, *bname;
-    basec = strdup(srcFileName);
-    bname = basename(basec);
+        /* Get basename, remove .c extension and append a new one */
+        char *basec, *bname;
+        basec = strdup(srcFileName);
+        bname = basename(basec);
 
         /* max size when tiled.* */
         outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
         cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
 
-    if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-        strncpy(outFileName, bname, strlen(bname)-2);
-        strncpy(cloogFileName, bname, strlen(bname)-2);
-        outFileName[strlen(bname)-2] = '\0';
-        cloogFileName[strlen(bname)-2] = '\0';
-    }else{
-        strcpy(outFileName, bname);
-        strcpy(cloogFileName, bname);
+        if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+            strncpy(outFileName, bname, strlen(bname)-2);
+            strncpy(cloogFileName, bname, strlen(bname)-2);
+            outFileName[strlen(bname)-2] = '\0';
+            cloogFileName[strlen(bname)-2] = '\0';
+        }else{
+            strcpy(outFileName, bname);
+            strcpy(cloogFileName, bname);
         }
         strcat(outFileName, ".pluto.c");
-    free(basec);
+        free(basec);
     }else{
         outFileName = options->out_file;
         cloogFileName = alloca(strlen(options->out_file)+1);
