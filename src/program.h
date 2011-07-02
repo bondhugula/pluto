@@ -40,6 +40,14 @@ void pluto_options_free(PlutoOptions *);
 int get_coeff_upper_bound(PlutoProg *prog);
 
 void pluto_add_parameter(PlutoProg *prog, const char *param);
+void pluto_add_stmt(PlutoProg *prog, 
+        PlutoConstraints *domain,
+        PlutoMatrix *trans,
+        const char * const * const iterators,
+        const char *text
+        );
+
+
 void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
