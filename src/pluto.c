@@ -364,7 +364,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
     IF_DEBUG(printf("Cutting between all SCCs\n"));
 
     if (ddg->num_sccs == 1) {
-		IF_DEBUG(printf("\t only one SCC\n"));
+        IF_DEBUG(printf("\t only one SCC\n"));
         return 0;
     }
 
@@ -1001,134 +1001,134 @@ void normalize_domains(PlutoProg *prog)
      * built for each dependence, it doesn't know anything about a parameter
      * that does not appear in its dpolyhedron, and so it will assign the
      * coeff corresponding to that param in the bounding function constraints
-	 * local to the dependence to zero, and what if some other dep needs that 
-	 * particular coeff to be >= 1 for bounding? 
+     * local to the dependence to zero, and what if some other dep needs that 
+     * particular coeff to be >= 1 for bounding? 
      *
      * Solution: global context should be available
      *
      * How to construct? Just put together all constraints on parameters alone in
      * the global context, i.e., eliminate iterators out of each domain and
      * aggregate constraints on the parameters, and add them to each
-	 * dependence polyhedron
+     * dependence polyhedron
      */
     int count=0;
-	if (npar >= 1)	{
-		PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
-		for (i=0; i<prog->nstmts; i++)    {
-			PlutoConstraints *copy = 
-				pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, prog->stmts[i]->domain->ncols);
-			pluto_constraints_copy(copy, prog->stmts[i]->domain);
-			for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
-				fourier_motzkin_eliminate(copy, 0);
-			}
-			assert(copy->ncols == npar+1);
-			count += copy->nrows;
+    if (npar >= 1)    {
+        PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
+        for (i=0; i<prog->nstmts; i++)    {
+            PlutoConstraints *copy = 
+                pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, prog->stmts[i]->domain->ncols);
+            pluto_constraints_copy(copy, prog->stmts[i]->domain);
+            for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
+                fourier_motzkin_eliminate(copy, 0);
+            }
+            assert(copy->ncols == npar+1);
+            count += copy->nrows;
 
-			if (count <= prog->nstmts*npar)    {
-				pluto_constraints_add(context, copy);
-			}else{
-				pluto_constraints_free(copy);
-				break;
-			}
-			pluto_constraints_free(copy);
-		}
-		pluto_constraints_simplify(context);
-		if (options->debug) {
-			printf("Global constraint context\n");
-			pluto_constraints_print(stdout, context );
-		}
+            if (count <= prog->nstmts*npar)    {
+                pluto_constraints_add(context, copy);
+            }else{
+                pluto_constraints_free(copy);
+                break;
+            }
+            pluto_constraints_free(copy);
+        }
+        pluto_constraints_simplify(context);
+        if (options->debug) {
+            printf("Global constraint context\n");
+            pluto_constraints_print(stdout, context );
+        }
 
-		/* Add context to every dep polyhedron */
-		for (i=0; i<prog->ndeps; i++) {
-			PlutoConstraints *dpolytope = prog->deps[i].dpolytope;
+        /* Add context to every dep polyhedron */
+        for (i=0; i<prog->ndeps; i++) {
+            PlutoConstraints *dpolytope = prog->deps[i].dpolytope;
 
-			for (k=0; k<context->nrows; k++) {
-				pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
+            for (k=0; k<context->nrows; k++) {
+                pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
 
-				/* Already initialized to zero */
+                /* Already initialized to zero */
 
-				for (j=0; j<npar+1; j++){
-					dpolytope->val[dpolytope->nrows-1][j+dpolytope->ncols-(npar+1)] = 
-						context->val[k][j];
-				}
-			}
-			/* Update reference, add_row can resize */
-			prog->deps[i].dpolytope = dpolytope;
-		}
-		pluto_constraints_free(context);
-	}else{
-		IF_DEBUG(printf("No global context\n"));
-	}
+                for (j=0; j<npar+1; j++){
+                    dpolytope->val[dpolytope->nrows-1][j+dpolytope->ncols-(npar+1)] = 
+                        context->val[k][j];
+                }
+            }
+            /* Update reference, add_row can resize */
+            prog->deps[i].dpolytope = dpolytope;
+        }
+        pluto_constraints_free(context);
+    }else{
+        IF_DEBUG(printf("No global context\n"));
+    }
 
 
-	/* Add padding dimensions to statement domains */
-	for (i=0; i<prog->nstmts; i++)    {
-		Stmt *stmt = prog->stmts[i];
+    /* Add padding dimensions to statement domains */
+    for (i=0; i<prog->nstmts; i++)    {
+        Stmt *stmt = prog->stmts[i];
         int orig_depth = stmt->dim_orig;
-		for (j=orig_depth; j<nvar; j++)  {
+        for (j=orig_depth; j<nvar; j++)  {
             pluto_sink_statement(stmt, npar, stmt->dim, 0);
-		}
-	}
+        }
+    }
 
-	/* Add padding dimensions for the dependence polyhedra */
-	for (i=0; i<prog->ndeps; i++)    {
-		Dep *dep = &prog->deps[i];
-		int src_dim = prog->stmts[dep->src]->dim_orig;
-		int target_dim = prog->stmts[dep->dest]->dim_orig;
+    /* Add padding dimensions for the dependence polyhedra */
+    for (i=0; i<prog->ndeps; i++)    {
+        Dep *dep = &prog->deps[i];
+        int src_dim = prog->stmts[dep->src]->dim_orig;
+        int target_dim = prog->stmts[dep->dest]->dim_orig;
 
-		for (j=src_dim; j<nvar; j++)    {
-			pluto_constraints_add_dim(dep->dpolytope, src_dim);
-		}
+        for (j=src_dim; j<nvar; j++)    {
+            pluto_constraints_add_dim(dep->dpolytope, src_dim);
+        }
 
-		for (j=target_dim; j<nvar; j++)    {
-			pluto_constraints_add_dim(dep->dpolytope, nvar+target_dim);
-		}
-	}
+        for (j=target_dim; j<nvar; j++)    {
+            pluto_constraints_add_dim(dep->dpolytope, nvar+target_dim);
+        }
+    }
 
-	/* Normalize rows of dependence polyhedra */
-	for (k=0; k<prog->ndeps; k++)   {
-		/* Normalize by gcd */
-		PlutoConstraints *dpoly = prog->deps[k].dpolytope;
+    /* Normalize rows of dependence polyhedra */
+    for (k=0; k<prog->ndeps; k++)   {
+        /* Normalize by gcd */
+        PlutoConstraints *dpoly = prog->deps[k].dpolytope;
 
-		for(i=0; i<dpoly->nrows; i++)   {
-			pluto_constraints_normalize_row(dpoly, i);
-		}
-	}
+        for(i=0; i<dpoly->nrows; i++)   {
+            pluto_constraints_normalize_row(dpoly, i);
+        }
+    }
 
-	/* Avoid the need for bounding function coefficients to take negative
-	 * values (TODO: should do this only for the bounding function constraints) */
-	bool *neg = malloc(sizeof(bool)*npar);
-	for (k=0; k<prog->ndeps; k++) {
-		Dep *dep = &prog->deps[k];
-		PlutoConstraints *dpoly = dep->dpolytope;
+    /* Avoid the need for bounding function coefficients to take negative
+     * values (TODO: should do this only for the bounding function constraints) */
+    bool *neg = malloc(sizeof(bool)*npar);
+    for (k=0; k<prog->ndeps; k++) {
+        Dep *dep = &prog->deps[k];
+        PlutoConstraints *dpoly = dep->dpolytope;
 
-		int j;
-		bzero(neg, npar*sizeof(bool));
+        int j;
+        bzero(neg, npar*sizeof(bool));
 
-		for (j=2*nvar; j<2*nvar+npar; j++)  {
-			int min = dpoly->val[0][j];
-			int max = dpoly->val[0][j];
-			for (i=1; i<dpoly->nrows; i++)  {
-				min = PLMIN(dpoly->val[i][j], min);
-				max = PLMAX(dpoly->val[i][j], max);
-			}
+        for (j=2*nvar; j<2*nvar+npar; j++)  {
+            int min = dpoly->val[0][j];
+            int max = dpoly->val[0][j];
+            for (i=1; i<dpoly->nrows; i++)  {
+                min = PLMIN(dpoly->val[i][j], min);
+                max = PLMAX(dpoly->val[i][j], max);
+            }
 
-			if (min < 0 && max <= 0)    {
-				neg[j-2*nvar] = true;
-				IF_DEBUG(printf("Dep %d has negative coeff's for parameter %d\n", 
-							dep->id, j-2*nvar+1));
-			}
-		}
+            if (min < 0 && max <= 0)    {
+                neg[j-2*nvar] = true;
+                IF_DEBUG(printf("Dep %d has negative coeff's for parameter %d\n", 
+                            dep->id, j-2*nvar+1));
+            }
+        }
 
-		for (j=0; j<npar; j++)  {
-			if (neg[j])   {
-				pluto_constraints_add_inequality(dpoly, dpoly->nrows);
-				dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
-			}
-		}
+        for (j=0; j<npar; j++)  {
+            if (neg[j])   {
+                pluto_constraints_add_inequality(dpoly, dpoly->nrows);
+                dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
+            }
+        }
 
-	}
-	free(neg);
+    }
+    free(neg);
 }
 
 
@@ -1136,79 +1136,79 @@ void normalize_domains(PlutoProg *prog)
  * will have stmt->dim + npar + 1 after this function */
 void denormalize_domains(PlutoProg *prog)
 {
-	int i, j;
+    int i, j;
 
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-	for (i=0; i<prog->nstmts; i++)  {
-		Stmt *stmt = prog->stmts[i];
-		int del_count = 0;
-		for (j=0; j<nvar; j++)  {
-			if (!stmt->is_orig_loop[j]) {
+    for (i=0; i<prog->nstmts; i++)  {
+        Stmt *stmt = prog->stmts[i];
+        int del_count = 0;
+        for (j=0; j<nvar; j++)  {
+            if (!stmt->is_orig_loop[j]) {
                 /* TODO: should actually eliminate the variable */
-				pluto_constraints_remove_dim(stmt->domain, j-del_count);
-				pluto_matrix_remove_col(stmt->trans, j-del_count);
-				del_count++;
+                pluto_constraints_remove_dim(stmt->domain, j-del_count);
+                pluto_matrix_remove_col(stmt->trans, j-del_count);
+                del_count++;
                 stmt->dim--;
-			}
-		}
+            }
+        }
 
-		assert(stmt->domain->ncols == stmt->dim+npar+1);
+        assert(stmt->domain->ncols == stmt->dim+npar+1);
 
-		for (j=0; j<stmt->dim; j++)  {
-			stmt->is_orig_loop[j] = 1;
-		}
-	}
+        for (j=0; j<stmt->dim; j++)  {
+            stmt->is_orig_loop[j] = 1;
+        }
+    }
 }
 
 
 /* Top-level automatic transformation algoritm */
 void pluto_auto_transform(PlutoProg *prog, int use_isl)
 {
-	int nsols, i, j;
-	int sols_found, num_ind_sols, depth;
+    int nsols, i, j;
+    int sols_found, num_ind_sols, depth;
 
-	Stmt **stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
 
-	Graph *ddg = prog->ddg;
+    Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
 
-	HyperplaneProperties *hProps = prog->hProps;
+    HyperplaneProperties *hProps = prog->hProps;
 
-	normalize_domains(prog);
+    normalize_domains(prog);
 
-	/* The number of independent solutions required for the deepest 
-	 * statement */
-	nsols = 0;
-	for (i=0; i<prog->nstmts; i++)    {
-		nsols = PLMAX(nsols, stmts[i]->dim);
-	}
+    /* The number of independent solutions required for the deepest 
+     * statement */
+    nsols = 0;
+    for (i=0; i<prog->nstmts; i++)    {
+        nsols = PLMAX(nsols, stmts[i]->dim);
+    }
 
-	num_ind_sols = 0;
-	depth=0;
+    num_ind_sols = 0;
+    depth=0;
 
-	if (precut(prog, ddg, depth, use_isl))   {
-		/* Precutting succeeded */
-		printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
-		for (i=0; i<stmts[0]->trans->nrows; i++)   {
-			if (hProps[i].type == H_LOOP) {
-				/* Already some independent solns to start with */
-				num_ind_sols++;
-			}
-		}
-		IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
-					num_ind_sols));
-	}else{
-		if (options->fuse == NO_FUSE)    {
-			cut_all_sccs(prog, ddg, use_isl);
-		}else if (options->fuse == SMART_FUSE)    {
-			cut_scc_dim_based(prog,ddg, use_isl);
-		}
-	}
+    if (precut(prog, ddg, depth, use_isl))   {
+        /* Precutting succeeded */
+        printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
+        for (i=0; i<stmts[0]->trans->nrows; i++)   {
+            if (hProps[i].type == H_LOOP) {
+                /* Already some independent solns to start with */
+                num_ind_sols++;
+            }
+        }
+        IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
+                    num_ind_sols));
+    }else{
+        if (options->fuse == NO_FUSE)    {
+            cut_all_sccs(prog, ddg, use_isl);
+        }else if (options->fuse == SMART_FUSE)    {
+            cut_scc_dim_based(prog,ddg, use_isl);
+        }
+    }
 
-	do{
-        if (options->fuse == NO_FUSE)	{
+    do{
+        if (options->fuse == NO_FUSE)    {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg, use_isl);
         }
@@ -1217,130 +1217,130 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
                 nsols-num_ind_sols,
                 use_isl);
 
-		IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
-					depth, sols_found));
-		IF_DEBUG2(pluto_transformations_print(prog));
-		num_ind_sols += sols_found;
+        IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
+                    depth, sols_found));
+        IF_DEBUG2(pluto_transformations_print(prog));
+        num_ind_sols += sols_found;
 
-		if (sols_found > 0) {
-			for (j=0; j<sols_found; j++)      {
+        if (sols_found > 0) {
+            for (j=0; j<sols_found; j++)      {
                 /* Mark dependences satisfied by this solution */
                 dep_satisfaction_update(prog,
                         stmts[0]->trans->nrows-sols_found+j,
                         use_isl);
                 ddg_update(ddg, prog);
-			}
-		}else{
-			/* Remove inter statement dependences since we have no more
-			 * fusable loops */
+            }
+        }else{
+            /* Remove inter statement dependences since we have no more
+             * fusable loops */
 
-			ddg_compute_scc(prog);
+            ddg_compute_scc(prog);
 
-			if (ddg->num_sccs <= 1 || depth > 32)   {
-				printf("Number of unsatisfied deps: %d\n", get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-				printf("Number of unsatisfied inter-stmt deps: %d\n", 
-						get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
+            if (ddg->num_sccs <= 1 || depth > 32)   {
+                printf("Number of unsatisfied deps: %d\n", get_num_unsatisfied_deps(prog->deps, prog->ndeps));
+                printf("Number of unsatisfied inter-stmt deps: %d\n", 
+                        get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
 
-				fprintf(stderr, "\tUnfortunately, pluto cannot find any more hyperplanes.\n");
-				fprintf(stderr, "\tThis is usually a result of either (1) a bug in the dependence tester,\n");
-				fprintf(stderr, "\tor (2) very rarely a bug in Pluto's auto transformation,\n");
-				fprintf(stderr, "\tor (3) an illegal or inconsistent .fst/.precut in your working directory.\n");
-				fprintf(stderr, "\tPlease send input to author if possible.\n");
-				assert(ddg->num_sccs >= 2 && depth <= 32);
-			}
+                fprintf(stderr, "\tUnfortunately, pluto cannot find any more hyperplanes.\n");
+                fprintf(stderr, "\tThis is usually a result of either (1) a bug in the dependence tester,\n");
+                fprintf(stderr, "\tor (2) very rarely a bug in Pluto's auto transformation,\n");
+                fprintf(stderr, "\tor (3) an illegal or inconsistent .fst/.precut in your working directory.\n");
+                fprintf(stderr, "\tPlease send input to author if possible.\n");
+                assert(ddg->num_sccs >= 2 && depth <= 32);
+            }
 
-			if (options->fuse == NO_FUSE)  {
-				/* No fuse */
-				cut_all_sccs(prog, ddg, use_isl);
-			}else if (options->fuse == SMART_FUSE)  {
+            if (options->fuse == NO_FUSE)  {
+                /* No fuse */
+                cut_all_sccs(prog, ddg, use_isl);
+            }else if (options->fuse == SMART_FUSE)  {
                 /* Smart fuse (default) */
-				cut_smart(prog, ddg, use_isl);
-			}else{
-				/* Max fuse */
+                cut_smart(prog, ddg, use_isl);
+            }else{
+                /* Max fuse */
                 if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg, use_isl);
                 else cut_conservative(prog, ddg, use_isl);
-			}
-		}
-		depth++;
+            }
+        }
+        depth++;
 
-	}while (num_ind_sols < nsols || !deps_satisfaction_check(prog->deps, prog->ndeps));
+    }while (num_ind_sols < nsols || !deps_satisfaction_check(prog->deps, prog->ndeps));
 
-	detect_transformation_properties(prog, use_isl);
+    detect_transformation_properties(prog, use_isl);
 
-	denormalize_domains(prog);
+    denormalize_domains(prog);
 }
 
 
 int get_num_unsatisfied_deps (Dep *deps, int ndeps)
 {
-	int i, count;
+    int i, count;
 
-	count = 0;
-	for (i=0; i<ndeps; i++) {
-		if (IS_RAR(deps[i].type))   continue;
-		if (!deps[i].satisfied)  {
-			IF_DEBUG(printf("Unsatisfied dep %d\n", i));
-			count++;
-		}
-	}
+    count = 0;
+    for (i=0; i<ndeps; i++) {
+        if (IS_RAR(deps[i].type))   continue;
+        if (!deps[i].satisfied)  {
+            IF_DEBUG(printf("Unsatisfied dep %d\n", i));
+            count++;
+        }
+    }
 
-	return count;
+    return count;
 
 }
 
 
 int get_num_unsatisfied_inter_stmt_deps (Dep *deps, int ndeps)
 {
-	int i;
+    int i;
 
-	int count = 0;
-	for (i=0; i<ndeps; i++) {
-		if (IS_RAR(deps[i].type))   continue;
-		if (deps[i].src == deps[i].dest)    continue;
-		if (!deps[i].satisfied)  {
-			IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
-			count++;
-		}
-	}
+    int count = 0;
+    for (i=0; i<ndeps; i++) {
+        if (IS_RAR(deps[i].type))   continue;
+        if (deps[i].src == deps[i].dest)    continue;
+        if (!deps[i].satisfied)  {
+            IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
+            count++;
+        }
+    }
 
-	return count;
+    return count;
 
 }
 
 #if 0
 /* Detect hyperplane property */
 void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps, 
-		int hnum, int sols_found, int level)
+        int hnum, int sols_found, int level)
 {
-	Stmt *stmt;
-	int i, j;
+    Stmt *stmt;
+    int i, j;
 
-	for (j=0; j<ndeps; j++) {
-		if (IS_RAR(deps[j].type)) continue;
-		if (!dep_is_satisfied(&deps[j]) && 
-				dep_satisfaction_test(&deps[j], stmts, nstmts, hnum))   {
-			break;
-		}
-	}
+    for (j=0; j<ndeps; j++) {
+        if (IS_RAR(deps[j].type)) continue;
+        if (!dep_is_satisfied(&deps[j]) && 
+                dep_satisfaction_test(&deps[j], stmts, nstmts, hnum))   {
+            break;
+        }
+    }
 
-	if (j==ndeps)   {
-		for (i=0; i<nstmts; i++)    {
-			stmt = stmts[i];
-			stmt->trans_loop_type[hnum] = PARALLEL;
-		}
-	}else{
-		for (i=0; i<nstmts; i++)    {
-			stmt = stmts[i];
-			if (sols_found > 1) {
-				/* is pipelined parallel, can be inner parallel as well */
-				stmt->trans_loop_type[hnum] = PIPE_PARALLEL;
-			}else stmt->trans_loop_type[hnum] = SEQ;
-		}
-	}
-	for (i=0; i<nstmts; i++)    {
-		stmt = stmts[i];
-	}
-	hProps[hnum].type = H_LOOP;
+    if (j==ndeps)   {
+        for (i=0; i<nstmts; i++)    {
+            stmt = stmts[i];
+            stmt->trans_loop_type[hnum] = PARALLEL;
+        }
+    }else{
+        for (i=0; i<nstmts; i++)    {
+            stmt = stmts[i];
+            if (sols_found > 1) {
+                /* is pipelined parallel, can be inner parallel as well */
+                stmt->trans_loop_type[hnum] = PIPE_PARALLEL;
+            }else stmt->trans_loop_type[hnum] = SEQ;
+        }
+    }
+    for (i=0; i<nstmts; i++)    {
+        stmt = stmts[i];
+    }
+    hProps[hnum].type = H_LOOP;
 }
 
 #endif
@@ -1349,44 +1349,44 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 /* Generate and print .cloog file from the transformations computed */
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 {
-	int i, j, k;
+    int i, j, k;
 
-	Stmt **stmts = prog->stmts;
-	int nstmts = prog->nstmts;
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
     int npar = prog->npar;
 
     IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
-	fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
-	fprintf(fp, "# language: C\n");
-	fprintf(fp, "c\n\n");
+    fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
+    fprintf(fp, "# language: C\n");
+    fprintf(fp, "c\n\n");
 
-	/* Context: setting conditions on parameters */
+    /* Context: setting conditions on parameters */
     pluto_constraints_print_polylib(fp, prog->context);
 
 
-	/* Setting parameter names */
-	fprintf(fp, "\n1\n");
-	for (i=0; i<npar; i++)  {
-		fprintf(fp, "%s ", prog->params[i]);
-	}
-	fprintf(fp, "\n\n");
+    /* Setting parameter names */
+    fprintf(fp, "\n1\n");
+    for (i=0; i<npar; i++)  {
+        fprintf(fp, "%s ", prog->params[i]);
+    }
+    fprintf(fp, "\n\n");
 
-	fprintf(fp, "# Number of statements\n");
-	fprintf(fp, "%d\n\n", nstmts);
+    fprintf(fp, "# Number of statements\n");
+    fprintf(fp, "%d\n\n", nstmts);
 
-	/* Print statement domains */
-	for (i=0; i<nstmts; i++)    {
-		fprintf(fp, "%d # of domains\n", 1);
-		fprintf(fp, "%d %d\n", stmts[i]->domain->nrows, stmts[i]->domain->ncols+1);
-		for (j=0; j<stmts[i]->domain->nrows; j++)    {
-			fprintf(fp, "1 ");
-			for (k=0; k<stmts[i]->domain->ncols; k++)    {
-				fprintf(fp, "%d ", stmts[i]->domain->val[j][k]);
-			}
-			fprintf(fp, "\n");
-		}
-		fprintf(fp, "0 0 0\n\n");
-	}
+    /* Print statement domains */
+    for (i=0; i<nstmts; i++)    {
+        fprintf(fp, "%d # of domains\n", 1);
+        fprintf(fp, "%d %d\n", stmts[i]->domain->nrows, stmts[i]->domain->ncols+1);
+        for (j=0; j<stmts[i]->domain->nrows; j++)    {
+            fprintf(fp, "1 ");
+            for (k=0; k<stmts[i]->domain->ncols; k++)    {
+                fprintf(fp, "%d ", stmts[i]->domain->val[j][k]);
+            }
+            fprintf(fp, "\n");
+        }
+        fprintf(fp, "0 0 0\n\n");
+    }
 
     if (prog->iternames == NULL)    {
         fprintf(fp, "# we want cloog to set the iterator names\n");
@@ -1397,7 +1397,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
         fprintf(fp, "%s\n\n", prog->iternames);
     }
 
-	fprintf(fp, "# of scattering functions\n");
+    fprintf(fp, "# of scattering functions\n");
     if (nstmts >= 1 && stmts[0]->trans != NULL) {
         fprintf(fp, "%d\n\n", nstmts);
 
@@ -1429,11 +1429,11 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
 {
     int i, j;
 
-	Stmt **stmts = prog->stmts;
-	int nstmts = prog->nstmts;
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
 
     /* Generate statement macros */
-	for (i=0; i<nstmts; i++)    {
+    for (i=0; i<nstmts; i++)    {
         for (j=0; j<stmts[i]->dim; j++) {
             if (stmts[i]->iterators[j] == NULL) {
                 printf("Iterator name not set for S%d; required \
@@ -1441,49 +1441,49 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
                 assert(0);
             }
         }
-		fprintf(outfp, "\t#define S%d", i+1);
-		fprintf(outfp, "(");
-		for (j=0; j<stmts[i]->dim; j++)  {
-			if (j!=0)   fprintf(outfp, ",");
-			fprintf(outfp, "%s", stmts[i]->iterators[j]);
-		}
-		fprintf(outfp, ")");
-		// fprintf(outfp, "\t{");
-		fprintf(outfp, "\t");
+        fprintf(outfp, "\t#define S%d", i+1);
+        fprintf(outfp, "(");
+        for (j=0; j<stmts[i]->dim; j++)  {
+            if (j!=0)   fprintf(outfp, ",");
+            fprintf(outfp, "%s", stmts[i]->iterators[j]);
+        }
+        fprintf(outfp, ")");
+        // fprintf(outfp, "\t{");
+        fprintf(outfp, "\t");
 
-		/* Generate pragmas for Bee/Cl@k */
-		if (options->bee)   {
-			fprintf(outfp, " schedule");
-			for (j=0; j<stmts[i]->trans->nrows; j++)    {
-				fprintf(outfp, "[");
-				pretty_print_affine_function(outfp, stmts[i], j);
-				fprintf(outfp, "]");
-			}
-			fprintf(outfp, " _NL_DELIMIT_ ");
-		}
-		// fprintf(outfp, "%s;}\n", stmts[i]->text);
-		fprintf(outfp, "%s\n", stmts[i]->text);
-	}
-	fprintf(outfp, "\n");
+        /* Generate pragmas for Bee/Cl@k */
+        if (options->bee)   {
+            fprintf(outfp, " schedule");
+            for (j=0; j<stmts[i]->trans->nrows; j++)    {
+                fprintf(outfp, "[");
+                pretty_print_affine_function(outfp, stmts[i], j);
+                fprintf(outfp, "]");
+            }
+            fprintf(outfp, " _NL_DELIMIT_ ");
+        }
+        // fprintf(outfp, "%s;}\n", stmts[i]->text);
+        fprintf(outfp, "%s\n", stmts[i]->text);
+    }
+    fprintf(outfp, "\n");
 
-	/* Scattering iterators. */
-	fprintf(outfp, "\t\tint ");
-	for (i=0; i<stmts[0]->trans->nrows; i++)  {
-		if (i!=0) fprintf(outfp, ", ");
-		fprintf(outfp, "t%d", i+1);
-		if (prog->hProps[i].unroll)   {
-			fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
-		}
-	}
-	fprintf(outfp, ";\n\n");
+    /* Scattering iterators. */
+    fprintf(outfp, "\t\tint ");
+    for (i=0; i<stmts[0]->trans->nrows; i++)  {
+        if (i!=0) fprintf(outfp, ", ");
+        fprintf(outfp, "t%d", i+1);
+        if (prog->hProps[i].unroll)   {
+            fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+        }
+    }
+    fprintf(outfp, ";\n\n");
 
-	if (options->parallel)   {
-		fprintf(outfp, "\tregister int lb, ub, lb1, ub1, lb2, ub2;\n");
-	}
-	if (options->prevector)   {
-		/* For vectorizable loop bound replacement */
-		fprintf(outfp, "\tregister int lbv, ubv;\n\n");
-	}
+    if (options->parallel)   {
+        fprintf(outfp, "\tregister int lb, ub, lb1, ub1, lb2, ub2;\n");
+    }
+    if (options->prevector)   {
+        /* For vectorizable loop bound replacement */
+        fprintf(outfp, "\tregister int lbv, ubv;\n\n");
+    }
 
     return 0;
 }
@@ -1492,67 +1492,67 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
 /* Call cloog and generate code for the transformed program */
 int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
 {
-	CloogProgram *program ;
-	CloogOptions *cloogOptions ;
-	CloogState *state;
+    CloogProgram *program ;
+    CloogOptions *cloogOptions ;
+    CloogState *state;
 
-	Stmt **stmts = prog->stmts;
+    Stmt **stmts = prog->stmts;
 
-	state = cloog_state_malloc();
-	cloogOptions = cloog_options_malloc(state);
+    state = cloog_state_malloc();
+    cloogOptions = cloog_options_malloc(state);
 
-	cloogOptions->name = "CLooG file produced by PLUTO";
-	cloogOptions->compilable = 0;
-	cloogOptions->esp = 1;
-	cloogOptions->strides = 1;
+    cloogOptions->name = "CLooG file produced by PLUTO";
+    cloogOptions->compilable = 0;
+    cloogOptions->esp = 1;
+    cloogOptions->strides = 1;
     cloogOptions->quiet = options->silent;
 
     cloogOptions->backtrack = 1;
 
-	if (options->cloogf >= 1 && options->cloogl >= 1) {
-		cloogOptions->f = options->cloogf;
-		cloogOptions->l = options->cloogl;
-	}else{
-		if (options->tile && stmts[0]->trans != NULL)   {
-			if (options->ft == -1)  {
-				if (stmts[0]->num_tiled_loops < 4)   {
-					cloogOptions->f = stmts[0]->num_tiled_loops+1;
-					cloogOptions->l = stmts[0]->trans->nrows;
-				}else{
-					cloogOptions->f = stmts[0]->num_tiled_loops+1;
-					cloogOptions->l = stmts[0]->trans->nrows;
-				}
-			}else{
-				cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
-				cloogOptions->l = stmts[0]->trans->nrows;
-			}
-		}else{
-			/* Default */
-			cloogOptions->f = 1;
-			/* last level to optimize: infinity */
-			cloogOptions->l = -1;
-		}
-	}
-	if (!options->silent)   {
-		printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
-	}
+    if (options->cloogf >= 1 && options->cloogl >= 1) {
+        cloogOptions->f = options->cloogf;
+        cloogOptions->l = options->cloogl;
+    }else{
+        if (options->tile && stmts[0]->trans != NULL)   {
+            if (options->ft == -1)  {
+                if (stmts[0]->num_tiled_loops < 4)   {
+                    cloogOptions->f = stmts[0]->num_tiled_loops+1;
+                    cloogOptions->l = stmts[0]->trans->nrows;
+                }else{
+                    cloogOptions->f = stmts[0]->num_tiled_loops+1;
+                    cloogOptions->l = stmts[0]->trans->nrows;
+                }
+            }else{
+                cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
+                cloogOptions->l = stmts[0]->trans->nrows;
+            }
+        }else{
+            /* Default */
+            cloogOptions->f = 1;
+            /* last level to optimize: infinity */
+            cloogOptions->l = -1;
+        }
+    }
+    if (!options->silent)   {
+        printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
+    }
 
-	cloogOptions->name = "PLUTO-produced CLooG file";
+    cloogOptions->name = "PLUTO-produced CLooG file";
 
-	/* Get the code from CLooG */
-	IF_DEBUG(printf("[Pluto] cloog_program_read \n"));
-	program = cloog_program_read(cloogfp, cloogOptions) ;
-	IF_DEBUG(printf("[Pluto] cloog_program_generate \n"));
-	program = cloog_program_generate(program,cloogOptions) ;
-	cloog_program_pprint(outfp, program, cloogOptions) ;
+    /* Get the code from CLooG */
+    IF_DEBUG(printf("[Pluto] cloog_program_read \n"));
+    program = cloog_program_read(cloogfp, cloogOptions) ;
+    IF_DEBUG(printf("[Pluto] cloog_program_generate \n"));
+    program = cloog_program_generate(program,cloogOptions) ;
+    cloog_program_pprint(outfp, program, cloogOptions) ;
 
-	fprintf(outfp, "/* End of CLooG code */\n");
+    fprintf(outfp, "/* End of CLooG code */\n");
 
-	cloog_options_free(cloogOptions);
-	cloog_program_free(program);
-	cloog_state_free(state);
+    cloog_options_free(cloogOptions);
+    cloog_program_free(program);
+    cloog_state_free(state);
 
-	return 0;
+    return 0;
 }
 
 
@@ -1561,8 +1561,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
 int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 { 
     if (options->parallel)  {
-		fprintf(outfp, "#include <omp.h>\n\n");
-	}
+        fprintf(outfp, "#include <omp.h>\n\n");
+    }
     generate_declarations(prog, outfp);
 
     if (options->multipipe) {
@@ -1572,7 +1572,7 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 
     pluto_gen_cloog_code(prog, cloogfp, outfp);
 
-	return 0;
+    return 0;
 }
 
 /* Decides which loops to mark parallel and generates the corresponding OpenMP
@@ -1585,73 +1585,73 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
  * to put in place -- should implement this with CLast in future */
 int generate_openmp_pragmas(PlutoProg *prog)
 {
-	int i;
+    int i;
 
-	FILE *outfp = fopen(".pragmas", "w");
+    FILE *outfp = fopen(".pragmas", "w");
 
-	if (!outfp) return 1;
+    if (!outfp) return 1;
 
-	HyperplaneProperties *hProps = prog->hProps;
+    HyperplaneProperties *hProps = prog->hProps;
 
-	int loop;
+    int loop;
 
-	/* IMPORTANT: Note that by the time this function is called, pipelined
-	 * parallelism has already been converted to inner parallelism in
-	 * tile space (due to a tile schedule) - so we don't need check any
-	 * PIPE_PARALLEL properties
-	 */
-	/* Detect the outermost sync-free parallel loop - find upto two of them if
-	 * the multipipe option is set */
-	int num_parallel_loops = 0;
-	for (loop=0; loop<prog->num_hyperplanes; loop++) {
-		if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
-			// Remember our loops are 1-indexed (t1, t2, ...)
-			fprintf(outfp, "t%d #pragma omp parallel for shared(", loop+1);
+    /* IMPORTANT: Note that by the time this function is called, pipelined
+     * parallelism has already been converted to inner parallelism in
+     * tile space (due to a tile schedule) - so we don't need check any
+     * PIPE_PARALLEL properties
+     */
+    /* Detect the outermost sync-free parallel loop - find upto two of them if
+     * the multipipe option is set */
+    int num_parallel_loops = 0;
+    for (loop=0; loop<prog->num_hyperplanes; loop++) {
+        if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
+            // Remember our loops are 1-indexed (t1, t2, ...)
+            fprintf(outfp, "t%d #pragma omp parallel for shared(", loop+1);
 
-			for (i=0; i<loop; i++)  {
-				fprintf(outfp, "t%d,", i+1);
-			}
+            for (i=0; i<loop; i++)  {
+                fprintf(outfp, "t%d,", i+1);
+            }
 
-			for (i=0; i<num_parallel_loops+1; i++) {
-				if (i!=0) fprintf(outfp, ",");
-				fprintf(outfp,  "lb%d,ub%d", i+1, i+1);
-			}
+            for (i=0; i<num_parallel_loops+1; i++) {
+                if (i!=0) fprintf(outfp, ",");
+                fprintf(outfp,  "lb%d,ub%d", i+1, i+1);
+            }
 
-			fprintf(outfp,  ") private(");
+            fprintf(outfp,  ") private(");
 
-			/* Lower and upper scalars for parallel loops yet to be marked */
-			/* NOTE: we extract up to 2 degrees of parallelism
-			*/
-			if (options->multipipe) {
-				for (i=num_parallel_loops+1; i<2; i++) {
-					fprintf(outfp,  "lb%d,ub%d,", i+1, i+1);
-				}
-			}
+            /* Lower and upper scalars for parallel loops yet to be marked */
+            /* NOTE: we extract up to 2 degrees of parallelism
+            */
+            if (options->multipipe) {
+                for (i=num_parallel_loops+1; i<2; i++) {
+                    fprintf(outfp,  "lb%d,ub%d,", i+1, i+1);
+                }
+            }
 
-			for (i=loop; i<prog->num_hyperplanes; i++)  {
-				if (i!=loop) fprintf(outfp, ",");
-				fprintf(outfp, "t%d", i+1);
-			}
-			fprintf(outfp, ")\n");
+            for (i=loop; i<prog->num_hyperplanes; i++)  {
+                if (i!=loop) fprintf(outfp, ",");
+                fprintf(outfp, "t%d", i+1);
+            }
+            fprintf(outfp, ")\n");
 
-			num_parallel_loops++;
+            num_parallel_loops++;
 
-			if (!options->multipipe || num_parallel_loops == 2)   {
-				break;
-			}
-		}
-	}
+            if (!options->multipipe || num_parallel_loops == 2)   {
+                break;
+            }
+        }
+    }
 
-	IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n", num_parallel_loops));
+    IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n", num_parallel_loops));
 
-	fclose(outfp);
+    fclose(outfp);
 
-	return num_parallel_loops;
+    return num_parallel_loops;
 }
 
 void ddg_print(Graph *g)
 {
-	pluto_matrix_print(stdout, g->adj);
+    pluto_matrix_print(stdout, g->adj);
 }
 
 
@@ -1659,20 +1659,20 @@ void ddg_print(Graph *g)
  * are satisfied */
 void ddg_update (Graph *g, PlutoProg *prog)
 {
-	int i, j;
-	Dep *dep;
+    int i, j;
+    Dep *dep;
 
-	for (i=0; i<g->nVertices; i++) 
-		for (j=0; j<g->nVertices; j++)
-			g->adj->val[i][j] = 0;
+    for (i=0; i<g->nVertices; i++) 
+        for (j=0; j<g->nVertices; j++)
+            g->adj->val[i][j] = 0;
 
-	for (i=0; i<prog->ndeps; i++)   {
-		dep = &prog->deps[i];
-		if (IS_RAR(dep->type)) continue;
-		/* Number of unsatisfied dependences b/w src and dest is stored in the
-		 * adjacency matrix */
-		g->adj->val[dep->src][dep->dest] += !dep_is_satisfied(dep);
-	}
+    for (i=0; i<prog->ndeps; i++)   {
+        dep = &prog->deps[i];
+        if (IS_RAR(dep->type)) continue;
+        /* Number of unsatisfied dependences b/w src and dest is stored in the
+         * adjacency matrix */
+        g->adj->val[dep->src][dep->dest] += !dep_is_satisfied(dep);
+    }
 }
 
 
@@ -1681,18 +1681,18 @@ void ddg_update (Graph *g, PlutoProg *prog)
  */
 Graph *ddg_create(PlutoProg *prog)
 {
-	Graph *g = graph_alloc(prog->nstmts);
+    Graph *g = graph_alloc(prog->nstmts);
 
-	int i;
-	for (i=0; i<prog->ndeps; i++)   {
-		Dep *dep = &prog->deps[i];
-		/* no input dep edges in the graph */
-		if (IS_RAR(dep->type)) continue;
-		/* remember it's a multi-graph */
-		g->adj->val[dep->src][dep->dest] += !dep_is_satisfied(dep);
-	}
+    int i;
+    for (i=0; i<prog->ndeps; i++)   {
+        Dep *dep = &prog->deps[i];
+        /* no input dep edges in the graph */
+        if (IS_RAR(dep->type)) continue;
+        /* remember it's a multi-graph */
+        g->adj->val[dep->src][dep->dest] += !dep_is_satisfied(dep);
+    }
 
-	return g;
+    return g;
 }
 
 
@@ -1701,68 +1701,68 @@ Graph *ddg_create(PlutoProg *prog)
  */
 static int get_max_orig_dim_in_scc(PlutoProg *prog, int scc_id)
 {
-	int i;
+    int i;
 
-	int max = -1;
-	for (i=0; i<prog->nstmts; i++)  {
-		Stmt *stmt = prog->stmts[i];
-		if (stmt->scc_id == scc_id) {
-			max = PLMAX(max,stmt->dim_orig);
-		}
-	}
+    int max = -1;
+    for (i=0; i<prog->nstmts; i++)  {
+        Stmt *stmt = prog->stmts[i];
+        if (stmt->scc_id == scc_id) {
+            max = PLMAX(max,stmt->dim_orig);
+        }
+    }
 
-	return max;
+    return max;
 }
 
 /* Number of vertices in a given SCC */
 static int get_scc_size(PlutoProg *prog, int scc_id)
 {
-	int i;
-	Stmt *stmt;
+    int i;
+    Stmt *stmt;
 
-	int num = 0;
-	for (i=0; i<prog->nstmts; i++)  {
-		stmt = prog->stmts[i];
-		if (stmt->scc_id == scc_id) {
-			num++;
-		}
-	}
+    int num = 0;
+    for (i=0; i<prog->nstmts; i++)  {
+        stmt = prog->stmts[i];
+        if (stmt->scc_id == scc_id) {
+            num++;
+        }
+    }
 
-	return num;
+    return num;
 }
 
 
 /* Compute the SCCs of a graph */
 void ddg_compute_scc(PlutoProg *prog)
 {
-	int i;
+    int i;
 
-	Graph *g = prog->ddg;
+    Graph *g = prog->ddg;
 
-	dfs(g);
+    dfs(g);
 
-	Graph *gT = graph_transpose(g);
+    Graph *gT = graph_transpose(g);
 
-	dfs_for_scc(gT);
+    dfs_for_scc(gT);
 
-	g->num_sccs = gT->num_sccs;
+    g->num_sccs = gT->num_sccs;
 
-	for (i=0; i<g->nVertices; i++)  {
-		g->vertices[i].scc_id = gT->vertices[i].scc_id;
-		int stmt_id = gT->vertices[i].id;
-		assert(stmt_id == i);
-		prog->stmts[i]->scc_id = g->vertices[i].scc_id;
-	}
+    for (i=0; i<g->nVertices; i++)  {
+        g->vertices[i].scc_id = gT->vertices[i].scc_id;
+        int stmt_id = gT->vertices[i].id;
+        assert(stmt_id == i);
+        prog->stmts[i]->scc_id = g->vertices[i].scc_id;
+    }
 
-	for (i=0; i<g->num_sccs; i++)  {
-		g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
-		g->sccs[i].size = get_scc_size (prog, i);
-		g->sccs[i].id = gT->sccs[i].id;
-	}
+    for (i=0; i<g->num_sccs; i++)  {
+        g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
+        g->sccs[i].size = get_scc_size (prog, i);
+        g->sccs[i].id = gT->sccs[i].id;
+    }
 
-	graph_free(gT);
+    graph_free(gT);
 
-	graph_print_sccs(g);
+    graph_print_sccs(g);
 }
 
 void pluto_transformations_pretty_print(const PlutoProg *prog)
@@ -1790,49 +1790,49 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
 /* List properties of newly found hyperplanes */
 void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
 {
-	int j;
+    int j;
 
     if (numH == 0)  {
-		fprintf(stdout, "No hyperplanes\n");
+        fprintf(stdout, "No hyperplanes\n");
     }
 
-	/* Note that loop properties are calculated for each dimension in the
-	 * transformed space (common for all statements) */
-	for (j=0; j<numH; j++)  {
-		fprintf(stdout, "t%d --> ", j+1);
-		switch (hProps[j].dep_prop)    {
-			case PARALLEL:
-				fprintf(stdout, "parallel ");
-				break;
-			case SEQ:
-				fprintf(stdout, "serial   ");
-				break;
-			case PIPE_PARALLEL:
-				fprintf(stdout, "fwd_dep  ");
-				break;
-			default:
-				fprintf(stdout, "unknown  ");
-				break;
-		}
-		switch (hProps[j].type) {
-			case H_LOOP:
-				fprintf(stdout, "loop  ");
-				break;
-			case H_SCALAR:
-				fprintf(stdout, "scalar");
-				break;
-			case H_TILE_SPACE_LOOP:
-				fprintf(stdout, "tLoop ");
-				break;
-			default:
-				fprintf(stdout, "unknown  ");
-				assert(0);
-				break;
-		}
-		fprintf(stdout, " (band %d)", hProps[j].band_num);
-		fprintf(stdout, "\n");
-	}
-	fprintf(stdout, "\n");
+    /* Note that loop properties are calculated for each dimension in the
+     * transformed space (common for all statements) */
+    for (j=0; j<numH; j++)  {
+        fprintf(stdout, "t%d --> ", j+1);
+        switch (hProps[j].dep_prop)    {
+            case PARALLEL:
+                fprintf(stdout, "parallel ");
+                break;
+            case SEQ:
+                fprintf(stdout, "serial   ");
+                break;
+            case PIPE_PARALLEL:
+                fprintf(stdout, "fwd_dep  ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                break;
+        }
+        switch (hProps[j].type) {
+            case H_LOOP:
+                fprintf(stdout, "loop  ");
+                break;
+            case H_SCALAR:
+                fprintf(stdout, "scalar");
+                break;
+            case H_TILE_SPACE_LOOP:
+                fprintf(stdout, "tLoop ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                assert(0);
+                break;
+        }
+        fprintf(stdout, " (band %d)", hProps[j].band_num);
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
 }
 
 
@@ -1840,38 +1840,38 @@ void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
  * Pretty prints a one-dimensional affine transformation */
 void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 {
-	char *var[stmt->domain->ncols-1];
+    char *var[stmt->domain->ncols-1];
 
-	int j;
+    int j;
 
-	for (j=0; j<stmt->dim; j++)  {
+    for (j=0; j<stmt->dim; j++)  {
         var[j] = strdup(stmt->iterators[j]);
-	}
+    }
 
-	int flag = 0;
-	for (j=0; j<stmt->dim; j++)   {
-		if (stmt->trans->val[level][j] == 1)  {
-			if (flag) fprintf(fp, "+");
-			fprintf(fp, "%s", var[j]);
-			flag = 1;
-		}else if (stmt->trans->val[level][j] != 0)  {
-			if (flag) fprintf(fp, "+");
-			if (stmt->trans->val[level][j] > 0) {
-				fprintf(fp, "%d%s", stmt->trans->val[level][j], var[j]);
-			}else{
-				fprintf(fp, "(%d%s)", stmt->trans->val[level][j], var[j]);
-			}
-			flag = 1;
-		}
-	}
-	if (stmt->trans->val[level][stmt->trans->ncols-1] > 0)  {
-		if (flag) fprintf(fp, "+");
-		fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
-	}else{
-		if (!flag) fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
-	}
+    int flag = 0;
+    for (j=0; j<stmt->dim; j++)   {
+        if (stmt->trans->val[level][j] == 1)  {
+            if (flag) fprintf(fp, "+");
+            fprintf(fp, "%s", var[j]);
+            flag = 1;
+        }else if (stmt->trans->val[level][j] != 0)  {
+            if (flag) fprintf(fp, "+");
+            if (stmt->trans->val[level][j] > 0) {
+                fprintf(fp, "%d%s", stmt->trans->val[level][j], var[j]);
+            }else{
+                fprintf(fp, "(%d%s)", stmt->trans->val[level][j], var[j]);
+            }
+            flag = 1;
+        }
+    }
+    if (stmt->trans->val[level][stmt->trans->ncols-1] > 0)  {
+        if (flag) fprintf(fp, "+");
+        fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
+    }else{
+        if (!flag) fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
+    }
 
-	for (j=0; j<stmt->dim; j++)  {
+    for (j=0; j<stmt->dim; j++)  {
         free(var[j]);
     }
 }
@@ -1879,12 +1879,12 @@ void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 
 void pluto_transformations_print(const PlutoProg *prog)
 {
-	int i;
+    int i;
 
-	for (i=0; i<prog->nstmts; i++)    {
-		printf("T_(S%d) \n", i);
-		pluto_matrix_print(stdout, prog->stmts[i]->trans);
-	}
+    for (i=0; i<prog->nstmts; i++) {
+        printf("T_(S%d) \n", i);
+        pluto_matrix_print(stdout, prog->stmts[i]->trans);
+    }
 }
 
 
