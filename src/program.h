@@ -41,8 +41,8 @@ int get_coeff_upper_bound(PlutoProg *prog);
 
 void pluto_add_parameter(PlutoProg *prog, const char *param);
 void pluto_add_stmt(PlutoProg *prog, 
-        PlutoConstraints *domain,
-        PlutoMatrix *trans,
+        const PlutoConstraints *domain,
+        const PlutoMatrix *trans,
         const char * const * const iterators,
         const char *text
         );
