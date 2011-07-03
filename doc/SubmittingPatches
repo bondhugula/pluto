@@ -1,0 +1,6 @@
+
+- Use spaces instead of tabs for indenting (for vim, set expandtab)
+
+- Send to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
+
+- To create patch, use 'git format-patch -M'
