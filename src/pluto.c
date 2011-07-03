@@ -915,7 +915,7 @@ void detect_transformation_properties(PlutoProg *prog, int use_isl)
                  */
                 if (num_loops_in_band == 0) {
                     IF_DEBUG(print_dependence_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
-                    IF_DEBUG(pluto_print_transformations(prog));
+                    IF_DEBUG(pluto_transformations_print(prog));
                     fprintf(stderr, "\tUnfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
@@ -1219,7 +1219,7 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 
 		IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
 					depth, sols_found));
-		IF_DEBUG2(pluto_print_transformations(prog));
+		IF_DEBUG2(pluto_transformations_print(prog));
 		num_ind_sols += sols_found;
 
 		if (sols_found > 0) {
@@ -1347,10 +1347,9 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 
 
 /* Generate and print .cloog file from the transformations computed */
-void generate_cloog_file(FILE *fp, PlutoProg *prog)
+void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 {
 	int i, j, k;
-	int num_scat_dims;
 
 	Stmt **stmts = prog->stmts;
 	int nstmts = prog->nstmts;
@@ -1389,114 +1388,59 @@ void generate_cloog_file(FILE *fp, PlutoProg *prog)
 		fprintf(fp, "0 0 0\n\n");
 	}
 
-    fprintf(fp, "# we want cloog to set the iterator names\n");
-	fprintf(fp, "0\n\n");
+    if (prog->iternames == NULL)    {
+        fprintf(fp, "# we want cloog to set the iterator names\n");
+        fprintf(fp, "0\n\n");
+    }else{
+        fprintf(fp, "# we want cloog to set the iterator names\n");
+        fprintf(fp, "1\n");
+        fprintf(fp, "%s\n\n", prog->iternames);
+    }
 
 	fprintf(fp, "# of scattering functions\n");
-	fprintf(fp, "%d\n\n", nstmts);
+    if (nstmts >= 1 && stmts[0]->trans != NULL) {
+        fprintf(fp, "%d\n\n", nstmts);
 
-	/* Print scattering functions */
-	for (i=0; i<nstmts; i++)    {
-		num_scat_dims=stmts[i]->trans->nrows;
-		fprintf(fp, "%d %d\n", 
-				num_scat_dims, 1+num_scat_dims+stmts[i]->dim+npar+1);
-		for (j=0; j<num_scat_dims; j++)  {
-			fprintf(fp, "0 ");
-			for (k=0; k<num_scat_dims; k++)   {
-				if (j == k) {
-					fprintf(fp, "1 ");
-				}
-				else fprintf(fp, "0 ");
-			}
-			for (k=0; k<stmts[i]->trans->ncols-1; k++)   {
-				fprintf(fp, "%d ", -stmts[i]->trans->val[j][k]);
-			}
-			fprintf(fp, "%d\n", -stmts[i]->trans->val[j][stmts[i]->trans->ncols-1]);
-		}
-		fprintf(fp, "\n");
-	}
+        /* Print scattering functions */
+        for (i=0; i<nstmts; i++) {
 
-	/* Setting target loop names (all stmts have same number of hyperplanes */
-	fprintf(fp, "# we will set the scattering dimension names\n");
-	fprintf(fp, "%d\n", stmts[0]->trans->nrows);
-	for (i=0; i<stmts[0]->trans->nrows; i++) {
-		fprintf(fp, "t%d ", i+1);
-	}
-	fprintf(fp, "\n");
+            PlutoConstraints *sched = pluto_stmt_get_schedule(stmts[i]);
+            pluto_constraints_print_polylib(fp, sched);
+            fprintf(fp, "\n");
+
+            pluto_constraints_free(sched);
+        }
+
+        /* Setting target loop names (all stmts have same number of hyperplanes */
+        fprintf(fp, "# we will set the scattering dimension names\n");
+        fprintf(fp, "%d\n", stmts[0]->trans->nrows);
+        for (i=0; i<stmts[0]->trans->nrows; i++) {
+            fprintf(fp, "t%d ", i+1);
+        }
+        fprintf(fp, "\n");
+    }else{
+        fprintf(fp, "0\n\n");
+    }
 }
 
 
-
-/* Call Cloog to generate code; also generate the necessary macros and
- * defintions for the transformed source. fp is the .cloog file that will 
- * be supplied to Cloog to generate code */
-int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
-{ 
-	int i, j;
-	CloogProgram *program ;
-	CloogOptions *cloogOptions ;
-	CloogState *state;
+/* Generate variable declarations and macros */
+int generate_declarations(const PlutoProg *prog, FILE *outfp)
+{
+    int i, j;
 
 	Stmt **stmts = prog->stmts;
 	int nstmts = prog->nstmts;
 
-	state = cloog_state_malloc();
-	cloogOptions = cloog_options_malloc(state);
-
-	cloogOptions->name = "PLUTO-generated CLOOG file";
-	cloogOptions->compilable = 0;
-	cloogOptions->esp = 1;
-	cloogOptions->strides = 1;
-    cloogOptions->quiet = options->silent;
-
-    // Leads to better depth-based control optimization albeit code expansion
-    cloogOptions->backtrack = 1;
-
-	if (options->cloogf >= 1 && options->cloogl >= 1) {
-		cloogOptions->f = options->cloogf;
-		cloogOptions->l = options->cloogl;
-	}else{
-		if (options->tile)   {
-			if (options->ft == -1)  {
-				if (stmts[0]->num_tiled_loops < 4)   {
-					cloogOptions->f = stmts[0]->num_tiled_loops+1;
-					cloogOptions->l = stmts[0]->trans->nrows;
-				}else{
-					cloogOptions->f = stmts[0]->num_tiled_loops+1;
-					cloogOptions->l = stmts[0]->trans->nrows;
-				}
-			}else{
-				cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
-				cloogOptions->l = stmts[0]->trans->nrows;
-			}
-		}else{
-			/* Default */
-			cloogOptions->f = 1;
-			/* last level to optimize: infinity */
-			cloogOptions->l = -1;
-		}
-	}
-	if (!options->silent)   {
-		printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
-	}
-
-	/* No need of headers - now inserted from inscop */
-	/* Useful headers. */
-	// fprintf(outfp, "#include <math.h>\n");
-	// fprintf(outfp, "#include <assert.h>\n\n");
-
-	if (options->parallel)  {
-		fprintf(outfp, "#include <omp.h>\n\n");
-	}
-
-	/* Useful macros */
-	// fprintf(outfp, "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))\n");
-	// fprintf(outfp, "#define floord(n,d) floor(((double)(n))/((double)(d)))\n");
-	// fprintf(outfp, "#define max(x,y)    ((x) > (y)? (x) : (y))\n");
-	// fprintf(outfp, "#define min(x,y)    ((x) < (y)? (x) : (y))\n\n");
-
-	/* Generate statement macros */
+    /* Generate statement macros */
 	for (i=0; i<nstmts; i++)    {
+        for (j=0; j<stmts[i]->dim; j++) {
+            if (stmts[i]->iterators[j] == NULL) {
+                printf("Iterator name not set for S%d; required \
+                        for generating declarations\n", i+1);
+                assert(0);
+            }
+        }
 		fprintf(outfp, "\t#define S%d", i+1);
 		fprintf(outfp, "(");
 		for (j=0; j<stmts[i]->dim; j++)  {
@@ -1522,13 +1466,6 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	}
 	fprintf(outfp, "\n");
 
-#if 0
-	for (i=0; i <npar; i++) {
-		fprintf(outfp, "\tassert(%s >= %d);\n", params[i], options->context);
-	}
-	fprintf(outfp, "\n");
-#endif
-
 	/* Scattering iterators. */
 	fprintf(outfp, "\t\tint ");
 	for (i=0; i<stmts[0]->trans->nrows; i++)  {
@@ -1548,10 +1485,59 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 		fprintf(outfp, "\tregister int lbv, ubv;\n\n");
 	}
 
-	if (options->multipipe) {
-		fprintf(outfp, "\tomp_set_nested(1);\n");
-		fprintf(outfp, "\tomp_set_num_threads(2);\n");
+    return 0;
+}
+
+
+/* Call cloog and generate code for the transformed program */
+int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
+{
+	CloogProgram *program ;
+	CloogOptions *cloogOptions ;
+	CloogState *state;
+
+	Stmt **stmts = prog->stmts;
+
+	state = cloog_state_malloc();
+	cloogOptions = cloog_options_malloc(state);
+
+	cloogOptions->name = "CLooG file produced by PLUTO";
+	cloogOptions->compilable = 0;
+	cloogOptions->esp = 1;
+	cloogOptions->strides = 1;
+    cloogOptions->quiet = options->silent;
+
+    cloogOptions->backtrack = 1;
+
+	if (options->cloogf >= 1 && options->cloogl >= 1) {
+		cloogOptions->f = options->cloogf;
+		cloogOptions->l = options->cloogl;
+	}else{
+		if (options->tile && stmts[0]->trans != NULL)   {
+			if (options->ft == -1)  {
+				if (stmts[0]->num_tiled_loops < 4)   {
+					cloogOptions->f = stmts[0]->num_tiled_loops+1;
+					cloogOptions->l = stmts[0]->trans->nrows;
+				}else{
+					cloogOptions->f = stmts[0]->num_tiled_loops+1;
+					cloogOptions->l = stmts[0]->trans->nrows;
+				}
+			}else{
+				cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
+				cloogOptions->l = stmts[0]->trans->nrows;
+			}
+		}else{
+			/* Default */
+			cloogOptions->f = 1;
+			/* last level to optimize: infinity */
+			cloogOptions->l = -1;
+		}
 	}
+	if (!options->silent)   {
+		printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
+	}
+
+	cloogOptions->name = "PLUTO-produced CLooG file";
 
 	/* Get the code from CLooG */
 	IF_DEBUG(printf("[Pluto] cloog_program_read \n"));
@@ -1565,6 +1551,26 @@ int pluto_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 	cloog_options_free(cloogOptions);
 	cloog_program_free(program);
 	cloog_state_free(state);
+
+	return 0;
+}
+
+
+/* Generate code for a single multicore; the ploog script will insert openmp
+ * pragmas later */
+int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
+{ 
+    if (options->parallel)  {
+		fprintf(outfp, "#include <omp.h>\n\n");
+	}
+    generate_declarations(prog, outfp);
+
+    if (options->multipipe) {
+        fprintf(outfp, "\tomp_set_nested(1);\n");
+        fprintf(outfp, "\tomp_set_num_threads(2);\n");
+    }
+
+    pluto_gen_cloog_code(prog, cloogfp, outfp);
 
 	return 0;
 }
@@ -1759,7 +1765,7 @@ void ddg_compute_scc(PlutoProg *prog)
 	graph_print_sccs(g);
 }
 
-void pluto_print_transformations(PlutoProg *prog)
+void pluto_transformations_pretty_print(const PlutoProg *prog)
 {
     int nstmts, i;
 
@@ -1867,5 +1873,42 @@ void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
 
 	for (j=0; j<stmt->dim; j++)  {
         free(var[j]);
+    }
+}
+
+
+void pluto_transformations_print(const PlutoProg *prog)
+{
+	int i;
+
+	for (i=0; i<prog->nstmts; i++)    {
+		printf("T_(S%d) \n", i);
+		pluto_matrix_print(stdout, prog->stmts[i]->trans);
 	}
 }
+
+
+PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt)
+{
+    int i;
+
+    PlutoMatrix *sched;
+    PlutoConstraints *schedcst;
+
+    const PlutoMatrix *trans = stmt->trans;
+
+    sched = pluto_matrix_dup(trans);
+
+    for (i=0; i<sched->nrows; i++)  {
+        pluto_matrix_negate_row(sched, sched->nrows-1-i);
+        pluto_matrix_add_col(sched, 0);
+        sched->val[trans->nrows-1-i][0] = 1;
+    }
+
+    schedcst = pluto_constraints_from_equalities(sched);
+
+    pluto_matrix_free(sched);
+
+    return schedcst;
+}
+

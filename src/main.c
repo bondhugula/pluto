@@ -269,9 +269,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
     }
 
-    /* Print out the transformations */
+    /* Print out transformations */
     if (!options->silent)   {
-        pluto_print_transformations(prog);
+        pluto_transformations_pretty_print(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 
@@ -307,7 +307,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile && !options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_print_transformations(prog);
+        pluto_transformations_pretty_print(prog);
         print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
     }
 
@@ -386,7 +386,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Generate .cloog file */
-    generate_cloog_file(cloogfp, prog);
+    pluto_gen_cloog_file(cloogfp, prog);
     /* Add the <irregular> tag from clan, if any */
     if (irroption != NULL) {
         fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
@@ -402,7 +402,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Generate code using Cloog and add necessary stuff before/after code */
-    pluto_codegen(cloogfp, outfp, prog);
+    pluto_multicore_codegen(cloogfp, outfp, prog);
 
     FILE *tmpfp = fopen(".outfilename", "w");
     if (tmpfp)    {
