@@ -1619,6 +1619,10 @@ int generate_openmp_pragmas(PlutoProg *prog)
 
             fprintf(outfp,  ") private(");
 
+            if (options->prevector) {
+                fprintf(outfp,  "ubv,lbv,");
+            }
+
             /* Lower and upper scalars for parallel loops yet to be marked */
             /* NOTE: we extract up to 2 degrees of parallelism
             */
