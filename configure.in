@@ -70,6 +70,16 @@ AC_CHECK_PROG(AR,ar,ar)
 AC_CHECK_PROG(STRIP,strip,strip)
 AC_CHECK_PROG(SED,sed,sed)
 
+dnl Offer --with-gmp-prefix.
+AC_ARG_WITH(gmp-prefix,
+            AC_HELP_STRING([--with-gmp-prefix=DIR],
+                           [DIR Location of GMP package]),
+                           [CPPFLAGS="${CPPFLAGS} -I$withval/include";
+                            LDFLAGS="${LDFLAGS} -L$withval/lib";
+                            LIBS="-lgmp $LIBS";
+                            GMP_PREFIX="$withval";
+                            ])
+
 AC_CHECK_HEADER(gmp.h,
                 [AC_CHECK_LIB(gmp,main,
                  [poly_cv_gmpfatal="no"],
@@ -133,7 +143,7 @@ dnl Configuring isl
 echo -e "\n======================"
 echo "Configuring isl"
 echo "======================"
-configureopts="--enable-static --disable-shared"
+configureopts="--enable-static --disable-shared --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
 (cd isl/
  ./configure ${configureopts}
 )
