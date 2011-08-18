@@ -153,7 +153,7 @@ dnl Configuring Cloog 0.14.1 (long long int)
 echo -e "\n=========================="
 echo "Configuring Cloog-isl"
 echo "=========================="
-configureopts="--with-isl-builddir=../isl --enable-static --disable-shared"
+configureopts="--with-isl-builddir=../isl --enable-static --disable-shared --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
 (cd cloog-isl/
  ./configure ${configureopts}
  )
