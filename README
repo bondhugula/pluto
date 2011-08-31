@@ -54,8 +54,7 @@ $ ./configure [--enable-debug]
 $ make
 $ make test
 
-If you do not have ICC, uncomment line 7 and comment line 8 of 
-examples/common.mk.
+If you have ICC, uncomment line 7 and comment line 8 of examples/common.mk.
 
 'polycc' is the wrapper script around src/pluto (core transformer) and 
 all other components. 'polycc' runs all of these in sequence on an input 
