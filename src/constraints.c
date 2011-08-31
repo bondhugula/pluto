@@ -137,7 +137,7 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConst
     assert(cst1->ncols == cst2->ncols);
 
     if (cst1->nrows+cst2->nrows > cst1->alloc_nrows) {
-        pluto_constraints_resize(cst1, cst1->nrows+cst2->nrows, cst1->alloc_ncols);
+        pluto_constraints_resize(cst1, cst1->nrows+cst2->nrows, cst1->ncols);
     }else{
         cst1->nrows = cst1->nrows + cst2->nrows;
     }
@@ -443,7 +443,6 @@ void pluto_constraints_print(FILE *fp, const PlutoConstraints *cst)
         }
         fprintf(fp, "\t %s 0\n", cst->is_eq[i]? "==": ">=");
     }
-    fprintf(fp, "\n");
 }
 
 
@@ -462,9 +461,6 @@ void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst)
         fprintf(fp, "\n");
     }
 }
-
-
-
 
 
 /* Converts to polylib style matrix */
@@ -757,8 +753,8 @@ void pluto_constraints_add_equality(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
-    assert (pos >= 0 && pos <= cst->nrows);
-    assert (cst->nrows <= cst->alloc_nrows);
+    assert(pos >= 0 && pos <= cst->nrows);
+    assert(cst->nrows <= cst->alloc_nrows);
 
     if (cst->nrows == cst->alloc_nrows)   {
         pluto_constraints_resize(cst, cst->nrows+1, cst->ncols);
