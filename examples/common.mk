@@ -12,7 +12,7 @@ MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS=-O3 -I/usr/include -fp-model precise
+	OPT_FLAGS=-O3 -fp-model precise
 	PAR_FLAGS := -parallel
 	OMP_FLAGS := -openmp
 else
@@ -37,13 +37,13 @@ PLC=../../polycc
 
 all: orig tiled par
 
-$(SRC).opt.c: 
+$(SRC).opt.c:  $(SRC).c
 	$(PLC) $(SRC).c $(PLCFLAGS)  -o $@
 
-$(SRC).tiled.c: 
+$(SRC).tiled.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
-$(SRC).par.c: 
+$(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 orig: $(SRC).c decls.h  util.h
