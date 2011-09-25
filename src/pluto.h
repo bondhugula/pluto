@@ -303,9 +303,6 @@ struct plutoProg{
     /* Param context */
     PlutoConstraints *context;
 
-    /* Iterator names to be used for original domains (provide all in one string
-     * separated by whitespace) */
-    char *iternames;
 };
 typedef struct plutoProg PlutoProg;
 

@@ -1029,7 +1029,6 @@ PlutoProg *pluto_prog_alloc()
     prog->nvar = 0;
     prog->params = NULL;
     prog->context = pluto_constraints_alloc(0, prog->npar+1);
-    prog->iternames = NULL;
     prog->deps = NULL;
     prog->ndeps = 0;
     prog->ddg = NULL;
@@ -1078,10 +1077,6 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
-
-    if (prog->iternames != NULL)    {
-        free(prog->iternames);
-    }
 
     free(prog);
 }
