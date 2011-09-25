@@ -112,6 +112,9 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
     dest_stmt = dep->dest;
     src_stmt = dep->src;
 
+    /* Convert everything to >= 0 form */
+    PlutoConstraints *dpoly = pluto_constraints_to_pure_inequalities(dep->dpolytope);
+
     /* Non-uniform dependence - farkas lemma comes in */
     /* Apply farkas lemma, eliminate farkas multipliers using
      * fourier-motzkin 
@@ -127,24 +130,24 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
      */
     if (src_stmt != dest_stmt)  {
         /* Inter-statement non-uniform dep */
-        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, 2*nvar+2+dep->dpolytope->nrows+2);
-        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+2*nvar+2+dep->dpolytope->nrows+2);
+        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, 2*nvar+2+dpoly->nrows+2);
+        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+2*nvar+2+dpoly->nrows+2);
 
-        farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
-        farkas_cst->ncols = 2*(nvar+1)+dep->dpolytope->nrows+2;
+        farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
+        farkas_cst->ncols = 2*(nvar+1)+dpoly->nrows+2;
 
-        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
-        comm_farkas_cst->ncols = npar+1+2*(nvar+1)+dep->dpolytope->nrows+2;
+        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
+        comm_farkas_cst->ncols = npar+1+2*(nvar+1)+dpoly->nrows+2;
     }else{
         /* Intra-statement non-uniform dependence */
-        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, nvar+1+dep->dpolytope->nrows+2);
-        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+nvar+1+dep->dpolytope->nrows+2);
+        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, nvar+1+dpoly->nrows+2);
+        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+nvar+1+dpoly->nrows+2);
 
-        farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
-        farkas_cst->ncols = (nvar+1)+dep->dpolytope->nrows+2;
+        farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
+        farkas_cst->ncols = (nvar+1)+dpoly->nrows+2;
 
-        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dep->dpolytope->nrows+1;
-        comm_farkas_cst->ncols = npar+1+(nvar+1)+dep->dpolytope->nrows+2;
+        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
+        comm_farkas_cst->ncols = npar+1+(nvar+1)+dpoly->nrows+2;
     }
 
 
@@ -184,9 +187,9 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
             } 
 
             /* Set coeff's for farkas multipliers (all except \lambda_0) */
-            for (k=2*nvar+2; k<2*nvar+2+dep->dpolytope->nrows; k++)  {
+            for (k=2*nvar+2; k<2*nvar+2+dpoly->nrows; k++)  {
                 /* Note that dep polytope is dpolytope->nrows x (2*nvar+npar+1) */
-                farkas_cst->val[j][k] = -dep->dpolytope->val[k-2*nvar-2][j];
+                farkas_cst->val[j][k] = -dpoly->val[k-2*nvar-2][j];
             }
             farkas_cst->val[j][farkas_cst->ncols-1] = 0;
         }
@@ -200,8 +203,8 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         }
 
         /* All Farkas multipliers are non-negative */
-        for (j=0; j<dep->dpolytope->nrows+1; j++)  {
-            for (k=0; k<dep->dpolytope->nrows+1; k++)  {
+        for (j=0; j<dpoly->nrows+1; j++)  {
+            for (k=0; k<dpoly->nrows+1; k++)  {
                 farkas_cst->val[2*nvar+npar+2+j][2*nvar+2+k] = ((j==k)?1:0);
             }
         }
@@ -214,11 +217,11 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         comm_farkas_cst->val[2*nvar+npar][npar] = 1;
 
         for (j=0; j<2*nvar+npar+1; j++)
-            for (k=0; k<farkas_cst->ncols-dep->dpolytope->nrows-2; k++)
+            for (k=0; k<farkas_cst->ncols-dpoly->nrows-2; k++)
                 comm_farkas_cst->val[j][npar+1+k] = -farkas_cst->val[j][k];
 
         for (j=0; j<2*nvar+npar+1; j++)
-            for (k=farkas_cst->ncols-dep->dpolytope->nrows-2; k<farkas_cst->ncols; k++)
+            for (k=farkas_cst->ncols-dpoly->nrows-2; k<farkas_cst->ncols; k++)
                 comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
 
         /* Add opp inequality since the above were equalities */
@@ -258,8 +261,8 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
             } 
 
             /* Set coeff's for farkas multipliers */
-            for (k=nvar+1; k<nvar+1+dep->dpolytope->nrows; k++)  {
-                farkas_cst->val[j][k] = -dep->dpolytope->val[k-nvar-1][j];
+            for (k=nvar+1; k<nvar+1+dpoly->nrows; k++)  {
+                farkas_cst->val[j][k] = -dpoly->val[k-nvar-1][j];
             }
             farkas_cst->val[j][farkas_cst->ncols-1] = 0;
         }
@@ -273,8 +276,8 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         }
 
         /* All farkas multipliers are positive */
-        for (j=0; j<dep->dpolytope->nrows+1; j++)  {
-            for (k=0; k<dep->dpolytope->nrows+1; k++)  {
+        for (j=0; j<dpoly->nrows+1; j++)  {
+            for (k=0; k<dpoly->nrows+1; k++)  {
                 farkas_cst->val[2*nvar+npar+2+j][nvar+1+k] = ((j==k)?1:0);
             }
         }
@@ -287,11 +290,11 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         comm_farkas_cst->val[2*nvar+npar][npar] = 1;
 
         for (j=0; j<2*nvar+npar+1; j++)
-            for (k=0; k<farkas_cst->ncols-dep->dpolytope->nrows-2; k++)
+            for (k=0; k<farkas_cst->ncols-dpoly->nrows-2; k++)
                 comm_farkas_cst->val[j][npar+1+k] = -farkas_cst->val[j][k];
 
         for (j=0; j<2*nvar+npar+1; j++)
-            for (k=farkas_cst->ncols-dep->dpolytope->nrows-2; k<farkas_cst->ncols; k++)
+            for (k=farkas_cst->ncols-dpoly->nrows-2; k<farkas_cst->ncols; k++)
                 comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
 
         /* Add opp inequality since the above were equalities */
@@ -388,6 +391,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 
     pluto_constraints_free(farkas_cst);
     pluto_constraints_free(comm_farkas_cst);
+    pluto_constraints_free(dpoly);
 
     return cst;
 }
@@ -822,7 +826,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
 {
     static PlutoConstraints *cst = NULL;
-    int i, j, src, dest, *sol;
+    int j, src, dest, *sol;
 
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -848,6 +852,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
      * (reverse of satisfaction)
      */
 
+    cst->is_eq[0] = 0;
     for (j=0; j<nvar; j++)    {
         cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
@@ -857,13 +862,9 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
     cst->val[0][2*nvar+npar] = 
         stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar];
 
-    for (i=0; i<dep->dpolytope->nrows; i++)  {
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            cst->val[1+i][j] = dep->dpolytope->val[i][j];
-        }
-    }
+    cst->nrows = 1;
 
-    cst->nrows = 1+dep->dpolytope->nrows;
+    pluto_constraints_add(cst, dep->dpolytope);
 
     /* if no solution exists, the dependence is carried, i.e., no points
      * satisfy \geq 0 */ 
@@ -880,7 +881,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
                       int use_isl)
 {
     static PlutoConstraints *cst = NULL;
-    int i, j, src, dest;
+    int j, src, dest;
 
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -906,7 +907,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      *
      * \phi(dest) - \phi(src) >= 1
      */
-
+    cst->is_eq[0] = 0;
     for (j=0; j<nvar; j++)    {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
@@ -915,14 +916,9 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     }
     cst->val[0][2*nvar+npar] = 
         -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar]-1;
+    cst->nrows = 1;
 
-    for (i=0; i<dep->dpolytope->nrows; i++)  {
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            cst->val[1+i][j] = dep->dpolytope->val[i][j];
-        }
-    }
-
-    cst->nrows = 1+dep->dpolytope->nrows;
+    pluto_constraints_add(cst, dep->dpolytope);
 
     int *sol = pluto_constraints_solve(cst, use_isl);
 
@@ -935,14 +931,9 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
         }
         cst->val[0][2*nvar+npar] = 
             stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar]-1;
+        cst->nrows=1;
 
-        for (i=0; i<dep->dpolytope->nrows; i++)  {
-            for (j=0; j<2*nvar+npar+1; j++)  {
-                cst->val[1+i][j] = dep->dpolytope->val[i][j];
-            }
-        }
-
-        cst->nrows = 1+dep->dpolytope->nrows;
+        pluto_constraints_add(cst, dep->dpolytope);
 
         sol = pluto_constraints_solve(cst, use_isl);
 
@@ -969,13 +960,9 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     cst->val[0][2*nvar+npar] = 
         stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar] -1;
 
-    for (i=0; i<dep->dpolytope->nrows; i++)  {
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            cst->val[1+i][j] = dep->dpolytope->val[i][j];
-        }
-    }
+    cst->nrows=1;
 
-    cst->nrows = 1+dep->dpolytope->nrows;
+    pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
     sol = pluto_constraints_solve(cst, use_isl);
@@ -1000,14 +987,9 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     }
     cst->val[0][2*nvar+npar] = 
         -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar] -1;
+    cst->nrows=1;
 
-    for (i=0; i<dep->dpolytope->nrows; i++)  {
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            cst->val[1+i][j] = dep->dpolytope->val[i][j];
-        }
-    }
-
-    cst->nrows = 1+dep->dpolytope->nrows;
+    pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
     sol = pluto_constraints_solve(cst, use_isl);

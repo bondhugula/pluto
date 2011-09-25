@@ -138,71 +138,48 @@ PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatri
 
 PlutoConstraints *candl_matrix_to_pluto_constraints(CandlMatrix *candlMatrix)
 {
-    // candl_matrix_print(stdout, candlMatrix);
-    int has_equalities = 0;
-
     int i, j;
-
-    /* Does it have any equalities at all? */
-    for (i=0; i<candlMatrix->NbRows; i++)   {
-#ifdef PIP_WIDTH_MP
-        if (mpz_get_si(candlMatrix->p[i][0]) == 0) {
-#else
-        if (candlMatrix->p[i][0] == 0) {
-#endif
-            has_equalities = 1;
-            break;
-        }
-    }
-
     PlutoConstraints *pmat;
-    if (has_equalities) {
-        /* An extra inequality will be added to capture the inequalities */
-        pmat = pluto_constraints_alloc(candlMatrix->NbRows+1, candlMatrix->NbColumns-1);
-        pmat->nrows = candlMatrix->NbRows+1;
-    }else{
-        pmat = pluto_constraints_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
-        pmat->nrows = candlMatrix->NbRows;
-    }
 
+    pmat = pluto_constraints_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
+    pmat->nrows = candlMatrix->NbRows;
     pmat->ncols = candlMatrix->NbColumns-1;
 
     for (i=0; i<candlMatrix->NbRows; i++)   {
+        if (candlMatrix->p[i][0] == 0) {
+            pmat->is_eq[i] = 1;
+        }else{
+            pmat->is_eq[i] = 0;
+        }
+
         for (j=0; j<pmat->ncols; j++)   {
-#ifdef PIP_WIDTH_MP
-            pmat->val[i][j] = mpz_get_si(candlMatrix->p[i][j+1]);
-#else
             pmat->val[i][j] = (int) candlMatrix->p[i][j+1];
-#endif
         }
     }
 
-    if (has_equalities) {
-        /* Last row is sigma (equalities) <= 0 */
-        for (j=0; j<pmat->ncols; j++)   {
-            pmat->val[pmat->nrows-1][j] = 0;
-        }
-
-        for (i=0; i<candlMatrix->NbRows; i++)   {
-#ifdef PIP_WIDTH_MP
-            if (mpz_get_si(candlMatrix->p[i][0]) == 0) {
-#else
-            if (candlMatrix->p[i][0] == 0) {
-#endif
-                for (j=0; j<pmat->ncols; j++)   {
-#ifdef PIP_WIDTH_MP
-                    pmat->val[pmat->nrows-1][j] -= mpz_get_si(candlMatrix->p[i][j+1]);
-#else
-                    pmat->val[pmat->nrows-1][j] -= candlMatrix->p[i][j+1];
-#endif
-                }
-            }
-        }
-    }
     // pluto_matrix_print(stdout, pmat);
 
     return pmat;
 }
+
+
+
+/* Get the position of this access given a CandlStmt access matrix
+ * (concatenated) */
+int get_access_position(CandlMatrix *accesses, int ref)
+{
+    int num, i;
+
+    num = -1;
+    for (i=0; i<=ref; i++)  {
+        if (accesses->p[i][0] != 0)   {
+            num++;
+        }
+    }
+    assert(num >= 0);
+    return num;
+}
+
 
 /* Read dependences from candl structures */
 static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
