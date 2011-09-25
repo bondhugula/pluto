@@ -25,11 +25,11 @@
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
  *  c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= / = 0 */
-typedef struct {
+struct pluto_constraints {
     /* Can be accessed as a double-subscripted array */
     int **val;
 
-    /* Internal contigous buffer, val is set up to point into it */
+    /* Internal contiguous buffer, val is set up to point into it */
     int *buf;
 
     /* Number of inequalities/equalities */
@@ -43,7 +43,8 @@ typedef struct {
     /* Number of rows allocated a-priori */
     int alloc_nrows;
     int alloc_ncols;
-} PlutoConstraints;
+};
+typedef struct pluto_constraints PlutoConstraints;
 
 
 PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
@@ -56,7 +57,8 @@ PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 int best_elim_candidate(const PlutoConstraints *, int);
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
 
-PlutoMatrix *pluto2pip(const PlutoConstraints *, PlutoMatrix *pipmat);
+PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat);
+PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints *cst);
 
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
 void pluto_constraints_simplify(PlutoConstraints *const cst);
@@ -74,6 +76,8 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val);
 
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
+PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int pos);
+void pluto_constraints_negate_row(PlutoConstraints *cst, int pos);
 
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);

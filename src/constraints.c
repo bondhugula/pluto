@@ -45,9 +45,10 @@ PipMatrix *pip_matrix_populate(int **cst, int nrows, int ncols);
 
 /*
  * Allocate with a max size of max_rows and max_cols;
- * initialized all to zero and to inequalities (>= 0)
+ * initialized all to zero and is_eq to 0
  *
- * nrows set to 0
+ * nrows set to 0, and ncols to max_cols;
+ * As rows are added, increase nrows
  */
 PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
 {
@@ -131,7 +132,7 @@ void pluto_constraints_resize(PlutoConstraints *cst, int nrows, int ncols)
 
 
 /* Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself */
-/* TODO: automatic non-destructive resizing */
+/* Just adds to the first element if it's a list */
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConstraints *cst2)
 {
     assert(cst1->ncols == cst2->ncols);
@@ -158,7 +159,7 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConst
 
 static int cols_compar=-1;
 
-static int compar (const void *e1, const void *e2)
+static int compar(const void *e1, const void *e2)
 {
     int *row1 = *(int **) e1;
     int *row2 = *(int **) e2;
@@ -208,6 +209,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 
     /* Normalize cst - will help find redundancy */
     for (i=0; i<cst->nrows; i++)   {
+        assert(cst->is_eq[i] == 0);
         _gcd = -1;
         for (j=0; j<cst->ncols; j++)  {
             if (cst->val[i][j] != 0)   {
@@ -423,6 +425,7 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
  * pluto_constraints_free */
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src)
 {
+    assert(src != NULL);
     PlutoConstraints *dup = pluto_constraints_alloc(src->alloc_nrows, src->alloc_ncols);
 
     pluto_constraints_copy(dup, src);
@@ -447,7 +450,7 @@ void pluto_constraints_print(FILE *fp, const PlutoConstraints *cst)
 
 
 /* Print in polylib format */
-void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst)
+void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *const cst)
 {
     int i, j;
 
@@ -513,7 +516,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 
 /* Convert Pluto constraints into PIP format (first column is
  * 0/1 based on equality/inequality */
-PlutoMatrix *pluto2pip(const PlutoConstraints *cst, PlutoMatrix *pmat)
+PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat)
 {
     int i, j;
 
@@ -644,7 +647,7 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     }
 
     /* Convert constraints to PIP format */
-    pluto2pip(cst, pipmat);
+    pluto_constraints_to_pip_matrix(cst, pipmat);
 
     /* First column says whether it's an inequality and the last is for the constant;
      * so we have ncols-2 variables */
@@ -724,8 +727,7 @@ void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
-    assert (pos >= 0 && pos <= cst->nrows);
-    assert (cst->nrows <= cst->alloc_nrows);
+    assert(pos >= 0 && pos <= cst->nrows);
 
     if (cst->nrows == cst->alloc_nrows)   {
         pluto_constraints_resize(cst, cst->nrows+1, cst->ncols);
@@ -828,7 +830,7 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos)
 {
     int i, j, k;
 
-       assert(pos >= 0 && pos <= cst->nrows-1);
+    assert(pos >= 0 && pos <= cst->nrows-1);
 
     /* Normalize cst first */
     for (i=0; i<cst->nrows; i++)    {
@@ -966,7 +968,7 @@ PipMatrix *pip_matrix_populate(int **cst, int nrows, int ncols)
     return matrix ;
 }
 
-PlutoConstraints *pluto_constraints_select_row(PlutoConstraints *cst, int pos)
+PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int pos)
 {
     int j;
 
@@ -974,7 +976,6 @@ PlutoConstraints *pluto_constraints_select_row(PlutoConstraints *cst, int pos)
     row->is_eq[0] = cst->is_eq[pos];
     for (j=0; j<cst->ncols-1; j++)  {
         row->val[0][j] = cst->val[pos][j];
-
     }
     return row;
 }
@@ -987,6 +988,39 @@ void pluto_constraints_negate_row(PlutoConstraints *cst, int pos)
         cst->val[pos][j] = -cst->val[pos][j];
     }
     cst->val[pos][cst->ncols-1]--;
+}
+
+
+/* Convert everything to >= 0 form */
+PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints *cst)
+{
+    int i, j;
+
+    PlutoConstraints *ineq = pluto_constraints_dup(cst);
+
+    for (i=0; i<ineq->nrows; i++) {
+        ineq->is_eq[i] = 0;
+    }
+
+    /* Add a constraint to make sum of all equalities <= 0 */
+    PlutoConstraints *neg_eq = pluto_constraints_alloc(1, cst->ncols);
+
+    int num_eq = 0;
+    for (i=0; i<cst->nrows; i++) {
+        if (cst->is_eq[i])  {
+            num_eq++;
+            for (j=0; j<cst->ncols; j++)    {
+                neg_eq->val[0][j] -= cst->val[i][j];
+            }
+        }
+    }
+
+    if (num_eq >= 1)    {
+        pluto_constraints_add(ineq, neg_eq);
+    }
+    pluto_constraints_free(neg_eq);
+
+    return ineq;
 }
 
 void check_redundancy(PlutoConstraints *cst)
