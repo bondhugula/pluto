@@ -1017,6 +1017,7 @@ PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints 
     }
 
     if (num_eq >= 1)    {
+        neg_eq->nrows = 1;
         pluto_constraints_add(ineq, neg_eq);
     }
     pluto_constraints_free(neg_eq);
