@@ -34,8 +34,6 @@
 #include "ddg.h"
 #include "version.h"
 
-
-void pretty_print_affine_function (FILE *fp, Stmt *stmt, int level);
 void print_dependence_directions (Dep *deps, int ndeps, int levels);
 int get_num_unsatisfied_deps (Dep *deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps (Dep *deps, int ndeps);
@@ -1785,9 +1783,13 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
 
 
 /* List properties of newly found hyperplanes */
-void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
+void print_hyperplane_properties(const PlutoProg *prog)
 {
-    int j;
+    int j, numH;
+    HyperplaneProperties *hProps;
+
+    hProps = prog->hProps;
+    numH = prog->num_hyperplanes;
 
     if (numH == 0)  {
         fprintf(stdout, "No hyperplanes\n");
@@ -1835,7 +1837,7 @@ void print_hyperplane_properties(HyperplaneProperties *hProps, int numH)
 
 /*
  * Pretty prints a one-dimensional affine transformation */
-void pretty_print_affine_function(FILE *fp, Stmt *stmt, int level)
+void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level)
 {
     char *var[stmt->domain->ncols-1];
 
@@ -1878,8 +1880,8 @@ void pluto_transformations_print(const PlutoProg *prog)
 {
     int i;
 
-    for (i=0; i<prog->nstmts; i++) {
-        printf("T_(S%d) \n", i);
+    for (i=0; i<prog->nstmts; i++)    {
+        printf("T_(S%d) \n", prog->stmts[i]->id+1);
         pluto_matrix_print(stdout, prog->stmts[i]->trans);
     }
 }

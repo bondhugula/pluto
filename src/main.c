@@ -226,7 +226,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     scoplib_scop_free(scop);
 
-    IF_DEBUG2(deps_print(stdout, prog->deps, prog->ndeps));
+    IF_DEBUG2(pluto_deps_print(stdout, prog->deps, prog->ndeps));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
     /* Create the data dependence graph */
@@ -272,7 +272,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Print out transformations */
     if (!options->silent)   {
         pluto_transformations_pretty_print(prog);
-        print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
+        print_hyperplane_properties(prog);
     }
 
     if (options->tile)   {
@@ -291,10 +291,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
          * parallelization
          */
         if (retval && options->tile == 0)   {
-            printf("WARNING: --tile is not used and pipelined parallelism exists;\n");
-            printf("this leads to finer grained parallelism; add --tile to cmdline args\n");
-            printf("for a better coarse-grained parallelized code.\n");
-            print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
+            printf("WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("use --tile option for better parallelization \n");
+            print_hyperplane_properties(prog);
         }
     }
 
@@ -308,7 +307,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->tile && !options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
         pluto_transformations_pretty_print(prog);
-        print_hyperplane_properties(prog->hProps, prog->num_hyperplanes);
+        print_hyperplane_properties(prog);
     }
 
     if (options->parallel)  {

@@ -27,9 +27,11 @@
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain);
 void pluto_stmt_free(Stmt *stmt);
 void pluto_stmts_print(FILE *fp, Stmt **, int);
+void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
 
-void deps_print(FILE *, Dep *, int);
+
+void pluto_deps_print(FILE *, Dep *, int);
 
 PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
@@ -43,13 +45,20 @@ void pluto_add_parameter(PlutoProg *prog, const char *param);
 void pluto_add_stmt(PlutoProg *prog, 
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
-        const char * const * const iterators,
+        const char **const iterators,
         const char *text
         );
 
+void pluto_add_stmt_to_end(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        const char ** const iterators,
+        const char *text,
+        int level
+        );
 
 void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter, 
         PlutoProg *prog);
+void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
 #endif

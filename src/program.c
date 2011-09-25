@@ -280,7 +280,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
     return deps;
 }
 
-void dep_print(FILE *fp, Dep *dep)
+void pluto_dep_print(FILE *fp, Dep *dep)
 {
     fprintf(fp, "--- Dep %d from S%d to S%d, Type: ",
             dep->id+1, dep->src+1, dep->dest+1);
@@ -301,11 +301,11 @@ void dep_print(FILE *fp, Dep *dep)
 }
 
 
-void deps_print(FILE *fp, Dep *deps, int ndeps)
+void pluto_deps_print(FILE *fp, Dep *deps, int ndeps)
 {
     int i;
     for (i=0; i<ndeps; i++) {
-        dep_print(fp, &deps[i]);
+        pluto_dep_print(fp, &deps[i]);
     }
 }
 
@@ -378,15 +378,23 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
     return stmts;
 }
 
+void pluto_stmt_print(FILE *fp, const Stmt *stmt)
+{
+    fprintf(fp, "S%d; dims: %d\n", stmt->id+1, stmt->dim);
+    fprintf(fp, "Domain\n");
+    pluto_constraints_print(fp, stmt->domain);
+    fprintf(fp, "Transformation\n");
+    pluto_matrix_print(fp, stmt->trans);
+
+}
+
 
 void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 {
     int i;
 
     for(i=0; i<nstmts; i++)  {
-        const Stmt *stmt = stmts[i];
-        fprintf(fp, "S%d %d-d index set\n", stmt->id+1, stmt->dim);
-        pluto_constraints_print(fp, stmt->domain);
+        pluto_stmt_print(fp, stmts[i]);
     }
 }
 
@@ -934,13 +942,13 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 
     prog->context = scoplib_matrix_to_pluto_constraints(scop->context);
 
-	if (options->context != -1)	{
-		for (i=0; i<prog->npar; i++)  {
+    if (options->context != -1)	{
+        for (i=0; i<prog->npar; i++)  {
             pluto_constraints_add_inequality(prog->context, prog->context->nrows);
             prog->context->val[i][i] = 1;
             prog->context->val[i][prog->context->ncols-1] = -options->context;
-		}
-	}
+        }
+    }
 
     scoplib_statement_p scop_stmt = scop->statement;
 
@@ -968,7 +976,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         // candlOptions->verbose = 1;
 
         CandlDependence *candl_deps = candl_dependence(candl_program,
-                                                       candlOptions);
+                candlOptions);
         prog->deps = deps_read(candl_deps, prog);
         prog->ndeps = candl_num_dependences(candl_deps);
         candl_options_free(candlOptions);
@@ -1041,12 +1049,15 @@ PlutoProg *pluto_prog_alloc()
     prog->nstmts = 0;
     prog->stmts = NULL;
     prog->npar = 0;
-    prog->num_hyperplanes = 0;
+    prog->nvar = 0;
     prog->params = NULL;
     prog->context = pluto_constraints_alloc(0, prog->npar+1);
     prog->iternames = NULL;
     prog->deps = NULL;
     prog->ndeps = 0;
+    prog->ddg = NULL;
+    prog->hProps = NULL;
+    prog->num_hyperplanes = 0;
 
     return prog;
 }
@@ -1066,9 +1077,13 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     /* Free DDG */
-    graph_free(prog->ddg);
+    if (prog->ddg != NULL)  {
+        graph_free(prog->ddg);
+    }
 
-    free(prog->hProps);
+    if (prog->hProps != NULL)   {
+        free(prog->hProps);
+    }
 
     for (i=0; i<prog->npar; i++)  {
         free(prog->params[i]);
@@ -1287,26 +1302,121 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
 }
 
 
+/* Add a statement that is scheduled at the end of all statements 
+ * scheduled at level 'level' (0-indexed)
+ * domain: domain of the stmt
+ * text: statement text
+ */
+void pluto_add_stmt_to_end(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        const char ** const iterators,
+        const char *text,
+        int level
+        )
+{
+    int i;
+
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
+
+    for (i=0; i<nstmts; i++)    {
+        pluto_matrix_add_row(stmts[i]->trans, level);
+    }
+    assert(prog->num_hyperplanes >= level+1);
+    pluto_prog_add_hyperplane(prog, level);
+    prog->hProps[level].type = H_SCALAR;
+    prog->hProps[level].dep_prop = SEQ;
+
+    PlutoMatrix *trans = pluto_matrix_alloc(prog->num_hyperplanes, domain->ncols);
+    pluto_matrix_initialize(trans, 0);
+    trans->nrows = 0;
+
+    pluto_add_stmt(prog, domain, trans, iterators, text);
+}
+
+
+/* Add statement to program; can't reuse arg stmt pointer any more */
+void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
+{
+    int i, j, max_nrows;
+
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((prog->nstmts+1)*sizeof(Stmt *)));
+
+    stmt->id = prog->nstmts;
+
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
+    prog->stmts[prog->nstmts] = stmt;
+    prog->nstmts++;
+
+    /* Pad all trans matrices if necessary with zeros */
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
+
+    max_nrows = 0;
+
+    for (i=0; i<nstmts; i++)    {
+        if (stmts[i]->trans != NULL)    {
+            max_nrows = PLMAX(max_nrows, prog->stmts[i]->trans->nrows);
+        }
+    }
+
+    if (max_nrows >= 1) {
+        for (i=0; i<nstmts; i++)    {
+            if (stmts[i]->trans == NULL)    {
+                stmts[i]->trans = pluto_matrix_alloc(max_nrows, 
+                        stmts[i]->dim+prog->npar+1);
+                stmts[i]->trans->nrows = 0;
+            }
+
+            int curr_rows = stmts[i]->trans->nrows;
+
+            /* Add all zero rows */
+            for (j=curr_rows; j<max_nrows; j++)    {
+                pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+            }
+        }
+
+        int old_hyp_num = prog->num_hyperplanes;
+        for (i=old_hyp_num; i<max_nrows; i++) {
+            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
+            prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+        }
+    }
+
+}
+
+
+/* Create a statement and add it to the program
+ * iterators: domain iterators
+ * trans: schedule/transformation
+ * domain: domain
+ * text: statement text
+ */
 void pluto_add_stmt(PlutoProg *prog, 
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
-        const char * const * const iterators,
-        const char *text
-        )
+        const char ** const iterators,
+        const char *text)
 {
-    int i, nstmts;
+    int i, j, nstmts, max_nrows;
+
+    assert(trans->ncols == domain->ncols);
 
     nstmts = prog->nstmts;
+    Stmt **stmts = prog->stmts;
 
     prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
 
     Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain);
 
     stmt->id = nstmts;
-    if (trans != NULL)  stmt->trans = pluto_matrix_dup(trans);
-    else stmt->trans = NULL;
+
+    if (trans != NULL)  {
+        stmt->trans = pluto_matrix_dup(trans);
+    }else stmt->trans = NULL;
 
     stmt->text = strdup(text);
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
 
     for (i=0; i<stmt->dim; i++) {
         stmt->iterators[i] = strdup(iterators[i]);
@@ -1314,6 +1424,38 @@ void pluto_add_stmt(PlutoProg *prog,
 
     prog->stmts[nstmts] = stmt;
     prog->nstmts++;
+    nstmts++;
+
+    /* Pad all trans if necessary with zeros */
+    max_nrows = 0;
+    for (i=0; i<nstmts; i++)    {
+        if (stmts[i]->trans != NULL)    {
+            max_nrows = PLMAX(max_nrows, stmts[i]->trans->nrows);
+        }
+    }
+
+    if (max_nrows >= 1) {
+        for (i=0; i<nstmts; i++)    {
+            if (stmts[i]->trans == NULL)    {
+                stmts[i]->trans = pluto_matrix_alloc(max_nrows, 
+                        stmts[i]->dim+prog->npar+1);
+                stmts[i]->trans->nrows = 0;
+            }
+
+            int curr_rows = stmts[i]->trans->nrows;
+
+            /* Add all zero rows */
+            for (j=curr_rows; j<max_nrows; j++)    {
+                pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+            }
+        }
+
+        int old_hyp_num = prog->num_hyperplanes;
+        for (i=old_hyp_num; i<max_nrows; i++) {
+            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
+            prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+        }
+    }
 }
 
 
@@ -1324,6 +1466,8 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
 
     Stmt *stmt = (Stmt *) malloc(sizeof(Stmt));
 
+    /* id will be assigned when added to PlutoProg */
+    stmt->id = -1;
     stmt->dim = dim;
     stmt->dim_orig = dim;
     stmt->domain = pluto_constraints_dup(domain);
