@@ -977,6 +977,7 @@ PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int 
     for (j=0; j<cst->ncols-1; j++)  {
         row->val[0][j] = cst->val[pos][j];
     }
+    row->nrows = 1;
     return row;
 }
 
