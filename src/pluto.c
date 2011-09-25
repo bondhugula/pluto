@@ -1340,7 +1340,7 @@ void detect_hyperplane_type (Stmt *stmts, int nstmts, Dep *deps, int ndeps,
 /* Generate and print .cloog file from the transformations computed */
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 {
-    int i, j, k;
+    int i;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -1368,25 +1368,12 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     /* Print statement domains */
     for (i=0; i<nstmts; i++)    {
         fprintf(fp, "%d # of domains\n", 1);
-        fprintf(fp, "%d %d\n", stmts[i]->domain->nrows, stmts[i]->domain->ncols+1);
-        for (j=0; j<stmts[i]->domain->nrows; j++)    {
-            fprintf(fp, "1 ");
-            for (k=0; k<stmts[i]->domain->ncols; k++)    {
-                fprintf(fp, "%d ", stmts[i]->domain->val[j][k]);
-            }
-            fprintf(fp, "\n");
-        }
+        pluto_constraints_print_polylib(fp, stmts[i]->domain);
         fprintf(fp, "0 0 0\n\n");
     }
 
-    if (prog->iternames == NULL)    {
-        fprintf(fp, "# we want cloog to set the iterator names\n");
-        fprintf(fp, "0\n\n");
-    }else{
-        fprintf(fp, "# we want cloog to set the iterator names\n");
-        fprintf(fp, "1\n");
-        fprintf(fp, "%s\n\n", prog->iternames);
-    }
+    fprintf(fp, "# we want cloog to set the iterator names\n");
+    fprintf(fp, "0\n\n");
 
     fprintf(fp, "# of scattering functions\n");
     if (nstmts >= 1 && stmts[0]->trans != NULL) {
@@ -1394,11 +1381,9 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
         /* Print scattering functions */
         for (i=0; i<nstmts; i++) {
-
             PlutoConstraints *sched = pluto_stmt_get_schedule(stmts[i]);
             pluto_constraints_print_polylib(fp, sched);
             fprintf(fp, "\n");
-
             pluto_constraints_free(sched);
         }
 
@@ -1414,59 +1399,65 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     }
 }
 
+static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
+{
+    int j;
+
+    for (j=0; j<stmt->dim; j++) {
+        if (stmt->iterators[j] == NULL) {
+            printf("Iterator name not set for S%d; required \
+                    for generating declarations\n", stmt->id+1);
+            assert(0);
+        }
+    }
+    fprintf(outfp, "\t#define S%d", stmt->id+1);
+    fprintf(outfp, "(");
+    for (j=0; j<stmt->dim; j++)  {
+        if (j!=0)   fprintf(outfp, ",");
+        fprintf(outfp, "%s", stmt->iterators[j]);
+    }
+    fprintf(outfp, ")\t");
+
+    /* Generate pragmas for Bee/Cl@k */
+    if (options->bee)   {
+        fprintf(outfp, " schedule");
+        for (j=0; j<stmt->trans->nrows; j++)    {
+            fprintf(outfp, "[");
+            pretty_print_affine_function(outfp, stmt, j);
+            fprintf(outfp, "]");
+        }
+        fprintf(outfp, " _NL_DELIMIT_ ");
+    }
+    fprintf(outfp, "%s\n", stmt->text);
+}
+
 
 /* Generate variable declarations and macros */
 int generate_declarations(const PlutoProg *prog, FILE *outfp)
 {
-    int i, j;
+    int i;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
     /* Generate statement macros */
     for (i=0; i<nstmts; i++)    {
-        for (j=0; j<stmts[i]->dim; j++) {
-            if (stmts[i]->iterators[j] == NULL) {
-                printf("Iterator name not set for S%d; required \
-                        for generating declarations\n", i+1);
-                assert(0);
-            }
-        }
-        fprintf(outfp, "\t#define S%d", i+1);
-        fprintf(outfp, "(");
-        for (j=0; j<stmts[i]->dim; j++)  {
-            if (j!=0)   fprintf(outfp, ",");
-            fprintf(outfp, "%s", stmts[i]->iterators[j]);
-        }
-        fprintf(outfp, ")");
-        // fprintf(outfp, "\t{");
-        fprintf(outfp, "\t");
-
-        /* Generate pragmas for Bee/Cl@k */
-        if (options->bee)   {
-            fprintf(outfp, " schedule");
-            for (j=0; j<stmts[i]->trans->nrows; j++)    {
-                fprintf(outfp, "[");
-                pretty_print_affine_function(outfp, stmts[i], j);
-                fprintf(outfp, "]");
-            }
-            fprintf(outfp, " _NL_DELIMIT_ ");
-        }
-        // fprintf(outfp, "%s;}\n", stmts[i]->text);
-        fprintf(outfp, "%s\n", stmts[i]->text);
+        gen_stmt_macro(stmts[i], outfp);
     }
     fprintf(outfp, "\n");
 
     /* Scattering iterators. */
-    fprintf(outfp, "\t\tint ");
-    for (i=0; i<stmts[0]->trans->nrows; i++)  {
-        if (i!=0) fprintf(outfp, ", ");
-        fprintf(outfp, "t%d", i+1);
-        if (prog->hProps[i].unroll)   {
-            fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+    if (stmts[0]->trans != NULL)    {
+        fprintf(outfp, "\t\tint ");
+        for (i=0; i<stmts[0]->trans->nrows; i++)  {
+            if (i!=0) fprintf(outfp, ", ");
+            fprintf(outfp, "t%d", i+1);
+            if (prog->hProps[i].unroll)   {
+                fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+            }
         }
+        fprintf(outfp, ";\n\n");
     }
-    fprintf(outfp, ";\n\n");
 
     if (options->parallel)   {
         fprintf(outfp, "\tregister int lb, ub, lb1, ub1, lb2, ub2;\n");
@@ -1574,7 +1565,7 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
  *
  * Generate the #pragma comment -- will be used by a syntactic scanner
  * to put in place -- should implement this with CLast in future */
-int generate_openmp_pragmas(PlutoProg *prog)
+int pluto_omp_parallelize(PlutoProg *prog)
 {
     int i;
 

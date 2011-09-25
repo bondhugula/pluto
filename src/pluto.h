@@ -343,7 +343,7 @@ void pluto_tile(PlutoProg *);
 void tile_scattering_dims(PlutoProg *, int, int, int *);
 bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD);
 
-int generate_openmp_pragmas(PlutoProg *prog);
+int pluto_omp_parallelize(PlutoProg *prog);
 
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);

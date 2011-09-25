@@ -312,9 +312,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->parallel)  {
         /* Generate meta info for insertion of OpenMP pragmas */
-        generate_openmp_pragmas(prog);
+        pluto_omp_parallelize(prog);
     }
-
 
     if (options->unroll || options->polyunroll)    {
         /* Will generate a .unroll file */
