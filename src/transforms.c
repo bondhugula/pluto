@@ -17,35 +17,31 @@
  * `LICENSE' in the top-level directory of this distribution. 
  *
  */
-#include "pluto.h"
 #include "program.h"
+#include "pluto.h"
 #include "constraints.h"
 #include "transforms.h"
 
 #include "assert.h"
 
 /* Sink statement; depth: 0-indexed */
-void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val)
+void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog)
 {
-    int d;
+    assert(stmt->dim == stmt->domain->ncols-prog->npar-1);
 
-    assert(stmt->dim == stmt->domain->ncols-npar-1);
+    char iter[3];
+    sprintf(iter, "d%d", stmt->dim);
 
-    pluto_constraints_add_dim(stmt->domain, depth);
-    stmt->is_orig_loop = realloc(stmt->is_orig_loop, (stmt->dim+1)*sizeof(bool));
-    for (d=depth; d<stmt->dim; d++) {
-        stmt->is_orig_loop[d+1] = stmt->is_orig_loop[d];
-    }
-    stmt->is_orig_loop[depth] = false;
+    pluto_stmt_add_dim(stmt, depth, -1, iter, prog);
+
     pluto_constraints_set_var(stmt->domain, depth, val);
-
-    stmt->dim++;
+    stmt->is_orig_loop[depth] = false;
 }
 
 
-void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode)
+void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg *prog)
 {
-    pluto_stmt_add_dim(stmt, 0, dim, supernode);
+    pluto_stmt_add_dim(stmt, 0, dim, supernode, prog);
 
     PlutoConstraints *domain = stmt->domain;
 

@@ -48,7 +48,8 @@ void pluto_add_stmt(PlutoProg *prog,
         );
 
 
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter);
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter, 
+        PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
 #endif

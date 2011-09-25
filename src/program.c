@@ -354,12 +354,12 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
         }
 
         /* Is resized when necessary (pre-allocate) */
-        stmt->trans = pluto_matrix_alloc(2*nvar+1, nvar+npar+1);
+        stmt->trans = pluto_matrix_alloc(2*nvar+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
         /* using nvar for uniformity instead of stmt->dim + npar + 1; will 
          * be reduced to stmt->dim + npar + 1 at the end of pluto sched */
-        stmt->trans->ncols = nvar+npar+1;
-        
+        stmt->trans->ncols = stmt->dim+npar+1;
+
         stmt->num_ind_sols = 0;
 
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
@@ -1180,9 +1180,18 @@ void pluto_options_free(PlutoOptions *options)
 }
 
 
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter)
+/* time_pos: position of time iterator; iter: domain iterator; supply -1
+ * if you don't want a scattering function row added for it */
+void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
+        PlutoProg *prog)
 {
-    int i;
+    int i, npar;
+
+    npar = stmt->domain->ncols - stmt->dim - 1;
+
+    assert(pos <= stmt->dim);
+    assert(time_pos <= stmt->trans->nrows);
+    assert(stmt->dim + npar + 1 == stmt->domain->ncols);
 
     pluto_constraints_add_dim(stmt->domain, pos);
     stmt->dim++;
@@ -1193,9 +1202,11 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter)
     stmt->iterators[pos] = strdup(iter);
 
     pluto_matrix_add_col(stmt->trans, pos);
-    pluto_matrix_add_row(stmt->trans, time_pos);
 
-    stmt->trans->val[time_pos][pos] = 1;
+    if (time_pos != -1) {
+        pluto_matrix_add_row(stmt->trans, time_pos);
+        stmt->trans->val[time_pos][pos] = 1;
+    }
 
     /* Update is_orig_loop */
     stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
@@ -1203,7 +1214,57 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter)
     for (i=stmt->dim-2; i>=pos; i--) {
         stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
     }
-    stmt->is_orig_loop[0] = true;
+    stmt->is_orig_loop[pos] = true;
+
+    for (i=0; i<prog->ndeps; i++) {
+        if (prog->deps[i].src == stmt->id) {
+            pluto_constraints_add_dim(prog->deps[i].dpolytope, pos);
+        }
+        if (prog->deps[i].dest == stmt->id) {
+            pluto_constraints_add_dim(prog->deps[i].dpolytope, 
+                    prog->stmts[prog->deps[i].src]->dim+pos);
+        }
+    }
+}
+
+/* Warning: use it only to knock off a dummy dim */
+void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
+{
+    int i, npar;
+
+    npar = stmt->domain->ncols - stmt->dim - 1;
+
+    assert(pos <= stmt->dim);
+    assert(stmt->dim + npar + 1 == stmt->domain->ncols);
+
+    pluto_constraints_remove_dim(stmt->domain, pos);
+    stmt->dim--;
+
+    free(stmt->iterators[pos]);
+    for (i=pos; i<=stmt->dim-1; i++) {
+        stmt->iterators[i] = stmt->iterators[i+1];
+    }
+    stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
+
+    pluto_matrix_remove_col(stmt->trans, pos);
+
+    /* Update is_orig_loop */
+    for (i=pos; i<=stmt->dim-1; i++) {
+        stmt->is_orig_loop[i] = stmt->is_orig_loop[i+1];
+    }
+    stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
+            sizeof(bool)*stmt->dim);
+
+    for (i=0; i<prog->ndeps; i++) {
+        if (prog->deps[i].src == stmt->id) {
+            pluto_constraints_remove_dim(prog->deps[i].dpolytope, pos);
+        }
+        if (prog->deps[i].dest == stmt->id) {
+            if (i==0)  printf("removing dim\n");
+            pluto_constraints_remove_dim(prog->deps[i].dpolytope, 
+                    prog->stmts[prog->deps[i].src]->dim+pos);
+        }
+    }
 }
 
 

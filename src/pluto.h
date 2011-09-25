@@ -255,7 +255,8 @@ struct hyperplane_properties{
     /* Hyperplane property: see looptype enum definition */
     enum looptype dep_prop;
 
-    /* Hyperplane type: scalar or loop */
+    /* Hyperplane type: scalar, loop, or tile-space loop (H_SCALAR,
+     * H_LOOP, H_TILE... */
     int type;
 
     /* The band number this hyperplane belongs to. Note that everything is a

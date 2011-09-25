@@ -22,7 +22,7 @@
 
 #include "pluto.h"
 
-void pluto_sink_statement(Stmt *stmt, int npar, int depth, int val);
-void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode);
+void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog);
+void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg *prog);
 
 #endif

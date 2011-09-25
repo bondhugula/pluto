@@ -141,7 +141,7 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
  *   permutation of the variables to get row-wise access
  */
 int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog,
-                                  int use_isl)
+        int use_isl)
 {
     Stmt **stmts;
     int nstmts, nvar, npar;
@@ -304,7 +304,7 @@ int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2)
 /* Cut dependences between two SCCs 
  * Returns: number of dependences cut  */
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2,
-                     int use_isl)
+        int use_isl)
 {
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -380,7 +380,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg, int use_isl)
 
     }
     num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1,
-                                            use_isl);
+            use_isl);
     ddg_update(ddg, prog);
 
     return num_satisfied;
@@ -430,7 +430,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg, int use_isl)
     }
 
     int num_new_carried = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1,
-                                                  use_isl);
+            use_isl);
 
     if (num_new_carried >= 1)   {
         ddg_update(ddg, prog);
@@ -884,9 +884,9 @@ void detect_transformation_properties(PlutoProg *prog, int use_isl)
             // num_loops_in_band++;
 
             // if (hProps[level].type == H_SCALAR)  {
-                // band++;
-                // bandStart = level+1;
-                // num_loops_in_band = 0;
+            // band++;
+            // bandStart = level+1;
+            // num_loops_in_band = 0;
             // }
             level++;
 
@@ -1012,7 +1012,7 @@ void normalize_domains(PlutoProg *prog)
      * dependence polyhedron
      */
     int count=0;
-    if (npar >= 1)    {
+    if (npar >= 1)	{
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
         for (i=0; i<prog->nstmts; i++)    {
             PlutoConstraints *copy = 
@@ -1065,25 +1065,20 @@ void normalize_domains(PlutoProg *prog)
     for (i=0; i<prog->nstmts; i++)    {
         Stmt *stmt = prog->stmts[i];
         int orig_depth = stmt->dim_orig;
+        assert(orig_depth == stmt->dim);
         for (j=orig_depth; j<nvar; j++)  {
-            pluto_sink_statement(stmt, npar, stmt->dim, 0);
+            pluto_sink_statement(stmt, stmt->dim, 0, prog);
         }
     }
 
-    /* Add padding dimensions for the dependence polyhedra */
+
     for (i=0; i<prog->ndeps; i++)    {
         Dep *dep = &prog->deps[i];
-        int src_dim = prog->stmts[dep->src]->dim_orig;
-        int target_dim = prog->stmts[dep->dest]->dim_orig;
-
-        for (j=src_dim; j<nvar; j++)    {
-            pluto_constraints_add_dim(dep->dpolytope, src_dim);
-        }
-
-        for (j=target_dim; j<nvar; j++)    {
-            pluto_constraints_add_dim(dep->dpolytope, nvar+target_dim);
-        }
+        int src_dim = prog->stmts[dep->src]->dim;
+        int target_dim = prog->stmts[dep->dest]->dim;
+        assert(dep->dpolytope->ncols == src_dim+target_dim+prog->npar+1);
     }
+
 
     /* Normalize rows of dependence polyhedra */
     for (k=0; k<prog->ndeps; k++)   {
@@ -1146,15 +1141,13 @@ void denormalize_domains(PlutoProg *prog)
         int del_count = 0;
         for (j=0; j<nvar; j++)  {
             if (!stmt->is_orig_loop[j]) {
-                /* TODO: should actually eliminate the variable */
-                pluto_constraints_remove_dim(stmt->domain, j-del_count);
-                pluto_matrix_remove_col(stmt->trans, j-del_count);
+                pluto_stmt_remove_dim(stmt, j-del_count, prog);
                 del_count++;
-                stmt->dim--;
             }
         }
 
         assert(stmt->domain->ncols == stmt->dim+npar+1);
+        assert(stmt->trans->ncols == stmt->dim+npar+1);
 
         for (j=0; j<stmt->dim; j++)  {
             stmt->is_orig_loop[j] = 1;

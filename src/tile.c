@@ -75,7 +75,8 @@ void pluto_tile(PlutoProg *prog)
 
     int count = outermostBandEnd - outermostBandStart + 1;
 
-    if (!read_tile_sizes(tile_sizes, l2_tile_size_ratios, count, prog->hProps, outermostBandStart)){
+    if (!read_tile_sizes(tile_sizes, l2_tile_size_ratios, count, 
+                prog->hProps, outermostBandStart)){
         for (j=0; j<prog->num_hyperplanes; j++)   {
             tile_sizes[j] = DEFAULT_L1_TILE_SIZE;
         }
@@ -123,118 +124,113 @@ void pluto_tile(PlutoProg *prog)
  * dimensions from firstD to lastD */
 void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_sizes)
 {
-    int i, j, k, s;
-    int depth;
+    int j, s;
+    int depth, nstmts, npar;
+
+    nstmts = prog->nstmts;
+    npar = prog->npar;
 
     assert(lastD-firstD+1 <= prog->num_hyperplanes);
 
     int num_tiled_scat_dims = lastD - firstD + 1;
 
-    for (s=0; s<prog->nstmts; s++)    {
+    int num_domain_supernodes[nstmts];
+    int num_tiled_scatterings[nstmts];
+    for (s=0; s<nstmts; s++)   {
+        num_domain_supernodes[s] = 0;
+        num_tiled_scatterings[s] = 0;
+    }
+    for (depth=firstD; depth<=lastD; depth++)    {
+        assert(tile_sizes[depth-firstD] >= 1);
+        for (s=0; s<nstmts; s++) {
+            Stmt *stmt = prog->stmts[s];
+            if (prog->hProps[depth].type != H_SCALAR && stmt->tile) {
 
-        Stmt *stmt = prog->stmts[s];
+                /* 1. Specify tiles in the original domain. 
+                 * NOTE: tile shape info comes in here */
 
-        if (stmt->tile) {
-
-            int num_supernodes = num_tiled_scat_dims;
-
-            /* 1. Specify tiles in the original domain. 
-             * NOTE: tile shape info comes in here */
-
-            /* 1.1 Add additional dimensions */
-            for (k=0; k<num_tiled_scat_dims; k++)    {
+                /* 1.1 Add additional dimensions */
                 char iter[5];
                 sprintf(iter, "zT%d", stmt->dim);
-                pluto_stmt_add_dim(stmt, 0, firstD, iter);
-            }
+                pluto_stmt_add_dim(stmt, num_domain_supernodes[s], depth, iter, prog);
+                num_domain_supernodes[s]++;
 
-            /* 1.2 specify tile shapes in the original domain */
-            for (depth=firstD; depth<=lastD; depth++)    {
-
-                assert(tile_sizes[depth-firstD] >= 1);
+                /* 1.2 Specify tile shapes in the original domain */
 
                 // pluto_constraints_print(stdout, stmt->domain);
 
                 /* Add relation b/w tile space variable and intra-tile variables like
                  * 32*xt <= 2t+i <= 32xt + 31 */
-                pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
 
                 /* Lower bound */
-                for (j=num_supernodes; j<stmt->dim; j++) {
+                pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
+
+                for (j=num_domain_supernodes[s]; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
-                        stmt->trans->val[num_supernodes+depth][j];
+                        stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][depth-firstD] = 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]-1] = 
                     -tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
-                    stmt->trans->val[num_supernodes+depth][stmt->dim+prog->npar];
+                    stmt->trans->val[(depth-firstD)+1+depth][stmt->dim+prog->npar];
 
                 /* Upper bound */
                 pluto_constraints_add_inequality(stmt->domain, stmt->domain->nrows);
-                for (j=num_supernodes; j<stmt->dim; j++) {
+                for (j=num_domain_supernodes[s]; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
-                        -stmt->trans->val[num_supernodes+depth][j];
+                        -stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][depth-firstD] 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]-1] 
                     = tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
-                    -stmt->trans->val[num_supernodes+depth][stmt->dim+prog->npar]+tile_sizes[depth-firstD]-1;
+                    -stmt->trans->val[(depth-firstD)+1+depth][stmt->dim+prog->npar] 
+                    +tile_sizes[depth-firstD]-1;
 
-                // printf("after adding\n");
+                // printf("after adding tile constraints\n");
                 // pluto_constraints_print(stdout, stmt->domain);
-            }
 
-
-            /* 2. Update the transformation / scattering functions */
-            for (depth=firstD; depth < firstD+num_tiled_scat_dims; depth++) {
-                for (j=0; j<stmt->trans->ncols; j++)    {
-                    if (depth - firstD == j)   {
-                        stmt->trans->val[depth][j] = 1;
-                    }else{
-                        stmt->trans->val[depth][j] = 0;
-                    }
-                }
-            }
-            stmt->num_tiled_loops += lastD-firstD+1;
-        }else{
-            /* stmt->tile is zero */
-
-            /* Make space for the tile space scatterings */
-            /* no need of new columns */
-
-            for (k=0; k<num_tiled_scat_dims; k++)  {
+                // printf("Stmt %d: depth: %d\n", stmt->id+1,depth);
+                // pluto_matrix_print(stdout, stmt->trans);
+            }else{
+                /* Dimension is not a loop OR not tiling this statemtn */
+                /* Make space for the tile space scatterings */
+                /* No need of new columns */
                 /* All zero */
-                pluto_matrix_add_row(stmt->trans, stmt->trans->nrows);
+                pluto_matrix_add_row(stmt->trans, depth);
+                num_tiled_scatterings[s]++;
             }
-        }
-    }
+            stmt->num_tiled_loops ++;
+        } /* all statements */
+    } // all scats to be tiled
 
-    for (k=0; k<num_tiled_scat_dims; k++)  {
+    // print_hyperplane_properties(prog);
+    for (depth=firstD; depth<=lastD; depth++)    {
+        assert(tile_sizes[depth-firstD] >= 1);
         pluto_prog_add_hyperplane(prog, firstD);
         /* This tile space loop has the same property (parallel, fwd dep, or
          * seq as the original one */
         prog->hProps[firstD] = prog->hProps[firstD+num_tiled_scat_dims];
-        prog->hProps[firstD].type = (prog->hProps[firstD+num_tiled_scat_dims].type == H_SCALAR)?
+        prog->hProps[firstD].type = 
+            (prog->hProps[firstD+num_tiled_scat_dims].type == H_SCALAR)?
             H_SCALAR:H_TILE_SPACE_LOOP;
-    }
-
-    for (i=firstD; i<firstD+num_tiled_scat_dims; i++)   {
-        if (prog->hProps[i].type == H_SCALAR)    {
-            /* Fix it */
-            for (k=0; k<prog->nstmts; k++)    {
-                for (j=0; j<prog->stmts[k]->trans->ncols; j++)    {
-                    prog->stmts[k]->trans->val[i][j] = prog->stmts[k]->trans->val[i+num_tiled_scat_dims][j];
+        if (prog->hProps[firstD].type == H_SCALAR)    {
+            // printf("Copying for depth: %d\n", depth);
+            /* Set up tile space scattering correctly for scalar dims that
+             * were tiled */
+            for (s=0; s<prog->nstmts; s++)    {
+                for (j=0; j<prog->stmts[s]->trans->ncols; j++)    {
+                    prog->stmts[s]->trans->val[depth][j] = 
+                        prog->stmts[s]->trans->val[depth+num_tiled_scat_dims][j];
                 }
             }
-
         }
-    }
-    // dump_hyperplanes(prog->stmts);
-    //print_hyperplane_properties(prog->stmts);
+    } /* all scatterings to be tiled */
+    // print_hyperplane_properties(prog);
+    //pluto_transformations_pretty_print(prog);
 }
 
 
@@ -252,7 +248,8 @@ bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD)
 
     HyperplaneProperties *hProps = prog->hProps;
 
-    if (hProps[firstD].dep_prop == PIPE_PARALLEL) {
+    if (hProps[firstD].dep_prop == PIPE_PARALLEL && hProps[firstD].type != H_SCALAR
+            && hProps[firstD+1].type != H_SCALAR) {
         /* If the first one is PIPE_PARALLEL, we are guaranteed to
          * have at least one more pipe_parallel, otherwise the first
          * one would have been SEQ */
