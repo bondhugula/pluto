@@ -282,24 +282,20 @@ scoplib_matrix_print_dot_scop(FILE * file, scoplib_matrix_p matrix, int type,
   int i, j, k;
   char * expression;
 
-  if (matrix == NULL)
-  {
+  if (matrix == NULL) {
     fprintf(file,"0 %d\n",nb_iterators+nb_parameters+2);
     return;
   }
 
   fprintf(file,"%d %d\n",matrix->NbRows,matrix->NbColumns);
 
-  for (i = 0; i < matrix->NbRows; i++)
-  {
-    for (j = 0; j < matrix->NbColumns; j++)
-    {
+  for (i = 0; i < matrix->NbRows; i++) {
+    for (j = 0; j < matrix->NbColumns; j++) {
       SCOPVAL_print(file,SCOPLIB_FMT,matrix->p[i][j]);
       fprintf(file," ");
     }
 
-    if (type == SCOPLIB_TYPE_DOMAIN)
-    {
+    if (type == SCOPLIB_TYPE_DOMAIN) {
       expression = scoplib_matrix_expression(matrix,i,nb_iterators,iterators,
 					     nb_parameters,parameters);
       fprintf(file,"   ## %s",expression);
@@ -310,35 +306,40 @@ scoplib_matrix_print_dot_scop(FILE * file, scoplib_matrix_p matrix, int type,
         fprintf(file," >= 0");
     }
 
-    if (type == SCOPLIB_TYPE_SCATTERING)
-    {
+    if (type == SCOPLIB_TYPE_SCATTERING) {
       expression = scoplib_matrix_expression(matrix,i,nb_iterators,iterators,
 					     nb_parameters,parameters);
       fprintf(file,"   ## %s",expression);
       free(expression);
     }
 
-    if (type == SCOPLIB_TYPE_ACCESS)
-    {
-      if (SCOPVAL_notzero_p(matrix->p[i][0]))
-      {
+    if (type == SCOPLIB_TYPE_ACCESS) {
+      if (SCOPVAL_notzero_p(matrix->p[i][0])){
 	if (strncmp(arrays[SCOPVAL_get_si(matrix->p[i][0]) - 1],
 		    SCOPLIB_FAKE_ARRAY, strlen(SCOPLIB_FAKE_ARRAY)))
 	  fprintf(file,"   ## %s",arrays[SCOPVAL_get_si(matrix->p[i][0]) - 1]);
 	k = i;
-	do
-	{
+	        do {
 	  expression = scoplib_matrix_expression(matrix,k,nb_iterators,
-						 iterators,
-						 nb_parameters,parameters);
+				            		 iterators,nb_parameters,parameters);
           fprintf(file,"[%s]",expression);
           free(expression);
 	  k++;
+	        }while ((k < matrix->NbRows) && SCOPVAL_zero_p(matrix->p[k][0]));
 	}
 	while ((k < matrix->NbRows) && SCOPVAL_zero_p(matrix->p[k][0]));
       }
+    
+    if(type == SCOPLIB_TYPE_SYMBOL_TABLE) {        
+    
+      expression = scoplib_matrix_expression(matrix,i,nb_iterators,iterators,
+					                                   nb_parameters,parameters);
+      fprintf(file,"   ## %s",expression);
+      free(expression);
+      if (SCOPVAL_zero_p(matrix->p[i][0]))
+        fprintf(file," == 0");
       else
-        fprintf(file,"   ##");
+        fprintf(file," >= 0");
     }
 
     fprintf(file,"\n");
@@ -1195,4 +1196,110 @@ scoplib_matrix_equal(scoplib_matrix_p m1, scoplib_matrix_p m2)
       if (SCOPVAL_ne(m1->p[i][j], m2->p[i][j]))
 	return 0;
   return 1;
+}
+
+/**
+ * scoplib_matrix_compact function:
+ * This function compacts a matrix such that it uses the right number
+ * of columns (during construction we used CLAN_MAX_DEPTH and
+ * CLAN_MAX_PARAMETERS to define matrix and vector sizes). It modifies
+ * directly the matrix provided as parameter.
+ * \param matrix         The matrix to compact.
+ * \param nb_iterators   The true number of iterators for this matrix.
+ * \param nb_parameters  The true number of parameters in the SCoP.
+ * \param clan_max_depth The maximum depth
+ **
+ * - 02/05/2008: first version.
+ * - 24/05/2008: nice bug fixed (p_Init_size was not copied, segfaulting later).
+ */
+void
+scoplib_matrix_compact(scoplib_matrix_p matrix, int nb_iterators, 
+		    int nb_parameters,int clan_max_depth)
+{
+  int i, j, nb_columns;
+  scoplib_matrix_p compacted;
+
+  if (matrix == NULL)
+    return;
+
+  nb_columns = nb_iterators + nb_parameters + 2;
+  compacted = scoplib_matrix_malloc(matrix->NbRows,nb_columns);
+
+  for (i = 0; i < matrix->NbRows; i++)
+  {
+    /* We copy the equality/inequality tag and the iterator coefficients */
+    for (j = 0; j <= nb_iterators; j++)
+      SCOPVAL_assign(compacted->p[i][j],matrix->p[i][j]);
+
+    /* Then we copy the parameter coefficients */
+    for (j = 0; j < nb_parameters; j++)
+      SCOPVAL_assign(compacted->p[i][j + nb_iterators + 1],
+		     matrix->p[i][j + clan_max_depth + 1]);
+
+    /* Lastly the scalar coefficient */
+    SCOPVAL_assign(compacted->p[i][nb_columns - 1],
+		   matrix->p[i][matrix->NbColumns - 1]);
+  }
+
+  scoplib_matrix_free_inside(matrix);
+
+  /* Replace the inside of matrix */
+  matrix->NbRows      = compacted->NbRows;
+  matrix->NbColumns   = compacted->NbColumns;
+  matrix->p           = compacted->p;
+  matrix->p_Init      = compacted->p_Init;
+  matrix->p_Init_size = compacted->p_Init_size;
+
+  /* Free the compacted "container" */
+  free(compacted);
+}
+
+
+/**
+  * scoplib_matrix_get_row function:
+  * \param scoplib_matrix_p matrix
+  * \param row
+  */
+  
+scoplib_vector_p 
+scoplib_matrix_get_row(scoplib_matrix_p matrix ,int row) {
+
+  if(matrix->NbRows < row ) {
+    fprintf(stderr,"[Scoplib] Error: Given row cann't be accessed from the matrix\n");
+    exit(1);  
+  }
+
+  scoplib_vector_p extracted_vector= scoplib_vector_malloc(matrix->NbColumns);
+  int i=0;
+  for(i=0;i<matrix->NbColumns;i++) {
+    extracted_vector->p[i]=matrix->p[row][i];  
+  }
+  return extracted_vector;
+}
+
+/**
+  * scoplib_matrix_remove_column function:
+  * This function will remove the specified column from the copy of matrix
+  * \param scoplib_matrix_p matrix
+  * \param column
+  */
+scoplib_matrix_p
+scoplib_matrix_remove_column(scoplib_matrix_p matrix,int column) {
+
+  if(matrix->NbColumns < column ) {
+    fprintf(stderr,"[Scoplib] Error: Given column cann't be accessed from the matrix\n");
+    exit(1);  
+  }
+
+  scoplib_matrix_p new_matrix = scoplib_matrix_malloc(matrix->NbRows,matrix->NbColumns-1);
+  int i,j;
+  for(i=0;i<matrix->NbRows;i++) {
+    for(j=0;j<matrix->NbColumns;j++) {
+      if(j == column) 
+        continue;
+      else
+        new_matrix->p[i][j-1] = matrix->p[i][j];
+    }
+  }
+  return new_matrix;
 }

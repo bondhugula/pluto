@@ -130,17 +130,21 @@ void			scoplib_matrix_list_free(scoplib_matrix_list_p);
 /*+****************************************************************************
  *                            Processing functions                            *
  ******************************************************************************/
-scoplib_matrix_p scoplib_matrix_ncopy(scoplib_matrix_p, int);
-scoplib_matrix_p scoplib_matrix_copy(scoplib_matrix_p);
+
 void	scoplib_matrix_replace_vector(scoplib_matrix_p, scoplib_vector_p, int);
 void    scoplib_matrix_insert_vector(scoplib_matrix_p, scoplib_vector_p, int);
 void	scoplib_matrix_add_vector(scoplib_matrix_p, scoplib_vector_p, int);
 void	scoplib_matrix_sub_vector(scoplib_matrix_p, scoplib_vector_p, int);
+void  scoplib_matrix_replace_matrix(scoplib_matrix_p, scoplib_matrix_p, int);
+void  scoplib_matrix_insert_matrix(scoplib_matrix_p, scoplib_matrix_p, int);
+void	scoplib_matrix_compact(scoplib_matrix_p, int, int,int);
+int	  scoplib_matrix_equal(scoplib_matrix_p, scoplib_matrix_p);    
 scoplib_matrix_p scoplib_matrix_from_vector(scoplib_vector_p);
-void    scoplib_matrix_replace_matrix(scoplib_matrix_p, scoplib_matrix_p, int);
-void    scoplib_matrix_insert_matrix(scoplib_matrix_p, scoplib_matrix_p, int);
 scoplib_matrix_p scoplib_matrix_concat(scoplib_matrix_p, scoplib_matrix_p);
-int	scoplib_matrix_equal(scoplib_matrix_p, scoplib_matrix_p);    
+scoplib_matrix_p scoplib_matrix_ncopy(scoplib_matrix_p, int);
+scoplib_matrix_p scoplib_matrix_copy(scoplib_matrix_p);
+scoplib_vector_p scoplib_matrix_get_row(scoplib_matrix_p,int);
+scoplib_matrix_p scoplib_matrix_remove_column(scoplib_matrix_p,int);
     
 # if defined(__cplusplus)
   }

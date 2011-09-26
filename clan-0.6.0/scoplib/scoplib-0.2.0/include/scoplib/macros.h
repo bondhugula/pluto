@@ -63,18 +63,20 @@
 # define SCOPLIB_DEBUG			0 /* Set to 1 for debug mode,
 					     0 otherwise */
 # define SCOPLIB_MAX_STRING		2048
-# define SCOPLIB_TYPE_ITERATOR		1
-# define SCOPLIB_TYPE_PARAMETER		2
-# define SCOPLIB_TYPE_ARRAY		3
-# define SCOPLIB_TYPE_FUNCTION		4
-# define SCOPLIB_TYPE_DOMAIN		6
-# define SCOPLIB_TYPE_SCATTERING	7
-# define SCOPLIB_TYPE_ACCESS		8
-# define SCOPLIB_TYPE_UNKNOWN		9
+# define SCOPLIB_TYPE_ITERATOR		  1
+# define SCOPLIB_TYPE_PARAMETER		  2
+# define SCOPLIB_TYPE_ARRAY		      3
+# define SCOPLIB_TYPE_FUNCTION		  4
+# define SCOPLIB_TYPE_DOMAIN		    6
+# define SCOPLIB_TYPE_SCATTERING	  7
+# define SCOPLIB_TYPE_ACCESS		    8
+# define SCOPLIB_TYPE_UNKNOWN		    9
+# define SCOPLIB_TYPE_SYMBOL_TABLE  5
 # define SCOPLIB_FAKE_ARRAY		"fakearray"
 
 # define SCOPLIB_SCOP_PRINT_CASTLE	1
 # define SCOPLIB_SCOP_PRINT_ARRAYSTAG	2
+# define SCOPLIB_SCOP_PRINT_SYMBOLTABLE	4
 
 
 /*+****************************************************************************

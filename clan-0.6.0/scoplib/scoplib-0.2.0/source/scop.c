@@ -155,7 +155,7 @@ scoplib_scop_print(FILE * file, scoplib_scop_p scop)
 static
 void
 scoplib_scop_print_dot_scop_(FILE * file, scoplib_scop_p scop,
-			     int castle, int arraystag)
+			     int castle, int arraystag,int symboltable)
 {
   int i;
 
@@ -249,7 +249,7 @@ scoplib_scop_print_dot_scop_(FILE * file, scoplib_scop_p scop,
       if (! content)
 	{
 	  /* It isn't, so dump the list of arrays. */
-	  fprintf(file, "<arrays>\n");
+	  fprintf(file, "\n<arrays>\n");
 	  fprintf(file, "%d\n", scop->nb_arrays);
 	  for (i = 0; i < scop->nb_arrays; ++i)
 	    fprintf(file, "%d %s\n", i + 1, scop->arrays[i]);
@@ -258,6 +258,16 @@ scoplib_scop_print_dot_scop_(FILE * file, scoplib_scop_p scop,
       else
 	free(content);
     }
+    
+   if(symboltable) {
+   
+    fprintf(file,"\n<symbol-table>\n");
+    scoplib_symbol_print_dot_scop(file,scop->symbol_table,scop->nb_parameters,
+                                  scop->parameters,scop->nb_arrays,scop->arrays);
+    fprintf(file,"</symbol-table>\n");
+   
+   }
+    
 }
 
 
@@ -273,7 +283,7 @@ scoplib_scop_print_dot_scop_(FILE * file, scoplib_scop_p scop,
 void
 scoplib_scop_print_dot_scop(FILE * file, scoplib_scop_p scop)
 {
-  scoplib_scop_print_dot_scop_(file, scop, 0, 0);
+  scoplib_scop_print_dot_scop_(file, scop, 0, 0,0);
 }
 
 /**
@@ -291,11 +301,14 @@ scoplib_scop_print_dot_scop_options(FILE * file, scoplib_scop_p scop,
 {
   int castle = 0;
   int arraystag = 0;
+  int symboltable = 0;
   if ((options & SCOPLIB_SCOP_PRINT_CASTLE) != 0)
     castle = 1;
   if ((options & SCOPLIB_SCOP_PRINT_ARRAYSTAG) != 0)
     arraystag = 1;
-  scoplib_scop_print_dot_scop_(file, scop, castle, arraystag);
+  if ((options & SCOPLIB_SCOP_PRINT_SYMBOLTABLE) != 0)
+    symboltable = 1;    
+  scoplib_scop_print_dot_scop_(file, scop, castle, arraystag,symboltable);
 }
 
 
@@ -773,6 +786,10 @@ scoplib_scop_dup(scoplib_scop_p scop)
   int i;
   scoplib_statement_p stm;
   scoplib_statement_p tmp = NULL;
+  
+  scoplib_symbol_p tmpsymbol = NULL;
+  scoplib_symbol_p symbol;
+  
   scoplib_scop_p ret = scoplib_scop_malloc();
   ret->context = scoplib_matrix_copy(scop->context);
   ret->nb_parameters = scop->nb_parameters;
@@ -805,6 +822,21 @@ scoplib_scop_dup(scoplib_scop_p scop)
 	  tmp = tmp->next;
 	}
     }
+ 
+ for(symbol = scop->symbol_table;symbol;symbol = symbol->next) {
+    
+    scoplib_symbol_p newsymbol = scoplib_symbol_malloc();
+    newsymbol->identifier = strdup(symbol->identifier);
+    newsymbol->type       = symbol->type;
+    
+    if(ret->symbol_table == NULL )
+      ret->symbol_table = tmpsymbol = newsymbol;
+    else {
+      tmpsymbol->next = newsymbol;
+      tmpsymbol = tmpsymbol->next;
+    } 
+ }   
+    
   if (scop->optiontags)
     ret->optiontags = strdup(scop->optiontags);
   ret->usr = scop->usr;

@@ -57,9 +57,11 @@ lib_LTLIBRARIES 	= libscoplib.la
 
 
 libscoplib_la_SOURCES 	=			\
+    symbol.c        \
 	scop.c					\
 	statement.c				\
 	matrix.c				\
-	vector.c
+	vector.c        \
+	access.c
 
 AM_CFLAGS = -Wall -fomit-frame-pointer -g
