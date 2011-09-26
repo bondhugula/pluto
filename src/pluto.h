@@ -158,6 +158,17 @@ typedef struct plutoOptions PlutoOptions;
 
 enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
 
+typedef struct pluto_access{
+    int sym_id;
+    char *name;
+
+    /* Disabled for now - till scoplib support is committed */
+    // scoplib_symbol_p symbol;
+
+    PlutoMatrix *mat;
+} PlutoAccess;
+
+
 struct statement{
     int id;
 
@@ -193,6 +204,13 @@ struct statement{
 
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
+
+    PlutoAccess **reads;
+    int nreads;
+
+    PlutoAccess **writes;
+    int nwrites;
+
 
     /***/
     /* Used by scheduling algo */

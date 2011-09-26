@@ -136,7 +136,7 @@ PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatri
 }
 
 
-PlutoConstraints *candl_matrix_to_pluto_constraints(CandlMatrix *candlMatrix)
+PlutoConstraints *candl_matrix_to_pluto_constraints(const CandlMatrix *candlMatrix)
 {
     int i, j;
     PlutoConstraints *pmat;
@@ -166,7 +166,7 @@ PlutoConstraints *candl_matrix_to_pluto_constraints(CandlMatrix *candlMatrix)
 
 /* Get the position of this access given a CandlStmt access matrix
  * (concatenated) */
-int get_access_position(CandlMatrix *accesses, int ref)
+static int get_access_position(CandlMatrix *accesses, int ref)
 {
     int num, i;
 
@@ -357,11 +357,21 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
 
 void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
+    int i;
+
     fprintf(fp, "S%d; dims: %d\n", stmt->id+1, stmt->dim);
     fprintf(fp, "Domain\n");
     pluto_constraints_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
     pluto_matrix_print(fp, stmt->trans);
+
+    if (stmt->nreads==0) {
+        fprintf(fp, "No Read accesses\n");
+    }
+    fprintf(fp, "Read accesses\n");
+    for (i=0; i<stmt->nreads; i++)  {
+        pluto_matrix_print(fp, stmt->reads[i]->mat);
+    }
 
 }
 
@@ -1144,12 +1154,22 @@ PlutoOptions *pluto_options_alloc()
 
 void pluto_add_parameter(PlutoProg *prog, const char *param)
 {
-    int i;
+    int i, j;
 
     for (i=0; i<prog->nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
         pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1);
         pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1);
+
+        for (j=0; j<stmt->nwrites; j++)  {
+            pluto_matrix_add_col(stmt->writes[j]->mat, stmt->dim+prog->npar);
+        }
+        for (j=0; j<stmt->nreads; j++)  {
+            pluto_matrix_add_col(stmt->reads[j]->mat, stmt->dim+prog->npar);
+        }
+    }
+    for (i=0; i<prog->ndeps; i++)   {
+        pluto_constraints_add_dim(prog->deps[i].dpolytope, prog->deps[i].dpolytope->ncols-1);
     }
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
     prog->params[prog->npar] = strdup(param);
@@ -1203,6 +1223,14 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     }
     stmt->is_orig_loop[pos] = true;
 
+    for (i=0; i<stmt->nwrites; i++)   {
+        pluto_matrix_add_col(stmt->writes[i]->mat, pos);
+    }
+
+    for (i=0; i<stmt->nreads; i++)   {
+        pluto_matrix_add_col(stmt->reads[i]->mat, pos);
+    }
+
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i].src == stmt->id) {
             pluto_constraints_add_dim(prog->deps[i].dpolytope, pos);
@@ -1241,6 +1269,14 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
     }
     stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
             sizeof(bool)*stmt->dim);
+
+    for (i=0; i<stmt->nwrites; i++)   {
+        pluto_matrix_remove_col(stmt->writes[i]->mat, pos);
+    }
+
+    for (i=0; i<stmt->nreads; i++)   {
+        pluto_matrix_remove_col(stmt->reads[i]->mat, pos);
+    }
 
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i].src == stmt->id) {
@@ -1447,6 +1483,10 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
     stmt->text = NULL;
     stmt->tile =  1;
     stmt->num_tiled_loops = 0;
+    stmt->reads = NULL;
+    stmt->writes = NULL;
+    stmt->nreads = 0;
+    stmt->nwrites = 0;
 
     if (dim >= 1)   {
         stmt->is_orig_loop = (bool *) malloc(dim*sizeof(bool));
@@ -1465,7 +1505,7 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
 
 void pluto_stmt_free(Stmt *stmt)
 {
-    int j;
+    int i, j;
 
     pluto_constraints_free(stmt->domain);
 
@@ -1487,6 +1527,24 @@ void pluto_stmt_free(Stmt *stmt)
     if (stmt->iterators != NULL)    {
         free(stmt->iterators);
         free(stmt->is_orig_loop);
+    }
+
+    PlutoAccess **writes = stmt->writes;
+    PlutoAccess **reads = stmt->reads;
+
+    if (writes != NULL) {
+        for (i=0; i<stmt->nwrites; i++)   {
+            pluto_matrix_free(writes[i]->mat);
+            free(writes[i]);
+        }
+        free(writes);
+    }
+    if (reads != NULL) {
+        for (i=0; i<stmt->nreads; i++)   {
+            pluto_matrix_free(reads[i]->mat);
+            free(reads[i]);
+        }
+        free(reads);
     }
 
     free(stmt);
