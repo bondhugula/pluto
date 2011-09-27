@@ -73,93 +73,46 @@ PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
 
 PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 {
-    // candl_matrix_print(stdout, candlMatrix);
-    int has_equalities = 0;
-
     int i, j;
+    PlutoConstraints *cst;
 
-    /* Does it have any equalities at all? */
-    for (i=0; i<clanMatrix->NbRows; i++)   {
-        if (clanMatrix->p[i][0] == 0) {
-            has_equalities = 1;
-            break;
-        }
-    }
-
-    PlutoConstraints *pmat;
-    if (has_equalities) {
-        /* An extra inequality will be added to capture the inequalities */
-        pmat = pluto_constraints_alloc(clanMatrix->NbRows+1, clanMatrix->NbColumns-1);
-        pmat->nrows = clanMatrix->NbRows+1;
-    }else{
-        pmat = pluto_constraints_alloc(clanMatrix->NbRows, clanMatrix->NbColumns-1);
-        pmat->nrows = clanMatrix->NbRows;
-    }
-
-    pmat->ncols = clanMatrix->NbColumns-1;
+    cst = pluto_constraints_alloc(clanMatrix->NbRows, clanMatrix->NbColumns-1);
+    cst->nrows = clanMatrix->NbRows;
 
     for (i=0; i<clanMatrix->NbRows; i++)   {
-        for (j=0; j<pmat->ncols; j++)   {
-#ifdef PIP_WIDTH_MP
-            pmat->val[i][j] = mpz_get_si(clanMatrix->p[i][j+1]);
-#else
-            pmat->val[i][j] = (int) clanMatrix->p[i][j+1];
-#endif
+        cst->is_eq[i] = (clanMatrix->p[i][0] == 0);
+        for (j=0; j<cst->ncols; j++)   {
+            cst->val[i][j] = (int) clanMatrix->p[i][j+1];
         }
     }
-
-    if (has_equalities) {
-        /* Last row is sigma (equalities) <= 0 */
-        for (j=0; j<pmat->ncols; j++)   {
-            pmat->val[pmat->nrows-1][j] = 0;
-        }
-
-        for (i=0; i<clanMatrix->NbRows; i++)   {
-#ifdef PIP_WIDTH_MP
-            if (mpz_get_si(clanMatrix->p[i][0]) == 0) 
-#else
-            if (clanMatrix->p[i][0] == 0) 
-#endif
-            {
-                for (j=0; j<pmat->ncols; j++)   {
-#ifdef PIP_WIDTH_MP
-                    pmat->val[pmat->nrows-1][j] -= mpz_get_si(clanMatrix->p[i][j+1]);
-#else
-                    pmat->val[pmat->nrows-1][j] -= clanMatrix->p[i][j+1];
-#endif
-                }
-            }
-        }
-    }
-
-    return pmat;
+    return cst;
 }
 
 
 PlutoConstraints *candl_matrix_to_pluto_constraints(const CandlMatrix *candlMatrix)
 {
     int i, j;
-    PlutoConstraints *pmat;
+    PlutoConstraints *cst;
 
-    pmat = pluto_constraints_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
-    pmat->nrows = candlMatrix->NbRows;
-    pmat->ncols = candlMatrix->NbColumns-1;
+    cst = pluto_constraints_alloc(candlMatrix->NbRows, candlMatrix->NbColumns-1);
+    cst->nrows = candlMatrix->NbRows;
+    cst->ncols = candlMatrix->NbColumns-1;
 
     for (i=0; i<candlMatrix->NbRows; i++)   {
         if (candlMatrix->p[i][0] == 0) {
-            pmat->is_eq[i] = 1;
+            cst->is_eq[i] = 1;
         }else{
-            pmat->is_eq[i] = 0;
+            cst->is_eq[i] = 0;
         }
 
-        for (j=0; j<pmat->ncols; j++)   {
-            pmat->val[i][j] = (int) candlMatrix->p[i][j+1];
+        for (j=0; j<cst->ncols; j++)   {
+            cst->val[i][j] = (int) candlMatrix->p[i][j+1];
         }
     }
 
-    // pluto_matrix_print(stdout, pmat);
+    // pluto_matrix_print(stdout, cst);
 
-    return pmat;
+    return cst;
 }
 
 
@@ -394,15 +347,9 @@ void pluto_dep_free(Dep *dep)
 }
 
 
-/* Convert an isl_basic_map to a PlutoConstraints object.
- * Although a PlutoConstraints object is able to represent equalities,
- * later stages in Pluto don't seem to handle equalities very well.
- * If there are any equalities in "bmap", we therefore add them
- * as inequalities and add an extra inequality that is the sum
- * of the opposites of these inequalities.
- */
-static PlutoConstraints *isl_basic_map_to_pluto_inequalities(
-    __isl_keep isl_basic_map *bmap)
+/* Convert an isl_basic_map to a PlutoConstraints object */
+static PlutoConstraints *isl_basic_map_to_pluto_constraints(
+        __isl_keep isl_basic_map *bmap)
 {
     int i, j;
     int eq_row;
@@ -423,21 +370,22 @@ static PlutoConstraints *isl_basic_map_to_pluto_inequalities(
     ineq_row = isl_mat_rows(ineq);
     n_col = isl_mat_cols(eq);
 
-    cons = pluto_constraints_alloc(!!eq_row + eq_row + ineq_row, n_col);
-    cons->nrows = !!eq_row + eq_row + ineq_row;
+    cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
+    cons->nrows = eq_row + ineq_row;
 
     for (i = 0; i < eq_row; ++i) {
+        cons->is_eq[i] = 1;
         for (j = 0; j < n_col; ++j) {
             isl_mat_get_element(eq, i, j, &v);
-            cons->val[1 + i][j] = isl_int_get_si(v);
-            cons->val[0][j] -= isl_int_get_si(v);
+            cons->val[i][j] = isl_int_get_si(v);
         }
     }
 
     for (i = 0; i < ineq_row; ++i) {
+        cons->is_eq[eq_row+i] = 0;
         for (j = 0; j < n_col; ++j) {
             isl_mat_get_element(ineq, i, j, &v);
-            cons->val[!!eq_row + eq_row + i][j] = isl_int_get_si(v);
+            cons->val[eq_row + i][j] = isl_int_get_si(v);
         }
     }
 
@@ -514,7 +462,7 @@ static __isl_give isl_set *scoplib_matrix_to_isl_set(scoplib_matrix_p matrix,
     isl_int_clear(v);
 
     bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
-                isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
+            isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
     return isl_set_from_basic_set(bset);
 }
 
@@ -719,7 +667,7 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     dep = &info->deps[info->index];
 
     dep->id = info->index;
-    dep->dpolytope = isl_basic_map_to_pluto_inequalities(bmap);
+    dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
