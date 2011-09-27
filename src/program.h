@@ -45,13 +45,13 @@ void pluto_add_parameter(PlutoProg *prog, const char *param);
 void pluto_add_stmt(PlutoProg *prog, 
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
-        const char **const iterators,
+        char ** iterators,
         const char *text
         );
 
 void pluto_add_stmt_to_end(PlutoProg *prog, 
         const PlutoConstraints *domain,
-        const char ** const iterators,
+        char **iterators,
         const char *text,
         int level
         );

@@ -224,10 +224,11 @@ void pluto_dep_print(FILE *fp, Dep *dep)
         default : fprintf(fp, "unknown"); break;
     }
 
-    fprintf(fp, "\n\n");
+    fprintf(fp, "\n");
 
     fprintf(fp, "Dependence polyhedron\n");
     pluto_constraints_print(fp, dep->dpolytope);
+    fprintf(fp, "\n");
 }
 
 
@@ -283,13 +284,6 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             stmt->is_orig_loop[j] = true;
         }
 
-        /* Is resized when necessary (pre-allocate) */
-        stmt->trans = pluto_matrix_alloc(2*nvar+1, stmt->dim+npar+1);
-        stmt->trans->nrows = 0;
-        /* using nvar for uniformity instead of stmt->dim + npar + 1; will 
-         * be reduced to stmt->dim + npar + 1 at the end of pluto sched */
-        stmt->trans->ncols = stmt->dim+npar+1;
-
         stmt->num_ind_sols = 0;
 
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
@@ -320,10 +314,11 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 
     if (stmt->nreads==0) {
         fprintf(fp, "No Read accesses\n");
-    }
-    fprintf(fp, "Read accesses\n");
-    for (i=0; i<stmt->nreads; i++)  {
-        pluto_matrix_print(fp, stmt->reads[i]->mat);
+    }else{
+        fprintf(fp, "Read accesses\n");
+        for (i=0; i<stmt->nreads; i++)  {
+            pluto_matrix_print(fp, stmt->reads[i]->mat);
+        }
     }
 
 }
@@ -1265,7 +1260,7 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
  */
 void pluto_add_stmt_to_end(PlutoProg *prog, 
         const PlutoConstraints *domain,
-        const char ** const iterators,
+        char **iterators,
         const char *text,
         int level
         )
@@ -1351,25 +1346,28 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
 void pluto_add_stmt(PlutoProg *prog, 
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
-        const char ** const iterators,
+        char ** iterators,
         const char *text)
 {
     int i, j, nstmts, max_nrows;
 
+    assert(trans != NULL);
     assert(trans->ncols == domain->ncols);
 
     nstmts = prog->nstmts;
-    Stmt **stmts = prog->stmts;
 
     prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
+
+    Stmt **stmts = prog->stmts;
 
     Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain);
 
     stmt->id = nstmts;
 
     if (trans != NULL)  {
+        pluto_matrix_free(stmt->trans);
         stmt->trans = pluto_matrix_dup(trans);
-    }else stmt->trans = NULL;
+    }
 
     stmt->text = strdup(text);
     prog->nvar = PLMAX(prog->nvar, stmt->dim);
@@ -1380,7 +1378,7 @@ void pluto_add_stmt(PlutoProg *prog,
 
     prog->stmts[nstmts] = stmt;
     prog->nstmts++;
-    nstmts++;
+    nstmts = prog->nstmts;
 
     /* Pad all trans if necessary with zeros */
     max_nrows = 0;
@@ -1418,7 +1416,9 @@ void pluto_add_stmt(PlutoProg *prog,
 /* Only dimensionality and domain are essential */
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
 {
-    int i;
+    int i, npar;
+
+    npar = domain->ncols - 1 - dim;
 
     Stmt *stmt = (Stmt *) malloc(sizeof(Stmt));
 
@@ -1427,7 +1427,11 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
     stmt->dim = dim;
     stmt->dim_orig = dim;
     stmt->domain = pluto_constraints_dup(domain);
-    stmt->trans = NULL;
+
+    /* Pre-allocate a little more to prevent frequent realloc */
+    stmt->trans = pluto_matrix_alloc(2*dim+1, dim+npar+1);
+    stmt->trans->nrows = 0;
+
     stmt->text = NULL;
     stmt->tile =  1;
     stmt->num_tiled_loops = 0;
@@ -1457,9 +1461,7 @@ void pluto_stmt_free(Stmt *stmt)
 
     pluto_constraints_free(stmt->domain);
 
-    if (stmt->trans != NULL)    {
-        pluto_matrix_free(stmt->trans);
-    }
+    pluto_matrix_free(stmt->trans);
 
     if (stmt->text != NULL) {
         free(stmt->text);
