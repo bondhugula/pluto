@@ -33,6 +33,7 @@
 #include "program.h"
 
 #include "scoplib/statement.h"
+#include "scoplib/access.h"
 
 #include <isl/map.h>
 #include <isl/mat.h>
@@ -118,7 +119,10 @@ PlutoConstraints *candl_matrix_to_pluto_constraints(const CandlMatrix *candlMatr
 
 
 /* Get the position of this access given a CandlStmt access matrix
- * (concatenated) */
+ * (concatenated)
+ * ref: starting row for a particular access in concatenated rows of
+ * access functions
+ * Return the position of this access in the list  */
 static int get_access_position(CandlMatrix *accesses, int ref)
 {
     int num, i;
@@ -159,8 +163,42 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
         dep->id = i;
 
-        // candl_matrix_print(stdout, candl_dep->domain);
+        dep->type = candl_dep->type;
+
+        dep->src = candl_dep->source->label;
+        dep->dest = candl_dep->target->label;
+
+        //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = candl_matrix_to_pluto_constraints(candl_dep->domain);
+
+        switch (dep->type) {
+            case CANDL_RAW: 
+                dep->src_acc = stmts[dep->src]->writes[
+                    get_access_position(candl_dep->source->written, candl_dep->ref_source)];
+                dep->dest_acc = stmts[dep->dest]->reads[
+                    get_access_position(candl_dep->target->read, candl_dep->ref_target)];
+                break;
+            case CANDL_WAW: 
+                dep->src_acc = stmts[dep->src]->writes[
+                    get_access_position(candl_dep->source->written, candl_dep->ref_source)];
+                dep->dest_acc = stmts[dep->dest]->writes[
+                    get_access_position(candl_dep->target->written, candl_dep->ref_target)];
+                break;
+            case CANDL_WAR: 
+                dep->src_acc = stmts[dep->src]->reads[
+                    get_access_position(candl_dep->source->read, candl_dep->ref_source)];
+                dep->dest_acc = stmts[dep->dest]->writes[
+                    get_access_position(candl_dep->target->written, candl_dep->ref_target)];
+                break;
+            case CANDL_RAR: 
+                dep->src_acc = stmts[dep->src]->reads[
+                    get_access_position(candl_dep->source->read, candl_dep->ref_source)];
+                dep->dest_acc = stmts[dep->dest]->reads[
+                    get_access_position(candl_dep->target->read, candl_dep->ref_target)];
+                break;
+            default:
+                assert(0);
+        }
 
         /* Get rid of rows that are all zero */
         int r, c;
@@ -187,16 +225,9 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         }
         free(remove);
 
-        dep->type = candl_dep->type;
 
-        int src_stmt_id = candl_dep->source->label;
-        int target_stmt_id = candl_dep->target->label;
-
-        dep->src = src_stmt_id;
-        dep->dest = target_stmt_id;
-
-        int src_dim = stmts[src_stmt_id]->dim;
-        int target_dim = stmts[target_stmt_id]->dim;
+        int src_dim = stmts[dep->src]->dim;
+        int target_dim = stmts[dep->dest]->dim;
 
         assert(candl_dep->domain->NbColumns-1 == src_dim+target_dim+npar+1);
 
@@ -296,6 +327,67 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
         stmt->text = (char *) malloc(sizeof(char)*(strlen(scop_stmt->body)+1));
         strcpy(stmt->text, scop_stmt->body);
 
+        /* Read/write accesses */
+        scoplib_access_list_p wlist = scoplib_access_get_write_access_list(scop, scop_stmt);
+        scoplib_access_list_p rlist = scoplib_access_get_read_access_list(scop, scop_stmt);
+        scoplib_access_list_p rlist_t, wlist_t;
+        rlist_t = rlist;
+        wlist_t = wlist;
+
+        int count=0;
+        scoplib_access_list_p tmp = wlist;
+        while (tmp != NULL)   {
+            count++;
+            tmp = tmp->next;
+        }
+        stmt->nwrites = count;
+        stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
+
+        tmp = rlist;
+        count = 0;
+        while (tmp != NULL)   {
+            count++;
+            tmp = tmp->next;
+        }
+        stmt->nreads = count;
+        stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
+
+        count = 0;
+        while (wlist != NULL)   {
+            PlutoMatrix *wmat = scoplib_matrix_to_pluto_matrix(wlist->elt->matrix);
+            stmt->writes[count] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
+            stmt->writes[count]->mat = wmat;
+            if (wlist->elt->symbol != NULL) {
+                stmt->writes[count]->name = strdup(wlist->elt->symbol->identifier);
+                stmt->writes[count]->symbol = scoplib_symbol_copy(wlist->elt->symbol);
+            }else{
+                stmt->writes[count]->symbol = NULL;
+            }
+            //scoplib_symbol_print(stdout, stmt->writes[count]->symbol);
+            count++;
+            wlist = wlist->next;
+        }
+
+        count = 0;
+        while (rlist != NULL)   {
+            PlutoMatrix *rmat = scoplib_matrix_to_pluto_matrix(rlist->elt->matrix);
+            stmt->reads[count] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
+            stmt->reads[count]->mat = rmat;
+            if (rlist->elt->symbol != NULL) {
+                stmt->reads[count]->name = strdup(rlist->elt->symbol->identifier);
+                stmt->reads[count]->symbol = scoplib_symbol_copy(rlist->elt->symbol);
+            }
+            else{
+                stmt->reads[count]->symbol = NULL;
+            }
+            //scoplib_symbol_print(stdout, stmt->reads[count]->symbol);
+            count++;
+            rlist = rlist->next;
+        }
+
+        scoplib_access_list_free(wlist_t);
+        scoplib_access_list_free(rlist_t);
+
         scop_stmt = scop_stmt->next;
     }
 
@@ -306,7 +398,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
     int i;
 
-    fprintf(fp, "S%d; dims: %d\n", stmt->id+1, stmt->dim);
+    fprintf(fp, "S%d \"%s\"; dims: %d\n", stmt->id+1, stmt->text, stmt->dim);
     fprintf(fp, "Domain\n");
     pluto_constraints_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
@@ -320,6 +412,12 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
             pluto_matrix_print(fp, stmt->reads[i]->mat);
         }
     }
+
+    for (i=0; i<stmt->dim; i++) {
+        printf("Original loop: %d -> %d\n", i, stmt->is_orig_loop[i]);
+    }
+
+    fprintf(fp, "\n");
 
 }
 
@@ -667,6 +765,10 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
+    /* No support yet to get these */
+    dep->src_acc = NULL;
+    dep->dest_acc = NULL;
+
     /* Initialize other fields used for auto transform */
     dep->satisfied = false;
     dep->satisfaction_level = -1;
@@ -867,8 +969,15 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     prog->nstmts = scoplib_statement_number(scop->statement);
     prog->options = options;
 
-    /* Set global variables first (they are used in stmts_read, deps_read too) */
+    /* Program parameters */
     prog->npar = scop->nb_parameters;
+
+    if (prog->npar >= 1)    {
+        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
+    }
+    for (i=0; i<prog->npar; i++)  {
+        prog->params[i] = strdup(scop->parameters[i]);
+    }
 
     prog->context = scoplib_matrix_to_pluto_constraints(scop->context);
 
@@ -918,14 +1027,6 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
      * necessary */
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
-
-    /* Parameter names */
-    if (prog->npar >= 1)    {
-        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
-    }
-    for (i=0; i<prog->npar; i++)  {
-        prog->params[i] = strdup(scop->parameters[i]);
-    }
 
     // hack for linearized accesses
     FILE *lfp = fopen(".linearized", "r");

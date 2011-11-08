@@ -22,6 +22,8 @@
 
 #include <stdbool.h>
 
+#include "scoplib/symbol.h"
+
 #include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
@@ -162,8 +164,7 @@ typedef struct pluto_access{
     int sym_id;
     char *name;
 
-    /* Disabled for now - till scoplib support is committed */
-    // scoplib_symbol_p symbol;
+    scoplib_symbol_p symbol;
 
     PlutoMatrix *mat;
 } PlutoAccess;
@@ -236,6 +237,10 @@ struct dependence{
 
     /* Dest statement ID */
     int dest;
+
+    /* Points into statements's read or write access */
+    PlutoAccess *src_acc;
+    PlutoAccess *dest_acc;
 
     /* 
      * Dependence polyhedra (both src & dest) 
