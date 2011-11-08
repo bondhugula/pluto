@@ -734,6 +734,8 @@ scoplib_scop_malloc()
   scop->optiontags    = NULL;
   scop->usr	      = NULL;
 
+  scop->symbol_table = NULL;
+
   return scop;
 }
 

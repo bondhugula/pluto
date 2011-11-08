@@ -287,8 +287,9 @@ clan_symbol_add(clan_symbol_p * location, char * identifier, int type, int rank)
 
   /* If the identifier is already in the table, do nothing. */
   symbol = clan_symbol_lookup(*location,identifier);
-  if (symbol != NULL)
+  if (symbol != NULL) {
     return symbol;
+  }
 
   /* Else, we allocate and fill a new clan_symbol_t node. */
   symbol = clan_symbol_malloc();

@@ -257,7 +257,7 @@ scoplib_access_matrix_to_access_format(scoplib_scop_p scop,
 
     scoplib_access_list_p access_list = scoplib_access_list_malloc();
     scoplib_access_p access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));
-    scoplib_symbol_p symbol  = scoplib_symbol_malloc();
+    scoplib_symbol_p symbol  = NULL;
     scoplib_matrix_p matrix;
     int i;
     int break_point = 0;
@@ -282,7 +282,10 @@ scoplib_access_matrix_to_access_format(scoplib_scop_p scop,
             }
 
             char* array_name = strdup((scop->arrays)[(original_matrix->p[i][0])-1]);
-            symbol = scoplib_symbol_copy(scoplib_symbol_lookup(scop->symbol_table,array_name));
+            scoplib_symbol_p temp_symbol = scoplib_symbol_lookup(scop->symbol_table,array_name);
+            if (temp_symbol != NULL) {
+                symbol = scoplib_symbol_copy(temp_symbol);
+            }
         }
 
         /* Setting up the break point */
