@@ -217,10 +217,12 @@ void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_size
         prog->hProps[firstD].type = 
             (prog->hProps[firstD+num_tiled_scat_dims].type == H_SCALAR)?
             H_SCALAR:H_TILE_SPACE_LOOP;
-        if (prog->hProps[firstD].type == H_SCALAR)    {
-            // printf("Copying for depth: %d\n", depth);
-            /* Set up tile space scattering correctly for scalar dims that
-             * were tiled */
+    }
+    /* Fix tile space scattering so that scalar dims that tile space
+     * counterpart of a scalar dimension is same as itself, i.e., the scalar
+     * dimension is preserved while tiling */
+    for (depth=firstD; depth<=lastD; depth++)    {
+        if (prog->hProps[depth].type == H_SCALAR)    {
             for (s=0; s<prog->nstmts; s++)    {
                 for (j=0; j<prog->stmts[s]->trans->ncols; j++)    {
                     prog->stmts[s]->trans->val[depth][j] = 
