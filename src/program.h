@@ -41,7 +41,7 @@ PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 int get_coeff_upper_bound(PlutoProg *prog);
 
-void pluto_add_parameter(PlutoProg *prog, const char *param);
+void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos);
 void pluto_add_stmt(PlutoProg *prog, 
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
@@ -60,5 +60,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
         PlutoProg *prog);
 void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
+
+void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
+void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
 
 #endif

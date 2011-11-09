@@ -1196,28 +1196,37 @@ PlutoOptions *pluto_options_alloc()
     return options;
 }
 
-void pluto_add_parameter(PlutoProg *prog, const char *param)
+
+/* Add global/program parameter at position 'pos' */
+void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
 {
     int i, j;
 
     for (i=0; i<prog->nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
-        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1);
-        pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1);
+        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1-prog->npar+pos);
+        pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1-prog->npar+pos);
 
         for (j=0; j<stmt->nwrites; j++)  {
-            pluto_matrix_add_col(stmt->writes[j]->mat, stmt->dim+prog->npar);
+            pluto_matrix_add_col(stmt->writes[j]->mat, stmt->dim+pos);
         }
         for (j=0; j<stmt->nreads; j++)  {
-            pluto_matrix_add_col(stmt->reads[j]->mat, stmt->dim+prog->npar);
+            pluto_matrix_add_col(stmt->reads[j]->mat, stmt->dim+pos);
         }
     }
     for (i=0; i<prog->ndeps; i++)   {
-        pluto_constraints_add_dim(prog->deps[i].dpolytope, prog->deps[i].dpolytope->ncols-1);
+        pluto_constraints_add_dim(prog->deps[i].dpolytope, 
+                prog->deps[i].dpolytope->ncols-1-prog->npar+pos);
     }
+    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos);
+
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
-    prog->params[prog->npar] = strdup(param);
-    pluto_constraints_add_dim(prog->context, prog->context->ncols-1);
+
+    for (i=prog->npar-1; i>=pos; i--)    {
+        prog->params[i+1] = prog->params[i];
+    }
+
+    prog->params[pos] = strdup(param);
     prog->npar++;
 }
 
@@ -1286,7 +1295,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     }
 }
 
-/* Warning: use it only to knock off a dummy dim */
+/* Warning: use it only to knock off a dummy dimension (unrelated to 
+ * anything else */
 void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
 {
     int i, npar;
@@ -1327,7 +1337,7 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
             pluto_constraints_remove_dim(prog->deps[i].dpolytope, pos);
         }
         if (prog->deps[i].dest == stmt->id) {
-            if (i==0)  printf("removing dim\n");
+            // if (i==0)  printf("removing dim\n");
             pluto_constraints_remove_dim(prog->deps[i].dpolytope, 
                     prog->stmts[prog->deps[i].src]->dim+pos);
         }
@@ -1599,4 +1609,46 @@ void pluto_stmt_free(Stmt *stmt)
     }
 
     free(stmt);
+}
+
+/* Separates a list of statements */
+void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level)
+{
+    int i, nstmts, k;
+
+    nstmts = prog->nstmts;
+
+    // pluto_matrix_print(stdout, stmt->trans);
+    for (i=0; i<nstmts; i++)    {
+        pluto_matrix_add_row(prog->stmts[i]->trans, level);
+    }
+    // pluto_matrix_print(stdout, stmt->trans);
+    for (k=0; k<num; k++)   {
+        stmts[k]->trans->val[level][stmts[k]->trans->ncols-1] = 1+k;
+    }
+
+    pluto_prog_add_hyperplane(prog, level);
+    prog->hProps[level].type = H_SCALAR;
+    prog->hProps[level].dep_prop = SEQ;
+}
+
+
+/* Separates a statement from the rest (places it later) at that level;
+ * this is done by inserting a scalar dimension separating them */
+void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
+{
+    int i, nstmts;
+
+    nstmts = prog->nstmts;
+
+    // pluto_matrix_print(stdout, stmt->trans);
+    for (i=0; i<nstmts; i++)    {
+        pluto_matrix_add_row(prog->stmts[i]->trans, level);
+    }
+    // pluto_matrix_print(stdout, stmt->trans);
+    stmt->trans->val[level][stmt->trans->ncols-1] = 1;
+
+    pluto_prog_add_hyperplane(prog, level);
+    prog->hProps[level].type = H_SCALAR;
+    prog->hProps[level].dep_prop = SEQ;
 }
