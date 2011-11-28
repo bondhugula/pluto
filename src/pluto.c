@@ -1140,10 +1140,11 @@ void denormalize_domains(PlutoProg *prog)
     int npar = prog->npar;
 
     for (i=0; i<prog->nstmts; i++)  {
+        int del_count;
         Stmt *stmt = prog->stmts[i];
-        int del_count = 0;
+        del_count = 0;
         for (j=0; j<nvar; j++)  {
-            if (!stmt->is_orig_loop[j]) {
+            if (!stmt->is_orig_loop[j-del_count]) {
                 pluto_stmt_remove_dim(stmt, j-del_count, prog);
                 del_count++;
             }
