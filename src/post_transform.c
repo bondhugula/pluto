@@ -236,8 +236,8 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
         }
 
         for (k=ufactor-1; k>=0; k--)   {
-            Stmt *zstmt = pluto_stmt_dup(stmts[i]);
-
+            // Stmt *zstmt = pluto_stmt_dup(stmts[i]);
+            Stmt *zstmt = pluto_stmt_alloc(stmts[i]->dim, stmts[i]->domain, stmts[i]->trans);
 
             for (j=0; j<zstmt->dim; j++) {
                 if (unroll[j])  {

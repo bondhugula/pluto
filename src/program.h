@@ -24,7 +24,7 @@
 #include "candl/candl.h"
 #include "constraints.h"
 
-Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain);
+Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
 void pluto_stmts_print(FILE *fp, Stmt **, int);
 void pluto_stmt_print(FILE *fp, const Stmt *stmt);

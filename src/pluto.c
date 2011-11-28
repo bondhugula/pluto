@@ -987,6 +987,11 @@ void print_dependence_directions(Dep *deps, int ndeps, int levels)
 }
 
 
+/* Pad statement domains to maximum domain depth to make it easier to construct
+ * scheduling constraints. These will be removed before autopoly returns.
+ * Also, corresponding dimensions from ILP space will be removed before ILP
+ * calls
+ */
 void normalize_domains(PlutoProg *prog)
 {
     int i, j, k;
@@ -1154,6 +1159,7 @@ void denormalize_domains(PlutoProg *prog)
 }
 
 
+
 /* Top-level automatic transformation algoritm */
 void pluto_auto_transform(PlutoProg *prog, int use_isl)
 {
@@ -1161,18 +1167,29 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
     int sols_found, num_ind_sols, depth;
 
     Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
 
     Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
+    int npar = prog->npar;
 
     HyperplaneProperties *hProps = prog->hProps;
 
     normalize_domains(prog);
 
+    /* Get rid of any existing transformation */
+    for (i=0; i<nstmts; i++) {
+        Stmt *stmt = prog->stmts[i];
+        pluto_matrix_free(stmt->trans);
+        /* Pre-allocate a little more to prevent frequent realloc */
+        stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
+        stmt->trans->nrows = 0;
+    }
+
     /* The number of independent solutions required for the deepest 
      * statement */
     nsols = 0;
-    for (i=0; i<prog->nstmts; i++)    {
+    for (i=0; i<nstmts; i++)    {
         nsols = PLMAX(nsols, stmts[i]->dim);
     }
 

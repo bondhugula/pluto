@@ -41,18 +41,6 @@
 #include <isl/flow.h>
 #include <isl/union_map.h>
 
-/* Return a copy of the statement */
-/* NO LONGER MAINTAINED: do not use */
-Stmt *pluto_stmt_dup(const Stmt *src)
-{
-    Stmt *dest = pluto_stmt_alloc(src->dim, src->domain);
-
-    *dest = *src;
-
-    dest->trans = pluto_matrix_dup(src->trans);
-
-    return dest;
-}
 
 
 PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
@@ -302,10 +290,13 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
         PlutoConstraints *domain = 
             scoplib_matrix_to_pluto_constraints(scop_stmt->domain->elt);
 
-        stmts[i] = pluto_stmt_alloc(scop_stmt->nb_iterators, domain);
+        PlutoMatrix *trans = pluto_matrix_alloc(scop_stmt->nb_iterators, domain->ncols);
+        pluto_matrix_initialize(trans, 0);
+        stmts[i] = pluto_stmt_alloc(scop_stmt->nb_iterators, domain, trans);
         Stmt *stmt = stmts[i];
 
         pluto_constraints_free(domain);
+        pluto_matrix_free(trans);
 
         stmt->id = i;
 
@@ -1261,6 +1252,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     }
     stmt->iterators[pos] = strdup(iter);
 
+    /* Stmt should always have a transformation */
+    assert(stmt->trans != NULL);
     pluto_matrix_add_col(stmt->trans, pos);
 
     if (time_pos != -1) {
@@ -1471,14 +1464,9 @@ void pluto_add_stmt(PlutoProg *prog,
 
     Stmt **stmts = prog->stmts;
 
-    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain);
+    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
 
     stmt->id = nstmts;
-
-    if (trans != NULL)  {
-        pluto_matrix_free(stmt->trans);
-        stmt->trans = pluto_matrix_dup(trans);
-    }
 
     stmt->text = strdup(text);
     prog->nvar = PLMAX(prog->nvar, stmt->dim);
@@ -1525,7 +1513,8 @@ void pluto_add_stmt(PlutoProg *prog,
 
 
 /* Only dimensionality and domain are essential */
-Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
+Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, 
+        const PlutoMatrix *trans)
 {
     int i, npar;
 
@@ -1539,9 +1528,7 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain)
     stmt->dim_orig = dim;
     stmt->domain = pluto_constraints_dup(domain);
 
-    /* Pre-allocate a little more to prevent frequent realloc */
-    stmt->trans = pluto_matrix_alloc(2*dim+1, dim+npar+1);
-    stmt->trans->nrows = 0;
+    stmt->trans = pluto_matrix_dup(trans);
 
     stmt->text = NULL;
     stmt->tile =  1;
