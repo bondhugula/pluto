@@ -702,6 +702,51 @@ static __isl_give isl_union_map *scoplib_access_to_isl_union_map(
     return res;
 }
 
+/*
+ * Like scoplib_access_to_isl_union_map, but just for a single scoplib access
+ * (read or write)
+ * pos: position (starting row) of the access in 'access'
+ */
+static __isl_give isl_map *scoplib_basic_access_to_isl_union_map(
+        scoplib_matrix_p access, int pos, __isl_take isl_set *dom, 
+        char **arrays)
+{
+    int len, n_col;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_mat *eq, *ineq;
+
+    ctx = isl_set_get_ctx(dom);
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+
+    n_col = access->NbColumns;
+
+    isl_basic_map *bmap;
+    isl_map *map;
+    int arr = SCOPVAL_get_si(access->p[pos][0]) - 1;
+
+    len = access_len(access, pos);
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_from_domain(dim);
+    dim = isl_dim_add(dim, isl_dim_out, len);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_out, arrays[arr]);
+
+    ineq = isl_mat_alloc(ctx, 0, len + n_col - 1);
+    eq = extract_equalities(ctx, access, pos, len);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    map = isl_map_from_basic_map(bmap);
+    map = isl_map_intersect_domain(map, isl_set_copy(dom));
+
+    isl_set_free(dom);
+
+    return map;
+}
+
 
 static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
 {
@@ -731,6 +776,7 @@ static int map_count(__isl_take isl_map *map, void *user)
  */
 struct pluto_extra_dep_info {
     Dep *deps;
+    Stmt **stmts;
     int type;
     int index;
 };
@@ -742,9 +788,12 @@ struct pluto_extra_dep_info {
  */
 static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
 {
+    Stmt **stmts;
     Dep *dep;
     struct pluto_extra_dep_info *info;
     info = (struct pluto_extra_dep_info *)user;
+
+    stmts = info->stmts;
 
     bmap = isl_basic_map_remove_divs(bmap);
 
@@ -756,11 +805,44 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
-    /* No support yet to get these */
-    dep->src_acc = NULL;
-    dep->dest_acc = NULL;
+    int src_acc_num, dest_acc_num;
+    const char *name;
 
-    /* Initialize other fields used for auto transform */
+    name = isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2;
+    while (*(name++) != '_');
+    src_acc_num = atoi(name+1);
+
+    name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
+    while (*(name++) != '_');
+    dest_acc_num = atoi(name+1);
+
+    // pluto_stmt_print(stdout, stmts[dep->src]);
+    // pluto_stmt_print(stdout, stmts[dep->dest]);
+    // printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num);
+
+    switch (info->type) {
+        case CANDL_RAW: 
+            dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+            dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+            break;
+        case CANDL_WAW: 
+            dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+            dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+            break;
+        case CANDL_WAR: 
+            dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+            dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+            break;
+        case CANDL_RAR: 
+            printf("%d %d\n", dep->src, src_acc_num);
+            dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+            dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+            break;
+        default:
+            assert(0);
+    }
+
+    /* Initialize other fields (used for auto transform) */
     dep->satisfied = false;
     dep->satisfaction_level = -1;
 
@@ -780,10 +862,10 @@ static int map_extract(__isl_take isl_map *map, void *user)
 }
 
 
-static int extract_deps(Dep *deps, int first, __isl_keep isl_union_map *umap,
-    int type)
+static int extract_deps(Dep *deps, int first, Stmt **stmts, 
+        __isl_keep isl_union_map *umap, int type)
 {
-    struct pluto_extra_dep_info info = { deps, type, first };
+    struct pluto_extra_dep_info info = { deps, stmts, type, first };
 
     isl_union_map_foreach_map(umap, &map_extract, &info);
 
@@ -811,7 +893,7 @@ static int extract_deps(Dep *deps, int first, __isl_keep isl_union_map *umap,
 static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
         PlutoOptions *options)
 {
-    int i;
+    int i, racc_num, wacc_num, pos, len;
     int nstmts = scoplib_statement_number(scop->statement);
     isl_ctx *ctx;
     isl_dim *dim;
@@ -837,6 +919,13 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     read = isl_union_map_empty(isl_dim_copy(dim));
     schedule = isl_union_map_empty(dim);
 
+    if (options->isldepcompact) {
+        /* Leads to fewer dependences. Each dependence may not have a unique
+         * source/target access relating to it, since a union is taken
+         * across all reads for a statement (and writes) for a particualr
+         * array. Relationship between a dependence and associated dependent
+         * data / array elements is lost, and some analyses may not work with
+         * such a representation */
     for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
         isl_set *dom;
         isl_map *schedule_i;
@@ -869,7 +958,69 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
         write = isl_union_map_union(write, write_i);
         schedule = isl_union_map_union(schedule,
                                         isl_union_map_from_map(schedule_i));
+        }
+    }else{
+        /* Each dependence is for a particular source and target access. Use
+         * <stmt, access> pair while relating to accessed data so each
+         * dependence can be associated to a unique source and target access
+         */
+        for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
+            isl_set *dom;
+            isl_map *schedule_i;
+            isl_map *read_pos;
+            isl_map *write_pos;
 
+            racc_num = 0;
+            wacc_num = 0;
+
+            for (pos = 0; pos < stmt->read->NbRows + stmt->write->NbRows; pos += len) {
+                char name[20];
+                if (pos<stmt->read->NbRows) {
+                    snprintf(name, sizeof(name), "S_%d_r%d", i, racc_num);
+                }else{
+                    snprintf(name, sizeof(name), "S_%d_w%d", i, wacc_num);
+                }
+
+                dim = isl_dim_set_alloc(ctx, scop->nb_parameters, stmt->nb_iterators);
+                dim = set_names(dim, isl_dim_param, scop->parameters);
+                dim = set_names(dim, isl_dim_set, stmt->iterators);
+                dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+                dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
+                dom = isl_set_intersect(dom, isl_set_copy(context));
+
+                dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
+                        2 * stmt->nb_iterators + 1);
+                dim = set_names(dim, isl_dim_param, scop->parameters);
+                dim = set_names(dim, isl_dim_in, stmt->iterators);
+                dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+
+                schedule_i = scoplib_schedule_to_isl_map(stmt->schedule, dim);
+
+                if (pos<stmt->read->NbRows) {
+                    len = access_len(stmt->read, pos);
+                }else{
+                    len = access_len(stmt->write, pos - stmt->read->NbRows);
+                }
+
+                if (pos<stmt->read->NbRows) {
+                    read_pos = scoplib_basic_access_to_isl_union_map(stmt->read, 
+                            pos, isl_set_copy(dom), scop->arrays);
+                    read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
+                }else{
+                    write_pos = scoplib_basic_access_to_isl_union_map(stmt->write, 
+                            pos-stmt->read->NbRows, dom, scop->arrays);
+                    write = isl_union_map_union(write, isl_union_map_from_map(write_pos));
+                }
+
+                schedule = isl_union_map_union(schedule,
+                        isl_union_map_from_map(schedule_i));
+                if (pos<stmt->read->NbRows) {
+                    racc_num++;
+                }else{
+                    wacc_num++;
+                }
+            }
+        }
     }
 
     if (options->lastwriter) {
@@ -889,7 +1040,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                                 isl_union_map_copy(empty),
                                 isl_union_map_copy(schedule),
                                 &dep_rar, NULL, NULL, NULL);
-    } else {
+    }else {
         isl_union_map_compute_flow(isl_union_map_copy(read),
                             isl_union_map_copy(empty),
                             isl_union_map_copy(write),
@@ -926,10 +1077,10 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
 
     prog->deps = (Dep *)malloc(prog->ndeps * sizeof(Dep));
     prog->ndeps = 0;
-    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_raw, CANDL_RAW);
-    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_war, CANDL_WAR);
-    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_waw, CANDL_WAW);
-    prog->ndeps += extract_deps(prog->deps, prog->ndeps, dep_rar, CANDL_RAR);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_raw, CANDL_RAW);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, CANDL_WAR);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, CANDL_WAW);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, CANDL_RAR);
 
     isl_union_map_free(dep_raw);
     isl_union_map_free(dep_war);
