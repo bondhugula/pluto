@@ -12,6 +12,9 @@ cd ..
 
 cd clan-0.6.0/
 ./autogen.sh
+cd scoplib/scoplib-0.2.0
+autoreconf -vfi
+cd ../..
 cd ..
 
 (cd isl; ./autogen.sh)
