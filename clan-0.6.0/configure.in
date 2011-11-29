@@ -130,7 +130,8 @@ AS_IF([test "x$with_scoplib" != xno ],
 AS_IF([test "x$shipped_scoplib" != xno ], 
       [abs_top_srcdir=`cd $srcdir; pwd`;
        abs_top_builddir=`pwd`;
-       if ! test -f $abs_top_srcdir/scoplib/scoplib-0.2.0 ; then
+       test -f $abs_top_srcdir/scoplib/scoplib-0.2.0
+       if [[ ! $? ]] ; then
        	  cd $abs_top_srcdir/scoplib && tar xzf scoplib-0.2.0.tar.gz ; cd -;
        fi;
        AC_CONFIG_SUBDIRS([scoplib/scoplib-0.2.0])
