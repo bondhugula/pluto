@@ -1320,6 +1320,7 @@ PlutoOptions *pluto_options_alloc()
     options->bee = 0;
 
     options->isldep = 0;
+    options->isldepcompact = 0;
 
     options->islsolve = 0;
 
@@ -1502,6 +1503,7 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
     }
     /* Initialize some */
     prog->hProps[pos].unroll = NO_UNROLL;
+    prog->hProps[pos].prevec = 0;
     prog->hProps[pos].band_num = -1;
     prog->hProps[pos].dep_prop = UNKNOWN;
     prog->hProps[pos].type = H_UNKNOWN;
