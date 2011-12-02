@@ -292,6 +292,9 @@ struct hyperplane_properties{
 
     /* Unroll or Unroll-jam this dimension? */
     UnrollType unroll;
+
+    /* Mark for icc vectorization */
+    int prevec;
 };
 typedef struct hyperplane_properties HyperplaneProperties;
 

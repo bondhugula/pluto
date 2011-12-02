@@ -327,10 +327,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
             fclose(paramsFP);
         }
-        detect_unrollable_loops(prog);
-    }else{
-        /* Create an empty .unroll file */
-        fopen(".unroll", "w");
+        detect_mark_unrollable_loops(prog);
     }
 
     if (options->polyunroll)    {
@@ -342,6 +339,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
+
+    /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+    /* Since meta info about loops
+     * is printed to be processed by scripts - if transformations are
+     * performed, changed loop order/iterator names will be missed  */
+    gen_unroll_file(prog);
+    gen_vecloop_file(prog);
 
     char *outFileName;
     char *cloogFileName;
@@ -391,6 +395,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
         free(irroption);
     }
+
+    /* Generate code using Cloog and add necessary stuff before/after code */
     rewind(cloogfp);
 
     if (!outfp) {

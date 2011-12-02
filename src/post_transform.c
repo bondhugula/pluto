@@ -75,7 +75,6 @@ int pre_vectorize(PlutoProg *prog)
      * has been identified for parallelization */
     lastloop = getDeepestNonScalarLoop(prog);
 
-    FILE *vfp = fopen(".vectorize", "w");
     for (loop=lastloop; loop>=0; loop--)    {
         /* This loop will not be a tile space loop */
         // printf("%d\n",  loop);
@@ -91,32 +90,48 @@ int pre_vectorize(PlutoProg *prog)
              * auto-vectorization */
             interchange_scattering_dims(prog,loop,lastloop);
 
-            fprintf(vfp, "t%d\n", lastloop+1);
+            hProps[lastloop].prevec = 1;
+
 
             break;
         }
     }
-    fclose(vfp);
 
-    return 1;
+    return 0;
+}
+
+/* Create a .unroll - empty .unroll if no unroll-jammable loops */
+int gen_vecloop_file(PlutoProg *prog)
+{
+    int i;
+
+    HyperplaneProperties *hProps = prog->hProps;
+    FILE *vfp = fopen(".vectorize", "w");
+
+    if (!vfp)  {
+        printf("Error opening .vectorize file for writing\n");
+        return -1;
+    }
+
+    for (i=0; i<prog->num_hyperplanes; i++) {
+        if (hProps[i].prevec == 1)  {
+            fprintf(vfp, "t%d\n", i+1);
+        }
+    }
+
+    fclose(vfp);
+    return 0;
 }
 
 
 /* Detect upto two loops to register tile (unroll-jam) */
-int detect_unrollable_loops(PlutoProg *prog)   
+int detect_mark_unrollable_loops(PlutoProg *prog)   
 {
     int bandStart, bandEnd;
     int numUnrollableLoops;
     int loop, i;
 
-    FILE *unrollfp = fopen(".unroll", "w");
-
-    Stmt **stmts = prog->stmts;
     HyperplaneProperties *hProps = prog->hProps;
-
-    if (!unrollfp)  {
-        return -1;
-    }
 
     /* Loops to be unroll-jammed come from the innermost tilable band; there
      * is trivially always one hyperplane in this band; discount the last one
@@ -177,7 +192,28 @@ int detect_unrollable_loops(PlutoProg *prog)
         }
     }
 
-    for (i=0; i<stmts[0]->trans->nrows; i++) {
+    IF_DEBUG(fprintf(stdout, 
+                "[Pluto post transform] Detected %d unroll/jammable loops\n\n", 
+                numUnrollableLoops));
+
+    return numUnrollableLoops;
+}
+
+
+/* Create a .unroll - empty .unroll if no unroll-jammable loops */
+int gen_unroll_file(PlutoProg *prog)
+{
+    int i;
+
+    HyperplaneProperties *hProps = prog->hProps;
+    FILE *unrollfp = fopen(".unroll", "w");
+
+    if (!unrollfp)  {
+        printf("Error opening .unroll file for writing\n");
+        return -1;
+    }
+
+    for (i=0; i<prog->num_hyperplanes; i++) {
         if (hProps[i].unroll == UNROLL)  {
             fprintf(unrollfp, "t%d Unroll %d\n", i+1, options->ufactor);
         }else if (hProps[i].unroll == UNROLLJAM)    {
@@ -185,16 +221,12 @@ int detect_unrollable_loops(PlutoProg *prog)
         }
     }
 
-    IF_DEBUG(fprintf(stdout, 
-                "[Pluto post transform] Detected %d unroll/jammable loops\n\n", 
-                numUnrollableLoops));
-
     fclose(unrollfp);
-
-    return numUnrollableLoops;
+    return 0;
 }
 
 
+/* Unroll scattering functions - incomplete / not used */
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
 {
     int i, j, k;
