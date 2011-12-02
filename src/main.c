@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
+        {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscoplib", no_argument, &options->readscoplib, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
         {0, 0, 0, 0}

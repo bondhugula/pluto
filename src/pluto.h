@@ -136,7 +136,10 @@ struct plutoOptions{
     /* Use isl to compute dependences */
     int isldep;
 
-    /* Use candl lastwriter */
+    /* Compact dependences with ISL */
+    int isldepcompact;
+
+    /* Compute lastwriter for dependences */
     int lastwriter;
 
     /* DEV: Don't use cost function */
