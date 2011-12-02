@@ -8,8 +8,9 @@
 # Available under GNU GPL v2 or (at your option) any later version
 #
 
-if [ $# -ne 1 ]; then
-    echo "Usage: ./ploog <src file>"
+if [ $# -ne 2 ]; then
+    echo "Usage: ./ploog <src file> [all loops | first loop] "
+    # third arg: 0 - all loops, 1 - first loop
     exit 1
 fi
 
@@ -24,48 +25,51 @@ if [ ! -f .pragmas ]; then
 fi
 
 NUMLINES=`wc -l $1 | awk '{print $1}'`
-
 dirname=`dirname $1`
-
 npar=`wc -l .pragmas | awk '{print $1}'`
-
 PARDIMS=`cat .pragmas | awk '{print $1}'`
 
 i=1
 
 for DIM in $PARDIMS;  do
-
     # sometimes the scattering dimension may not appear
     grep -q $DIM $1 
 
-    if [ $? == 0 ]; then
-
-        # mark all loops of this scattering dimension parallel
-
-        LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}'`
-
-        grep "$DIM #pragma" .pragmas > .pragma
-
-        j=0
-        for num in $LINE_NUMBERS; do
-
-            LOOP=`sed -n -e ''$(($num+3*$j))'p' $1`
-            sed -n -e '1,'$(($num+3*$j-1))'p' $1 > .header
-            sed -n -e ''$(($num+3*$j+1))',$p' $1 > .footer
-
-            sed -n -e ''$(($num+3*$j))'p' $1 > .parloop
-
-            # lower and upper bounds
-            echo -e "\tlb$i="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .parloop`";" > .lb
-            echo -e "\tub$i="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .parloop`";" > .ub
-
-            cat .header .lb .ub .pragma | sed -e "s/$DIM #pragma/#pragma/" > $1
-            echo -e "\tfor ($DIM=lb$i; $DIM<=ub$i; $DIM++) {" >> $1
-            cat .footer >> $1
-            j=$((j+1))
-        done
-        i=$((i+1))
+    if [ $? -ne 0 ]; then
+        break
     fi
+
+    # Mark all loops of this scattering dimension parallel
+
+    # The pragma from .pragmas (generated from Pluto) that corresponds to this loop
+    grep "$DIM #pragma" .pragmas > .pragma
+
+    if [ "$2" == 0 ]; then
+        LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}'`
+        echo $LINE_NUMBERS
+    else
+        LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}' | head -n 1`
+    fi
+
+
+    j=0
+    for num in $LINE_NUMBERS; do
+        LOOP=`sed -n -e ''$(($num+3*$j))'p' $1`
+        sed -n -e '1,'$(($num+3*$j-1))'p' $1 > .header
+        sed -n -e ''$(($num+3*$j+1))',$p' $1 > .footer
+
+        sed -n -e ''$(($num+3*$j))'p' $1 > .parloop
+
+        # lower and upper bounds
+        echo -e "\tlb$i="`awk '{split($2,t,";"); split(t[1],u,"="); print u[2] }' .parloop`";" > .lb
+        echo -e "\tub$i="`awk '{split($2,t,";"); split(t[2],u,"="); print u[2] }' .parloop`";" > .ub
+
+        cat .header .lb .ub .pragma | sed -e "s/$DIM #pragma/#pragma/" > $1
+        echo -e "\tfor ($DIM=lb$i; $DIM<=ub$i; $DIM++) {" >> $1
+        cat .footer >> $1
+        j=$((j+1))
+    done
+    i=$((i+1))
 done
 
 rm -f .header .footer .ub .lb .parloop .pragma

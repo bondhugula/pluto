@@ -64,7 +64,7 @@ PLUTOOUT=$OUTFILE
 
 # run the syntactic #pragma inserter
 if [ "$PARALLEL" == 1 ]; then
-    $ploog $PLUTOOUT || exit 1
+    $ploog $PLUTOOUT 0 || exit 1
 fi
 
 # generate and insert unrolling annotations, run ancc on it,
