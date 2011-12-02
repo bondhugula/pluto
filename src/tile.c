@@ -337,7 +337,7 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
      * its intra-tile loop can be vectorized and the tile space can be OpenMP
      * parallel */
     for (loop=0; loop<prog->num_hyperplanes; loop++) {
-        if (hProps[loop].dep_prop == PARALLEL)   { 
+        if (hProps[loop].type != H_SCALAR && hProps[loop].dep_prop == PARALLEL)   { 
             *bandStart = loop;
             *bandEnd = loop;
             return;
