@@ -650,12 +650,17 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     /* Get rid of the variables that don't appear in the domain of this
      * statement and also beta rows
      */
-    for (i = 0, p = 0; i < nvar; i++)
-        if (stmt->is_orig_loop[i])
+    for (i = 0, p = 0; i < nvar; i++) {
+        if (stmt->is_orig_loop[i]) {
            p++;
-    for (j = 0, q = 0; j < stmt->trans->nrows; j++)
-       if (hProps[j].type != H_SCALAR)
+        }
+    }
+
+    for (j = 0, q = 0; j < stmt->trans->nrows; j++) {
+       if (hProps[j].type != H_SCALAR) {
            q++;
+       }
+    }
 
     if (q == 0) {
         /* No need to add any orthogonality constraints */
@@ -819,16 +824,16 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
 
 /*
- * Check whether the dependence is carried at level 'level'
+ * Check whether the dependence is satisfied at level 'level'
  * (works whether the dep is const or non-const, inter-stmt or
  * self edge
+ * TODO: assumes no parametric shifts
  */
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
 {
     static PlutoConstraints *cst = NULL;
-    int j, src, dest, *sol;
+    int j, src, dest, src_dim, dest_dim, *sol;
 
-    int nvar = prog->nvar;
     int npar = prog->npar;
 
     Stmt **stmts = prog->stmts;
@@ -836,15 +841,17 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
     src = dep->src;
     dest = dep->dest;
 
+    src_dim = prog->stmts[src]->dim;
+    dest_dim = prog->stmts[dest]->dim;
+
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
     if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows)   {
         if (cst) pluto_constraints_free(cst);
-        /* rougly allocate twice to prevent frequent increase */
-        cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), 2*nvar+npar+1);
+        cst = pluto_constraints_alloc(1+dep->dpolytope->nrows, src_dim+dest_dim+npar+1);
     }
-    cst->ncols = 2*nvar+npar+1;
+    cst->ncols = src_dim+dest_dim+npar+1;
 
     /*
      * constraint format 
@@ -853,14 +860,14 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
      */
 
     cst->is_eq[0] = 0;
-    for (j=0; j<nvar; j++)    {
+    for (j=0; j<src_dim; j++)    {
         cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
-    for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
     }
-    cst->val[0][2*nvar+npar] = 
-        stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar];
+    cst->val[0][src_dim+dest_dim+npar] = 
+        stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar];
 
     cst->nrows = 1;
 
