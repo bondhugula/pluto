@@ -46,7 +46,6 @@ for DIM in $PARDIMS;  do
 
     if [ "$2" == 0 ]; then
         LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}'`
-        echo $LINE_NUMBERS
     else
         LINE_NUMBERS=`grep -n "for ($DIM=" $1 | awk '{split($1,t,":"); print t[1]}' | head -n 1`
     fi
