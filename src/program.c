@@ -766,9 +766,7 @@ static __isl_give isl_map *scoplib_basic_access_to_isl_union_map(
     bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
             isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
     map = isl_map_from_basic_map(bmap);
-    map = isl_map_intersect_domain(map, isl_set_copy(dom));
-
-    isl_set_free(dom);
+    map = isl_map_intersect_domain(map, dom);
 
     return map;
 }
@@ -992,15 +990,17 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
          */
         for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
             isl_set *dom;
-            isl_map *schedule_i;
-            isl_map *read_pos;
-            isl_map *write_pos;
 
             racc_num = 0;
             wacc_num = 0;
 
             for (pos = 0; pos < stmt->read->NbRows + stmt->write->NbRows; pos += len) {
+                isl_map *read_pos;
+                isl_map *write_pos;
+                isl_map *schedule_i;
+
                 char name[20];
+
                 if (pos<stmt->read->NbRows) {
                     snprintf(name, sizeof(name), "S_%d_r%d", i, racc_num);
                 }else{
@@ -1030,7 +1030,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
 
                 if (pos<stmt->read->NbRows) {
                     read_pos = scoplib_basic_access_to_isl_union_map(stmt->read, 
-                            pos, isl_set_copy(dom), scop->arrays);
+                            pos, dom, scop->arrays);
                     read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
                 }else{
                     write_pos = scoplib_basic_access_to_isl_union_map(stmt->write, 
