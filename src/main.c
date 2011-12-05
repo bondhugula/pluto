@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
+        {"identity", no_argument, &options->identity, 1},
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
@@ -264,7 +265,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Auto transformation */
-    pluto_auto_transform(prog, options->islsolve);
+    if (!options->identity) {
+        pluto_auto_transform(prog, options->islsolve);
+    }else{
+        pluto_dep_satisfaction_check(prog, options->islsolve);
+    }
+
+    pluto_detect_transformation_properties(prog, options->islsolve);
 
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
@@ -273,7 +280,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Print out transformations */
     if (!options->silent)   {
         pluto_transformations_pretty_print(prog);
-        print_hyperplane_properties(prog);
+        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->tile)   {
@@ -294,7 +301,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         if (retval && options->tile == 0)   {
             printf("WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("use --tile option for better parallelization \n");
-            print_hyperplane_properties(prog);
+            pluto_print_hyperplane_properties(prog);
         }
     }
 
@@ -308,7 +315,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->tile && !options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
         pluto_transformations_pretty_print(prog);
-        print_hyperplane_properties(prog);
+        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->parallel)  {

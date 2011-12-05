@@ -124,6 +124,9 @@ struct plutoOptions{
     /* Pure polyhedral unrolling (instead of postpass) */
     int polyunroll;
 
+    /* Identity transformation */
+    int identity;
+
     /* Generate scheduling pragmas for Bee+Cl@k */
     int bee;
 
@@ -342,9 +345,9 @@ extern PlutoOptions *options;
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl);
-int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl);
+void pluto_dep_satisfaction_check(PlutoProg *prog, int use_isl);
 bool dep_is_satisfied(Dep *dep);
+void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl);
 
 PlutoConstraints *get_permutability_constraints(Dep *, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
@@ -381,10 +384,12 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
-void print_hyperplane_properties(const PlutoProg *prog);
+void pluto_print_hyperplane_properties(const PlutoProg *prog);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);
+
+int gen_vecloop_file(PlutoProg *prog);
 
 #endif

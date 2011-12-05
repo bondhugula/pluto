@@ -34,24 +34,12 @@
 #include "ddg.h"
 #include "version.h"
 
+int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl);
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl);
+
 void print_dependence_directions (Dep *deps, int ndeps, int levels);
 int get_num_unsatisfied_deps (Dep *deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps (Dep *deps, int ndeps);
-
-/* Check whether all deps are satisfied */
-int deps_satisfaction_check(Dep *deps, int ndeps)
-{
-    int i;
-
-    for (i=0; i<ndeps; i++) {
-        if (IS_RAR(deps[i].type)) continue;
-        if (!dep_is_satisfied(&deps[i]))    {
-            return false;
-        }
-    }
-    return true;
-}
-
 
 /*
  * Returns the number of (new) satisfied dependences at this level
@@ -80,6 +68,32 @@ int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl)
 
     return num_new_carried;
 }
+
+
+/* Check whether all deps are satisfied */
+int deps_satisfaction_check(Dep *deps, int ndeps)
+{
+    int i;
+
+    for (i=0; i<ndeps; i++) {
+        if (IS_RAR(deps[i].type)) continue;
+        if (!dep_is_satisfied(&deps[i]))    {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+void pluto_dep_satisfaction_check(PlutoProg *prog, int use_isl)
+{
+    int i;
+
+    for (i=0; i<prog->num_hyperplanes; i++) {
+        dep_satisfaction_update(prog, i, use_isl);
+    }
+}
+
 
 
 bool dep_is_satisfied(Dep *dep)
@@ -469,8 +483,8 @@ void cut_smart(PlutoProg *prog, Graph *ddg, int use_isl)
             if (prog->stmts[0]->trans->nrows <= 4*prog->nvar+2)   {
                 if (ddg_sccs_direct_connected(ddg, prog, i, j))    {
                     // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
-                        num_new_carried += cut_between_sccs(prog,ddg,i,j,
-                                                            use_isl);
+                    num_new_carried += cut_between_sccs(prog,ddg,i,j,
+                            use_isl);
                     // }
                 }
             }else{
@@ -493,7 +507,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg, int use_isl)
 
     /* Cut in the center */
     if (cut_between_sccs(prog,ddg,ceil(ddg->num_sccs/2.0)-1,
-                         ceil(ddg->num_sccs/2.0), use_isl))  {
+                ceil(ddg->num_sccs/2.0), use_isl))  {
         return;
     }
 
@@ -570,8 +584,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
             orthcst[j] = get_stmt_ortho_constraints(stmts[j], 
                     prog, currcst, &orthonum[j]);
             // if (orthonum[j] > 0)    {
-              //   if (orthoprod == 0) orthoprod = orthonum[j];
-                // else orthoprod = orthoprod*orthonum[j];
+            //   if (orthoprod == 0) orthoprod = orthonum[j];
+            // else orthoprod = orthoprod*orthonum[j];
             // }
             // num[j] = 0;
             orthosum += orthonum[j];
@@ -736,6 +750,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
         for (i=0; i<nstmts; i++)    {
             pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
         }
+
         for (i=0; i<ncomps; i++)    {
             for (j=0; j<grpCount[i]; j++)    {
                 int id = stmtGrp[i][j];
@@ -799,8 +814,8 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
                     fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
 
                     // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] = 
-                        // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
-                         // == H_SCALAR)? SCALAR:LOOP;
+                    // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
+                    // == H_SCALAR)? SCALAR:LOOP;
                 }
 
                 /* Number of levels */
@@ -841,7 +856,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 }
 
 
-void detect_transformation_properties(PlutoProg *prog, int use_isl)
+void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
 {
     int level, i, j;
     Stmt **stmts = prog->stmts;
@@ -1186,6 +1201,8 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
     }
+    prog->num_hyperplanes = 0;
+    prog->hProps = NULL;
 
     /* The number of independent solutions required for the deepest 
      * statement */
@@ -1274,8 +1291,6 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 
     }while (num_ind_sols < nsols || !deps_satisfaction_check(prog->deps, prog->ndeps));
 
-    detect_transformation_properties(prog, use_isl);
-
     denormalize_domains(prog);
 }
 
@@ -1288,7 +1303,7 @@ int get_num_unsatisfied_deps (Dep *deps, int ndeps)
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i].type))   continue;
         if (!deps[i].satisfied)  {
-            IF_DEBUG(printf("Unsatisfied dep %d\n", i));
+            IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
             count++;
         }
     }
@@ -1507,6 +1522,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
     cloogOptions->strides = 1;
     cloogOptions->quiet = options->silent;
 
+    /* Generates better code in general */
     cloogOptions->backtrack = 1;
 
     if (options->cloogf >= 1 && options->cloogl >= 1) {
@@ -1792,7 +1808,7 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
 
 
 /* List properties of newly found hyperplanes */
-void print_hyperplane_properties(const PlutoProg *prog)
+void pluto_print_hyperplane_properties(const PlutoProg *prog)
 {
     int j, numH;
     HyperplaneProperties *hProps;

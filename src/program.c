@@ -42,6 +42,24 @@
 #include <isl/union_map.h>
 
 
+PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
+{
+    int i, j;
+
+    PlutoMatrix *mat;
+
+    mat = pluto_matrix_alloc(smat->NbRows, smat->NbColumns-1);
+    for (i=0; i<smat->NbRows; i++)  {
+        /* Only equalities in schedule expected */
+        assert(smat->p[i][0] == 0);
+
+        for (j=1; j<smat->NbColumns; j++)  {
+            mat->val[i][j-1] = smat->p[i][j];
+        }
+    }
+
+    return mat;
+}
 
 PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
 {
@@ -155,6 +173,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
         dep->src = candl_dep->source->label;
         dep->dest = candl_dep->target->label;
+        dep->direction = NULL;
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = candl_matrix_to_pluto_constraints(candl_dep->domain);
@@ -265,20 +284,22 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
 {
     int i, j;
     Stmt **stmts;
-    int npar, nvar, nstmts;
+    int npar, nvar, nstmts, max_sched_rows;
     scoplib_statement_p scop_stmt;
 
     npar = scop->nb_parameters;
     nstmts = scoplib_statement_number(scop->statement);
 
+    if (nstmts == 0)    return NULL;
+
     /* Max dom dimensionality */
     nvar = -1;
-    if (nstmts >= 1)    {
-        scop_stmt = scop->statement;
-        for (i=0; i<nstmts; i++) {
-            nvar = PLMAX(nvar, scop_stmt->nb_iterators);
-            scop_stmt = scop_stmt->next;
-        }
+    max_sched_rows = 0;
+    scop_stmt = scop->statement;
+    for (i=0; i<nstmts; i++) {
+        nvar = PLMAX(nvar, scop_stmt->nb_iterators);
+        max_sched_rows = PLMAX(max_sched_rows, scop_stmt->schedule->NbRows);
+        scop_stmt = scop_stmt->next;
     }
 
     /* Allocate more to account for unroll/jamming later on */
@@ -289,14 +310,17 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
     for(i=0; i<nstmts; i++)  {
         PlutoConstraints *domain = 
             scoplib_matrix_to_pluto_constraints(scop_stmt->domain->elt);
+        PlutoMatrix *trans = scoplib_schedule_to_pluto_trans(scop_stmt->schedule);
 
-        PlutoMatrix *trans = pluto_matrix_alloc(scop_stmt->nb_iterators, domain->ncols);
-        pluto_matrix_initialize(trans, 0);
+        for (j=trans->nrows; j<max_sched_rows; j++) {
+            pluto_matrix_add_row(trans, trans->nrows);
+        }
+        // scoplib_matrix_print(stdout, scop_stmt->schedule);
         stmts[i] = pluto_stmt_alloc(scop_stmt->nb_iterators, domain, trans);
-        Stmt *stmt = stmts[i];
-
         pluto_constraints_free(domain);
         pluto_matrix_free(trans);
+
+        Stmt *stmt = stmts[i];
 
         stmt->id = i;
 
@@ -427,7 +451,9 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
-    free(dep->direction);
+    if (dep->direction) {
+        free(dep->direction);
+    }
 }
 
 
@@ -801,6 +827,7 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
 
     dep->id = info->index;
     dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
+    dep->direction = NULL;
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
@@ -834,7 +861,6 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
             dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
             break;
         case CANDL_RAR: 
-            printf("%d %d\n", dep->src, src_acc_num);
             dep->src_acc = stmts[dep->src]->reads[src_acc_num];
             dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
             break;
@@ -1104,7 +1130,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
  */
 PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 {
-    int i;
+    int i, max_sched_rows;
 
     PlutoProg *prog = pluto_prog_alloc();
 
@@ -1134,8 +1160,10 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     scoplib_statement_p scop_stmt = scop->statement;
 
     prog->nvar = scop_stmt->nb_iterators;
+    max_sched_rows = 0;
     for (i=0; i<prog->nstmts; i++) {
         prog->nvar = PLMAX(prog->nvar, scop_stmt->nb_iterators);
+        max_sched_rows = PLMAX(max_sched_rows, scop_stmt->schedule->NbRows);
         scop_stmt = scop_stmt->next;
     }
 
@@ -1165,12 +1193,16 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         candl_program_free(candl_program);
     }
 
-    /* Allocate and initialize hProps (size doesn't matter; will resize when
-     * necessary */
-    prog->hProps = NULL;
-    prog->num_hyperplanes = 0;
+    /* Add hyperplanes */
+    if (prog->nstmts >= 1) {
+        for (i=0; i<max_sched_rows; i++) {
+            pluto_prog_add_hyperplane(prog,prog->num_hyperplanes);
+            prog->hProps[prog->num_hyperplanes-1].type = 
+                (i%2)? H_LOOP: H_SCALAR;
+        }
+    }
 
-    // hack for linearized accesses
+    /* Hack for linearized accesses */
     FILE *lfp = fopen(".linearized", "r");
     FILE *nlfp = fopen(".nonlinearized", "r");
     char tmpstr[256];
@@ -1290,6 +1322,7 @@ PlutoOptions *pluto_options_alloc()
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
+    options->identity = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */
@@ -1773,7 +1806,7 @@ void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level)
 }
 
 
-/* Separates a statement from the rest (places it later) at that level;
+/* Separates a statement from the rest (places it later) at level 'level';
  * this is done by inserting a scalar dimension separating them */
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
 {
