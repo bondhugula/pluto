@@ -877,28 +877,37 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
 }
 
 
+/* Direction vector component at level 'level'
+ * TODO: assumes no parametric shifts 
+ */
 int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
                       int use_isl)
 {
     static PlutoConstraints *cst = NULL;
     int j, src, dest;
 
-    int nvar = prog->nvar;
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
     src = dep->src;
     dest = dep->dest;
 
+    Stmt *src_stmt = stmts[dep->src];
+    Stmt *dest_stmt = stmts[dep->dest];
+
+    int src_dim = src_stmt->dim;
+    int dest_dim = dest_stmt->dim;
+
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    if (!cst || cst->alloc_nrows < 2+dep->dpolytope->nrows)   {
+    if (!cst || cst->alloc_nrows < 2+dep->dpolytope->nrows
+            || cst->alloc_ncols < src_dim+dest_dim+npar+1)   {
         if (cst) pluto_constraints_free(cst);
-        /* Rougly allocate twice to prevent frequent increase */
-        cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 2*nvar+npar+1);
+        cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 
+                (src_dim+dest_dim)+npar+1);
     }
-    cst->ncols = 2*nvar+npar+1;
+    cst->ncols = src_dim+dest_dim+npar+1;
 
     /*
      * Check for zero
@@ -908,14 +917,14 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      * \phi(dest) - \phi(src) >= 1
      */
     cst->is_eq[0] = 0;
-    for (j=0; j<nvar; j++)    {
+    for (j=0; j<src_dim; j++)    {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-nvar];
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
     }
-    cst->val[0][2*nvar+npar] = 
-        -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar]-1;
+    cst->val[0][src_dim+dest_dim+npar] = 
+        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar]-1;
     cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
@@ -923,14 +932,14 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     int *sol = pluto_constraints_solve(cst, use_isl);
 
     if (!sol)   {
-        for (j=0; j<nvar; j++)    {
+        for (j=0; j<src_dim; j++)    {
             cst->val[0][j] = stmts[src]->trans->val[level][j];
         }
-        for (j=nvar; j<2*nvar; j++)    {
-            cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
+        for (j=src_dim; j<src_dim+dest_dim; j++)    {
+            cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
         }
-        cst->val[0][2*nvar+npar] = 
-            stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar]-1;
+        cst->val[0][src_dim+dest_dim+npar] = 
+            stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar]-1;
         cst->nrows=1;
 
         pluto_constraints_add(cst, dep->dpolytope);
@@ -951,14 +960,14 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      * (reverse of plus)
      */
 
-    for (j=0; j<nvar; j++)    {
+    for (j=0; j<src_dim; j++)    {
         cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
-    for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = -stmts[dest]->trans->val[level][j-nvar];
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
     }
-    cst->val[0][2*nvar+npar] = 
-        stmts[src]->trans->val[level][nvar+npar] - stmts[dest]->trans->val[level][nvar+npar] -1;
+    cst->val[0][src_dim+dest_dim+npar] = 
+        stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar] -1;
 
     cst->nrows=1;
 
@@ -979,14 +988,14 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
      * reverse of minus, we alraedy know that it's not zero
      */
 
-    for (j=0; j<nvar; j++)    {
+    for (j=0; j<src_dim; j++)    {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=nvar; j<2*nvar; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-nvar];
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
     }
-    cst->val[0][2*nvar+npar] = 
-        -stmts[src]->trans->val[level][nvar+npar] + stmts[dest]->trans->val[level][nvar+npar] -1;
+    cst->val[0][src_dim+dest_dim+npar] = 
+        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar] -1;
     cst->nrows=1;
 
     pluto_constraints_add(cst, dep->dpolytope);
