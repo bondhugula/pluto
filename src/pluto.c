@@ -758,16 +758,16 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
                     stmts[id]->trans->val[stmts[id]->trans->nrows-1][k] = 0;
                 }
                 stmts[id]->trans->val[stmts[id]->trans->nrows-1][nvar+npar] = i;
-                // stmts[id].trans_loop_type[stmts[id].trans->nrows] = SCALAR;
             }
         }
-        prog->hProps[stmts[0]->trans->nrows-1].type = H_SCALAR;
 
-        dep_satisfaction_update(prog, stmts[0]->trans->nrows-1, use_isl);
+        pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
+        prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+
+        dep_satisfaction_update(prog, prog->num_hyperplanes-1, use_isl);
         ddg_update(ddg, prog);
 
         return true;
-
     }else{
 
         FILE *precut = fopen(".precut", "r");
@@ -831,27 +831,26 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 
             /* Set hProps correctly and update satisfied dependences */
             for (k=0; k<rows; k++)  {
+                pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
                 for (i=0; i<nstmts; i++)    {
                     if (get_loop_type(stmts[i], stmts[0]->trans->nrows-rows+k)
                             == H_LOOP)  {
-                        hProps[stmts[0]->trans->nrows-rows+k].type = H_LOOP;
+                        hProps[prog->num_hyperplanes-1].type = H_LOOP;
                         break;
                     }
                 }
                 if (i == nstmts)    {
-                    hProps[stmts[0]->trans->nrows-rows+k].type = H_SCALAR;
+                    hProps[prog->num_hyperplanes-1].type = H_SCALAR;
                 }
 
-                dep_satisfaction_update(prog, stmts[0]->trans->nrows-rows+k,
-                                        use_isl);
+                dep_satisfaction_update(prog, prog->num_hyperplanes-1,
+                        use_isl);
                 ddg_update(ddg, prog);
             }
-
             return true;
-
-        }else{
-            return false;
         }
+        
+        return false;
     }
 }
 
