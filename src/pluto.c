@@ -934,7 +934,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor rarely a bug in Pluto's auto transformation.\n");
                     fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
-                    exit(EXIT_FAILURE);
+                    assert(0);
                 }
 
                 band++;
