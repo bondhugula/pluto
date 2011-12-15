@@ -12,7 +12,7 @@
  *     |"-"-"-"-"-#-#-##   Clan : the Chunky Loop Analyzer (experimental)     *
  ****  |     # ## ######  *****************************************************
  *      \       .::::'/                                                       *
- *       \      ::::'/     Copyright (C) 2008 Cedric Bastoul                  *
+ *       \      ::::'/                                                        *
  *     :8a|    # # ##                                                         *
  *     ::88a      ###      This is free software; you can redistribute it     *
  *    ::::888a  8a ##::.   and/or modify it under the terms of the GNU Lesser *
@@ -31,8 +31,6 @@
  * 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA                     *
  *                                                                            *
  * Clan, the Chunky Loop Analyzer                                             *
- * Written by Cedric Bastoul,         Cedric.Bastoul@inria.fr                 *
- *
  * Access support
  *            Prasanth Chatharasi     prasanth@iith.ac.in                     *
  ******************************************************************************/
@@ -250,15 +248,13 @@ scoplib_access_list_add_access(scoplib_access_list_p* list,scoplib_access_p acce
  * \param nb_arrys Total number of the arrays
  */
 
-    scoplib_access_list_p
+scoplib_access_list_p
 scoplib_access_matrix_to_access_format(scoplib_scop_p scop,
         scoplib_matrix_p original_matrix) 
 {
 
     scoplib_access_list_p access_list = scoplib_access_list_malloc();
-    scoplib_access_p access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));
     scoplib_symbol_p symbol  = NULL;
-    scoplib_matrix_p matrix;
     int i;
     int break_point = 0;
     int start_point = 0;
@@ -268,20 +264,21 @@ scoplib_access_matrix_to_access_format(scoplib_scop_p scop,
             /* Adding to the access list */
             if(break_point == 1) {
                 int j = start_point;
-                access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));        
-                matrix = scoplib_matrix_malloc(i-start_point,original_matrix->NbColumns);
+                scoplib_access_p access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));
+                scoplib_matrix_p matrix = scoplib_matrix_malloc(i-start_point, original_matrix->NbColumns);
                 for(;j<i;j++) {
                     scoplib_vector_p tempvector = scoplib_matrix_get_row(original_matrix,j);
-                    scoplib_matrix_add_vector(matrix,tempvector,j-start_point);
+                    scoplib_matrix_replace_vector(matrix,tempvector,j-start_point);
+                    scoplib_vector_free(tempvector);
                 }      
-                access->matrix = scoplib_matrix_remove_column(scoplib_matrix_copy(matrix),0);
+                access->matrix = scoplib_matrix_remove_column(matrix,0);
                 access->symbol = symbol;
                 scoplib_access_list_add_access(&access_list,access);
                 start_point = i;      
-                free(matrix);
+                scoplib_matrix_free(matrix);
             }
 
-            char* array_name = strdup((scop->arrays)[(original_matrix->p[i][0])-1]);
+            char* array_name = (scop->arrays)[(original_matrix->p[i][0])-1];
             scoplib_symbol_p temp_symbol = scoplib_symbol_lookup(scop->symbol_table,array_name);
             if (temp_symbol != NULL) {
                 symbol = scoplib_symbol_copy(temp_symbol);
@@ -300,17 +297,18 @@ scoplib_access_matrix_to_access_format(scoplib_scop_p scop,
         else {
             i++;
             int j = start_point;
-            access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));       
-            matrix = scoplib_matrix_malloc(i-start_point,original_matrix->NbColumns);
+            scoplib_access_p access  = (scoplib_access_p) malloc(sizeof(scoplib_access_t));
+            scoplib_matrix_p matrix = scoplib_matrix_malloc(i-start_point,original_matrix->NbColumns);
             for(;j<i;j++) {
                 scoplib_vector_p tempvector = scoplib_matrix_get_row(original_matrix,j);
-                scoplib_matrix_add_vector(matrix,tempvector,j-start_point);
+                scoplib_matrix_replace_vector(matrix,tempvector,j-start_point);
+                scoplib_vector_free(tempvector);
             }      
-            access->matrix = scoplib_matrix_remove_column(scoplib_matrix_copy(matrix),0);
+            access->matrix = scoplib_matrix_remove_column(matrix,0);
             access->symbol = symbol;
             scoplib_access_list_add_access(&access_list,access);
             start_point = i;      
-            free(matrix);
+            scoplib_matrix_free(matrix);
         }          
     } 
 
