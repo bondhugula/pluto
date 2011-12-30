@@ -274,10 +274,9 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 
 /* 
  * Eliminates the pos^th variable, where pos has to be between 0 and cst->ncols-2;
- * Remember that the last column is for the constant. Caller has to make sure
- * that cst is large enough to hold the resulting constraints (it may or may
- * not grow). The implementation does not have a redundancy check; it just
- * eliminates duplicates after gcd normalization
+ * Remember that the last column is for the constant. The implementation does not 
+ * have a redundancy check; it just  eliminates duplicates after gcd normalization
+ * cst will be resized if necessary
  */
 void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
 {
