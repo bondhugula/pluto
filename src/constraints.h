@@ -78,6 +78,7 @@ void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
 PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int pos);
 void pluto_constraints_negate_row(PlutoConstraints *cst, int pos);
+void pluto_constraints_negate_constraint(PlutoConstraints *cst, int pos);
 
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);

@@ -593,18 +593,6 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
 
 
 /*
- * Negate the single constraint in cst.
- */
-static void negate_constraint(PlutoConstraints *cst)
-{
-    int i;
-
-    for (i = 0; i < cst->ncols; ++i)
-       cst->val[0][i] = -cst->val[0][i];
-}
-
-
-/*
  * Returns linear independence constraints for a single statement.
  *
  * In particular, if H contains the first rows of an affine transformation,
@@ -754,7 +742,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         orthcst_i = isl_basic_set_intersect(orthcst_i,
                 isl_basic_set_copy(isl_currcst));
         if (isl_basic_set_fast_is_empty(orthcst_i))
-            negate_constraint(orthcst[p]);
+            pluto_constraints_negate_row(orthcst[p], 0);
         isl_basic_set_free(orthcst_i);
         p++;
         assert(p<=nvar-1);
