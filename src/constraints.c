@@ -274,10 +274,9 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 
 /* 
  * Eliminates the pos^th variable, where pos has to be between 0 and cst->ncols-2;
- * Remember that the last column is for the constant. Caller has to make sure
- * that cst is large enough to hold the resulting constraints (it may or may
- * not grow). The implementation does not have a redundancy check; it just
- * eliminates duplicates after gcd normalization
+ * Remember that the last column is for the constant. The implementation does not 
+ * have a redundancy check; it just  eliminates duplicates after gcd normalization
+ * cst will be resized if necessary
  */
 void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
 {
@@ -974,18 +973,34 @@ PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int 
 
     PlutoConstraints *row = pluto_constraints_alloc(1, cst->ncols);
     row->is_eq[0] = cst->is_eq[pos];
-    for (j=0; j<cst->ncols-1; j++)  {
+    for (j=0; j<cst->ncols; j++)  {
         row->val[0][j] = cst->val[pos][j];
     }
     row->nrows = 1;
     return row;
 }
 
+/*
+ * Negate a single row in cst.
+ */
 void pluto_constraints_negate_row(PlutoConstraints *cst, int pos)
 {
     int j;
 
     for (j=0; j<cst->ncols; j++)    {
+        cst->val[pos][j] = -cst->val[pos][j];
+    }
+}
+
+
+/*
+ * Negation of a single constraint in cst.
+ */
+void pluto_constraints_negate_constraint(PlutoConstraints *cst, int pos)
+{
+    int j;
+
+    for (j=0; j<cst->ncols-1; j++)    {
         cst->val[pos][j] = -cst->val[pos][j];
     }
     cst->val[pos][cst->ncols-1]--;
@@ -1037,7 +1052,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_copy(check, cst);
         PlutoConstraints *row = pluto_constraints_select_row(cst, i); 
         pluto_constraints_remove_row(check, i); 
-        pluto_constraints_negate_row(row, 0);
+        pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
         if (!pluto_constraints_solve(check, options->islsolve))  {
             // printf("%dth constraint is redundant\n", i);
