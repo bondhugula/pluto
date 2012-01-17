@@ -37,9 +37,9 @@
 int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl);
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl);
 
-void print_dependence_directions (Dep *deps, int ndeps, int levels);
-int get_num_unsatisfied_deps (Dep *deps, int ndeps);
-int get_num_unsatisfied_inter_stmt_deps (Dep *deps, int ndeps);
+void print_dependence_directions(Dep **deps, int ndeps, int levels);
+int get_num_unsatisfied_deps(Dep **deps, int ndeps);
+int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
 
 /*
  * Returns the number of (new) satisfied dependences at this level
@@ -51,12 +51,12 @@ int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl)
     Dep *dep;
 
     int ndeps = prog->ndeps;
-    Dep *deps = prog->deps;
+    Dep **deps = prog->deps;
 
     num_new_carried=0;
 
     for (i=0; i<ndeps; i++) {
-        dep = &deps[i];
+        dep = deps[i];
         if (!dep_is_satisfied(dep))   {
             dep->satisfied = dep_satisfaction_test(dep, prog, level, use_isl);
             if (dep->satisfied)    { 
@@ -71,13 +71,13 @@ int dep_satisfaction_update(PlutoProg *prog, int level, int use_isl)
 
 
 /* Check whether all deps are satisfied */
-int deps_satisfaction_check(Dep *deps, int ndeps)
+int deps_satisfaction_check(Dep **deps, int ndeps)
 {
     int i;
 
     for (i=0; i<ndeps; i++) {
-        if (IS_RAR(deps[i].type)) continue;
-        if (!dep_is_satisfied(&deps[i]))    {
+        if (IS_RAR(deps[i]->type)) continue;
+        if (!dep_is_satisfied(deps[i]))    {
             return false;
         }
     }
@@ -540,7 +540,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl)
     int ndeps = prog->ndeps;
     int nstmts = prog->nstmts;
     Stmt **stmts = prog->stmts;
-    Dep *deps = prog->deps;
+    Dep **deps = prog->deps;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
@@ -860,7 +860,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
 {
     int level, i, j;
     Stmt **stmts = prog->stmts;
-    Dep *deps = prog->deps;
+    Dep **deps = prog->deps;
     int band, num_loops_in_band;
 
     HyperplaneProperties *hProps = prog->hProps;
@@ -868,9 +868,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
     assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
 
     for (i=0; i<prog->ndeps; i++)   {
-        deps[i].direction = (int *)malloc(stmts[0]->trans->nrows*sizeof(int));
-        for (level=0; level < stmts[0]->trans->nrows; level++)  {
-            deps[i].direction[level] = get_dep_direction(&deps[i], 
+        if (deps[i]->direction != NULL)  {
+            free(deps[i]->direction);
+        }
+        deps[i]->direction = (int *)malloc(prog->num_hyperplanes*sizeof(int));
+        for (level=0; level < prog->num_hyperplanes; level++)  {
+            deps[i]->direction[level] = get_dep_direction(deps[i], 
                     prog, level, use_isl);
         }
     }
@@ -882,11 +885,11 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
 
     do{
         for (i=0; i<prog->ndeps; i++)   {
-            if (IS_RAR(deps[i].type)) continue;
-            if (deps[i].satisfaction_level < level && 
-                    hProps[deps[i].satisfaction_level].type == H_SCALAR) continue;
-            if (deps[i].satisfaction_level >= bandStart 
-                    && deps[i].direction[level] != DEP_ZERO) 
+            if (IS_RAR(deps[i]->type)) continue;
+            if (deps[i]->satisfaction_level < level && 
+                    hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
+            if (deps[i]->satisfaction_level >= bandStart 
+                    && deps[i]->direction[level] != DEP_ZERO) 
                 break;
         }
 
@@ -906,12 +909,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
         }else{
 
             for (i=0; i<prog->ndeps; i++)   {
-                if (IS_RAR(deps[i].type)) continue;
-                if (deps[i].satisfaction_level < level && 
-                        hProps[deps[i].satisfaction_level].type == H_SCALAR) continue;
-                if (deps[i].satisfaction_level >= bandStart 
-                        && (deps[i].direction[level] == DEP_MINUS 
-                            || deps[i].direction[level] == DEP_STAR))
+                if (IS_RAR(deps[i]->type)) continue;
+                if (deps[i]->satisfaction_level < level && 
+                        hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
+                if (deps[i]->satisfaction_level >= bandStart 
+                        && (deps[i]->direction[level] == DEP_MINUS 
+                            || deps[i]->direction[level] == DEP_STAR))
                     break;
             }
             if (i==prog->ndeps) {
@@ -927,7 +930,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    IF_DEBUG(print_dependence_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
+                    IF_DEBUG(pluto_print_dep_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
                     IF_DEBUG(pluto_transformations_print(prog));
                     fprintf(stderr, "\tUnfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
@@ -959,8 +962,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
      * we just modify those to parallel */
     for (i=0; i<prog->num_hyperplanes; i++)  {
         for (j=0; j<prog->ndeps; j++) {
-            if (IS_RAR(deps[j].type)) continue;
-            if (deps[j].satisfaction_level >= i && deps[j].direction != DEP_ZERO) break;
+            if (IS_RAR(deps[j]->type)) continue;
+            if (deps[j]->satisfaction_level >= i && deps[j]->direction != DEP_ZERO) break;
         }
 
         if (j==prog->ndeps)   {
@@ -972,30 +975,30 @@ void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
         }
     }
 
-    IF_DEBUG2(print_dependence_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
+    IF_DEBUG2(pluto_print_dep_directions(prog->deps, prog->ndeps,prog->num_hyperplanes));
 }
 
 
-void print_dependence_directions(Dep *deps, int ndeps, int levels)
+void pluto_print_dep_directions(Dep **deps, int ndeps, int levels)
 {
     int i, j;
 
     printf("\nDirection vectors for transformed program\n");
 
     for (i=0; i<ndeps; i++) {
-        printf("Dep %d: S%d to S%d: ", i+1, deps[i].src+1, deps[i].dest+1);
+        printf("Dep %d: S%d to S%d: ", i+1, deps[i]->src+1, deps[i]->dest+1);
         printf("(");
         for (j=0; j<levels; j++) {
-            printf("%d, ", deps[i].direction[j]);
+            printf("%d, ", deps[i]->direction[j]);
         }
         printf(")\n");
 
         for (j=0; j<levels; j++) {
-            if (deps[i].direction[j] > 0)  {
+            if (deps[i]->direction[j] > 0)  {
                 break;
-            }else if (deps[i].direction[j] < 0) {
-                printf("Dep %d violated: S%d to S%d\n", i, deps[i].src+1, deps[i].dest+1);
-                printf("%d %d\n", deps[i].satisfaction_level, deps[i].satisfied);
+            }else if (deps[i]->direction[j] < 0) {
+                printf("Dep %d violated: S%d to S%d\n", i, deps[i]->src+1, deps[i]->dest+1);
+                printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
             }
         }
     }
@@ -1058,7 +1061,7 @@ void normalize_domains(PlutoProg *prog)
 
         /* Add context to every dep polyhedron */
         for (i=0; i<prog->ndeps; i++) {
-            PlutoConstraints *dpolytope = prog->deps[i].dpolytope;
+            PlutoConstraints *dpolytope = prog->deps[i]->dpolytope;
 
             for (k=0; k<context->nrows; k++) {
                 pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
@@ -1071,7 +1074,7 @@ void normalize_domains(PlutoProg *prog)
                 }
             }
             /* Update reference, add_row can resize */
-            prog->deps[i].dpolytope = dpolytope;
+            prog->deps[i]->dpolytope = dpolytope;
         }
         pluto_constraints_free(context);
     }else{
@@ -1091,7 +1094,7 @@ void normalize_domains(PlutoProg *prog)
 
 
     for (i=0; i<prog->ndeps; i++)    {
-        Dep *dep = &prog->deps[i];
+        Dep *dep = prog->deps[i];
         int src_dim = prog->stmts[dep->src]->dim;
         int target_dim = prog->stmts[dep->dest]->dim;
         assert(dep->dpolytope->ncols == src_dim+target_dim+prog->npar+1);
@@ -1101,7 +1104,7 @@ void normalize_domains(PlutoProg *prog)
     /* Normalize rows of dependence polyhedra */
     for (k=0; k<prog->ndeps; k++)   {
         /* Normalize by gcd */
-        PlutoConstraints *dpoly = prog->deps[k].dpolytope;
+        PlutoConstraints *dpoly = prog->deps[k]->dpolytope;
 
         for(i=0; i<dpoly->nrows; i++)   {
             pluto_constraints_normalize_row(dpoly, i);
@@ -1112,7 +1115,7 @@ void normalize_domains(PlutoProg *prog)
      * values (TODO: should do this only for the bounding function constraints) */
     bool *neg = malloc(sizeof(bool)*npar);
     for (k=0; k<prog->ndeps; k++) {
-        Dep *dep = &prog->deps[k];
+        Dep *dep = prog->deps[k];
         PlutoConstraints *dpoly = dep->dpolytope;
 
         int j;
@@ -1295,14 +1298,14 @@ void pluto_auto_transform(PlutoProg *prog, int use_isl)
 }
 
 
-int get_num_unsatisfied_deps (Dep *deps, int ndeps)
+int get_num_unsatisfied_deps(Dep **deps, int ndeps)
 {
     int i, count;
 
     count = 0;
     for (i=0; i<ndeps; i++) {
-        if (IS_RAR(deps[i].type))   continue;
-        if (!deps[i].satisfied)  {
+        if (IS_RAR(deps[i]->type))   continue;
+        if (!deps[i]->satisfied)  {
             IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
             count++;
         }
@@ -1313,15 +1316,15 @@ int get_num_unsatisfied_deps (Dep *deps, int ndeps)
 }
 
 
-int get_num_unsatisfied_inter_stmt_deps (Dep *deps, int ndeps)
+int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps)
 {
     int i;
 
     int count = 0;
     for (i=0; i<ndeps; i++) {
-        if (IS_RAR(deps[i].type))   continue;
-        if (deps[i].src == deps[i].dest)    continue;
-        if (!deps[i].satisfied)  {
+        if (IS_RAR(deps[i]->type))   continue;
+        if (deps[i]->src == deps[i]->dest)    continue;
+        if (!deps[i]->satisfied)  {
             IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
             count++;
         }
@@ -1687,7 +1690,7 @@ void ddg_update (Graph *g, PlutoProg *prog)
             g->adj->val[i][j] = 0;
 
     for (i=0; i<prog->ndeps; i++)   {
-        dep = &prog->deps[i];
+        dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
         /* Number of unsatisfied dependences b/w src and dest is stored in the
          * adjacency matrix */
@@ -1705,7 +1708,7 @@ Graph *ddg_create(PlutoProg *prog)
 
     int i;
     for (i=0; i<prog->ndeps; i++)   {
-        Dep *dep = &prog->deps[i];
+        Dep *dep = prog->deps[i];
         /* no input dep edges in the graph */
         if (IS_RAR(dep->type)) continue;
         /* remember it's a multi-graph */

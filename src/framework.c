@@ -397,7 +397,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 }
 
 
-PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps, 
+PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
         const PlutoProg *prog)
 {
     int i, dest_stmt, src_stmt;
@@ -420,7 +420,7 @@ PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps,
 
 // #pragma omp parallel for private(i,dep,dest_stmt,src_stmt) reduction(+:total_cst)
     for (i=0; i<ndeps; i++) {
-        dep = &deps[i];
+        dep = deps[i];
 
         dest_stmt = dep->dest;
         src_stmt = dep->src;
@@ -452,7 +452,7 @@ PlutoConstraints *get_permutability_constraints(Dep *deps, int ndeps,
     globcst->nrows = 0;
 
     for (i=0; i<ndeps; i++) {
-        dep = &deps[i];
+        dep = deps[i];
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
