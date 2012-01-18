@@ -145,16 +145,20 @@ static int get_access_position(CandlMatrix *accesses, int ref)
 
 
 /* Read dependences from candl structures */
-static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
+static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 {
     int i, ndeps;
-    Dep *deps;
+    Dep **deps;
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
     ndeps = candl_num_dependences(candlDeps);
 
-    deps = (Dep *) malloc(ndeps*sizeof(Dep));
+    deps = (Dep **) malloc(ndeps*sizeof(Dep *));
+
+    for (i=0; i<ndeps; i++) {
+        deps[i] = pluto_dep_alloc();
+    }
 
     CandlDependence *candl_dep = candlDeps;
 
@@ -165,7 +169,7 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
     /* Dependence polyhedra information */
     for (i=0; i<ndeps; i++)  {
 
-        Dep *dep = &deps[i];
+        Dep *dep = deps[i];
 
         dep->id = i;
 
@@ -232,7 +236,6 @@ static Dep *deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         }
         free(remove);
 
-
         int src_dim = stmts[dep->src]->dim;
         int target_dim = stmts[dep->dest]->dim;
 
@@ -270,11 +273,11 @@ void pluto_dep_print(FILE *fp, Dep *dep)
 }
 
 
-void pluto_deps_print(FILE *fp, Dep *deps, int ndeps)
+void pluto_deps_print(FILE *fp, Dep **deps, int ndeps)
 {
     int i;
     for (i=0; i<ndeps; i++) {
-        pluto_dep_print(fp, &deps[i]);
+        pluto_dep_print(fp, deps[i]);
     }
 }
 
@@ -799,7 +802,7 @@ static int map_count(__isl_take isl_map *map, void *user)
  * index is the index of the next Dep in the array.
  */
 struct pluto_extra_dep_info {
-    Dep *deps;
+    Dep **deps;
     Stmt **stmts;
     int type;
     int index;
@@ -821,7 +824,7 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
 
     bmap = isl_basic_map_remove_divs(bmap);
 
-    dep = &info->deps[info->index];
+    dep = info->deps[info->index];
 
     dep->id = info->index;
     dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
@@ -886,7 +889,7 @@ static int map_extract(__isl_take isl_map *map, void *user)
 }
 
 
-static int extract_deps(Dep *deps, int first, Stmt **stmts, 
+static int extract_deps(Dep **deps, int first, Stmt **stmts, 
         __isl_keep isl_union_map *umap, int type)
 {
     struct pluto_extra_dep_info info = { deps, stmts, type, first };
@@ -1101,7 +1104,10 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map_foreach_map(dep_waw, &map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_rar, &map_count, &prog->ndeps);
 
-    prog->deps = (Dep *)malloc(prog->ndeps * sizeof(Dep));
+    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i] = pluto_dep_alloc();
+    }
     prog->ndeps = 0;
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_raw, CANDL_RAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, CANDL_WAR);
@@ -1274,7 +1280,7 @@ void pluto_prog_free(PlutoProg *prog)
 
     /* Free dependences */
     for (i=0; i<prog->ndeps; i++) {
-        pluto_dep_free(&prog->deps[i]);
+        pluto_dep_free(prog->deps[i]);
     }
     if (prog->deps != NULL) {
         free(prog->deps);
@@ -1391,8 +1397,8 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
         }
     }
     for (i=0; i<prog->ndeps; i++)   {
-        pluto_constraints_add_dim(prog->deps[i].dpolytope, 
-                prog->deps[i].dpolytope->ncols-1-prog->npar+pos);
+        pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
+                prog->deps[i]->dpolytope->ncols-1-prog->npar+pos);
     }
     pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos);
 
@@ -1463,12 +1469,12 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     }
 
     for (i=0; i<prog->ndeps; i++) {
-        if (prog->deps[i].src == stmt->id) {
-            pluto_constraints_add_dim(prog->deps[i].dpolytope, pos);
+        if (prog->deps[i]->src == stmt->id) {
+            pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos);
         }
-        if (prog->deps[i].dest == stmt->id) {
-            pluto_constraints_add_dim(prog->deps[i].dpolytope, 
-                    prog->stmts[prog->deps[i].src]->dim+pos);
+        if (prog->deps[i]->dest == stmt->id) {
+            pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
+                    prog->stmts[prog->deps[i]->src]->dim+pos);
         }
     }
 }
@@ -1511,13 +1517,13 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
     }
 
     for (i=0; i<prog->ndeps; i++) {
-        if (prog->deps[i].src == stmt->id) {
-            pluto_constraints_remove_dim(prog->deps[i].dpolytope, pos);
+        if (prog->deps[i]->src == stmt->id) {
+            pluto_constraints_remove_dim(prog->deps[i]->dpolytope, pos);
         }
-        if (prog->deps[i].dest == stmt->id) {
+        if (prog->deps[i]->dest == stmt->id) {
             // if (i==0)  printf("removing dim\n");
-            pluto_constraints_remove_dim(prog->deps[i].dpolytope, 
-                    prog->stmts[prog->deps[i].src]->dim+pos);
+            pluto_constraints_remove_dim(prog->deps[i]->dpolytope, 
+                    prog->stmts[prog->deps[i]->src]->dim+pos);
         }
     }
 }
@@ -1697,6 +1703,15 @@ void pluto_add_stmt(PlutoProg *prog,
     }
 }
 
+
+Dep *pluto_dep_alloc()
+{
+    Dep *dep = malloc(sizeof(Dep));
+
+    dep->id = -1;
+
+    return dep;
+}
 
 /* Only dimensionality and domain are essential */
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, 

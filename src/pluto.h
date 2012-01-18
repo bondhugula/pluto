@@ -307,7 +307,7 @@ struct plutoProg{
     int nstmts;
 
     /* Array of dependences */
-    Dep *deps;
+    Dep **deps;
     int ndeps;
 
     /* Parameters */
@@ -349,7 +349,7 @@ void pluto_dep_satisfaction_check(PlutoProg *prog, int use_isl);
 bool dep_is_satisfied(Dep *dep);
 void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl);
 
-PlutoConstraints *get_permutability_constraints(Dep *, int, const PlutoProg *);
+PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst,
         int *orthonum);
@@ -385,6 +385,7 @@ void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
+void pluto_print_dep_directions(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
