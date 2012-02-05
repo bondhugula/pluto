@@ -835,9 +835,11 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows)   {
+    /* To prevent frequent resizing */
+    if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows ||
+            cst->alloc_ncols < src_dim+dest_dim+npar+1)   {
         if (cst) pluto_constraints_free(cst);
-        cst = pluto_constraints_alloc(1+dep->dpolytope->nrows, src_dim+dest_dim+npar+1);
+        cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), src_dim+dest_dim+npar+1);
     }
     cst->ncols = src_dim+dest_dim+npar+1;
 
@@ -854,15 +856,17 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
     for (j=src_dim; j<src_dim+dest_dim; j++)    {
         cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar];
+    for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar+1; j++)    {
+        cst->val[0][j] = 
+            stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
+    }
 
     cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    /* if no solution exists, the dependence is carried, i.e., no points
-     * satisfy \geq 0 */ 
+    /* if no solution exists, the dependence is satisfied, i.e., no points
+     * satisfy \phi(src) - \phi(dest) <= 0 */ 
     sol = pluto_constraints_solve(cst, use_isl);
 
     bool retval = (sol)? false:true;

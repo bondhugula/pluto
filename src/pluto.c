@@ -89,6 +89,11 @@ void pluto_dep_satisfaction_check(PlutoProg *prog, int use_isl)
 {
     int i;
 
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i]->satisfied =  false;
+        prog->deps[i]->satisfaction_level =  -1;
+    }
+
     for (i=0; i<prog->num_hyperplanes; i++) {
         dep_satisfaction_update(prog, i, use_isl);
     }
@@ -856,6 +861,8 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth, int use_isl)
 }
 
 
+/* Detect tilable bands; calculate dependence components (in transformed 
+ * space) */
 void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl)
 {
     int level, i, j;
@@ -1915,6 +1922,11 @@ void pluto_transformations_print(const PlutoProg *prog)
 }
 
 
+/* Get this statement's schedule
+ * Schedule format
+ * [num sched functions | orig dim iters | params | const ]
+ * Number of rows == num sched functions (each row for one hyperplane)
+ */
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt)
 {
     int i;
