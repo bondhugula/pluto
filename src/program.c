@@ -27,6 +27,7 @@
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
+#include <math.h>
 
 #include "pluto.h"
 #include "math_support.h"
@@ -177,7 +178,7 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
         dep->src = candl_dep->source->label;
         dep->dest = candl_dep->target->label;
-        dep->direction = NULL;
+        dep->dirvec = NULL;
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = candl_matrix_to_pluto_constraints(candl_dep->domain);
@@ -253,8 +254,8 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
 void pluto_dep_print(FILE *fp, Dep *dep)
 {
-    fprintf(fp, "--- Dep %d from S%d to S%d, Type: ",
-            dep->id+1, dep->src+1, dep->dest+1);
+    fprintf(fp, "--- Dep %d from S%d to S%d; sat level: %d; Type: ",
+            dep->id+1, dep->src+1, dep->dest+1, dep->satisfaction_level);
 
     switch (dep->type) {
         case CANDL_UNSET : fprintf(fp, "UNSET"); break;
@@ -454,8 +455,8 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
-    if (dep->direction) {
-        free(dep->direction);
+    if (dep->dirvec) {
+        free(dep->dirvec);
     }
 }
 
@@ -828,7 +829,7 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
 
     dep->id = info->index;
     dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
-    dep->direction = NULL;
+    dep->dirvec = NULL;
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);

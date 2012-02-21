@@ -47,10 +47,7 @@
 
 #define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
-#define DEP_ZERO 0
-#define DEP_PLUS 1
-#define DEP_MINUS -1
-#define DEP_STAR 2
+typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
 #define H_UNKNOWN 0
 #define H_LOOP 1
@@ -164,7 +161,8 @@ struct plutoOptions{
 };
 typedef struct plutoOptions PlutoOptions;
 
-enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
+typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
+    PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
 
 typedef struct pluto_access{
     int sym_id;
@@ -267,8 +265,7 @@ struct dependence{
     int satisfaction_level;
 
     /* Dependence direction in transformed space */
-    int *direction;
-
+    DepDir *dirvec;
 };
 typedef struct dependence Dep;
 
@@ -282,7 +279,7 @@ typedef enum unrollType {NO_UNROLL, UNROLL, UNROLLJAM} UnrollType;
 struct hyperplane_properties{
 
     /* Hyperplane property: see looptype enum definition */
-    enum looptype dep_prop;
+    PlutoLoopType dep_prop;
 
     /* Hyperplane type: scalar, loop, or tile-space loop (H_SCALAR,
      * H_LOOP, H_TILE... */
@@ -385,7 +382,6 @@ void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_print_dep_directions(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
-void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);

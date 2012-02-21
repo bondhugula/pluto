@@ -867,12 +867,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
 
     for (i=0; i<prog->ndeps; i++)   {
-        if (deps[i]->direction != NULL)  {
-            free(deps[i]->direction);
+        if (deps[i]->dirvec != NULL)  {
+            free(deps[i]->dirvec);
         }
-        deps[i]->direction = (int *)malloc(prog->num_hyperplanes*sizeof(int));
+        deps[i]->dirvec = (DepDir *)malloc(prog->num_hyperplanes*sizeof(DepDir));
         for (level=0; level < prog->num_hyperplanes; level++)  {
-            deps[i]->direction[level] = get_dep_direction(deps[i], 
+            deps[i]->dirvec[level] = get_dep_direction(deps[i], 
                     prog, level);
         }
     }
@@ -888,7 +888,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
             if (deps[i]->satisfaction_level < level && 
                     hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
             if (deps[i]->satisfaction_level >= bandStart 
-                    && deps[i]->direction[level] != DEP_ZERO) 
+                    && deps[i]->dirvec[level] != DEP_ZERO) 
                 break;
         }
 
@@ -912,8 +912,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                 if (deps[i]->satisfaction_level < level && 
                         hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
                 if (deps[i]->satisfaction_level >= bandStart 
-                        && (deps[i]->direction[level] == DEP_MINUS 
-                            || deps[i]->direction[level] == DEP_STAR))
+                        && (deps[i]->dirvec[level] == DEP_MINUS 
+                            || deps[i]->dirvec[level] == DEP_STAR))
                     break;
             }
             if (i==prog->ndeps) {
@@ -961,7 +961,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     for (i=0; i<prog->num_hyperplanes; i++)  {
         for (j=0; j<prog->ndeps; j++) {
             if (IS_RAR(deps[j]->type)) continue;
-            if (deps[j]->satisfaction_level >= i && deps[j]->direction != DEP_ZERO) break;
+            if (deps[j]->satisfaction_level >= i && deps[j]->dirvec != DEP_ZERO) break;
         }
 
         if (j==prog->ndeps)   {
@@ -985,14 +985,18 @@ void pluto_print_dep_directions(Dep **deps, int ndeps, int levels)
         printf("Dep %d: S%d to S%d: ", i+1, deps[i]->src+1, deps[i]->dest+1);
         printf("(");
         for (j=0; j<levels; j++) {
-            printf("%d, ", deps[i]->direction[j]);
+            printf("%c, ", deps[i]->dirvec[j]);
         }
-        printf(")\n");
+        printf(") Sat level: %d\n", deps[i]->satisfaction_level);
 
         for (j=0; j<levels; j++) {
-            if (deps[i]->direction[j] > 0)  {
+            if (deps[i]->dirvec[j] > 0)  {
                 break;
-            }else if (deps[i]->direction[j] < 0) {
+            }
+            if (deps[i]->dirvec[j] < 0) {
+                printf("Dep %d violated: S%d to S%d\n", i, deps[i]->src+1, deps[i]->dest+1);
+                printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
+            }else if (deps[i]->dirvec[j] < 0) {
                 printf("Dep %d violated: S%d to S%d\n", i, deps[i]->src+1, deps[i]->dest+1);
                 printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
             }
