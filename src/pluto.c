@@ -961,7 +961,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     for (i=0; i<prog->num_hyperplanes; i++)  {
         for (j=0; j<prog->ndeps; j++) {
             if (IS_RAR(deps[j]->type)) continue;
-            if (deps[j]->satisfaction_level >= i && deps[j]->dirvec != DEP_ZERO) break;
+            if (deps[j]->satisfaction_level >= i && deps[j]->dirvec[i] != DEP_ZERO) break;
         }
 
         if (j==prog->ndeps)   {
