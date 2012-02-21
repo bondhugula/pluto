@@ -693,11 +693,12 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 }
 
 /* Solve these constraints */
-int *pluto_constraints_solve(const PlutoConstraints *cst, int use_isl) {
-  if (use_isl)
-    return pluto_constraints_solve_isl(cst);
-  else
-    return pluto_constraints_solve_pip(cst);
+int *pluto_constraints_solve(const PlutoConstraints *cst) {
+    if (options->islsolve) {
+        return pluto_constraints_solve_isl(cst);
+    }else{
+        return pluto_constraints_solve_pip(cst);
+    }
 }
 
 
@@ -1054,7 +1055,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_remove_row(check, i); 
         pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
-        if (!pluto_constraints_solve(check, options->islsolve))  {
+        if (!pluto_constraints_solve(check))  {
             // printf("%dth constraint is redundant\n", i);
             count++;
         }else{

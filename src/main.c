@@ -266,12 +266,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Auto transformation */
     if (!options->identity) {
-        pluto_auto_transform(prog, options->islsolve);
+        pluto_auto_transform(prog);
     }else{
-        pluto_dep_satisfaction_check(prog, options->islsolve);
+        /* No need to recompute satisfaction levels if auto-transform was run
+         */
+        pluto_compute_dep_satisfaction(prog);
     }
 
-    pluto_detect_transformation_properties(prog, options->islsolve);
+    pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
@@ -281,6 +283,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (!options->silent)   {
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
+
+    }
+    if (options->moredebug) {
+        pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
     }
 
     if (options->tile)   {

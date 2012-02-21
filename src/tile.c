@@ -5,6 +5,9 @@
 #include "post_transform.h"
 #include "program.h"
 
+static void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, 
+        int *tile_sizes);
+
 /* Read tile sizes from file tile.sizes */
 static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
         int num_tile_dims, HyperplaneProperties *hProps, int firstLoop)
@@ -122,7 +125,7 @@ void pluto_tile(PlutoProg *prog)
 
 /* Manipulates statement domain and transformation to tile scattering 
  * dimensions from firstD to lastD */
-void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_sizes)
+static void tile_scattering_dims(PlutoProg *prog, int firstD, int lastD, int *tile_sizes)
 {
     int j, s;
     int depth, nstmts, npar;

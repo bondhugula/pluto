@@ -817,7 +817,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
  * self edge
  * TODO: assumes no parametric shifts
  */
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     static PlutoConstraints *cst = NULL;
     int j, src, dest, src_dim, dest_dim, *sol;
@@ -867,7 +867,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst, use_isl);
+    sol = pluto_constraints_solve(cst);
 
     bool retval = (sol)? false:true;
     free(sol);
@@ -879,8 +879,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level, int use_isl)
 /* Direction vector component at level 'level'
  * TODO: assumes no parametric shifts 
  */
-int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
-                      int use_isl)
+int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {
     static PlutoConstraints *cst = NULL;
     int j, src, dest;
@@ -928,7 +927,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int *sol = pluto_constraints_solve(cst, use_isl);
+    int *sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
         for (j=0; j<src_dim; j++)    {
@@ -943,7 +942,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
 
         pluto_constraints_add(cst, dep->dpolytope);
 
-        sol = pluto_constraints_solve(cst, use_isl);
+        sol = pluto_constraints_solve(cst);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
@@ -973,7 +972,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst, use_isl);
+    sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
         return DEP_PLUS;
@@ -1000,7 +999,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst, use_isl);
+    sol = pluto_constraints_solve(cst);
 
     if (!sol)   {   
         return DEP_MINUS;

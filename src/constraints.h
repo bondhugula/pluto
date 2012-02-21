@@ -63,7 +63,7 @@ PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints 
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int *pluto_constraints_solve(const PlutoConstraints *, int use_isl);
+int *pluto_constraints_solve(const PlutoConstraints *);
 void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_equality(PlutoConstraints *cst, int pos);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos);

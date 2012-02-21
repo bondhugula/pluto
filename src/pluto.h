@@ -345,9 +345,9 @@ extern PlutoOptions *options;
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
-void pluto_dep_satisfaction_check(PlutoProg *prog, int use_isl);
+void pluto_compute_dep_satisfaction(PlutoProg *prog);
 bool dep_is_satisfied(Dep *dep);
-void pluto_detect_transformation_properties(PlutoProg *prog, int use_isl);
+void pluto_detect_transformation_properties(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
@@ -355,13 +355,12 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         int *orthonum);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
 
-void pluto_auto_transform(PlutoProg *prog, int use_isl);
+void pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
-int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols, int use_isl);
+int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
-int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level,
-                       int use_isl);
+int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
@@ -369,7 +368,6 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
-void tile_scattering_dims(PlutoProg *, int, int, int *);
 bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD);
 
 int pluto_omp_parallelize(PlutoProg *prog);
@@ -387,6 +385,7 @@ void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_print_dep_directions(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
+void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);
