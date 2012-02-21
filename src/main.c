@@ -267,12 +267,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Auto transformation */
     if (!options->identity) {
         pluto_auto_transform(prog);
-    }else{
-        /* No need to recompute satisfaction levels if auto-transform was run
-         */
-        pluto_compute_dep_satisfaction(prog);
     }
-
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
@@ -327,6 +322,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->parallel)  {
         /* Generate meta info for insertion of OpenMP pragmas */
         pluto_omp_parallelize(prog);
+        if (options->moredebug) {
+            pluto_detect_transformation_properties(prog);
+            pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
+        }
     }
 
     if (options->unroll || options->polyunroll)    {

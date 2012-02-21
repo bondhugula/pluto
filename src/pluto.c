@@ -866,6 +866,9 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
     assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
 
+    /* First compute satisfaction levels */
+    pluto_compute_dep_satisfaction(prog);
+
     for (i=0; i<prog->ndeps; i++)   {
         if (deps[i]->dirvec != NULL)  {
             free(deps[i]->dirvec);
@@ -1481,9 +1484,9 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
     fprintf(outfp, "\n");
 
     /* Scattering iterators. */
-    if (stmts[0]->trans != NULL)    {
+    if (prog->num_hyperplanes >= 1)    {
         fprintf(outfp, "\t\tint ");
-        for (i=0; i<stmts[0]->trans->nrows; i++)  {
+        for (i=0; i<prog->num_hyperplanes; i++)  {
             if (i!=0) fprintf(outfp, ", ");
             fprintf(outfp, "t%d", i+1);
             if (prog->hProps[i].unroll)   {
@@ -1550,6 +1553,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
             cloogOptions->l = -1;
         }
     }
+
     if (!options->silent)   {
         printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
     }
@@ -1855,6 +1859,7 @@ void pluto_print_hyperplane_properties(const PlutoProg *prog)
                 break;
         }
         fprintf(stdout, " (band %d)", hProps[j].band_num);
+        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
         fprintf(stdout, "\n");
     }
     fprintf(stdout, "\n");
@@ -1922,11 +1927,10 @@ PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt)
 {
     int i;
 
-    PlutoMatrix *sched;
+    PlutoMatrix *sched, *trans;
     PlutoConstraints *schedcst;
 
-    const PlutoMatrix *trans = stmt->trans;
-
+    trans = stmt->trans;
     sched = pluto_matrix_dup(trans);
 
     for (i=0; i<sched->nrows; i++)  {
