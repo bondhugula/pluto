@@ -382,6 +382,7 @@ void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_print_dep_directions(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
+void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);

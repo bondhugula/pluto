@@ -1942,3 +1942,34 @@ PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt)
     return schedcst;
 }
 
+/* Update a dependence with a new constraint added to the statement domain */
+void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
+{
+    int i, c;
+
+    Stmt **stmts = prog->stmts;
+
+    assert(cst->ncols == stmt->domain->ncols);
+
+    for (i=0; i<prog->ndeps; i++) {
+        Dep *dep = prog->deps[i];
+        if (stmts[dep->src] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *tstmt = stmts[dep->dest];
+            for (c=0; c<tstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, stmt->dim);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+        if (stmts[dep->dest] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *sstmt = stmts[dep->src];
+            for (c=0; c<sstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, 0);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+    }
+}
