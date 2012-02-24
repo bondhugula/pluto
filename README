@@ -30,15 +30,15 @@ Stable release
 
 Run 'install from Pluto's top-level directory
 
-$ tar zxvf pluto-0.7.0.tar.gz
-$ cd pluto-0.7.0/
+$ tar zxvf pluto-0.8.0.tar.gz
+$ cd pluto-0.8.0/
 $ ./install
 $ make test
 
     OR
 
-$ tar zxvf pluto-0.7.0.tar.gz
-$ cd pluto-0.7.0/
+$ tar zxvf pluto-0.8.0.tar.gz
+$ cd pluto-0.8.0/
 $ ./configure [--enable-debug]
 $ make
 $ make test

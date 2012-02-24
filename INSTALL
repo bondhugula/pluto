@@ -23,8 +23,8 @@ your system, it can be installed easily with, for eg.,
 
 QUICK INSTALL
 
-$ tar zxvf pluto-0.7.0.tgz
-$ cd pluto-0.7.0/
+$ tar zxvf pluto-0.8.0.tgz
+$ cd pluto-0.8.0/
 $ ./configure [--enable-debug]
 $ make
 
