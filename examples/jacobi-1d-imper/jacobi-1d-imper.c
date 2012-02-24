@@ -2,10 +2,39 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "decls.h"
 #include "util.h"
 
+#define N 1000
+#define T 50
+
+#pragma declarations
+double a[N];
+double b[N];
+#pragma enddeclarations
+
 double t_start, t_end;
+
+void init_array()
+{
+    int j;
+
+    for (j=0; j<N; j++) {
+        a[j] = ((double)j)/N;
+    }
+}
+
+
+void print_array()
+{
+    int j;
+
+    for (j=0; j<N; j++) {
+        fprintf(stdout, "%lf ", a[j]);
+        if (j%80 == 20) fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+}
+
 
 int main()
 {

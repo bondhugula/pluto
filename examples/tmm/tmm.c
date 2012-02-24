@@ -1,7 +1,20 @@
 #include <stdio.h>
 #include <math.h>
 #include <sys/time.h>
-#include "decls.h"
+#include <stdlib.h>
+
+#define NMAX 1000
+
+#define A_SIZE NMAX
+#define B_SIZE NMAX
+
+#pragma declarations
+
+double A[A_SIZE][A_SIZE];
+double B[B_SIZE][B_SIZE];
+double C[B_SIZE][B_SIZE];
+
+#pragma enddeclarations
 
 #define TIME 1
 
@@ -24,21 +37,18 @@ double rtclock()
 #endif
 
 
+void print_array()
+{
+    int i, j;
 
-void tmm(long Ni, long Nj, long Nk) {
-	int i, j, k;
-	
-#pragma scop
-	for(i = 0; i < Ni; i++) {
-		for(j=i; j < Nj; j++) { 
-			for(k=i;  k< Nk; k++) {
-				C[i][j] += A[i][k] * B[k][j];
-			}
-		}
-	}
-#pragma endscop
-
+    for (i = 0; i < NMAX; i++) {
+      for (j = i; j < NMAX; j++) {
+        fprintf(stdout, "%lf ", C[i][j]);
+      }
+      fprintf(stdout, "\n");
+    }
 }
+
 
 int main(int argc, char *argv)
 {
@@ -57,7 +67,17 @@ int main(int argc, char *argv)
 
   IF_TIME(t_start = rtclock());
 
-	tmm(N,N,N);
+#pragma scop
+	for(i = 0; i < N; i++) {
+		for(j=i; j < N; j++) { 
+			for(k=i;  k< N; k++) {
+				C[i][j] += A[i][k] * B[k][j];
+			}
+		}
+	}
+#pragma endscop
+
+
 
   IF_TIME(t_end = rtclock());
   IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));

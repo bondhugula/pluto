@@ -9,7 +9,15 @@
 #include "papi_defs.h"
 #endif
 
-#include "decls.h"
+#define tmax 128
+#define nx 4000
+#define ny 4000
+
+#pragma declarations
+double ex[nx][ny+1];
+double ey[nx+1][ny];
+double hz[nx][ny];
+#pragma enddeclarations
 
 #include "util.h"
 

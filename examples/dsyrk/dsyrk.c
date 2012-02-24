@@ -5,7 +5,10 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "decls.h"
+#define NMAX 3000
+#pragma declarations
+double a[NMAX][NMAX], c[NMAX][NMAX];
+#pragma enddeclarations
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -26,28 +29,12 @@ double rtclock()
 #endif
 
 
-void dsyrk(long N) 
-{
-  int i,j,k;
-
-#pragma scop
-  for (i=0; i<N; i++) {
-    for (j=0; j<N; j++) {
-      for (k=j; k<N; k++) {
-        c[j][k] += a[i][j] * a[i][k];
-      }
-    }
-  }
-#pragma endscop
-}
-
-
 int main()
 {
   double t_start, t_end;
 
   long N=NMAX;
-  int i,j;
+  int i,j, k;
 
   for (i = 0; i < NMAX; i++) {
     for (j = 0; j < NMAX; j++) {
@@ -58,7 +45,16 @@ int main()
 
   IF_TIME(t_start = rtclock());
 
-  dsyrk(N);
+#pragma scop
+  for (i=0; i<N; i++) {
+    for (j=0; j<N; j++) {
+      for (k=j; k<N; k++) {
+        c[j][k] += a[i][j] * a[i][k];
+      }
+    }
+  }
+#pragma endscop
+
 
   IF_TIME(t_end = rtclock());
   IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
