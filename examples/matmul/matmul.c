@@ -3,7 +3,17 @@
 #include <math.h>
 #include <assert.h>
 
-#include "decls.h"
+#define M 1024
+#define N 1024
+#define K 1024
+#define alpha 1
+#define beta 1
+
+#pragma declarations
+double A[M][K];
+double B[K][N];
+double C[M][N];
+#pragma enddeclarations
 
 #ifdef PERFCTR
 #include "papiStdEventDefs.h"
@@ -18,7 +28,6 @@ double t_start, t_end;
 int main()
 {
     int i, j, k;
-    register double s;
 
     init_array();
 

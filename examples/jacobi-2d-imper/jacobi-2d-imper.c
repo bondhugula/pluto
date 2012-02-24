@@ -4,9 +4,15 @@
 
 #include <assert.h>
 
-#include "decls.h"
-#include "util.h"
+#define N 2000
+#define T 2000
 
+#pragma declarations
+double a[N][N];
+double b[N][N];
+#pragma enddeclarations
+
+#include "util.h"
 
 int main()
 {

@@ -4,7 +4,9 @@
 
 #include <assert.h>
 
-#include "decls.h"
+#define N 1000
+double f[N][N+13];
+
 #include "util.h"
 
 double t_start, t_end;

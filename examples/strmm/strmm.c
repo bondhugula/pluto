@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
-#include "decls.h"
+
+#define NMAX 1000
+
+#pragma declarations
+double a[NMAX][NMAX], b[NMAX][NMAX], c[NMAX][NMAX];
+#pragma enddeclarations
 
 #define TIME 1
 
@@ -23,26 +28,12 @@ double rtclock()
 }
 
 
-void strmm(long N) {
-  int i,j,k;
-
-#pragma scop
-  for (i=1; i<N; i++) {
-    for (j=0; j<N; j++) {
-      for (k=0; k<i; k++) {
-        b[j][k] += a[i][k] * b[j][i];
-      }
-    }
-  }
-#pragma endscop
-}
-
 
 int main()
 {
   double t_start, t_end;
   long N=NMAX;
-  int i,j;
+  int i,j, k;
 
   for (i = 0; i < NMAX; i++) {
     for (j = 0; j < NMAX; j++) {
@@ -53,7 +44,16 @@ int main()
 
   IF_TIME(t_start = rtclock());
 
-  strmm(N);
+#pragma scop
+  for (i=1; i<N; i++) {
+    for (j=0; j<N; j++) {
+      for (k=0; k<i; k++) {
+        b[j][k] += a[i][k] * b[j][i];
+      }
+    }
+  }
+#pragma endscop
+
 
   IF_TIME(t_end = rtclock());
   IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));

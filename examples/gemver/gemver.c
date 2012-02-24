@@ -1,8 +1,43 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
-#include "decls.h"
+#define alpha 1
+#define beta 1
+#define N 8000
+
+#pragma declarations
+double A[N][N];
+double B[N][N];
+
+double x[N];
+double u1[N];
+double u2[N];
+double v2[N];
+double v1[N];
+double w[N];
+double y[N];
+double z[N];
+#pragma enddeclarations
+
+
+#define alpha 1
+#define beta 1
+
+#pragma declarations
+double A[N][N];
+double B[N][N];
+
+double x[N];
+double u1[N];
+double u2[N];
+double v2[N];
+double v1[N];
+double w[N];
+double y[N];
+double z[N];
+#pragma enddeclarations
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -51,7 +86,7 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-main()
+int main()
 {
     double t_start, t_end;
     int i, j;

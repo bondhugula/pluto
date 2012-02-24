@@ -4,8 +4,11 @@
 # Gets included after the local Makefile in an example sub-directory
 #
 
-#CC=icc
-CC=gcc
+CC=icc
+#CC=gcc
+
+NPROCS=4
+POLYRTLIBDIR=/home/uday/poly/pluto/polyrt/.libs
 
 # Intel MKL and AMD ACML library paths
 MKL=/opt/intel/mkl
@@ -46,20 +49,20 @@ $(SRC).tiled.c:  $(SRC).c
 $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
-orig: $(SRC).c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o orig $(LDFLAGS)
+orig: $(SRC).c 
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
-orig_par: decls.h  util.h $(SRC).c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o orig_par $(LDFLAGS)
+orig_par: $(SRC).c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
-opt: $(SRC).opt.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).opt.c -o opt $(LDFLAGS)
+opt: $(SRC).opt.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).opt.c -o $@ $(LDFLAGS)
 
-tiled: $(SRC).tiled.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o tiled $(LDFLAGS)
+tiled: $(SRC).tiled.c 
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
-par: $(SRC).par.c decls.h  util.h
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o par  $(LDFLAGS)
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
@@ -75,15 +78,18 @@ test: orig tiled par
 	./tiled > out_tiled
 	diff -q out_orig out_tiled
 	export OMP_NUM_THREADS=4; ./par > out_par4
+	rm -f .test
 	diff -q out_orig out_par4
 	@echo Success!
-	rm -f .test
 
 opt-test: orig opt
 	touch .test
 	./orig > out_orig
 	./opt > out_opt
+	rm -f .test
 	diff -q out_orig out_opt
+	@echo Success!
+	rm -f .test
 
 clean:
 	rm -f out_* *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \

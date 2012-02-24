@@ -7,27 +7,6 @@
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
-    int j;
-
-    for (j=0; j<N; j++) {
-        a[j] = ((double)j)/N;
-    }
-}
-
-
-void print_array()
-{
-    int j;
-
-    for (j=0; j<N; j++) {
-        fprintf(stdout, "%lf ", a[j]);
-        if (j%80 == 20) fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
-}
-
 
 double rtclock()
 {
