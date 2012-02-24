@@ -1,3 +1,9 @@
+0.8.0
+
+Make it easier for users to apply their own transformations. Separate 
+transformation porperty detection from pluto_auto_transform. See git history
+for all changes.
+
 0.7.0
 
 From git commit 'Update version to 0.7.0'
