@@ -1,10 +1,6 @@
 #! /bin/sh
 
-libtoolize -c
-aclocal -I m4
-autoheader
-automake --gnu --add-missing -c
-autoconf
+autoreconf -i
 
 cd candl-0.4.0/
 ./autogen.sh
