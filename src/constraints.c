@@ -59,12 +59,13 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
     int size = PLMAX(1,max_rows)*PLMAX(1,max_cols)*sizeof(int);
 
     cst->buf = (int *) malloc(size);
-    bzero(cst->buf, size);
 
     if (cst->buf == NULL) {
-        fprintf(stderr, "Not enough memory\n");
+        fprintf(stderr, "Not enough memory for allocating constraints\n");
         exit(1);
     }
+
+    bzero(cst->buf, size);
 
     cst->is_eq = malloc(max_rows*sizeof(int));
     bzero(cst->is_eq, max_rows*sizeof(int));
@@ -512,7 +513,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
             }
             var++;
         }
-        fprintf(fp, "%s 0\n", cst->is_eq[i]? ">=": "==");
+        fprintf(fp, "%s 0\n", cst->is_eq[i]? "==": ">=");
     }
     fprintf(fp, "\n");
 }
