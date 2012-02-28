@@ -397,11 +397,11 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 }
 
 
+/* This function itself is NOT thread-safe */
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
         const PlutoProg *prog)
 {
-    int i, dest_stmt, src_stmt;
-    Dep *dep;
+    int i;
     static PlutoConstraints *globcst = NULL;
     static PlutoConstraints **depcst = NULL;
 
@@ -418,10 +418,12 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
     int total_cst_rows = 0;
 
-// #pragma omp parallel for private(i,dep,dest_stmt,src_stmt) reduction(+:total_cst)
+// #pragma omp parallel for reduction(+:total_cst_rows)
     for (i=0; i<ndeps; i++) {
-        dep = deps[i];
+        Dep *dep;
+        int dest_stmt, src_stmt;
 
+        dep = deps[i];
         dest_stmt = dep->dest;
         src_stmt = dep->src;
 
@@ -432,15 +434,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         if (!depcst[i]) {
             /* First time, get the constraints */
 
-            // Candl doesn't separate out uniform depedences and
-            // h-transformation
-            // if (src_stmt == dest_stmt && IS_UNIFORM(deps[i].type)) {
-                /* Uniform self-edge */
-                // depcst[i] = get_permutability_constraints_uniform_dep(dep);
-            // }else{
-                /* Non-uniform dependences */
+            /* All dependences treated as non-uniform dependences */
             depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog);
-            // }
 
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
             total_cst_rows += depcst[i]->nrows;
@@ -452,7 +447,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     globcst->nrows = 0;
 
     for (i=0; i<ndeps; i++) {
-        dep = deps[i];
+        Dep *dep = deps[i];
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
@@ -493,7 +488,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
         }
         pluto_constraints_simplify(globcst);
-        // IF_DEBUG2(pluto_constraints_print(stdout, globcst));
+        // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
     }
 
     pluto_constraints_simplify(globcst);
@@ -719,6 +714,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
             }
         }
     }
+    // printf("Ortho matrix\n");
     // pluto_matrix_print(stdout, ortho); 
 
     isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
@@ -767,7 +763,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
      * best of the solutions will be kept; give all constraints for the 
      * statement
      * */
-
     p=0;
     for (i=0; i<ncols; i++) {
         for (j=0; j<ncols; j++) {
@@ -792,10 +787,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     *orthonum = p;
 
-    // printf("Ortho constraints: %d\n", *orthonum);
-    // for (i=0; i<*orthonum; i++) {
-        // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
-    // }
+    /*
+    IF_DEBUG2(printf("Ortho constraints for S%d; %d sets\n", stmt->id+1, *orthonum));
+    for (i=0; i<*orthonum; i++) {
+        IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+    }*/
 
     /* Free the unnecessary ones */
     for (i=p; i<nvar; i++)    {
@@ -815,14 +811,14 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
  * Check whether the dependence is satisfied at level 'level'
  * (works whether the dep is const or non-const, inter-stmt or
  * self edge
- * TODO: assumes no parametric shifts
  */
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
-    static PlutoConstraints *cst = NULL;
-    int j, src, dest, src_dim, dest_dim, *sol;
+    PlutoConstraints *cst;
+    int j, src, dest, src_dim, dest_dim, *sol, npar;
+    bool retval;
 
-    int npar = prog->npar;
+    npar = prog->npar;
 
     Stmt **stmts = prog->stmts;
 
@@ -835,13 +831,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    /* To prevent frequent resizing */
-    if (!cst || cst->alloc_nrows < 1+dep->dpolytope->nrows ||
-            cst->alloc_ncols < src_dim+dest_dim+npar+1)   {
-        if (cst) pluto_constraints_free(cst);
-        cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), src_dim+dest_dim+npar+1);
-    }
-    cst->ncols = src_dim+dest_dim+npar+1;
+    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), src_dim+dest_dim+npar+1);
 
     /*
      * constraint format 
@@ -868,8 +858,9 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
     sol = pluto_constraints_solve(cst);
+    pluto_constraints_free(cst);
 
-    bool retval = (sol)? false:true;
+    retval = (sol)? false:true;
     free(sol);
 
     return retval;
@@ -881,7 +872,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
  */
 int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {
-    static PlutoConstraints *cst = NULL;
+    PlutoConstraints *cst;
     int j, src, dest;
 
     int npar = prog->npar;
@@ -899,13 +890,8 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    if (!cst || cst->alloc_nrows < 2+dep->dpolytope->nrows
-            || cst->alloc_ncols < src_dim+dest_dim+npar+1)   {
-        if (cst) pluto_constraints_free(cst);
-        cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 
-                (src_dim+dest_dim)+npar+1);
-    }
-    cst->ncols = src_dim+dest_dim+npar+1;
+    cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 
+            (src_dim+dest_dim)+npar+1);
 
     /*
      * Check for zero
@@ -946,6 +932,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
+            pluto_constraints_free(cst);
             return DEP_ZERO;
         }
     }
@@ -975,6 +962,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     sol = pluto_constraints_solve(cst);
 
     if (!sol)   {
+        pluto_constraints_free(cst);
         return DEP_PLUS;
     }
 
@@ -1000,6 +988,7 @@ int get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
     free(sol);
     sol = pluto_constraints_solve(cst);
+    pluto_constraints_free(cst);
 
     if (!sol)   {   
         return DEP_MINUS;
