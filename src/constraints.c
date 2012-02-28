@@ -157,27 +157,29 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConst
 }
 
 
-static int cols_compar=-1;
+/* Temporary data structure to compare two rows */
+struct row_info {
+    int *row;
+    int ncols;
+};
 
-static int compar(const void *e1, const void *e2)
+static int row_compar(const void *e1, const void *e2)
 {
-    int *row1 = *(int **) e1;
-    int *row2 = *(int **) e2;
+    int i, ncols, *row1, *row2;
+    struct row_info *u1, *u2;
 
-    /* cols_compar is a global variable that shd be set prior to calling qsort which
-     * uses this function; can't pass it to this function since the argument
-     * list is what qsort needs; the problem comes since the compar function
-     * we have here works on arrays as opposed to scalar data and so size can only 
-     * be passed externally */
-    assert(cols_compar != -1);
+    u1 = *(struct row_info **)e1;
+    u2 = *(struct row_info **)e2;
+    row1 = u1->row;
+    row2 = u2->row;
+    ncols = u1->ncols;
+    assert(ncols == u2->ncols);
 
-    int i;
-
-    for (i=0; i<cols_compar; i++)  {
+    for (i=0; i<ncols; i++)  {
         if (row1[i] != row2[i]) break;
     }
 
-    if (i==cols_compar) return 0;
+    if (i==ncols) return 0;
     else if (row1[i] < row2[i])    {
         return -1;
     }else{
@@ -185,7 +187,7 @@ static int compar(const void *e1, const void *e2)
     }
 
     /* memcmp is inefficient compared to what's above when compiled with gcc */
-    /* return memcmp(row1, row2, cols_compar*sizeof(int)); */
+    /* return memcmp(row1, row2, ncols*sizeof(int)); */
 }
 
 
@@ -226,9 +228,20 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
         }
     }
 
-    /* A race condition here when compiling with -fopenmp */
-    cols_compar = cst->ncols;
-    qsort(cst->val, cst->nrows, sizeof(int *), compar);
+    struct row_info **rows;
+    rows = (struct row_info **) malloc(cst->nrows*sizeof(struct row_info *));
+    for (i=0; i<cst->nrows; i++) {
+        rows[i] = (struct row_info *) malloc(sizeof(struct row_info));
+        rows[i]->row = cst->val[i];
+        rows[i]->ncols = cst->ncols;
+    }
+    qsort(rows, cst->nrows, sizeof(struct row_info *), row_compar);
+
+    for (i=0; i<cst->nrows; i++) {
+        cst->val[i] = rows[i]->row;
+        free(rows[i]);
+    }
+    free(rows);
 
     is_redun[0] = 0;
     for (i=1; i<cst->nrows; i++)    {
@@ -290,8 +303,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         assert(cst->is_eq[i] != 1);
     }
 
-    static PlutoConstraints *newcst=NULL;
-    int **newcsm=NULL;
+    PlutoConstraints *newcst;
 
     // newcst = pluto_constraints_alloc(cst->nrows*cst->nrows/4, cst->ncols);
 
@@ -306,14 +318,10 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         if (csm[i][pos] != 0) break;
     }
 
-    if (i==cst->nrows)  {
+    if (i==cst->nrows) {
 
-        if (!newcst || newcst->alloc_nrows < cst->nrows || newcst->alloc_ncols < cst->ncols)    {
-            /* Reallocate */
-            if (newcst) pluto_constraints_free(newcst);
-            newcst = pluto_constraints_alloc(cst->nrows, cst->ncols);
-        }
-        newcsm = newcst->val;
+        newcst = pluto_constraints_alloc(cst->nrows, cst->ncols);
+        int **newcsm = newcst->val;
 
         for (j=0; j<cst->nrows; j++)    {
             q=0;
@@ -348,11 +356,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
                 ub++;
             }
         }
-        if (!newcst || newcst->alloc_nrows < lb*ub+nb || newcst->alloc_ncols < cst->ncols){
-            if (newcst) pluto_constraints_free(newcst);
-            newcst = pluto_constraints_alloc(lb*ub+nb, cst->ncols);
-        }
-        newcsm = newcst->val;
+        newcst = pluto_constraints_alloc(lb*ub+nb, cst->ncols);
+        int **newcsm = newcst->val;
 
         p=0;
         for (j=0; j<cst->nrows; j++)    {
@@ -390,8 +395,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
     }
 
     pluto_constraints_simplify(newcst);
-
     pluto_constraints_copy(cst, newcst);
+    pluto_constraints_free(newcst);
 }
 
 
@@ -420,7 +425,7 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
 
 
 
-/* Duplicate constraints; returned constraints is to be freed with
+/* Duplicate constraints; returned constraints should be freed with
  * pluto_constraints_free */
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src)
 {
@@ -638,12 +643,9 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     PipOptions *pipOptions;
     PipList *listPtr;
     int *sol;
-    static PlutoMatrix *pipmat = NULL;
+    PlutoMatrix *pipmat;
 
-    if (!pipmat || pipmat->alloc_nrows < cst->nrows || pipmat->alloc_ncols < cst->ncols+1)    {
-        if (pipmat) pluto_matrix_free(pipmat);
         pipmat = pluto_matrix_alloc(cst->nrows, cst->ncols+1);
-    }
 
     /* Convert constraints to PIP format */
     pluto_constraints_to_pip_matrix(cst, pipmat);
@@ -688,6 +690,8 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     pip_options_free(pipOptions);
     pip_matrix_free(domain);
     pip_quast_free(solution);
+
+    pluto_matrix_free(pipmat);
 
     return sol;
 }
