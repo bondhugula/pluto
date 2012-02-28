@@ -171,15 +171,12 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     int redun[npar+1+nstmts*(nvar+1)+1];
     int i, j, k, q;
     int *sol, *fsol;
-    static PlutoConstraints *newcst = NULL;
+    PlutoConstraints *newcst;
 
     assert(cst->ncols-1 == npar+1+nstmts*(nvar+1));
 
 
-    if (!newcst || newcst->alloc_nrows < cst->nrows)   {
-        if (newcst) pluto_constraints_free(newcst);
-        newcst = pluto_constraints_alloc(cst->nrows, CST_WIDTH);
-    }
+    newcst = pluto_constraints_alloc(cst->nrows, CST_WIDTH);
 
     for (i=0; i<npar+1; i++)    {
         redun[i] = 0;
@@ -291,9 +288,9 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     }
 
     pluto_matrix_free(perm_mat);
+    pluto_constraints_free(newcst);
 
     return fsol;
-
 }
 
 
@@ -533,7 +530,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     int num_sols_found, j, k;
     int *bestsol;
     PlutoConstraints *basecst, *nzcst;
-    static PlutoConstraints *currcst = NULL;
+    PlutoConstraints *currcst;
     PlutoConstraints ***orthcst;
 
     int ndeps = prog->ndeps;
@@ -563,12 +560,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     basecst = get_permutability_constraints(deps, ndeps, prog);
 
     num_sols_found = 0;
-    if (!currcst || currcst->alloc_nrows < basecst->nrows)   {
-        /* We don't expect to add a lot to basecst - just ortho constraints
-         * and trivial soln avoidance constraints */
-        if (currcst) pluto_constraints_free(currcst);
-        currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
-    }
+    /* We don't expect to add a lot to basecst - just ortho constraints
+     * and trivial soln avoidance constraints */
+    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
 
     do{
         pluto_constraints_copy(currcst, basecst);
@@ -584,7 +578,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
                     prog, currcst, &orthonum[j]);
             // if (orthonum[j] > 0)    {
             //   if (orthoprod == 0) orthoprod = orthonum[j];
-            // else orthoprod = orthoprod*orthonum[j];
+            //   else orthoprod = orthoprod*orthonum[j];
             // }
             // num[j] = 0;
             orthosum += orthonum[j];
@@ -633,7 +627,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
                 }
             }
 
-            // IF_DEBUG2(pluto_constraints_print(stdout, currcst));
+            // IF_DEBUG2(printf("Solving for %d th solution\n", num_sols_found+1));
+            // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_solve(currcst, prog);
 
         }
@@ -672,6 +667,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     }while (num_sols_found < max_sols && bestsol != NULL);
 
     free(orthcst);
+
+    pluto_constraints_free(currcst);
 
     /* Same number of solutions are found for each stmt */
     return num_sols_found;
