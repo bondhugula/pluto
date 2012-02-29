@@ -1,3 +1,8 @@
+0.8.1
+
+Minor bug fixes; see git log. Bail out with identity transformation on a
+failure.
+
 0.8.0
 
 Make it easier for users to apply their own transformations. Separate 
