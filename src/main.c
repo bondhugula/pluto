@@ -322,10 +322,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->parallel)  {
         /* Generate meta info for insertion of OpenMP pragmas */
         pluto_omp_parallelize(prog);
-        if (options->moredebug) {
-            pluto_detect_transformation_properties(prog);
-            pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
-        }
+    }
+
+    if (options->moredebug) {
+        pluto_detect_transformation_properties(prog);
+        pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
     }
 
     if (options->unroll || options->polyunroll)    {

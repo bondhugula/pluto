@@ -1180,7 +1180,7 @@ void denormalize_domains(PlutoProg *prog)
 
 
 /* Top-level automatic transformation algoritm */
-void pluto_auto_transform(PlutoProg *prog)
+int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j;
     int sols_found, num_ind_sols, depth;
@@ -1196,10 +1196,15 @@ void pluto_auto_transform(PlutoProg *prog)
 
     normalize_domains(prog);
 
+    PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
+    int orig_num_hyperplanes = prog->num_hyperplanes;
+    HyperplaneProperties *orig_hProps = prog->hProps;
+
     /* Get rid of any existing transformation */
     for (i=0; i<nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
-        pluto_matrix_free(stmt->trans);
+        /* Save the original transformation */
+        orig_trans[i] = stmt->trans;
         /* Pre-allocate a little more to prevent frequent realloc */
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
@@ -1264,16 +1269,25 @@ void pluto_auto_transform(PlutoProg *prog)
             ddg_compute_scc(prog);
 
             if (ddg->num_sccs <= 1 || depth > 32)   {
-                printf("Number of unsatisfied deps: %d\n", get_num_unsatisfied_deps(prog->deps, prog->ndeps));
+                if (options->debug) {
+                    printf("Number of unsatisfied deps: %d\n", 
+                            get_num_unsatisfied_deps(prog->deps, prog->ndeps));
                 printf("Number of unsatisfied inter-stmt deps: %d\n", 
                         get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
-
                 fprintf(stderr, "\tUnfortunately, pluto cannot find any more hyperplanes.\n");
-                fprintf(stderr, "\tThis is usually a result of either (1) a bug in the dependence tester,\n");
-                fprintf(stderr, "\tor (2) very rarely a bug in Pluto's auto transformation,\n");
-                fprintf(stderr, "\tor (3) an illegal or inconsistent .fst/.precut in your working directory.\n");
-                fprintf(stderr, "\tPlease send input to author if possible.\n");
-                assert(ddg->num_sccs >= 2 && depth <= 32);
+                    fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
+                    fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
+                    fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
+                    fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
+                }
+                denormalize_domains(prog);
+                /* Restore original ones */
+                for (i=0; i<nstmts; i++) {
+                    stmts[i]->trans = orig_trans[i];
+                    prog->num_hyperplanes = orig_num_hyperplanes;
+                    prog->hProps = orig_hProps;
+                }
+                return 1;
             }
 
             if (options->fuse == NO_FUSE)  {
@@ -1293,6 +1307,16 @@ void pluto_auto_transform(PlutoProg *prog)
     }while (num_ind_sols < nsols || !deps_satisfaction_check(prog->deps, prog->ndeps));
 
     denormalize_domains(prog);
+
+    //pluto_compute_satisfaction_vectors(prog);
+    //pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
+
+    for (i=0; i<nstmts; i++)    {
+        if (orig_trans[i] != NULL)  pluto_matrix_free(orig_trans[i]);
+    }
+    free(orig_hProps);
+
+    return 0;
 }
 
 

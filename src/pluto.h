@@ -352,7 +352,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         int *orthonum);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
 
-void pluto_auto_transform(PlutoProg *prog);
+int pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
