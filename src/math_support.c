@@ -28,7 +28,7 @@
 /*
  * Allocated; not initialized
  *
- * nrows set to allocated number of rows
+ * nrows and ncols initialized to allocated number of rows and cols
  */
 PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
 {
@@ -181,7 +181,8 @@ void pluto_matrix_add_row(PlutoMatrix *mat, int pos)
 {
     int i, j;
 
-    assert (pos <= mat->nrows);
+    assert(mat != NULL);
+    assert(pos <= mat->nrows);
 
     if (mat->nrows == mat->alloc_nrows)   {
         pluto_matrix_resize(mat, mat->nrows+1, mat->ncols);
@@ -199,6 +200,45 @@ void pluto_matrix_add_row(PlutoMatrix *mat, int pos)
         mat->val[pos][j] = 0;
     }
 
+}
+
+void pluto_matrix_interchange_rows(PlutoMatrix *mat, int r1, int r2)
+{
+    int tmp, j;
+
+    for (j=0; j<mat->ncols; j++) {
+        tmp = mat->val[r1][j];
+        mat->val[r1][j] = mat->val[r2][j];
+        mat->val[r2][j] = tmp;
+    }
+}
+
+
+void pluto_matrix_interchange_cols(PlutoMatrix *mat, int c1, int c2)
+{
+    int tmp, i;
+
+    for (i=0; i<mat->nrows; i++) {
+        tmp = mat->val[i][c1];
+        mat->val[i][c1] = mat->val[i][c2];
+        mat->val[i][c2] = tmp;
+    }
+}
+
+
+void pluto_matrix_move_col(PlutoMatrix *mat, int r1, int r2)
+{
+    int j;
+
+    if (r1 < r2) {
+        for (j=r1; j<r2; j++) {
+            pluto_matrix_interchange_cols(mat, j, j+1);
+        }
+    }else{
+        for (j=r1; j>r2; j--) {
+            pluto_matrix_interchange_cols(mat, j, j-1);
+        }
+    }
 }
 
 
@@ -232,6 +272,21 @@ void pluto_matrix_initialize(PlutoMatrix *mat, int val)
             mat->val[i][j] = val;
         }
     }
+}
+
+/* Return an identity matrix of size: size x size */
+PlutoMatrix *pluto_matrix_identity(int size)
+{
+    int i;
+
+    PlutoMatrix *mat = pluto_matrix_alloc(size, size);
+    pluto_matrix_initialize(mat, 0);
+
+    for (i=0; i<size; i++)  {
+        mat->val[i][i] = 1;
+    }
+
+    return mat;
 }
 
 
