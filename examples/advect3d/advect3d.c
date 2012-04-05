@@ -1,17 +1,72 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <unistd.h>
+#include <sys/time.h>
 #include <assert.h>
 
-#ifdef PERFCTR
-#include <papi.h>
-#include "papi_defs.h"
+#define nx 300
+#define ny 300
+#define nz 300
+// #define T 20
+// #define 9 9
+
+#define f60 0.2 
+#define f61 0.5
+#define f62 0.3
+
+#define halfdtbydx 0.5
+#define thirddtbydz 0.3
+#define thirddtbydx 0.3
+#define thirddtbydy 0.3
+
+double a[nx+10][ny+10][nz+10];
+double af[nx+10][ny+10][nz+10];
+double ab[nx+10][ny+10][nz+10];
+double al[nx+10][ny+10][nz+10];
+double athird[nx+10][ny+10][nz+10];
+double uxl[nx+10][ny+10][nz+10];
+double uzf[nx+10][ny+10][nz+10];
+double uyb[nx+10][ny+10][nz+10];
+
+
+#ifdef TIME
+#define IF_TIME(foo) foo;
+#else
+#define IF_TIME(foo)
 #endif
 
-#include "decls.h"
+void init_array()
+{
 
-#include "util.h"
+}
+
+
+void print_array()
+{
+    int i, j, k;
+
+    for (i=0; i<nx; i++) {
+    for (j=0; j<ny; j++) {
+    for (k=0; k<nz; k++) {
+        fprintf(stdout, "%lf ", athird[i][j][k]);
+        if (j%80 == 20) fprintf(stdout, "\n");
+    }
+    }
+    }
+    fprintf(stdout, "\n");
+}
+
+
+double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
+}
 
 #define ceild(n,d)  ceil(((double)(n))/((double)(d)))
 #define floord(n,d) floor(((double)(n))/((double)(d)))
@@ -36,7 +91,7 @@ int main()
 	IF_TIME(t_start = rtclock());
 #define reps 10
 
-    /* pluto start (nx,ny,nz) */
+#pragma scop
     for (j = 4; j <= ny+9-2; j++)
         for (i = 4; i <= nx+9-3; i++)
             for (k = 4; k <= nz+9-3; k++)
@@ -64,8 +119,8 @@ int main()
             for (k = 4; k <= nz+9-3; k++)
                 athird[j][i][k] = a[j][i][k] + (al[j][i+1][k] - al[j][i][k])
                     + (ab[j+1][i][k] - ab[j][i][k]) + (af[j][i][k+1] - af[j][i][k]);
+#pragma endscop
 
-    /* pluto end */
     IF_TIME(t_end = rtclock());
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
