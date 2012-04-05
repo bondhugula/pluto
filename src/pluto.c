@@ -1037,7 +1037,8 @@ void normalize_domains(PlutoProg *prog)
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
         for (i=0; i<prog->nstmts; i++)    {
             PlutoConstraints *copy = 
-                pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, prog->stmts[i]->domain->ncols);
+                pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, 
+                        prog->stmts[i]->domain->ncols);
             pluto_constraints_copy(copy, prog->stmts[i]->domain);
             for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
                 fourier_motzkin_eliminate(copy, 0);
