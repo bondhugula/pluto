@@ -9,7 +9,7 @@
 #
 
 if [ $# -ne 2 ]; then
-    echo "Usage: ./ploog <src file> [all loops | first loop] "
+    echo "Usage: ./ploog <src file> [all loops = 0 | first loop = 1] "
     # third arg: 0 - all loops, 1 - first loop
     exit 1
 fi

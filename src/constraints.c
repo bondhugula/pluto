@@ -300,8 +300,11 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
     int *bound;
 
     for (i=0; i<cst->nrows; i++) {
-        /* Does not support equalities: please extend if necessary */
-        assert(cst->is_eq[i] != 1);
+        if (cst->is_eq[i] == 1) {
+            PlutoConstraints *tmpcst = pluto_constraints_to_pure_inequalities(cst);
+            pluto_constraints_copy(cst, tmpcst);
+            pluto_constraints_free(tmpcst);
+        }
     }
 
     PlutoConstraints *newcst;
@@ -403,7 +406,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
 
 /* Copy constraints from src into dest; if dest does not have enough space,
  * resize it */
-PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src)
+PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, 
+        const PlutoConstraints *src)
 {
     int i;
 
