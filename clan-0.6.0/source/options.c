@@ -71,6 +71,8 @@ clan_options_print(FILE * foo, clan_options_p options)
   fprintf(foo,"structure       = %3d.\n",options->structure);
   fprintf(foo,"inputscop       = %3d.\n",options->inputscop);
   fprintf(foo,"bounded_context = %3d.\n",options->bounded_context);
+  fprintf(foo,"symboltable     = %3d.\n",options->symboltable);
+  fprintf(foo,"debug           = %3d.\n",options->debug);
 }
 
 
@@ -119,6 +121,8 @@ clan_options_help()
   "  -inputscop            Read a .scop as the input.\n"
   "  -arraystag            Dump the arrays table in the <arrays> tag.\n"
   "  -boundedctxt          Bound all global parameters to be >= -1.\n"
+  "  -symboltable          Display the symbol table .\n"
+  "  -debug                Display the debug information.\n"
   "  -v, --version         Display the release information (and more).\n"
   "  -h, --help            Display this information.\n\n");
   printf(
@@ -231,6 +235,8 @@ clan_options_malloc(void)
   options->arraystag = 0;    /* Don't dump the array list in the
 				<arrays> tag. */
   options->bounded_context = 0;/* Don't bound the global parameters. */
+  options->symboltable = 0;
+  options->debug = 0;
   return options;
 }
 
@@ -284,6 +290,12 @@ clan_options_read(int argv, char ** argc, FILE ** input, FILE ** output)
       else
       if (strcmp(argc[i],"-boundedctxt") == 0)
         options->bounded_context = 1;
+      else
+      if (strcmp(argc[i],"-symboltable") == 0)
+        options->symboltable = 1;        
+      else
+      if (strcmp(argc[i],"-debug") == 0)
+        options->debug = 1;                
       else
       if ((strcmp(argc[i],"--help") == 0) || (strcmp(argc[i],"-h") == 0))
       {

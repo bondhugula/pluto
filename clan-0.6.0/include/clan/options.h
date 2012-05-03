@@ -64,6 +64,8 @@ struct clan_options
   int arraystag; /**< 1 to dump the table of array names between the
 		    <arrays></arrays> tags, 0 otherwise (default). */
   int bounded_context; /**< 1 to force global parameters >= -1 (default 0) */
+  int symboltable ; /**<1 to print the symbol table in .scop file (default 0) */
+  int debug;
 };
 typedef struct clan_options   clan_options_t;
 typedef struct clan_options * clan_options_p;

@@ -47,9 +47,10 @@
    void yyerror(char *);
    int  clan_scanner(int, char *, char *);
 
-   extern int           parser_recording; /**< Do we record what we read ? */
-   extern char *        parser_record;    /**< What we record */
-   extern clan_symbol_p parser_symbol;    /**< Top of the symbol table */
+   extern int                   parser_recording; /**< Do we record what we read ? */
+   extern char *                parser_record;    /**< What we record */
+   extern clan_symbol_p         parser_clan_symbol;    /**< Top of the symbol table */
+   extern scoplib_symbol_p      parser_scop_symbol;
 
    int  scanner_parsing = CLAN_FALSE;     /**< Do we parse or not ? */
    int  scanner_comment = 0;              /**< Comment nesting depth */
@@ -78,10 +79,41 @@
                          BEGIN FULLCOMMENT; /* Enter FULLCOMMENT mode */
                          scanner_comment ++;
                        }
-"#pragma"[ ]+"scop"    { scanner_parsing = CLAN_TRUE;  /* Start parsing */ }
-"#pragma"[ ]+"endscop" { scanner_parsing = CLAN_FALSE; /* Stop  parsing */ }
-"#pragma"[ ]+"local-vars" { return clan_scanner(PRAGMALOCALVARS, yytext,"PRAGMALOCALVARS");   }
-"#pragma"[ ]+"live-out" { return clan_scanner(PRAGMALIVEOUT, yytext,"PRAGMALIVEOUT");   }
+"#pragma"[ ]+"scop"             { 
+                                 scanner_parsing = CLAN_TRUE;  /* Start parsing */
+                                 return clan_scanner(CLAN_PARSER_SCOP_START,yytext,"scop start");
+                                }
+                                
+"#pragma"[ ]+"endscop"          { 
+                                 return clan_scanner(CLAN_PARSER_SCOP_END,yytext,"scop end");
+                                }
+                                
+"#pragma"[ ]+"local-vars"       { return clan_scanner(PRAGMALOCALVARS, yytext,"PRAGMALOCALVARS");   }
+"#pragma"[ ]+"live-out"         { return clan_scanner(PRAGMALIVEOUT, yytext,"PRAGMALIVEOUT");   }
+
+"#pragma"[ ]+"declarations"      { 
+                                  scanner_parsing = CLAN_TRUE ; 
+                                  return clan_scanner(CLAN_PARSER_DECL_START,yytext,"decl start");
+                                 }
+                                 
+"#pragma"[ ]+"enddeclarations"  { 
+                                  return clan_scanner(CLAN_PARSER_DECL_END,yytext,"decl end");
+                                }
+
+
+"int"                  { 
+                         yylval.symbol = strdup(yytext);
+                         return clan_scanner(DATATYPE,   yytext,"INT"); 
+                       }
+"float"                  { 
+                         yylval.symbol = strdup(yytext);
+                         return clan_scanner(DATATYPE,   yytext,"FLOAT"); 
+                       }
+"double"                  { 
+                         yylval.symbol = strdup(yytext);
+                         return clan_scanner(DATATYPE,   yytext,"DOUBLE"); 
+                       }
+"struct"               { return clan_scanner(STRUCT,   yytext,"STRUCT"); }
 "if"                   { return clan_scanner(IF,       yytext,"IF");   }
 "else"                 { return clan_scanner(ELSE,     yytext,"ELSE"); }
 "for"                  { return clan_scanner(FOR,      yytext,"FOR");  }
@@ -99,7 +131,7 @@
 			 yylval.symbol = word;
 			 return clan_scanner(ID,yytext,"ID");
                        }
-[0-9]+"."[0-9]*        { return clan_scanner(REAL,yytext,"REAL"); }
+[0-9]+"."[0-9]*[d,f]*        { return clan_scanner(REAL,yytext,"REAL"); }
 [0-9]+                 {
 		         yylval.value = atoi(yytext) ;
                          return clan_scanner(INTEGER,yytext,"INTEGER");
@@ -160,6 +192,7 @@ int yywrap(void)
   return 1;
 }
 
+             
 
 /**
  * clan_scanner function:
@@ -183,8 +216,13 @@ int clan_scanner(int token, char * text, char * message)
   if (parser_recording)
     strcat(parser_record,text);
 
-  if (scanner_parsing == CLAN_TRUE)
+  if (scanner_parsing == CLAN_TRUE) {
+        if(token == CLAN_PARSER_SCOP_END)
+                scanner_parsing = CLAN_FALSE;
+        if(token == CLAN_PARSER_DECL_END)
+                scanner_parsing = CLAN_FALSE;
     return token;
+  }
   else
     return IGNORE;
 }

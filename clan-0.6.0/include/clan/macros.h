@@ -38,10 +38,17 @@
 #ifndef CLAN_MACROS_H
 # define CLAN_MACROS_H
 
-# define CLAN_DEBUG			0
-# define CLAN_TRUE			1
-# define CLAN_FALSE			0
-# define CLAN_MAX_LOCAL_VARIABLES     100
+/* The following macros for properly making parser to work*/
+# define CLAN_TRUE			              1
+# define CLAN_FALSE			              0
+# define CLAN_DEFINE_CONSTRUCTS_TRUE  1
+# define CLAN_DEFINE_CONSTRUCTS_FALSE 0
+# define CLAN_DECLARATIONS_TRUE       1
+# define CLAN_DECLARATIONS_FALSE      0
+# define CLAN_FUNCTIONS_PARSING_TRUE  1
+# define CLAN_FUNCTIONS_PARSING_FALSE 0
+# define CLAN_FUNCTIONS_PARSING_MAIN  2
+# define CLAN_MAX_LOCAL_VARIABLES   100
 
 # include <scoplib/scop.h>
 # include <scoplib/macros.h>
