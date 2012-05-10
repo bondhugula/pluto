@@ -5,7 +5,9 @@
 int main()
 {
   int   i,j,k;
+#pragma declarations
   float a[N][N], b[N][N], c[N][N]; 
+#pragma enddeclarations
 
   /* We read matrix a */
   for(i=0; i<N; i++)

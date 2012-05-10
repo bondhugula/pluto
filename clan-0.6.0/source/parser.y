@@ -48,6 +48,7 @@
    #include <clan/symbol.h>
    #include <clan/statement.h>
    #include <clan/options.h>
+   #include <scoplib/symbol.h>
 
    int yylex(void);
    void yyerror(char *);
@@ -64,7 +65,8 @@
     */
    scoplib_scop_p      parser_scop;        /**< SCoP in construction */
    scoplib_statement_p parser_statement;   /**< Statement in construction */
-   clan_symbol_p       parser_symbol;      /**< Top of the symbol table */
+   clan_symbol_p       parser_clan_symbol;      /**< Top of the symbol table */
+   scoplib_symbol_p    parser_scop_symbol; /**<Top of the symbol table */
    int                 parser_recording;   /**< Boolean: do we record or not? */
    char *              parser_record;      /**< What we record
 					      (statement body) */
@@ -83,6 +85,18 @@
 						     live-out */
    /* Ugly global variable to keep/read Clan options during parsing. */
    clan_options_p	parser_options = NULL;
+   
+   char* parser_symbol_datatype;
+   
+    struct pointer {
+            int num_of_references;
+    };
+            
+    struct datatype {
+            char* datatype_name;
+            struct pointer pointer_details;
+            int pre_defined_type;
+    };     
 
 
 %}
@@ -92,14 +106,18 @@
          scoplib_vector_p affex;        /**< An affine expression */
          scoplib_matrix_p setex;        /**< A set of affine expressions */
          scoplib_matrix_p rw[2];        /**< Read and write array accesses */
+         scoplib_symbol_p symbol_table;         
        }
 
-%token IGNORE
+%token CLAN_PARSER_DECL_START CLAN_PARSER_DECL_END
+%token CLAN_PARSER_SCOP_START CLAN_PARSER_SCOP_END
+%token IGNORE STRUCT
 %token IF ELSE FOR PRAGMALOCALVARS PRAGMALIVEOUT
 %token MIN MAX CEILD FLOORD
 %token REAL
 %token <symbol> ID
 %token <value>  INTEGER
+%token <symbol> DATATYPE
 
 %token syRPARENTHESIS syLPARENTHESIS syRBRACKET syLBRACKET syRBRACE syLBRACE
 %token sySEMICOLON syCOMMA syPOINT syARROW
@@ -129,6 +147,10 @@
 %type <setex>  expression
 %type <rw>     assignment
 %type <symbol> id
+%type <symbol_table> variableDeclaration
+
+
+%start program
 
 %%
 
@@ -136,18 +158,32 @@
  * Start rule.
  *
  */
+ 
 program:
+
+        CLAN_PARSER_DECL_START  declarations CLAN_PARSER_DECL_END program {}
+        
+        | CLAN_PARSER_SCOP_START scop_instructions CLAN_PARSER_SCOP_END program {}
+        
+        | IGNORE program {}
+        
+        | {}
+        
+        ;
+        
+scop_instructions :
+        
     instruction_list
       {
 	/* The full program was parsed. Allocate and fill the final
 	   .scop structures. */
 	int nb_parameters, nb_arrays;
 
-        parser_scop->parameters = clan_symbol_id_array(parser_symbol,
+        parser_scop->parameters = clan_symbol_id_array(parser_clan_symbol,
                                                        SCOPLIB_TYPE_PARAMETER,
                                                        &nb_parameters);
         parser_scop->nb_parameters = nb_parameters;
-        parser_scop->arrays = clan_symbol_id_array(parser_symbol,
+        parser_scop->arrays = clan_symbol_id_array(parser_clan_symbol,
                                                    SCOPLIB_TYPE_ARRAY,
                                                    &nb_arrays);
         parser_scop->nb_arrays = nb_arrays;
@@ -174,13 +210,83 @@ program:
  *
  */
 instruction_list:
-    instruction
-  | instruction_list instruction
-  | IGNORE
-  | instruction_list IGNORE
-  | syRBRACE instruction_list syLBRACE
-  ;
+          instruction
+          | instruction_list instruction
+          | syRBRACE instruction_list syLBRACE
+          ;
+  
+pointer :
+          
+          opMULTIPLY pointer {}
+          
+          | {}
+          
+          ;
+   
+datatype :
+        
+        DATATYPE {  parser_symbol_datatype = strdup($1); }  
+        
+        | STRUCT id { parser_symbol_datatype = strcat(strdup("struct "),strdup($2));}
 
+        ;  
+ 
+declarations :
+
+        datatype pointer variableDeclaration  ctsDeclarations sySEMICOLON declarations {}
+
+        | {}
+        
+        ;
+        
+ctsDeclarations :
+        
+       syCOMMA variableDeclaration ctsDeclarations {}
+       
+       | {}
+       
+       ;                 
+
+/*
+ * Rules to describe a variable. It can be a scalar ('a'), a
+ * n-dimensional array ('a[i]'), or a procedure call ('a(b,c,d)')
+ * return: <setex>
+ */
+variableDeclaration:
+/*
+ * Rule 1: variable -> id
+ * ex: variable -> a
+ */
+ 
+    id  {     
+    
+    $$ = scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,NULL,0); 
+    parser_scop_symbol->data_type = parser_symbol_datatype;
+    
+    }
+    
+/*
+ * Rule 2: variable -> id array_index
+ * ex: variable -> a[i][j]
+ */
+  | id array_index     { 
+       
+      scoplib_matrix_p dimensions_bounds = $2;     
+      
+      $$ = scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,
+                              dimensions_bounds,$2->NbRows); 
+      parser_scop_symbol->data_type = parser_symbol_datatype;                              
+                            
+    }
+    
+/*
+ * Rule 3: variable -> id ( variable_list )
+ * ex: variable -> a(b,c,d)
+ */
+   | id syRPARENTHESIS variable_list syLPARENTHESIS    { } 
+
+  ;   
+  
 
 /*
  * Rules for a bloc of instructions.
@@ -212,7 +318,7 @@ instruction:
     id
       {
         clan_symbol_p symbol;
-        symbol = clan_symbol_add(&parser_symbol,$3,
+        symbol = clan_symbol_add(&parser_clan_symbol,$3,
                                  SCOPLIB_TYPE_ITERATOR,parser_depth+1);
 	/* Ensure that the returned symbol was either a new one,
 	   either from the same type. */
@@ -233,7 +339,7 @@ instruction:
     opASSIGNMENT
     max_affine_expression
       {
-        scoplib_vector_p parser_i_term = clan_vector_term(parser_symbol,1,$3);
+        scoplib_vector_p parser_i_term = clan_vector_term(parser_clan_symbol,1,$3);
 	scoplib_vector_tag_inequality(parser_i_term);
 	int i, j;
 	for (i = 0; i < $6->NbRows; ++i)
@@ -270,7 +376,7 @@ instruction:
         parser_scheduling[parser_depth]++;
         parser_nb_cons -= parser_consperdim[parser_depth];
         parser_consperdim[parser_depth] = 0;
-	clan_symbol_remove(&parser_symbol, parser_iterators[parser_depth]);
+	clan_symbol_remove(&parser_clan_symbol, parser_iterators[parser_depth]);
       }
 /*
  * Rule 2: instruction -> if (condition) bloc
@@ -313,11 +419,11 @@ instruction:
 	if (parser_depth == 0)
 	  {
 	    char* fakeiter = strdup("fakeiter");
-	    clan_symbol_p symbol = clan_symbol_lookup(parser_symbol, fakeiter);
+	    clan_symbol_p symbol = clan_symbol_lookup(parser_clan_symbol, fakeiter);
 	    if (symbol)
 	      free(fakeiter);
 	    else
-	      symbol = clan_symbol_add(&parser_symbol,fakeiter,
+	      symbol = clan_symbol_add(&parser_clan_symbol,fakeiter,
 				       SCOPLIB_TYPE_ITERATOR,parser_depth+1);
 	    parser_iterators[parser_depth] = symbol;
 	    scoplib_vector_p constraint =
@@ -406,6 +512,7 @@ instruction:
 	      parser_variables_liveout[j] = id;
 	  }
       }
+      
   ;
 
 
@@ -534,15 +641,15 @@ term:
  */
     INTEGER
       {
-        $$ = clan_vector_term(parser_symbol,$1,NULL);
+        $$ = clan_vector_term(parser_clan_symbol,$1,NULL);
       }
 /*
  * Rule 2: term -> id
  */
   | id
       {
-        clan_symbol_add(&parser_symbol,$1,SCOPLIB_TYPE_UNKNOWN,parser_depth);
-        $$ = clan_vector_term(parser_symbol,1,$1);
+        clan_symbol_add(&parser_clan_symbol,$1,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,1,$1);
         free($1);
       }
 /*
@@ -550,47 +657,65 @@ term:
  */
   | opMINUS INTEGER
       {
-        $$ = clan_vector_term(parser_symbol,-($2),NULL);
+        $$ = clan_vector_term(parser_clan_symbol,-($2),NULL);
       }
 /*
  * Rule 4: term -> INT * id
  */
   | INTEGER opMULTIPLY id
       {
-        clan_symbol_add(&parser_symbol,$3,SCOPLIB_TYPE_UNKNOWN,parser_depth);
-        $$ = clan_vector_term(parser_symbol,$1,$3);
+        clan_symbol_add(&parser_clan_symbol,$3,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,$1,$3);
         free($3);
+      }
+/*
+ * Rule 4': term -> id * INT
+ */
+  | id opMULTIPLY INTEGER
+      {
+        clan_symbol_add(&parser_clan_symbol,$1,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,$3,$1);
+        free($1);
       }
 /*
  * Rule 5: term -> INT * INT
  */
   | INTEGER opMULTIPLY INTEGER
       {
-        $$ = clan_vector_term(parser_symbol, ($1) * ($3), NULL);
+        $$ = clan_vector_term(parser_clan_symbol, ($1) * ($3), NULL);
       }
 /*
  * Rule 6: term -> INT / INT
  */
   | INTEGER opDIVIDE INTEGER
       {
-        $$ = clan_vector_term(parser_symbol, ($1) / ($3), NULL);
+        $$ = clan_vector_term(parser_clan_symbol, ($1) / ($3), NULL);
       }
 /*
  * Rule 7: term -> - INT * id
  */
   | opMINUS INTEGER opMULTIPLY id
       {
-        clan_symbol_add(&parser_symbol,$4,SCOPLIB_TYPE_UNKNOWN,parser_depth);
-        $$ = clan_vector_term(parser_symbol,-($2),$4);
+        clan_symbol_add(&parser_clan_symbol,$4,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,-($2),$4);
         free($4);
+      }
+/*
+ * Rule 7': term -> - id * INT
+ */
+  | opMINUS id opMULTIPLY INTEGER
+      {
+        clan_symbol_add(&parser_clan_symbol,$2,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,-($4),$2);
+        free($2);
       }
 /*
  * Rule 8: term -> - id
  */
   | opMINUS id
       {
-        clan_symbol_add(&parser_symbol,$2,SCOPLIB_TYPE_UNKNOWN,parser_depth);
-        $$ = clan_vector_term(parser_symbol,-1,$2);
+        clan_symbol_add(&parser_clan_symbol,$2,SCOPLIB_TYPE_UNKNOWN,parser_depth);
+        $$ = clan_vector_term(parser_clan_symbol,-1,$2);
         free($2);
       }
   ;
@@ -984,7 +1109,7 @@ variable:
         int rank;
         scoplib_matrix_p matrix;
 	char* s = (char*) $1;
-	clan_symbol_p symbol = clan_symbol_lookup(parser_symbol, s);
+	clan_symbol_p symbol = clan_symbol_lookup(parser_clan_symbol, s);
 	// If the variable is an iterator or a parameter, discard it
 	// from the read/write clause.
 	if ((symbol && symbol->type == SCOPLIB_TYPE_ITERATOR) ||
@@ -992,8 +1117,8 @@ variable:
 	  $$ = NULL;
 	else
 	  {
-	    clan_symbol_add(&parser_symbol, s, SCOPLIB_TYPE_ARRAY,parser_depth);
-	    rank = clan_symbol_get_rank(parser_symbol, s);
+	    clan_symbol_add(&parser_clan_symbol, s, SCOPLIB_TYPE_ARRAY,parser_depth);
+	    rank = clan_symbol_get_rank(parser_clan_symbol, s);
 	    matrix = scoplib_matrix_malloc
 	      (1, CLAN_MAX_DEPTH + CLAN_MAX_PARAMETERS + 2);
 	    clan_matrix_tag_array(matrix, rank);
@@ -1008,8 +1133,8 @@ variable:
   | id array_index
       {
         int rank;
-        clan_symbol_add(&parser_symbol,$1,SCOPLIB_TYPE_ARRAY,parser_depth);
-        rank = clan_symbol_get_rank(parser_symbol,$1);
+        clan_symbol_add(&parser_clan_symbol,$1,SCOPLIB_TYPE_ARRAY,parser_depth);
+        rank = clan_symbol_get_rank(parser_clan_symbol,$1);
         clan_matrix_tag_array($2,rank);
         $$ = $2;
         free($1);
@@ -1171,6 +1296,7 @@ NUMBER:
 %%
 
 
+
 void
 yyerror(char *s)
 {
@@ -1178,6 +1304,26 @@ yyerror(char *s)
   clan_parse_error = 1;
 }
 
+/**
+  * clan_parser_get_symbols_from_clan_symbol_table function:
+  * It tries to get the extra symbol information other than in pragma declaration
+  * scop for smoothining of symbol table 
+  */
+
+void
+clan_parser_get_symbols_from_clan_symbol_table(scoplib_symbol_p* parser_scop_symbol,
+                                               clan_symbol_p parser_clan_symbol) {
+                                               
+  clan_symbol_p clan_symbol = parser_clan_symbol;
+  while(clan_symbol != NULL ) {
+    char* symbol_name = strdup(clan_symbol->identifier);
+    if(scoplib_symbol_lookup(*parser_scop_symbol,symbol_name) == NULL ) {
+      scoplib_symbol_add(parser_scop_symbol,symbol_name,clan_symbol->type,NULL,0);
+    } 
+    clan_symbol = clan_symbol->next;
+  }
+  
+}                                               
 
 /**
  * clan_parser_initialize_state function:
@@ -1198,7 +1344,8 @@ clan_parser_initialize_state(clan_options_p options)
 
   parser_scop   = scoplib_scop_malloc();
   parser_domain = scoplib_matrix_malloc(nb_rows,nb_columns);
-  parser_symbol = NULL;
+  parser_clan_symbol = NULL;
+  parser_scop_symbol = NULL;
 
   parser_scheduling = (int *)malloc(depth * sizeof(int));
   parser_consperdim = (int *)malloc(depth * sizeof(int));
@@ -1243,7 +1390,8 @@ void
 clan_parser_free_state()
 {
   scoplib_matrix_free(parser_domain);
-  clan_symbol_free(parser_symbol);
+  clan_symbol_free(parser_clan_symbol);
+//  scoplib_symbol_free(parser_scop_symbol);
   free(parser_scheduling);
   free(parser_consperdim);
   free(parser_iterators);
@@ -1270,18 +1418,24 @@ clan_parse(FILE * input, clan_options_p options)
   yyparse();
 
   fclose(yyin);
+  
+  // printf("The parsing is successful.........\n");
+  parser_scop->symbol_table = parser_scop_symbol;       
+  
   if (! clan_parse_error)
     {
       if (parser_variables_localvars[0] != -1 ||
 	  parser_variables_liveout[0] != -1)
 	clan_scop_fill_options(parser_scop, parser_variables_localvars,
 			       parser_variables_liveout);
-      clan_scop_compact(parser_scop);
+      clan_scop_compact(parser_scop,CLAN_MAX_DEPTH);
     }
   else
     parser_scop = NULL;
+  
+ 
+  clan_parser_get_symbols_from_clan_symbol_table(&parser_scop_symbol,parser_clan_symbol);  
+  parser_scop->symbol_table = parser_scop_symbol;      
   clan_parser_free_state();
-
   return parser_scop;
 }
-
