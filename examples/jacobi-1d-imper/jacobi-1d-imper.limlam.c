@@ -3,7 +3,14 @@
 #include <math.h>
 
 #include <assert.h>
-#include "decls.h"
+
+#define N 2000000
+#define T 1000
+
+#pragma declarations
+double a[N];
+double b[N];
+#pragma enddeclarations
 
 #ifdef PERFCTR
 #include <papi.h>

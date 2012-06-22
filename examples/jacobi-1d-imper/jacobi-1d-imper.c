@@ -4,8 +4,8 @@
 
 #include "util.h"
 
-#define N 1000
-#define T 50
+#define N 2000000
+#define T 1000
 
 #pragma declarations
 double a[N];
