@@ -260,7 +260,7 @@ variableDeclaration:
  
     id  {     
     
-    $$ = scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,NULL,0); 
+    scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,NULL,0); 
     parser_scop_symbol->data_type = parser_symbol_datatype;
     
     }
@@ -273,7 +273,7 @@ variableDeclaration:
        
       scoplib_matrix_p dimensions_bounds = $2;     
       
-      $$ = scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,
+      scoplib_symbol_add(&parser_scop_symbol,$1,SCOPLIB_TYPE_ARRAY,
                               dimensions_bounds,$2->NbRows); 
       parser_scop_symbol->data_type = parser_symbol_datatype;                              
                             
@@ -1316,7 +1316,7 @@ clan_parser_get_symbols_from_clan_symbol_table(scoplib_symbol_p* parser_scop_sym
                                                
   clan_symbol_p clan_symbol = parser_clan_symbol;
   while(clan_symbol != NULL ) {
-    char* symbol_name = strdup(clan_symbol->identifier);
+    char* symbol_name = clan_symbol->identifier;
     if(scoplib_symbol_lookup(*parser_scop_symbol,symbol_name) == NULL ) {
       scoplib_symbol_add(parser_scop_symbol,symbol_name,clan_symbol->type,NULL,0);
     } 
