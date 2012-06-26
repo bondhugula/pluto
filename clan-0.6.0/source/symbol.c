@@ -294,8 +294,7 @@ clan_symbol_add(clan_symbol_p * location, char * identifier, int type, int rank)
   /* Else, we allocate and fill a new clan_symbol_t node. */
   symbol = clan_symbol_malloc();
 
-  symbol->identifier = (char *)malloc(SCOPLIB_MAX_STRING * sizeof(char));
-  strcpy(symbol->identifier,identifier);
+  symbol->identifier = strdup(identifier);
 
   /* If the type was unknown (iterator or parameter) we know now that it is
    * a parameter, it would have been already in the table otherwise.

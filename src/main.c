@@ -226,8 +226,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     char* irroption = scoplib_scop_tag_content(scop, "<irregular>",
             "</irregular>");
 
-    scoplib_scop_free(scop);
-
     IF_DEBUG2(pluto_deps_print(stdout, prog->deps, prog->ndeps));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
@@ -434,6 +432,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_options_free(options);
 
     pluto_prog_free(prog);
+
+    scoplib_scop_free(scop);
 
     return 0;
 }

@@ -461,6 +461,7 @@ void pluto_dep_free(Dep *dep)
     if (dep->dirvec) {
         free(dep->dirvec);
     }
+    free(dep);
 }
 
 
@@ -1157,6 +1158,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         prog->params[i] = strdup(scop->parameters[i]);
     }
 
+    pluto_constraints_free(prog->context);
     prog->context = scoplib_matrix_to_pluto_constraints(scop->context);
 
     if (options->context != -1)	{
@@ -1758,6 +1760,14 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
 }
 
 
+void pluto_access_free(PlutoAccess *acc)
+{
+    pluto_matrix_free(acc->mat);
+    free(acc->name);
+    scoplib_symbol_free(acc->symbol);
+    free(acc);
+}
+
 void pluto_stmt_free(Stmt *stmt)
 {
     int i, j;
@@ -1787,15 +1797,13 @@ void pluto_stmt_free(Stmt *stmt)
 
     if (writes != NULL) {
         for (i=0; i<stmt->nwrites; i++)   {
-            pluto_matrix_free(writes[i]->mat);
-            free(writes[i]);
+            pluto_access_free(writes[i]);
         }
         free(writes);
     }
     if (reads != NULL) {
         for (i=0; i<stmt->nreads; i++)   {
-            pluto_matrix_free(reads[i]->mat);
-            free(reads[i]);
+            pluto_access_free(reads[i]);
         }
         free(reads);
     }

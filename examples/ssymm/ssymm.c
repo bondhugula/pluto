@@ -3,7 +3,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define NMAX 500
+#define NMAX 2000
 
 #pragma declarations
 double a[NMAX][NMAX], b[NMAX][NMAX], c[NMAX][NMAX];

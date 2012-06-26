@@ -1195,6 +1195,8 @@ int pluto_auto_transform(PlutoProg *prog)
 
     HyperplaneProperties *hProps = prog->hProps;
 
+    if (nstmts == 0)  return 0;
+
     normalize_domains(prog);
 
     PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
@@ -1313,8 +1315,9 @@ int pluto_auto_transform(PlutoProg *prog)
     //pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
 
     for (i=0; i<nstmts; i++)    {
-        if (orig_trans[i] != NULL)  pluto_matrix_free(orig_trans[i]);
+        pluto_matrix_free(orig_trans[i]);
     }
+    free(orig_trans);
     free(orig_hProps);
 
     return 0;
