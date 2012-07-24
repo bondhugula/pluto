@@ -1723,9 +1723,7 @@ Dep *pluto_dep_alloc()
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, 
         const PlutoMatrix *trans)
 {
-    int i, npar;
-
-    npar = domain->ncols - 1 - dim;
+    int i;
 
     Stmt *stmt = (Stmt *) malloc(sizeof(Stmt));
 
