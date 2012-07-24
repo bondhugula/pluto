@@ -73,7 +73,7 @@ void pluto_tile(PlutoProg *prog)
 
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Outermost tilable band: t%d--t%d\n", 
-                outermostBandStart, outermostBandEnd);
+                outermostBandStart+1, outermostBandEnd+1);
     }
 
     int count = outermostBandEnd - outermostBandStart + 1;
