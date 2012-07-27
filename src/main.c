@@ -41,7 +41,39 @@
 
 PlutoOptions *options;
 
-void usage_message();
+void usage_message(void)
+{
+    fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
+    fprintf(stdout, "\nOptions:\n");
+    fprintf(stdout, "       --tile                 Tile for locality\n");
+    fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
+    fprintf(stdout, "       | --parallelize\n");
+    fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
+    fprintf(stdout, "       --multipipe            Extract two degrees of pipelined parallelism if possible;\n");
+    fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
+    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
+    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
+    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
+    fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
+    fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
+    fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
+    fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
+    fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
+    fprintf(stdout, "       --help    | -h         Print this help menu\n");
+    fprintf(stdout, "       --version | -v         Display version number\n");
+    fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
+    fprintf(stdout, "       --nofuse               Do not fuse across SCCs of data dependence graph\n");
+    fprintf(stdout, "       --maxfuse              Maximal fusion\n");
+    fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "\n   Debugging\n");
+    fprintf(stdout, "       --debug        Verbose output\n");
+    fprintf(stdout, "       --moredebug    More verbose output\n");
+    fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -439,36 +471,3 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 }
 
 
-void usage_message(void)
-{
-    fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
-    fprintf(stdout, "\nOptions:\n");
-    fprintf(stdout, "       --tile                 Tile for locality\n");
-    fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
-    fprintf(stdout, "       | --parallelize\n");
-    fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --multipipe            Extract two degrees of pipelined parallelism if possible;\n");
-    fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
-    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
-    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
-    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
-    fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
-    fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
-    fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
-    fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
-    fprintf(stdout, "       --help    | -h         Print this help menu\n");
-    fprintf(stdout, "       --version | -v         Display version number\n");
-    fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
-    fprintf(stdout, "       --nofuse               Do not fuse across SCCs of data dependence graph\n");
-    fprintf(stdout, "       --maxfuse              Maximal fusion\n");
-    fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
-    fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "       --moredebug    More verbose output\n");
-    fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
-}
