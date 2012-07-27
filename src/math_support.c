@@ -35,16 +35,19 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
     int i;
     PlutoMatrix *mat;
 
+    assert(alloc_nrows >= 0);
+    assert(alloc_ncols >= 0);
+
     mat = (PlutoMatrix *) malloc(sizeof(PlutoMatrix));
 
-    mat->val = (int **) malloc(alloc_nrows*sizeof(int *));
+    mat->val = (int **) malloc(PLMAX(alloc_nrows,1)*sizeof(int *));
 
     for (i=0; i<alloc_nrows; i++) {
-        mat->val[i] = (int *) malloc(alloc_ncols*sizeof(int));
+        mat->val[i] = (int *) malloc(PLMAX(alloc_ncols,1)*sizeof(int));
     }
 
-    mat->alloc_nrows = alloc_nrows;
-    mat->alloc_ncols = alloc_ncols;
+    mat->alloc_nrows = PLMAX(alloc_nrows,1);
+    mat->alloc_ncols = PLMAX(alloc_ncols,1);
 
     mat->nrows = alloc_nrows;
     mat->ncols = alloc_ncols;
