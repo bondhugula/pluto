@@ -1188,6 +1188,10 @@ int pluto_auto_transform(PlutoProg *prog)
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
+    /* Create the data dependence graph */
+    prog->ddg = ddg_create(prog);
+    ddg_compute_scc(prog);
+
     Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
     int npar = prog->npar;

@@ -335,8 +335,6 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             stmt->is_orig_loop[j] = true;
         }
 
-        stmt->num_ind_sols = 0;
-
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
@@ -843,7 +841,7 @@ static int map_extract(__isl_take isl_map *map, void *user)
 }
 
 
-static int extract_deps(Dep **deps, int first, Stmt **stmts, 
+int extract_deps(Dep **deps, int first, Stmt **stmts, 
         __isl_keep isl_union_map *umap, int type)
 {
     struct pluto_extra_dep_info info = { deps, stmts, type, first };
@@ -1683,6 +1681,7 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     stmt->domain = pluto_constraints_dup(domain);
 
     stmt->trans = pluto_matrix_dup(trans);
+    stmt->num_ind_sols = 0;
 
     stmt->text = NULL;
     stmt->tile =  1;
@@ -1842,19 +1841,31 @@ static int extract_set(__isl_take isl_set *set, void *user)
     stmts = info->stmts;
 
     int dim = isl_set_dim(set, isl_dim_all);
-    PlutoConstraints *domain = pluto_constraints_empty(dim);
-    PlutoMatrix *trans = pluto_matrix_identity(dim-1);
-    stmts[info->index] = pluto_stmt_alloc(dim, domain, trans);
+    int npar = isl_set_dim(set, isl_dim_param);
+    PlutoConstraints *domain = pluto_constraints_empty(dim+1);
+    PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, domain->ncols);
+    pluto_matrix_initialize(trans, 0);
+    trans->nrows = 0;
 
-    r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
+    stmts[info->index] = pluto_stmt_alloc(dim-npar, domain, trans);
+
+    Stmt *stmt = stmts[info->index];
+    stmt->id = info->index;
+
+    r = isl_set_foreach_basic_set(set, &extract_basic_set, info);
 
     pluto_constraints_free(domain);
     pluto_matrix_free(trans);
 
+    int j;
+    for (j=0; j<stmt->dim; j++)  {
+        stmt->is_orig_loop[j] = true;
+    }
+
     return r;
 }
 
-static int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts)
+int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts)
 {
     struct pluto_extra_stmt_info info = {stmts, 0};
     isl_union_set_foreach_set(domains, &extract_set, &info);

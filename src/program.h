@@ -38,8 +38,6 @@ PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
 PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
 
-PlutoOptions *pluto_options_alloc();
-void pluto_options_free(PlutoOptions *);
 int get_coeff_upper_bound(PlutoProg *prog);
 
 void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos);
@@ -64,5 +62,9 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
+
+int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts);
+int extract_deps(Dep **deps, int first, Stmt **stmts, 
+        __isl_keep isl_union_map *umap, int type);
 
 #endif

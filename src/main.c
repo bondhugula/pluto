@@ -35,7 +35,6 @@
 
 #include "math_support.h"
 #include "post_transform.h"
-#include "ddg.h"
 #include "program.h"
 #include "version.h"
 
@@ -261,9 +260,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     IF_DEBUG2(pluto_deps_print(stdout, prog->deps, prog->ndeps));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
-    /* Create the data dependence graph */
-    prog->ddg = ddg_create(prog);
-    ddg_compute_scc(prog);
 
     int dim_sum=0;
     for (i=0; i<prog->nstmts; i++) {

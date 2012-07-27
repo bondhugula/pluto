@@ -1251,7 +1251,8 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
  * Construct a non-parametric basic map from the constraints in cst
  */
 __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
-       isl_ctx *ctx, const PlutoConstraints *cst, int n_in, int n_out)
+       isl_ctx *ctx, const PlutoConstraints *cst, int n_in, int n_out,
+       int n_par)
 {
     int i, j;
     int n_eq = 0, n_ineq = 0;
@@ -1260,7 +1261,7 @@ __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
     isl_basic_map *bmap;
     isl_space *space;
 
-    space = isl_space_alloc(ctx, 0, n_in, n_out);
+    space = isl_space_alloc(ctx, n_par, n_in, n_out);
 
     isl_int_init(v);
 
