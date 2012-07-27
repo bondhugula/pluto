@@ -1825,8 +1825,10 @@ static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
     bcst = isl_basic_set_to_pluto_constraints(bset);
     stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
 
-    info->index++;
+    pluto_constraints_free(bcst);
 
+    info->index++;
+    isl_basic_set_free(bset);
     return 0;
 }
 
@@ -1860,16 +1862,27 @@ static int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts)
     return info.index;
 }
 
-isl_union_map *pluto_schedule(isl_union_set *domains, 
+/*
+ * Output schedules are isl relations that have dims in the order
+ * isl_dim_out, isl_dim_in, div, param, const
+ */
+__isl_give isl_union_map *pluto_schedule(isl_union_set *domains, 
         isl_union_map *dependences, 
         PlutoOptions *options)
 {
     int i;
+    isl_ctx *ctx;
+
+    ctx = isl_ctx_alloc();
 
     PlutoProg *prog = pluto_prog_alloc();
     prog->nstmts = isl_union_set_n_set(domains);
 
-    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+    if (prog->nstmts >= 1) {
+        prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+    }else{
+        prog->stmts = NULL;
+    }
 
     for (i=0; i<prog->nstmts; i++) {
         prog->stmts[i] = NULL;
@@ -1885,5 +1898,26 @@ isl_union_map *pluto_schedule(isl_union_set *domains,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts,
             dependences, CANDL_RAW);
 
-    return NULL;
+    pluto_auto_transform(prog);
+    
+    /* Extract schedules */
+    isl_union_map *schedules = isl_union_map_empty(NULL);
+
+    for (i=0; i<prog->nstmts; i++) {
+        Stmt *stmt = prog->stmts[i];
+        PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
+
+        isl_basic_map *bmap;
+        isl_map *map;
+
+        bmap = isl_basic_map_from_pluto_constraints(ctx, sched, 
+                stmt->domain->ncols-1, stmt->trans->nrows);
+        map = isl_map_from_basic_map(bmap);
+        schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));
+    }
+
+    pluto_prog_free(prog);
+    isl_ctx_free(ctx);
+
+    return schedules;
 }

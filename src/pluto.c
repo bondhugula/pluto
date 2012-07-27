@@ -1179,7 +1179,6 @@ void denormalize_domains(PlutoProg *prog)
 }
 
 
-
 /* Top-level automatic transformation algoritm */
 int pluto_auto_transform(PlutoProg *prog)
 {
