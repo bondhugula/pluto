@@ -2,3 +2,4 @@
 CVS
 .cvsignore
 version.h
+libpluto.la
