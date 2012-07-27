@@ -31,10 +31,6 @@ polycc: polycc.sh
 
 .PHONY: bin binit
 
-install:
-	@echo "No install target"
-	@echo "Please run polycc in the top-level directory"
-
 bindir:
 	@if [ ! -d bin ];then \
 		echo mkdir bin; \
