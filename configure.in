@@ -109,7 +109,7 @@ dnl Configuring PipLib (long long int is 64 bits)
 echo -e "\n=========================="
 echo "Configuring PipLib"
 echo "=========================="
-configureopts="--with-bits=64 --enable-static --disable-shared"
+configureopts="--with-bits=64"
 (cd piplib/
  $RM config.cache;
  ./configure ${configureopts}
@@ -120,7 +120,7 @@ dnl Configuring Clan 0.6.0
 echo -e "\n=========================="
 echo "Configuring Clan 0.6.0"
 echo "=========================="
-configureopts="--enable-llint-version --enable-static --disable-shared \
+configureopts="--enable-llint-version \
 --enable-internal-scoplib"
 (cd clan-0.6.0/
  ./configure ${configureopts}
@@ -131,7 +131,7 @@ dnl Configuring Candl 0.4.0 (long long int)
 echo -e "\n=========================="
 echo "Configuring Candl 0.4.0 "
 echo "=========================="
-configureopts="--enable-llint-version --enable-static --disable-shared \
+configureopts="--enable-llint-version \
 --with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
 --with-piplib=$SOURCE_DIR/piplib"
 (cd candl-0.4.0/
@@ -143,7 +143,7 @@ dnl Configuring isl
 echo -e "\n======================"
 echo "Configuring isl"
 echo "======================"
-configureopts="--enable-static --disable-shared --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
+configureopts="--with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
 (cd isl/
  ./configure ${configureopts}
 )
@@ -153,7 +153,7 @@ dnl Configuring Cloog 0.14.1 (long long int)
 echo -e "\n=========================="
 echo "Configuring Cloog-isl"
 echo "=========================="
-configureopts="--with-isl-builddir=../isl --enable-static --disable-shared --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
+configureopts="--with-isl-builddir=../isl --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX"
 (cd cloog-isl/
  ./configure ${configureopts}
  )
