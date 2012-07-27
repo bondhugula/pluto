@@ -1163,7 +1163,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 
     if (options->context != -1)	{
         for (i=0; i<prog->npar; i++)  {
-            pluto_constraints_add_inequality(prog->context, prog->context->nrows);
+            pluto_constraints_add_inequality(prog->context);
             prog->context->val[i][i] = 1;
             prog->context->val[i][prog->context->ncols-1] = -options->context;
         }

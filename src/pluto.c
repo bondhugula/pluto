@@ -1065,7 +1065,7 @@ void normalize_domains(PlutoProg *prog)
             PlutoConstraints *dpolytope = prog->deps[i]->dpolytope;
 
             for (k=0; k<context->nrows; k++) {
-                pluto_constraints_add_inequality(dpolytope, dpolytope->nrows);
+                pluto_constraints_add_inequality(dpolytope);
 
                 /* Already initialized to zero */
 
@@ -1139,7 +1139,7 @@ void normalize_domains(PlutoProg *prog)
 
         for (j=0; j<npar; j++)  {
             if (neg[j])   {
-                pluto_constraints_add_inequality(dpoly, dpoly->nrows);
+                pluto_constraints_add_inequality(dpoly);
                 dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
             }
         }

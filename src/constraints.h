@@ -21,6 +21,7 @@
 #define _CONSTRAINTS_H
 
 #include "isl/set.h"
+#include "math_support.h"
 
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
@@ -43,7 +44,10 @@ struct pluto_constraints {
     /* Number of rows allocated a-priori */
     int alloc_nrows;
     int alloc_ncols;
-};
+
+    struct pluto_constraints *next;
+}; 
+
 typedef struct pluto_constraints PlutoConstraints;
 
 
@@ -51,6 +55,7 @@ PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
 PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
+void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 
@@ -61,11 +66,13 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
 PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints *cst);
 
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
+PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1, const PlutoConstraints *cst2);
+
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
 int *pluto_constraints_solve(const PlutoConstraints *);
-void pluto_constraints_add_inequality(PlutoConstraints *cst, int pos);
-void pluto_constraints_add_equality(PlutoConstraints *cst, int pos);
+void pluto_constraints_add_inequality(PlutoConstraints *cst);
+void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos);
 void pluto_constraints_remove_row(PlutoConstraints *, int);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
@@ -79,11 +86,19 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
 PlutoConstraints *pluto_constraints_select_row(const PlutoConstraints *cst, int pos);
 void pluto_constraints_negate_row(PlutoConstraints *cst, int pos);
 void pluto_constraints_negate_constraint(PlutoConstraints *cst, int pos);
+void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1, int col2);
+
+PlutoConstraints *pluto_constraints_read(FILE *fp);
 
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
 PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
+
+PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_empty(int ncols);
+PlutoConstraints *pluto_constraints_universe(int ncols);
 
 /*
  * Construct a non-parametric basic set from the constraints in cst.
