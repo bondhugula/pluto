@@ -76,6 +76,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
         map = isl_map_from_basic_map(bmap);
         schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));
+
+        pluto_constraints_free(sched);
     }
 
     pluto_prog_free(prog);
