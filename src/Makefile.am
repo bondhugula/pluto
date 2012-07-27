@@ -21,3 +21,4 @@ pluto_LDADD = ../candl-0.4.0/source/libcandl.la \
    ../cloog-isl/libcloog-isl.la ../isl/libisl.la -lm
 INCLUDES = 
 
+lib_LTLIBRARIES = libpluto.la
