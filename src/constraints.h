@@ -104,5 +104,9 @@ PlutoConstraints *pluto_constraints_universe(int ncols);
  * Construct a non-parametric basic set from the constraints in cst.
  */
 __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
-  const PlutoConstraints *cst);
+        const PlutoConstraints *cst);
+PlutoConstraints *isl_basic_set_to_pluto_constraints(
+        __isl_keep isl_basic_set *bset);
+PlutoConstraints *isl_basic_map_to_pluto_constraints(
+        __isl_keep isl_basic_map *bmap);
 #endif

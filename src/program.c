@@ -465,57 +465,6 @@ void pluto_dep_free(Dep *dep)
 }
 
 
-/* Convert an isl_basic_map to a PlutoConstraints object */
-static PlutoConstraints *isl_basic_map_to_pluto_constraints(
-        __isl_keep isl_basic_map *bmap)
-{
-    int i, j;
-    int eq_row;
-    int ineq_row;
-    int n_col;
-    isl_int v;
-    isl_mat *eq, *ineq;
-    PlutoConstraints *cons;
-
-    isl_int_init(v);
-
-    eq = isl_basic_map_equalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
-    ineq = isl_basic_map_inequalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
-
-    eq_row = isl_mat_rows(eq);
-    ineq_row = isl_mat_rows(ineq);
-    n_col = isl_mat_cols(eq);
-
-    cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
-    cons->nrows = eq_row + ineq_row;
-
-    for (i = 0; i < eq_row; ++i) {
-        cons->is_eq[i] = 1;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(eq, i, j, &v);
-            cons->val[i][j] = isl_int_get_si(v);
-        }
-    }
-
-    for (i = 0; i < ineq_row; ++i) {
-        cons->is_eq[eq_row+i] = 0;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(ineq, i, j, &v);
-            cons->val[eq_row + i][j] = isl_int_get_si(v);
-        }
-    }
-
-    isl_mat_free(eq);
-    isl_mat_free(ineq);
-
-    isl_int_clear(v);
-
-    return cons;
-}
-
-
 /* Set the dimension names of type "type" according to the elements
  * in the array "names".
  */
@@ -1849,4 +1798,92 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
     pluto_prog_add_hyperplane(prog, level);
     prog->hProps[level].type = H_SCALAR;
     prog->hProps[level].dep_prop = SEQ;
+}
+
+/* Temporary data structure used inside extra_stmt_domains
+ *
+ * stmts points to the array of Stmts being constructed
+ * index is the index of the next stmt in the array
+ */
+struct pluto_extra_stmt_info {
+    Stmt **stmts;
+    int index;
+};
+
+static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
+{
+    Stmt **stmts;
+    Stmt *stmt;
+    PlutoConstraints *bcst;
+    struct pluto_extra_stmt_info *info;
+    
+    info = (struct pluto_extra_stmt_info *)user;
+
+    stmts = info->stmts;
+    stmt = stmts[info->index];
+
+    bcst = isl_basic_set_to_pluto_constraints(bset);
+    stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
+
+    info->index++;
+
+    return 0;
+}
+
+static int extract_set(__isl_take isl_set *set, void *user)
+{
+    int r;
+    Stmt **stmts;
+    struct pluto_extra_stmt_info *info;
+
+    info = (struct pluto_extra_stmt_info *)user;
+    stmts = info->stmts;
+
+    int dim = isl_set_dim(set, isl_dim_all);
+    PlutoConstraints *domain = pluto_constraints_empty(dim);
+    PlutoMatrix *trans = pluto_matrix_identity(dim-1);
+    stmts[info->index] = pluto_stmt_alloc(dim, domain, trans);
+
+    r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
+
+    pluto_constraints_free(domain);
+    pluto_matrix_free(trans);
+
+    return r;
+}
+
+static int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts)
+{
+    struct pluto_extra_stmt_info info = {stmts, 0};
+    isl_union_set_foreach_set(domains, &extract_set, &info);
+
+    return info.index;
+}
+
+isl_union_map *pluto_schedule(isl_union_set *domains, 
+        isl_union_map *dependences, 
+        PlutoOptions *options)
+{
+    int i;
+
+    PlutoProg *prog = pluto_prog_alloc();
+    prog->nstmts = isl_union_set_n_set(domains);
+
+    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+
+    for (i=0; i<prog->nstmts; i++) {
+        prog->stmts[i] = NULL;
+    }
+
+    extract_stmt_domains(domains, prog->stmts);
+
+    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i] = pluto_dep_alloc();
+    }
+    prog->ndeps = 0;
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts,
+            dependences, CANDL_RAW);
+
+    return NULL;
 }
