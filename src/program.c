@@ -883,6 +883,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     int nstmts = scoplib_statement_number(scop->statement);
     isl_ctx *ctx;
     isl_dim *dim;
+    isl_space *param_space;
     isl_set *context;
     isl_union_map *empty;
     isl_union_map *write;
@@ -896,7 +897,9 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
 
     dim = isl_dim_set_alloc(ctx, scop->nb_parameters, 0);
     dim = set_names(dim, isl_dim_param, scop->parameters);
-    context = scoplib_matrix_to_isl_set(scop->context, isl_dim_copy(dim));
+
+    param_space = isl_space_params(isl_space_copy(dim));
+    context = scoplib_matrix_to_isl_set(scop->context, param_space);
 
     if (!options->rar)
         dep_rar = isl_union_map_empty(isl_dim_copy(dim));
@@ -974,7 +977,8 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                 dim = set_names(dim, isl_dim_set, stmt->iterators);
                 dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
                 dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
-                // dom = isl_set_intersect(dom, isl_set_copy(context));
+                // UB: commenting it out for now
+                dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
                 dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
                         2 * stmt->nb_iterators + 1);
@@ -1685,7 +1689,11 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     stmt->id = -1;
     stmt->dim = dim;
     stmt->dim_orig = dim;
-    stmt->domain = pluto_constraints_dup(domain);
+    if (domain != NULL) {
+        stmt->domain = pluto_constraints_dup(domain);
+    }else{
+        stmt->domain = NULL;
+    }
 
     stmt->trans = pluto_matrix_dup(trans);
     stmt->num_ind_sols = 0;
@@ -1829,16 +1837,18 @@ static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
     stmt = stmts[info->index];
 
     bcst = isl_basic_set_to_pluto_constraints(bset);
-    stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
+    if (stmt->domain) {
+        stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
+        pluto_constraints_free(bcst);
+    }else{
+        stmt->domain = bcst;
+    }
 
-    pluto_constraints_free(bcst);
-
-    info->index++;
     isl_basic_set_free(bset);
     return 0;
 }
 
-static int extract_set(__isl_take isl_set *set, void *user)
+static int extract_stmt(__isl_take isl_set *set, void *user)
 {
     int r;
     Stmt **stmts;
@@ -1849,19 +1859,17 @@ static int extract_set(__isl_take isl_set *set, void *user)
 
     int dim = isl_set_dim(set, isl_dim_all);
     int npar = isl_set_dim(set, isl_dim_param);
-    PlutoConstraints *domain = pluto_constraints_empty(dim+1);
-    PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, domain->ncols);
+    PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, dim+1);
     pluto_matrix_initialize(trans, 0);
     trans->nrows = 0;
 
-    stmts[info->index] = pluto_stmt_alloc(dim-npar, domain, trans);
+    stmts[info->index] = pluto_stmt_alloc(dim-npar, NULL, trans);
 
     Stmt *stmt = stmts[info->index];
     stmt->id = info->index;
 
     r = isl_set_foreach_basic_set(set, &extract_basic_set, info);
 
-    pluto_constraints_free(domain);
     pluto_matrix_free(trans);
 
     int j;
@@ -1869,13 +1877,15 @@ static int extract_set(__isl_take isl_set *set, void *user)
         stmt->is_orig_loop[j] = true;
     }
 
+    info->index++;
+
     return r;
 }
 
-int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts)
+int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
 {
     struct pluto_extra_stmt_info info = {stmts, 0};
-    isl_union_set_foreach_set(domains, &extract_set, &info);
+    isl_union_set_foreach_set(domains, &extract_stmt, &info);
 
     return info.index;
 }

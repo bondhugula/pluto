@@ -9,6 +9,8 @@ int main() {
 	isl_union_map *deps = isl_union_map_read_from_str(ctx, "{ }");
 
 	PlutoOptions *options = pluto_options_alloc();
+    options->tile = 1;
+
 	isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
 	isl_union_map_dump(schedule);

@@ -63,7 +63,7 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos);
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
 
-int extract_stmt_domains(__isl_keep isl_union_set *domains, Stmt **stmts);
+int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts);
 int extract_deps(Dep **deps, int first, Stmt **stmts, 
         __isl_keep isl_union_map *umap, int type);
 

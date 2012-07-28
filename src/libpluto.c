@@ -27,6 +27,35 @@
 
 PlutoOptions *options;
 
+void normalize_schedule(PlutoConstraints *sched, Stmt *stmt)
+{
+    int del, r, c, j, snodes, nrows;
+    PlutoConstraints *domain;
+
+    domain = stmt->domain;
+    snodes = stmt->dim - stmt->dim_orig;
+
+    while (domain != NULL) {
+        del = 0;
+        nrows = domain->nrows;
+        for (r=0; r<nrows; r++) {
+            for (c=0; c<snodes; c++) {
+                if (domain->val[r-del][c] != 0) break;
+            }
+            if (c < snodes) {
+                PlutoConstraints *cut = pluto_constraints_select_row(domain, r-del);
+                for (j=0; j<stmt->trans->nrows; j++) {
+                    pluto_constraints_add_dim(cut, 0);
+                }
+                pluto_constraints_add(sched, cut);
+                pluto_constraints_remove_row(domain, r-del);
+                del++;
+            }
+        }
+        domain = domain->next;
+    }
+}
+
 /*
  * Output schedules are isl relations that have dims in the order
  * isl_dim_out, isl_dim_in, div, param, const
@@ -58,7 +87,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         prog->stmts[i] = NULL;
     }
 
-    extract_stmt_domains(domains, prog->stmts);
+    extract_stmts(domains, prog->stmts);
 
     for (i=0; i<prog->nstmts; i++) {
         prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
@@ -79,17 +108,29 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
             dependences, CANDL_RAW);
 
     pluto_auto_transform(prog);
-    
+
+    pluto_transformations_print(prog);
+    pluto_detect_transformation_properties(prog);
+
+    pluto_print_hyperplane_properties(prog);
+
+    if (options->tile) {
+        pluto_tile(prog);
+    }
+
     /* Extract schedules */
     isl_space *space = isl_space_alloc(ctx, prog->npar, 0, 0);
 
     isl_union_map *schedules = isl_union_map_empty(space);
+
+    // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
 
     for (i=0; i<prog->nstmts; i++) {
         isl_basic_map *bmap;
         isl_map *map;
         Stmt *stmt = prog->stmts[i];
         PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
+        normalize_schedule(sched, stmt);
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched, 
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
@@ -99,7 +140,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         pluto_constraints_free(sched);
     }
 
-    /* pluto_stmts_print(stdout, prog->stmts, prog->nstmts); */
+    // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
 
     pluto_prog_free(prog);
     isl_ctx_free(ctx);
