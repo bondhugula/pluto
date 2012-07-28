@@ -7,7 +7,7 @@
  * This library is free software; you can redistribute it and/or              *
  * modify it under the terms of the GNU Lesser General Public                 *
  * License as published by the Free Software Foundation; either               *
- * version 2 of the License, or (at your option) any later version.         *
+ * version 2 of the License, or (at your option) any later version.           *
  *                                                                            *
  * This library is distributed in the hope that it will be useful,            *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
@@ -15,7 +15,7 @@
  * Lesser General Public License for more details.                            *
  *                                                                            *
  * A copy of the GNU Lesser General Public Licence can be found in the file
- * `LICENSE.LGPL2' in the top-level directory of this distribution. 
+ * `LICENSE.LGPL2' in the top-level directory of this distribution.
  *
  */
 #include "pluto.h"
@@ -142,7 +142,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         Stmt *stmt = prog->stmts[i];
         PlutoConstraints *sched = normalize_domain_schedule(stmt, prog);
 
-        bmap = isl_basic_map_from_pluto_constraints(ctx, sched, 
+        bmap = isl_basic_map_from_pluto_constraints(ctx, sched,
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
         map = isl_map_from_basic_map(bmap);
         schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));

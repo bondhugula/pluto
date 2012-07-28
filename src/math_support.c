@@ -228,17 +228,17 @@ void pluto_matrix_interchange_cols(PlutoMatrix *mat, int c1, int c2)
     }
 }
 
-
-void pluto_matrix_move_col(PlutoMatrix *mat, int r1, int r2)
+/* Move column from position c1 to c2 */
+void pluto_matrix_move_col(PlutoMatrix *mat, int c1, int c2)
 {
     int j;
 
-    if (r1 < r2) {
-        for (j=r1; j<r2; j++) {
+    if (c1 < c2) {
+        for (j=c1; j<c2; j++) {
             pluto_matrix_interchange_cols(mat, j, j+1);
         }
     }else{
-        for (j=r1; j>r2; j--) {
+        for (j=c1; j>c2; j--) {
             pluto_matrix_interchange_cols(mat, j, j-1);
         }
     }
@@ -250,6 +250,8 @@ void pluto_matrix_move_col(PlutoMatrix *mat, int r1, int r2)
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src)
 {
     int i, j;
+
+    assert(src != NULL);
 
     PlutoMatrix *dup = pluto_matrix_alloc(src->alloc_nrows, src->alloc_ncols);
 
@@ -327,6 +329,22 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat)
             fscanf(fp, "%d", &mat->val[i][j]);
 }
 
+PlutoMatrix *pluto_matrix_input(FILE *fp)
+{
+    int i, j, nrows, ncols;
+    fscanf(fp, "%d %d", &nrows, &ncols);
+
+    PlutoMatrix *mat = pluto_matrix_alloc(nrows, ncols);
+
+    for (i=0; i<mat->nrows; i++)
+        for (j=0; j<mat->ncols; j++)
+            fscanf(fp, "%d", &mat->val[i][j]);
+
+    return mat;
+}
+
+
+
 
 void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat)
 {
@@ -340,7 +358,7 @@ void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat)
         }
         fprintf(fp, "\n");
     }
-    fprintf(fp, "\n");
+    // fprintf(fp, "\n");
 }
 
 
@@ -364,6 +382,54 @@ void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
                 }
             }
         }
+    }
+}
+
+
+/* pos: 0-indexed */
+void gaussian_eliminate_var(PlutoMatrix *mat, int pos)
+{
+    int r, r2, c;
+    int factor1, factor2;
+
+    // printf("Before gaussian eliminate\n");
+    // pluto_matrix_print(stdout, mat);
+    // printf("eliminate: %d\n", pos);
+
+    for (r=0; r<mat->nrows; r++)    {
+        if (mat->val[r][pos] != 0)  {
+            for (r2=0; r2<mat->nrows; r2++) {
+                if (r2 == r) continue;
+                if (mat->val[r2][pos] != 0) {
+                    factor1 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r2][pos];
+                    factor2 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r][pos];
+                    for (c=0; c<mat->ncols; c++) {
+                        // printf("%d %d\n", mat->val[r2][pos], mat->val[r][pos]);
+                        // printf("%d\n", factor1);
+                        // printf("%d\n", factor2);
+                        mat->val[r2][c] = mat->val[r2][c]*factor1
+                            - mat->val[r][c]*factor2;
+                    }
+                }
+            }
+            pluto_matrix_remove_row(mat, r);
+            break;
+        }
+    }
+    // printf("After gaussian eliminate\n");
+    // pluto_matrix_print(stdout, mat);
+
+    pluto_matrix_remove_col(mat, pos);
+}
+
+/* Eliminate variables from start to end (inclusive); start is 0-indexed
+ */
+void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
+{
+    int i;
+
+    for (i=0; i<num_elim; i++) {
+        gaussian_eliminate_var(mat, start);
     }
 }
 
@@ -399,4 +465,87 @@ int *min_lexical(int *a, int *b, int num)
 
     /* both are equal */
     return a;
+}
+
+/* Free returned string with free */
+char *concat(const char *prefix, const char *suffix)
+{
+    char *concat = malloc(strlen(prefix) + strlen(suffix) + 1);
+    sprintf(concat, "%s%s", prefix, suffix);
+    return concat;
+}
+
+PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1, 
+        const PlutoMatrix *mat2)
+{
+    assert(mat1->ncols == mat2->nrows);
+
+    int i, j, k;
+
+    PlutoMatrix *mat3 = pluto_matrix_alloc(mat1->nrows, mat2->ncols);
+
+    for (i=0; i<mat1->nrows; i++)   {
+        for (j=0; j<mat2->ncols; j++)   {
+            mat3->val[i][j] = 0;
+            for (k=0; k<mat1->ncols; k++)   {
+                mat3->val[i][j] += mat1->val[i][k]*mat2->val[k][j];
+            }
+        }
+    }
+    return mat3;
+}
+
+/* Converts matrix to row-echelon form in-place */
+PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat)
+{
+    int i, j, k, r, _lcm, factor1;
+
+    r=0;
+    for (i=0; i< PLMIN(mat->ncols,mat->nrows); i++)  {
+        //pluto_matrix_print(stdout, sched);
+        if (mat->val[r][i] == 0) {
+            for (k=r+1; k<mat->nrows; k++) {
+                if (mat->val[k][i] != 0) break;
+            }
+            if (k<mat->nrows)    {
+                pluto_matrix_interchange_rows(mat, r, k);
+            }
+        }
+        if (mat->val[r][i] != 0) {
+            for (k=r+1; k<mat->nrows; k++) {
+                printf("i=%d, r=%d\n", i, r);
+                if (mat->val[k][i] == 0) continue;
+                _lcm = lcm(mat->val[k][i], mat->val[r][i]);
+                factor1 = _lcm/mat->val[k][i];
+                for (j=i; j<mat->ncols; j++) {
+                    mat->val[k][j] = mat->val[k][j]*factor1
+                        - mat->val[r][j]*(_lcm/mat->val[r][i]);
+                }
+            }
+            r++;
+        }
+    }
+
+    return mat;
+}
+
+int pluto_matrix_get_rank(const PlutoMatrix *mat)
+{
+    int i, j, null, rank;
+
+    PlutoMatrix *re = pluto_matrix_to_row_echelon(pluto_matrix_dup(mat));
+
+    // pluto_matrix_print(stdout, re);
+
+    null = 0;
+    for (i=0; i<re->nrows; i++) {
+        int sum = 0;
+        for (j=0; j<re->ncols; j++) {
+            sum += abs(re->val[i][j]);
+        }
+        if (sum==0) null++;
+    }
+    rank = re->nrows - null;
+    pluto_matrix_free(re);
+    return rank;
 }

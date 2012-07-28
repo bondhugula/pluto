@@ -23,6 +23,8 @@
 #include <stdbool.h>
 
 #include "scoplib/symbol.h"
+#include "cloog/cloog.h"
+#include "cloog/clast.h"
 
 #include "math_support.h"
 #include "constraints.h"
@@ -31,6 +33,7 @@
 
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
+#define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
 
 /* Do not fuse across SCCs */
 #define NO_FUSE 0
@@ -50,18 +53,21 @@
 
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
-#define H_UNKNOWN 0
-#define H_LOOP 1
-#define H_TILE_SPACE_LOOP 2
-#define H_SCALAR 3
+/* H_TILE_SPACE_LOOP may not always be distinguished from H_LOOP */
+typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
+    H_SCALAR} PlutoHypType;
 
 /* Candl dependences are not marked uniform/non-uniform */
 #define IS_UNIFORM(type) (0)
 #define IS_RAR(type) (type == CANDL_RAR)
 
-
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
     PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
+
+
+/* ORIG is an original compute statement provided by a polyhedral extractor */
+typedef enum stmttype {ORIG=0, COPY_OUT, FLOW_COPY_IN, LW_COPY_IN, 
+    COMM_CALL, SIGMA, TAU, MISC, STMT_UNKNOWN} PlutoStmtType;
 
 typedef struct pluto_access{
     int sym_id;
@@ -106,6 +112,9 @@ struct statement{
      */
     PlutoMatrix *trans;
 
+    /* H_LOOP, H_SCALAR, .. */
+    PlutoHypType *hyp_types;
+
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
 
@@ -115,19 +124,30 @@ struct statement{
     PlutoAccess **writes;
     int nwrites;
 
-
     /***/
     /* Used by scheduling algo */
     /***/
 
-    /* Num of independent soln's found */
+    /* Num of independent soln's needed */
     int num_ind_sols;
 
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
 
+    int first_tile_dim;
+    int last_tile_dim;
+
+    PlutoStmtType type;
+
+    /* Compute statement associated with distmem copy/sigma stmt */
+    const struct statement *parent_compute_stmt;
 };
 typedef struct statement Stmt;
+
+struct stmt_access_pair{
+    PlutoAccess *acc;
+    Stmt *stmt;
+};
 
 
 struct dependence{
@@ -153,6 +173,10 @@ struct dependence{
      * [nvar|nvar|npar|1]
      */
     PlutoConstraints *dpolytope;
+
+    PlutoConstraints *depsat_poly;
+
+    int *satvec;
 
     /* Dependence type from Candl (raw, war, or rar) */
     int type;
@@ -182,7 +206,7 @@ struct hyperplane_properties{
 
     /* Hyperplane type: scalar, loop, or tile-space loop (H_SCALAR,
      * H_LOOP, H_TILE... */
-    int type;
+    PlutoHypType type;
 
     /* The band number this hyperplane belongs to. Note that everything is a
      * hierarchy of permutable loop nests (it's not a tree, but a straight
@@ -206,11 +230,20 @@ struct plutoProg{
     Dep **deps;
     int ndeps;
 
+    /* Array of data variable names */
+    // required only by commopt_foifi option
+    char **data_names;
+    int num_data;
+
     /* Parameters */
     char **params;
 
     /* Number of hyperplanes that represent the transformed space
-     * same as stmts[i].trans->nrows, for all i */
+     * same as stmts[i].trans->nrows, for all i; even if statements 
+     * are allowed to have different number of rows, at codegen time,
+     * they all have to be padded to the maximum across all statements;
+     * in that case, num_hyperplanes is intended to be max across
+     * stmt->trans->nrows */
     int num_hyperplanes;
 
     /* Data dependence graph of the program */
@@ -234,6 +267,48 @@ struct plutoProg{
 };
 typedef struct plutoProg PlutoProg;
 
+/*
+ * A Ploop is NOT an AST loop; this is a dimension in the scattering tree
+ * which is not a scalar one. Ploop exists in the polyhedral representation
+ * and corresponds to one or more loops in the final generated AST 
+ */
+typedef struct pLoop{
+    int depth;
+    Stmt **stmts;
+    int nstmts;
+} Ploop;
+
+struct pluto_dep_list {
+    Dep *dep;
+    struct pluto_dep_list *next;
+};
+typedef struct pluto_dep_list PlutoDepList;
+
+struct pluto_constraints_list {
+    PlutoConstraints *constraints;
+    PlutoConstraints *iterations;
+    PlutoDepList *deps;
+    Stmt *stmt;
+    PlutoAccess *access;
+    struct pluto_constraints_list *next;
+};
+
+typedef struct pluto_constraints_list PlutoConstraintsList;
+
+PlutoConstraintsList* pluto_constraints_list_alloc(PlutoConstraints *cst);
+
+void pluto_constraints_list_add(PlutoConstraintsList *list,const PlutoConstraints *cst,
+    Dep *dep, int copyDep, PlutoConstraints *iterations);
+
+void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints *cst, 
+    PlutoConstraints *iterations);
+
+typedef struct band{
+    Ploop *loop;
+    int width;
+    /* Not used yet */
+    struct band **children;
+} Band;
 
 /* Globally visible, easily accessible data */
 /* It's declared in main.c (for pluto binary) and in libpluto.c for 
@@ -244,8 +319,11 @@ void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
 void pluto_compute_dep_satisfaction(PlutoProg *prog);
+void pluto_compute_dep_satisfaction_complex(PlutoProg *prog);
 bool dep_is_satisfied(Dep *dep);
 void pluto_detect_transformation_properties(PlutoProg *prog);
+void pluto_compute_satisfaction_vectors(PlutoProg *prog);
+void pluto_compute_dep_directions(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
@@ -258,7 +336,7 @@ int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
-int  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
+DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
@@ -266,7 +344,7 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
-bool create_tile_schedule(PlutoProg *prog, int firstD, int lastD);
+bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
 
 int pluto_omp_parallelize(PlutoProg *prog);
 
@@ -281,13 +359,35 @@ void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
-void pluto_print_dep_directions(Dep **deps, int ndeps, int levels);
+void pluto_print_dep_directions(PlutoProg *prog);
+void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
+PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
-int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);
+int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
 
-int gen_vecloop_file(PlutoProg *prog);
+Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
+Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
+void pluto_loop_print(const Ploop *loop);
+void pluto_loops_print(Ploop **loops, int num);
+void pluto_loops_free(Ploop **loops, int nloops);
+void pluto_bands_print(Band **bands, int num);
+void pluto_band_print(const Band *band);
+void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog, CloogOptions *options);
+void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog, CloogOptions *options);
+
+Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
+Ploop *pluto_loop_dup(Ploop *l);
+int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
+void pluto_bands_free(Band **bands, int nbands);
+int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
+void pluto_detect_hyperplane_types(PlutoProg *prog);
+void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
+
+Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
+        const PlutoProg *prog, int *num);
+int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog);
 
 #endif

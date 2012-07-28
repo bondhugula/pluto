@@ -25,7 +25,7 @@
 
 int getDeepestNonScalarLoop(PlutoProg *prog);
 int detect_mark_unrollable_loops(PlutoProg *prog);
-int pre_vectorize (PlutoProg *prog);
+int pluto_pre_vectorize(PlutoProg *prog);
 int gen_unroll_file(PlutoProg *prog);
 
 #endif

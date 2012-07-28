@@ -23,31 +23,85 @@
 #include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
+#include "transforms.h"
 
 
-void interchange_scattering_dims(PlutoProg *prog, int level1, int level2)
+int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
 {
-    int k, j, tmp;
-    HyperplaneProperties hTmp;
+    int i;
+    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
+    assert(depth <= newacc->ncols-1);
+    for (i=0; i<newacc->nrows; i++) {
+        if (newacc->val[i][depth] != 0) return 0;
+    }
+    return 1;
+}
 
-    Stmt **stmts = prog->stmts;
-    int nstmts = prog->nstmts;
+#define SHORT_STRIDE 4
+int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
+{
+    int i;
+    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
+    assert(depth <= newacc->ncols-1);
+    for (i=0; i<newacc->nrows-1; i++) {
+        if (newacc->val[i][depth] != 0) return 0;
+    }
+    if (newacc->val[newacc->nrows-1][depth] >= 1 &&
+            newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) return 1;
 
-    for (k=0; k<nstmts; k++)    {
-        for (j=0; j<stmts[k]->trans->ncols; j++)   {
-            tmp = stmts[k]->trans->val[level1][j];
-            stmts[k]->trans->val[level1][j] = stmts[k]->trans->val[level2][j];
-            stmts[k]->trans->val[level2][j] = tmp;
+    return 0;
+}
+
+
+
+int get_num_invariant_accesses(Ploop *loop, PlutoProg *prog)
+{
+    int i, j, ni;
+
+    /* All statements under the loop, all accesses for the statement */
+    ni = 0;
+    for (i=0; i<loop->nstmts; i++) {
+        Stmt *stmt = loop->stmts[i];
+        for (j=0; j<stmt->nreads; j++) {
+            ni += is_invariant(stmt, stmt->reads[j], loop->depth);
         }
+        for (j=0; j<stmt->nwrites; j++) {
+            ni += is_invariant(stmt, stmt->writes[j], loop->depth);
+        }
+    }
+    return ni;
+}
 
-        // tmp = trans_loop_type[level1];
-        // stmts[k].trans_loop_type[level1] = stmts[k].trans_loop_type[level2];
-        // stmts[k].trans_loop_type[level2] = tmp;
+int get_num_spatial_accesses(Ploop *loop, PlutoProg *prog)
+{
+    int i, j, ns;
+
+    /* All statements under the loop, all accesses for the statement */
+    ns = 0;
+    for (i=0; i<loop->nstmts; i++) {
+        Stmt *stmt = loop->stmts[i];
+        for (j=0; j<stmt->nreads; j++) {
+            ns += has_spatial_reuse(stmt, stmt->reads[j], loop->depth);
+        }
+        for (j=0; j<stmt->nwrites; j++) {
+            ns += has_spatial_reuse(stmt, stmt->writes[j], loop->depth);
+        }
+    }
+    return ns;
+}
+
+
+int get_num_accesses(Ploop *loop, PlutoProg *prog)
+{
+    int i, ns;
+
+    /* All statements under the loop, all accesses for the statement */
+    ns = 0;
+    for (i=0; i<loop->nstmts; i++) {
+        ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
     }
 
-    hTmp = prog->hProps[level1]; 
-    prog->hProps[level1] = prog->hProps[level2];
-    prog->hProps[level2] = hTmp;
+    return ns;
 }
 
 
@@ -65,61 +119,57 @@ int getDeepestNonScalarLoop(PlutoProg *prog)
 }
 
 
-int pre_vectorize(PlutoProg *prog)
+/* FIXME: one loop per band */
+int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog)
 {
-    int lastloop, loop;
+    int num, l;
 
-    HyperplaneProperties *hProps = prog->hProps;
+    /* Band has to be the innermost band as well */
+    if (!pluto_is_band_innermost(band, is_tiled)) return 0;
 
-    /* find the deepest parallel loop NOT belonging to the outermost band that
-     * has been identified for parallelization */
-    lastloop = getDeepestNonScalarLoop(prog);
+    Ploop **loops;
 
-    for (loop=lastloop; loop>=0; loop--)    {
-        /* This loop will not be a tile space loop */
-        // printf("%d\n",  loop);
-        if ((hProps[loop].dep_prop == PARALLEL 
-                    || hProps[loop].dep_prop == PIPE_PARALLEL_INNER_PARALLEL) 
-                && (hProps[loop].type != H_TILE_SPACE_LOOP)) {
-            if (!options->silent)   {
-                fprintf(stdout, "[Pluto post transform] pre-vectorize: moving dimension t%d in\n", 
-                        loop+1);
-            }
+    if (is_tiled) { 
+        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+                band->loop->depth + band->width, prog, &num);
+    }else{
+        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+                band->loop->depth, prog, &num);
+    }
 
-            /* Move this loop inside to possibly enable compiler's (ICC) 
-             * auto-vectorization */
-            interchange_scattering_dims(prog,loop,lastloop);
+    for (l=0; l<num; l++) {
+        if (!pluto_loop_is_parallel(prog, loops[l])) continue;
+        // printf("checking: ");
+        // pluto_loop_print(loops[l]);
+        int s, t, a;
+        a = get_num_accesses(loops[l], prog);
+        s = get_num_spatial_accesses(loops[l], prog);
+        t = get_num_invariant_accesses(loops[l], prog);
+        if (a == s + t) break;
+    }
 
-            hProps[lastloop].prevec = 1;
-
-
-            break;
-        }
+    if (l < num) {
+        pluto_make_innermost(loops[l], prog);
+        IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
+        IF_DEBUG(pluto_loop_print(loops[l]););
+        return 1;
     }
 
     return 0;
 }
 
-/* Create a .unroll - empty .unroll if no unroll-jammable loops */
-int gen_vecloop_file(PlutoProg *prog)
+
+int pluto_pre_vectorize(PlutoProg *prog)
 {
-    int i;
-
-    HyperplaneProperties *hProps = prog->hProps;
-    FILE *vfp = fopen(".vectorize", "w");
-
-    if (!vfp)  {
-        printf("Error opening .vectorize file for writing\n");
-        return -1;
+    int nbands, i;
+    Band **bands;
+    bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    int retval = 0;
+    for (i=0; i<nbands; i++) {
+        retval |= pluto_pre_vectorize_band(bands[i], 0, prog); 
     }
-
-    for (i=0; i<prog->num_hyperplanes; i++) {
-        if (hProps[i].prevec == 1)  {
-            fprintf(vfp, "t%d\n", i+1);
-        }
-    }
-
-    fclose(vfp);
+    if (retval) pluto_transformations_pretty_print(prog);
+    pluto_bands_free(bands, nbands);
     return 0;
 }
 
@@ -223,6 +273,78 @@ int gen_unroll_file(PlutoProg *prog)
 
     fclose(unrollfp);
     return 0;
+}
+
+
+/*
+ * is_tiled: is band tiled?
+ */
+int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog)
+{
+    int num, l, max_score;
+    Ploop *maxloc;
+
+    /* Band has to be the innermost band as well */
+    if (is_tiled) {
+        if (prog->num_hyperplanes != band->loop->depth + 2*band->width)
+            return 0;
+    }else{
+        if (prog->num_hyperplanes != band->loop->depth + band->width)
+            return 0;
+    }
+
+    Ploop **loops;
+
+    if (is_tiled) { 
+        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+                band->loop->depth + band->width, prog, &num);
+    }else{
+        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+                band->loop->depth, prog, &num);
+    }
+
+    max_score = 0;
+    maxloc = NULL;
+    for (l=0; l<num; l++) {
+        int s, t, score;
+        s = get_num_spatial_accesses(loops[l], prog);
+        t = get_num_invariant_accesses(loops[l], prog);
+        score = (2*s + 4*t)*loops[l]->nstmts;
+        if (score > max_score) {
+            max_score = score;
+            maxloc = loops[l];
+        }
+    }
+
+    if (max_score >= 1) {
+        pluto_make_innermost(maxloc, prog);
+        IF_DEBUG(printf("[Pluto] intratile_loc: loop to be made innermost:"););
+        IF_DEBUG(pluto_loop_print(maxloc););
+        return 1;
+    }
+
+    return 0;
+}
+
+
+
+
+int get_outermost_parallel_loop(const PlutoProg *prog)
+{
+    int parallel_loop, loop;
+    HyperplaneProperties *hProps = prog->hProps;
+
+    parallel_loop = -1;
+    for (loop=0; loop<prog->num_hyperplanes; loop++) {
+        if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
+            parallel_loop = loop;
+
+            // Just the outermost parallel one
+            break;
+        }
+    }
+
+    return parallel_loop;
 }
 
 

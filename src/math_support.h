@@ -47,10 +47,12 @@ void pluto_matrix_free(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src);
 PlutoMatrix *pluto_matrix_identity(int size);
 void pluto_matrix_initialize(PlutoMatrix *mat, int val);
+PlutoMatrix *pluto_matrix_input(FILE *fp);
 
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1, 
         const PlutoMatrix *mat2);
+int pluto_matrix_get_rank(const PlutoMatrix *mat);
 
 void pluto_matrix_add_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add_col(PlutoMatrix *mat, int pos);
@@ -66,9 +68,12 @@ void pluto_matrix_interchange_rows(PlutoMatrix *mat, int r1, int r2);
 void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
+void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
 inline int lcm(int a, int b);
 inline int gcd(int a, int b);
 int *min_lexical(int *a, int *b, int num);
+
+char *concat(const char *prefix, const char *suffix);
 
 #endif

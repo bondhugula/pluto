@@ -1145,8 +1145,7 @@ void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
     }
 
     if(cst->next != NULL)
-    	pluto_constraints_interchange_cols(cst->next, col1, col2);
-
+        pluto_constraints_interchange_cols(cst->next, col1, col2);
 }
 
 

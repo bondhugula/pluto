@@ -1,4 +1,3 @@
-#!  /bin/sh
 #!/bin/bash
 #
 # Top-level script that runs all components of the end-to-end
@@ -14,7 +13,6 @@
 # 
 
 pluto=@SOURCE_DIR@/src/pluto
-ploog=@SOURCE_DIR@/ploog
 vloog=@SOURCE_DIR@/vloog
 plann=@SOURCE_DIR@/plann
 plorc=@SOURCE_DIR@/plorc
@@ -26,8 +24,6 @@ for arg in $*; do
         PARALLEL=1
     elif [ $arg == "--parallelize" ]; then
         PARALLEL=1
-    elif [ $arg == "--tile" ]; then
-        TILE=1
     elif [ $arg == "--unroll" ]; then
         UNROLL=1
     elif [ $arg == "--debug" ]; then
@@ -61,12 +57,6 @@ prefix=`basename $SOURCEFILE .c`
 CLOOGFILE=$prefix.pluto.cloog
 PLUTOOUT=$OUTFILE
 
-
-# run the syntactic #pragma inserter
-if [ "$PARALLEL" == 1 ]; then
-    $ploog $PLUTOOUT 0 || exit 1
-fi
-
 # generate and insert unrolling annotations, run ancc on it,
 if [ "$UNROLL" == 1 ]; then
     $plorc $PLUTOOUT @SOURCE_DIR@/orio-0.1.0
@@ -89,8 +79,4 @@ fi
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
     indent -kr -br -ce -l125 $OUTFILE
-fi
-
-if [ "$SILENT" != 1 ]; then
-    echo "[Polycc] Output written to $OUTFILE"
 fi

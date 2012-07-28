@@ -45,7 +45,7 @@ pclean:
 	$(MAKE) -C src clean
 
 test_plutolib: src/test_plutolib.c
-	gcc -g src/test_plutolib.c -L isl/.libs/ -L src/.libs/ -I include -lisl -lpluto -o test_plutolib
+	gcc -fopenmp -g src/test_plutolib.c -L isl/.libs/ -L src/.libs/ -I include -lisl -lpluto -o test_plutolib
 
 test: .PHO
 

@@ -1,20 +1,20 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2008 Uday Kumar Bondhugula
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  * Pluto codegen interface
  *
@@ -35,6 +35,35 @@
 #include "program.h"
 #include "version.h"
 
+static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog)
+{
+    int i, first_point_loop;
+
+    if (stmt->type != ORIG) {
+        for (i=0; i<prog->num_hyperplanes; i++)   {
+            if (!pluto_is_hyperplane_scalar(stmt, i)) {
+                return i;
+            }
+        }
+        /* No non-scalar hyperplanes */
+        return 0;
+    }
+
+    for (i=stmt->last_tile_dim+1; i<stmt->trans->nrows; i++)   {
+        if (stmt->hyp_types[i] == H_LOOP)  break;
+    }
+
+    if (i < prog->num_hyperplanes) {
+        first_point_loop = i;
+    }else{
+        /* Should come here only if
+         * it's a 0-d statement */
+        first_point_loop = 0;
+    }
+
+    return first_point_loop;
+}
+
 
 /* Generate and print .cloog file from the transformations computed */
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
@@ -45,7 +74,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     int nstmts = prog->nstmts;
     int npar = prog->npar;
 
-    IF_DEBUG(printf("[Pluto] Generating Cloog file\n"));
+    IF_DEBUG(printf("[Pluto] generating Cloog file...\n"));
     fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
     fprintf(fp, "# language: C\n");
     fprintf(fp, "c\n\n");
@@ -66,7 +95,9 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
     /* Print statement domains */
     for (i=0; i<nstmts; i++)    {
-        fprintf(fp, "%d # of domains\n", 1);
+        fprintf(fp, "# S%d (%s)\n", stmts[i]->id+1, stmts[i]->text);
+        fprintf(fp, "%d # of domains\n", 
+                pluto_constraints_num_in_list(stmts[i]->domain));
         pluto_constraints_print_polylib(fp, stmts[i]->domain);
         fprintf(fp, "0 0 0\n\n");
     }
@@ -110,7 +141,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
             assert(0);
         }
     }
-    fprintf(outfp, "\t#define S%d", stmt->id+1);
+    fprintf(outfp, "#define S%d", stmt->id+1);
     fprintf(outfp, "(");
     for (j=0; j<stmt->dim; j++)  {
         if (j!=0)   fprintf(outfp, ",");
@@ -160,27 +191,48 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
     }
 
     if (options->parallel)   {
-        fprintf(outfp, "\tregister int lb, ub, lb1, ub1, lb2, ub2;\n");
+        fprintf(outfp, "\tint lb, ub, lbp, ubp, lb2, ub2;\n");
     }
-    if (options->prevector)   {
-        /* For vectorizable loop bound replacement */
-        fprintf(outfp, "\tregister int lbv, ubv;\n\n");
-    }
+    /* For vectorizable loop bound replacement */
+    fprintf(outfp, "\tregister int lbv, ubv;\n\n");
 
     return 0;
 }
 
-/* Call cloog and generate code for the transformed program */
-int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
+
+/* Call cloog and generate code for the transformed program
+ *
+ * cloogf, cloogl: set to -1 if you want the function to decide
+ *
+ * --cloogf, --cloogl overrides everything; next cloogf, cloogl if != -1,
+ *  then the function takes care of the rest
+ */
+int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
+        FILE *cloogfp, FILE *outfp)
 {
-    CloogProgram *program;
+    CloogInput *input ;
     CloogOptions *cloogOptions ;
     CloogState *state;
+    CloogDomain *domain;
+    int i, j;
+
+    struct clast_stmt *root,*split;
+    split = NULL;
 
     Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
 
     state = cloog_state_malloc();
     cloogOptions = cloog_options_malloc(state);
+
+    cloogOptions->fs = malloc (nstmts*sizeof(int));
+    cloogOptions->ls = malloc(nstmts*sizeof(int));
+    cloogOptions->fs_ls_size = nstmts;
+
+    for (i=0; i<nstmts; i++) {
+        cloogOptions->fs[i] = -1;
+        cloogOptions->ls[i] = -1;
+    }
 
     cloogOptions->name = "CLooG file produced by PLUTO";
     cloogOptions->compilable = 0;
@@ -195,44 +247,58 @@ int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp)
         cloogOptions->f = options->cloogf;
         cloogOptions->l = options->cloogl;
     }else{
-        if (options->tile && stmts[0]->trans != NULL)   {
-            if (options->ft == -1)  {
-                if (stmts[0]->num_tiled_loops < 4)   {
-                    cloogOptions->f = stmts[0]->num_tiled_loops+1;
-                    cloogOptions->l = stmts[0]->trans->nrows;
-                }else{
-                    cloogOptions->f = stmts[0]->num_tiled_loops+1;
-                    cloogOptions->l = stmts[0]->trans->nrows;
-                }
-            }else{
-                cloogOptions->f = stmts[0]->num_tiled_loops+options->ft+1;
-                cloogOptions->l = stmts[0]->trans->nrows;
+        if (cloogf >= 1 && cloogl >= 1) {
+            cloogOptions->f = cloogf;
+            cloogOptions->l = cloogl;
+        }else if (options->tile)   {
+            for (i=0; i<nstmts; i++) {
+                cloogOptions->fs[i] = get_first_point_loop(stmts[i], prog)+1;
+                cloogOptions->ls[i] = prog->num_hyperplanes;
             }
         }else{
             /* Default */
             cloogOptions->f = 1;
-            /* last level to optimize: infinity */
-            cloogOptions->l = -1;
+            /* last level to optimize: number of hyperplanes;
+             * since Pluto provides full-ranked transformations */
+            cloogOptions->l = prog->num_hyperplanes;
         }
     }
 
     if (!options->silent)   {
-        printf("[Pluto] using Cloog -f/-l options: %d %d\n", cloogOptions->f, cloogOptions->l);
+        if (nstmts >= 1 && cloogOptions->fs[0] >= 1) {
+            printf("[Pluto] using statement-wise -fs/-ls options: ");
+            for (i=0; i<nstmts; i++) {
+                printf("S%d(%d,%d), ", i+1, cloogOptions->fs[i], 
+                        cloogOptions->ls[i]);
+            }
+            printf("\n");
+        }else{
+            printf("[Pluto] using Cloog -f/-l options: %d %d\n", 
+                    cloogOptions->f, cloogOptions->l);
+        }
     }
 
     cloogOptions->name = "PLUTO-produced CLooG file";
 
+    fprintf(outfp, "/* Start of CLooG code */\n");
     /* Get the code from CLooG */
-    IF_DEBUG(printf("[Pluto] cloog_program_read \n"));
-    program = cloog_program_read(cloogfp, cloogOptions) ;
-    IF_DEBUG(printf("[Pluto] cloog_program_generate \n"));
-    program = cloog_program_generate(program,cloogOptions) ;
-    cloog_program_pprint(outfp, program, cloogOptions) ;
+    IF_DEBUG(printf("[Pluto] cloog_input_read\n"));
+    input = cloog_input_read(cloogfp, cloogOptions) ;
+    domain = cloog_domain_copy(input->context);
+    IF_DEBUG(printf("[Pluto] cloog_clast_create\n"));
+    root = cloog_clast_create_from_input(input, cloogOptions);
+    if (options->prevector) {
+        pluto_mark_vector(root, prog, cloogOptions);
+    }
+    if (options->parallel) {
+        pluto_mark_parallel(root, prog, cloogOptions);
+    }
+    clast_pprint(outfp, root, 0, cloogOptions);
+    cloog_clast_free(root);
 
     fprintf(outfp, "/* End of CLooG code */\n");
 
     cloog_options_free(cloogOptions);
-    cloog_program_free(program);
     cloog_state_free(state);
 
     return 0;
@@ -253,7 +319,7 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
         fprintf(outfp, "\tomp_set_num_threads(2);\n");
     }
 
-    pluto_gen_cloog_code(prog, cloogfp, outfp);
+    pluto_gen_cloog_code(prog, -1, -1, cloogfp, outfp);
 
     return 0;
 }
@@ -330,10 +396,10 @@ int pluto_omp_parallelize(PlutoProg *prog)
         }
     }
 
-    IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n", num_parallel_loops));
+    IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n",
+                num_parallel_loops));
 
     fclose(outfp);
 
     return num_parallel_loops;
 }
-

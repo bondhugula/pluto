@@ -90,6 +90,10 @@ COMMAND-LINE OPTIONS
     also allows extraction of coarse-grained pipelined parallelism with 
     the Pluto model.
 
+    --intratileopt
+    Optimize intra-tile execution for spatial locality. Apply this even
+    when not tiling
+
     --parallel [--multipipe]
     Parallelize code with OpenMP (usually useful when used with --tile) 
 

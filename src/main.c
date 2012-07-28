@@ -29,6 +29,7 @@
 #endif
 
 #include "pluto.h"
+#include "transforms.h"
 
 #include "clan/clan.h"
 #include "candl/candl.h"
@@ -44,7 +45,8 @@ void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
-    fprintf(stdout, "       --tile                 Tile for locality\n");
+    fprintf(stdout, "       --tile               Tile for locality\n");
+    fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
     fprintf(stdout, "       | --parallelize\n");
     fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
@@ -98,6 +100,7 @@ int main(int argc, char *argv[])
     {
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
+        {"intratileopt", no_argument, &options->intratileopt, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -107,6 +110,7 @@ int main(int argc, char *argv[])
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
+        {"innerpar", no_argument, &options->innerpar, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -298,61 +302,53 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
-    }
-
-    /* Print out transformations */
-    if (!options->silent)   {
+        /* Print out transformations */
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
-
-    }
-    if (options->moredebug) {
-        pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
     }
 
     if (options->tile)   {
         pluto_tile(prog);
-    }
-
-    if (options->parallel)   {
-        int outermostBandStart, outermostBandEnd;
-        getOutermostTilableBand(prog, &outermostBandStart, &outermostBandEnd);
-
-        /* Obtain pipelined parallelization by skewing the tile space */
-        bool retval = create_tile_schedule(prog, outermostBandStart, outermostBandEnd);
-
-        /* Even if the user hasn't supplied --tile and there is only pipelined
-         * parallelism, we will warn the user, but anyway do fine-grained 
-         * parallelization
-         */
-        if (retval && options->tile == 0)   {
-            printf("WARNING: pipelined parallelism exists and --tile is not used.\n");
-            printf("use --tile option for better parallelization \n");
-            pluto_print_hyperplane_properties(prog);
+    }else{
+        if (options->intratileopt) {
+            int nbands;
+            Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+            int retval = 0;
+            for (i=0; i<nbands; i++) {
+                retval |= pluto_intra_tile_optimize(bands[i], 0, prog); 
+            }
+            if (retval) {
+                printf("[Pluto] after intra tile opt\n");
+                pluto_transformations_pretty_print(prog);
+            }
+            pluto_bands_free(bands, nbands);
         }
     }
 
-    if (options->prevector) {
-        pre_vectorize(prog);
-    }else{
-        /* Create an empty .vectorize file */
-        fopen(".vectorize", "w");
+    if (options->parallel && !options->tile)   {
+
+        /* Obtain wavefront/pipelined parallelization by skewing if
+         * necessary */
+        int nbands;
+        Band **bands;
+        bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+        bool retval = create_tile_schedule(prog, bands, nbands);
+        pluto_bands_free(bands, nbands);
+
+        /* If the user hasn't supplied --tile and there is only pipelined
+         * parallelism, we will warn the user */
+        if (retval)   {
+            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("use --tile for better parallelization \n");
+            IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
+            IF_DEBUG(pluto_transformations_pretty_print(prog););
+            IF_DEBUG(pluto_print_hyperplane_properties(prog););
+        }
     }
 
     if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
-    if (options->parallel)  {
-        /* Generate meta info for insertion of OpenMP pragmas */
-        pluto_omp_parallelize(prog);
-    }
-
-    if (options->moredebug) {
-        pluto_detect_transformation_properties(prog);
-        pluto_print_dep_directions(prog->deps, prog->ndeps, prog->num_hyperplanes);
+        IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
+        IF_DEBUG(pluto_print_hyperplane_properties(prog););
     }
 
     if (options->unroll || options->polyunroll)    {
@@ -384,7 +380,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
      * is printed to be processed by scripts - if transformations are
      * performed, changed loop order/iterator names will be missed  */
     gen_unroll_file(prog);
-    gen_vecloop_file(prog);
 
     char *outFileName;
     char *cloogFileName;
@@ -417,14 +412,21 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     strcat(cloogFileName, ".pluto.cloog");
 
-    outfp = fopen(outFileName, "w");
     cloogfp = fopen(cloogFileName, "w+");
-
     if (!cloogfp)   {
-        fprintf(stderr, "Can't open .cloog file: %s\n", cloogFileName);
+        fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
         pluto_options_free(options);
         pluto_prog_free(prog);
-        return 8;
+        return 9;
+    }
+
+    outfp = fopen(outFileName, "w");
+    if (!outfp) {
+        fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+        pluto_options_free(options);
+        pluto_prog_free(prog);
+        fclose(cloogfp);
+        return 10;
     }
 
     /* Generate .cloog file */
@@ -435,15 +437,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         free(irroption);
     }
 
-    /* Generate code using Cloog and add necessary stuff before/after code */
     rewind(cloogfp);
 
-    if (!outfp) {
-        fprintf(stderr, "Can't open file %s for writing\n", outFileName);
-        pluto_options_free(options);
-        pluto_prog_free(prog);
-        return 9;
-    }
 
     /* Generate code using Cloog and add necessary stuff before/after code */
     pluto_multicore_codegen(cloogfp, outfp, prog);
@@ -452,6 +447,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (tmpfp)    {
         fprintf(tmpfp, "%s\n", outFileName);
         fclose(tmpfp);
+        printf( "[Pluto] Output written to %s\n", outFileName);
     }
 
     fclose(cloogfp);
@@ -465,5 +461,3 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     return 0;
 }
-
-

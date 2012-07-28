@@ -11,8 +11,14 @@ struct plutoOptions{
     /* To tile or not? */
     int tile;
 
-    /* parallel code gen */
+    /* Intra-tile optimization */
+    int intratileopt;
+
+    /* parallelization */
     int parallel;
+
+    /* prefer pure inner parallelism to pipelined parallelism */
+    int innerpar;
 
     /* Automatic unroll/unroll-jamming of loops */
     int unroll;
@@ -21,7 +27,7 @@ struct plutoOptions{
     int ufactor;
 
     /* Enable or disable post-transformations to make code amenable to
- *      * vectorization (default - enabled) */
+     * vectorization (default - enabled) */
     int prevector;
 
     /* consider RAR dependences */
@@ -108,12 +114,12 @@ struct plutoOptions{
 };
 typedef struct plutoOptions PlutoOptions;
 
+PlutoOptions *pluto_options_alloc();
+void pluto_options_free(PlutoOptions *);
+
 __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences,
         PlutoOptions *options);
-
-PlutoOptions *pluto_options_alloc();
-void pluto_options_free(PlutoOptions *);
 
 #if defined(__cplusplus)
 }

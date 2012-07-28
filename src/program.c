@@ -317,23 +317,30 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             scoplib_matrix_to_pluto_constraints(scop_stmt->domain->elt);
         PlutoMatrix *trans = scoplib_schedule_to_pluto_trans(scop_stmt->schedule);
 
-        for (j=trans->nrows; j<max_sched_rows; j++) {
-            pluto_matrix_add_row(trans, trans->nrows);
-        }
         // scoplib_matrix_print(stdout, scop_stmt->schedule);
         stmts[i] = pluto_stmt_alloc(scop_stmt->nb_iterators, domain, trans);
+
+        /* Pad with all zero rows */
+        int curr_sched_rows = stmts[i]->trans->nrows;
+        for (j=curr_sched_rows; j<max_sched_rows; j++) {
+            pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, j);
+        }
+
         pluto_constraints_free(domain);
         pluto_matrix_free(trans);
 
         Stmt *stmt = stmts[i];
 
         stmt->id = i;
+        stmt->type = ORIG;
 
         assert(scop_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
 
         for (j=0; j<stmt->dim; j++)  {
             stmt->is_orig_loop[j] = true;
         }
+
+        stmt->num_ind_sols = 0;
 
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
@@ -378,7 +385,6 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             if (wlist->elt->symbol != NULL) {
                 stmt->writes[count]->name = strdup(wlist->elt->symbol->identifier);
                 stmt->writes[count]->symbol = scoplib_symbol_copy(wlist->elt->symbol);
-                //scoplib_symbol_print(stdout, stmt->writes[count]->symbol);
             }else{
                 stmt->writes[count]->name = NULL;
                 stmt->writes[count]->symbol = NULL;
@@ -463,8 +469,12 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
+    pluto_constraints_free(dep->depsat_poly);
     if (dep->dirvec) {
         free(dep->dirvec);
+    }
+    if (dep->dirvec) {
+        free(dep->satvec);
     }
     free(dep);
 }
@@ -848,7 +858,7 @@ static int map_extract(__isl_take isl_map *map, void *user)
 }
 
 
-int extract_deps(Dep **deps, int first, Stmt **stmts, 
+int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type)
 {
     struct pluto_extra_dep_info info = { deps, stmts, type, first };
@@ -914,38 +924,38 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
          * array. Relationship between a dependence and associated dependent
          * data / array elements is lost, and some analyses may not work with
          * such a representation */
-    for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
-        isl_set *dom;
-        isl_map *schedule_i;
-        isl_union_map *read_i;
-        isl_union_map *write_i;
-        char name[20];
+        for (i = 0, stmt = scop->statement; i < nstmts; ++i, stmt = stmt->next) {
+            isl_set *dom;
+            isl_map *schedule_i;
+            isl_union_map *read_i;
+            isl_union_map *write_i;
+            char name[20];
 
-        snprintf(name, sizeof(name), "S_%d", i);
+            snprintf(name, sizeof(name), "S_%d", i);
 
-        dim = isl_dim_set_alloc(ctx, scop->nb_parameters, stmt->nb_iterators);
-        dim = set_names(dim, isl_dim_param, scop->parameters);
-        dim = set_names(dim, isl_dim_set, stmt->iterators);
-        dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
-        dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
-        dom = isl_set_intersect_params(dom, isl_set_copy(context));
+            dim = isl_dim_set_alloc(ctx, scop->nb_parameters, stmt->nb_iterators);
+            dim = set_names(dim, isl_dim_param, scop->parameters);
+            dim = set_names(dim, isl_dim_set, stmt->iterators);
+            dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+            dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
+            dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-        dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
-                            2 * stmt->nb_iterators + 1);
-        dim = set_names(dim, isl_dim_param, scop->parameters);
-        dim = set_names(dim, isl_dim_in, stmt->iterators);
-        dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
-        schedule_i = scoplib_schedule_to_isl_map(stmt->schedule, dim);
+            dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
+                    2 * stmt->nb_iterators + 1);
+            dim = set_names(dim, isl_dim_param, scop->parameters);
+            dim = set_names(dim, isl_dim_in, stmt->iterators);
+            dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+            schedule_i = scoplib_schedule_to_isl_map(stmt->schedule, dim);
 
-        read_i = scoplib_access_to_isl_union_map(stmt->read, isl_set_copy(dom),
-                                                 scop->arrays);
-        write_i = scoplib_access_to_isl_union_map(stmt->write, dom,
-                                                 scop->arrays);
+            read_i = scoplib_access_to_isl_union_map(stmt->read, isl_set_copy(dom),
+                    scop->arrays);
+            write_i = scoplib_access_to_isl_union_map(stmt->write, dom,
+                    scop->arrays);
 
-        read = isl_union_map_union(read, read_i);
-        write = isl_union_map_union(write, write_i);
-        schedule = isl_union_map_union(schedule,
-                                        isl_union_map_from_map(schedule_i));
+            read = isl_union_map_union(read, read_i);
+            write = isl_union_map_union(write, write_i);
+            schedule = isl_union_map_union(schedule,
+                    isl_union_map_from_map(schedule_i));
         }
     }else{
         /* Each dependence is for a particular source and target access. Use
@@ -1015,43 +1025,43 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
 
     if (options->lastwriter) {
         isl_union_map_compute_flow(isl_union_map_copy(read),
-                            isl_union_map_copy(write),
-                            isl_union_map_copy(empty),
-                            isl_union_map_copy(schedule),
-                            &dep_raw, NULL, NULL, NULL);
+                isl_union_map_copy(write),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(schedule),
+                &dep_raw, NULL, NULL, NULL);
         isl_union_map_compute_flow(isl_union_map_copy(write),
-                            isl_union_map_copy(write),
-                            isl_union_map_copy(read),
-                            isl_union_map_copy(schedule),
-                            &dep_waw, &dep_war, NULL, NULL);
+                isl_union_map_copy(write),
+                isl_union_map_copy(read),
+                isl_union_map_copy(schedule),
+                &dep_waw, &dep_war, NULL, NULL);
         if (options->rar)
             isl_union_map_compute_flow(isl_union_map_copy(read),
-                                isl_union_map_copy(read),
-                                isl_union_map_copy(empty),
-                                isl_union_map_copy(schedule),
-                                &dep_rar, NULL, NULL, NULL);
+                    isl_union_map_copy(read),
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(schedule),
+                    &dep_rar, NULL, NULL, NULL);
     }else {
         isl_union_map_compute_flow(isl_union_map_copy(read),
-                            isl_union_map_copy(empty),
-                            isl_union_map_copy(write),
-                            isl_union_map_copy(schedule),
-                            NULL, &dep_raw, NULL, NULL);
+                isl_union_map_copy(empty),
+                isl_union_map_copy(write),
+                isl_union_map_copy(schedule),
+                NULL, &dep_raw, NULL, NULL);
         isl_union_map_compute_flow(isl_union_map_copy(write),
-                            isl_union_map_copy(empty),
-                            isl_union_map_copy(read),
-                            isl_union_map_copy(schedule),
-                            NULL, &dep_war, NULL, NULL);
+                isl_union_map_copy(empty),
+                isl_union_map_copy(read),
+                isl_union_map_copy(schedule),
+                NULL, &dep_war, NULL, NULL);
         isl_union_map_compute_flow(isl_union_map_copy(write),
-                            isl_union_map_copy(empty),
-                            isl_union_map_copy(write),
-                            isl_union_map_copy(schedule),
-                            NULL, &dep_waw, NULL, NULL);
+                isl_union_map_copy(empty),
+                isl_union_map_copy(write),
+                isl_union_map_copy(schedule),
+                NULL, &dep_waw, NULL, NULL);
         if (options->rar)
             isl_union_map_compute_flow(isl_union_map_copy(read),
-                                isl_union_map_copy(empty),
-                                isl_union_map_copy(read),
-                                isl_union_map_copy(schedule),
-                                NULL, &dep_rar, NULL, NULL);
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(read),
+                    isl_union_map_copy(schedule),
+                    NULL, &dep_rar, NULL, NULL);
     }
 
     dep_raw = isl_union_map_coalesce(dep_raw);
@@ -1103,6 +1113,18 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 
     prog->nstmts = scoplib_statement_number(scop->statement);
     prog->options = options;
+
+    /* Data variables in the program */
+    scoplib_symbol_p symbol;
+    prog->num_data = 0;
+    for(symbol = scop->symbol_table;symbol;symbol = symbol->next) {
+        prog->num_data++;
+    }
+    prog->data_names = (char **) malloc (prog->num_data * sizeof(char *));
+    prog->num_data = 0;
+    for(symbol = scop->symbol_table;symbol;symbol = symbol->next) {
+        prog->data_names[prog->num_data++] = strdup(symbol->identifier);
+    }
 
     /* Program parameters */
     prog->npar = scop->nb_parameters;
@@ -1164,7 +1186,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     /* Add hyperplanes */
     if (prog->nstmts >= 1) {
         for (i=0; i<max_sched_rows; i++) {
-            pluto_prog_add_hyperplane(prog,prog->num_hyperplanes);
+            pluto_prog_add_hyperplane(prog,prog->num_hyperplanes,H_UNKNOWN);
             prog->hProps[prog->num_hyperplanes-1].type = 
                 (i%2)? H_LOOP: H_SCALAR;
         }
@@ -1224,7 +1246,7 @@ PlutoProg *pluto_prog_alloc()
     prog->npar = 0;
     prog->nvar = 0;
     prog->params = NULL;
-    prog->context = pluto_constraints_alloc(0, prog->npar+1);
+    prog->context = pluto_constraints_alloc(1, prog->npar+1);
     prog->deps = NULL;
     prog->ndeps = 0;
     prog->ddg = NULL;
@@ -1286,10 +1308,12 @@ PlutoOptions *pluto_options_alloc()
 
     /* Initialize to default */
     options->tile = 0;
+    options->intratileopt = 1;
     options->debug = 0;
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
+    options->innerpar = 0;
     options->identity = 0;
     options->unroll = 0;
 
@@ -1384,10 +1408,11 @@ void pluto_options_free(PlutoOptions *options)
 }
 
 
-/* time_pos: position of time iterator; iter: domain iterator; supply -1
+/* pos: position of domain iterator 
+ * time_pos: position of time iterator; iter: domain iterator; supply -1
  * if you don't want a scattering function row added for it */
 void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
-        PlutoProg *prog)
+        PlutoHypType hyp_type, PlutoProg *prog)
 {
     int i, npar;
 
@@ -1412,11 +1437,18 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     if (time_pos != -1) {
         pluto_matrix_add_row(stmt->trans, time_pos);
         stmt->trans->val[time_pos][pos] = 1;
+
+
+        stmt->hyp_types = realloc(stmt->hyp_types, 
+                sizeof(int)*stmt->trans->nrows);
+        for (i=stmt->trans->nrows-2; i>=time_pos; i--) {
+            stmt->hyp_types[i+1] = stmt->hyp_types[i];
+        }
+        stmt->hyp_types[time_pos] = hyp_type;
     }
 
     /* Update is_orig_loop */
-    stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
-            sizeof(bool)*stmt->dim);
+    stmt->is_orig_loop = realloc(stmt->is_orig_loop, sizeof(bool)*stmt->dim);
     for (i=stmt->dim-2; i>=pos; i--) {
         stmt->is_orig_loop[i+1] = stmt->is_orig_loop[i];
     }
@@ -1469,8 +1501,7 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
     for (i=pos; i<=stmt->dim-1; i++) {
         stmt->is_orig_loop[i] = stmt->is_orig_loop[i+1];
     }
-    stmt->is_orig_loop = realloc(stmt->is_orig_loop, 
-            sizeof(bool)*stmt->dim);
+    stmt->is_orig_loop = realloc(stmt->is_orig_loop, sizeof(bool)*stmt->dim);
 
     for (i=0; i<stmt->nwrites; i++)   {
         pluto_matrix_remove_col(stmt->writes[i]->mat, pos);
@@ -1492,8 +1523,24 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
     }
 }
 
+void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos)
+{
+    int i;
 
-void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
+    assert(pos <= stmt->trans->nrows);
+
+    pluto_matrix_add_row(stmt->trans, pos);
+
+    stmt->hyp_types = realloc(stmt->hyp_types, 
+            sizeof(int)*stmt->trans->nrows);
+    for (i=stmt->trans->nrows-2; i>=pos; i--) {
+        stmt->hyp_types[i+1] = stmt->hyp_types[i];
+    }
+    stmt->hyp_types[pos] = type;
+}
+
+
+void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType hyp_type)
 {
     int i;
 
@@ -1509,40 +1556,7 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos)
     prog->hProps[pos].prevec = 0;
     prog->hProps[pos].band_num = -1;
     prog->hProps[pos].dep_prop = UNKNOWN;
-    prog->hProps[pos].type = H_UNKNOWN;
-}
-
-
-/* Add a statement that is scheduled at the end of all statements 
- * scheduled at level 'level' (0-indexed)
- * domain: domain of the stmt
- * text: statement text
- */
-void pluto_add_stmt_to_end(PlutoProg *prog, 
-        const PlutoConstraints *domain,
-        char **iterators,
-        const char *text,
-        int level
-        )
-{
-    int i;
-
-    Stmt **stmts = prog->stmts;
-    int nstmts = prog->nstmts;
-
-    for (i=0; i<nstmts; i++)    {
-        pluto_matrix_add_row(stmts[i]->trans, level);
-    }
-    assert(prog->num_hyperplanes >= level+1);
-    pluto_prog_add_hyperplane(prog, level);
-    prog->hProps[level].type = H_SCALAR;
-    prog->hProps[level].dep_prop = SEQ;
-
-    PlutoMatrix *trans = pluto_matrix_alloc(prog->num_hyperplanes, domain->ncols);
-    pluto_matrix_initialize(trans, 0);
-    trans->nrows = 0;
-
-    pluto_add_stmt(prog, domain, trans, iterators, text);
+    prog->hProps[pos].type = hyp_type;
 }
 
 
@@ -1583,17 +1597,15 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
 
             /* Add all zero rows */
             for (j=curr_rows; j<max_nrows; j++)    {
-                pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+                pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
             }
         }
 
         int old_hyp_num = prog->num_hyperplanes;
         for (i=old_hyp_num; i<max_nrows; i++) {
-            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
-            prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
         }
     }
-
 }
 
 
@@ -1607,7 +1619,8 @@ void pluto_add_stmt(PlutoProg *prog,
         const PlutoConstraints *domain,
         const PlutoMatrix *trans,
         char ** iterators,
-        const char *text)
+        const char *text,
+        PlutoStmtType type)
 {
     int i, j, nstmts, max_nrows;
 
@@ -1623,6 +1636,7 @@ void pluto_add_stmt(PlutoProg *prog,
     Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
 
     stmt->id = nstmts;
+    stmt->type = type;
 
     stmt->text = strdup(text);
     prog->nvar = PLMAX(prog->nvar, stmt->dim);
@@ -1655,14 +1669,14 @@ void pluto_add_stmt(PlutoProg *prog,
 
             /* Add all zero rows */
             for (j=curr_rows; j<max_nrows; j++)    {
-                pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+                pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
             }
         }
 
         int old_hyp_num = prog->num_hyperplanes;
         for (i=old_hyp_num; i<max_nrows; i++) {
-            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes);
-            prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+            /* Not clear if this should be H_SCALAR */
+            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
         }
     }
 }
@@ -1673,15 +1687,20 @@ Dep *pluto_dep_alloc()
     Dep *dep = malloc(sizeof(Dep));
 
     dep->id = -1;
+    dep->satvec = NULL;
+    dep->depsat_poly = NULL;
 
     return dep;
 }
 
-/* Only dimensionality and domain are essential */
+
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, 
         const PlutoMatrix *trans)
 {
     int i;
+
+    /* Have to provide a transformation */
+    assert(trans != NULL);
 
     Stmt *stmt = (Stmt *) malloc(sizeof(Stmt));
 
@@ -1696,7 +1715,11 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     }
 
     stmt->trans = pluto_matrix_dup(trans);
-    stmt->num_ind_sols = 0;
+
+    stmt->hyp_types = malloc(stmt->trans->nrows*sizeof(int));
+    for (i=0; i<stmt->trans->nrows; i++) {
+        stmt->hyp_types[i] = H_LOOP;
+    }
 
     stmt->text = NULL;
     stmt->tile =  1;
@@ -1705,6 +1728,12 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     stmt->writes = NULL;
     stmt->nreads = 0;
     stmt->nwrites = 0;
+
+    stmt->first_tile_dim = 0;
+    stmt->last_tile_dim = -1;
+
+    stmt->type = STMT_UNKNOWN;
+    stmt->parent_compute_stmt = NULL;
 
     if (dim >= 1)   {
         stmt->is_orig_loop = (bool *) malloc(dim*sizeof(bool));
@@ -1736,6 +1765,8 @@ void pluto_stmt_free(Stmt *stmt)
     pluto_constraints_free(stmt->domain);
 
     pluto_matrix_free(stmt->trans);
+
+    free(stmt->hyp_types);
 
     if (stmt->text != NULL) {
         free(stmt->text);
@@ -1772,6 +1803,176 @@ void pluto_stmt_free(Stmt *stmt)
     free(stmt);
 }
 
+
+int pluto_is_hyperplane_scalar(const Stmt *stmt, int level)
+{
+    int j;
+
+    assert(level <= stmt->trans->nrows-1);
+
+    for (j=0; j<stmt->dim; j++) {
+        if (stmt->trans->val[level][j] != 0) return 0;
+    }
+
+    return 1;
+}
+
+
+int pluto_is_hyperplane_loop(const Stmt *stmt, int level)
+{
+    return !pluto_is_hyperplane_scalar(stmt, level);
+}
+
+/* Get the remapping matrix */
+PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt)
+{
+    int i, j, k, _lcm, factor1, npar;
+
+    PlutoMatrix *sched, *trans;
+
+    trans = stmt->trans;
+    sched = pluto_matrix_dup(trans);
+
+    npar = stmt->domain->ncols - stmt->dim - 1;
+
+    for (i=0; i<sched->nrows; i++)  {
+        pluto_matrix_negate_row(sched, sched->nrows-1-i);
+        pluto_matrix_add_col(sched, 0);
+        sched->val[trans->nrows-1-i][0] = 1;
+    }
+
+    /* Bring the stmt iterators to the left */
+    for (i=0; i<stmt->dim; i++)  {
+        pluto_matrix_move_col(sched, sched->nrows+i, i);
+    }
+
+    assert(stmt->dim <= sched->nrows);
+
+    for (i=0; i<stmt->dim; i++)  {
+        // pluto_matrix_print(stdout, sched);
+        if (sched->val[i][i] == 0) {
+            for (k=i+1; k<sched->nrows; k++) {
+                if (sched->val[k][i] != 0) break;
+            }
+            if (k<sched->nrows)    {
+                pluto_matrix_interchange_rows(sched, i, k);
+            }else{
+                /* Can't associate domain iterator with time iterator */
+                /* Shouldn't happen with a full-ranked transformation */
+                printf("Can't associate domain iterator #%d with time iterators\n", i+1);
+                pluto_matrix_print(stdout, sched);
+                assert(0);
+            }
+        }
+        //printf("after interchange %d\n", i); 
+        //pluto_matrix_print(stdout, sched);
+        assert(sched->val[i][i] != 0);
+        for (k=i+1; k<sched->nrows; k++) {
+            if (sched->val[k][i] == 0) continue;
+            _lcm = lcm(sched->val[k][i], sched->val[i][i]);
+            factor1 = _lcm/sched->val[k][i];
+            for (j=i; j<sched->ncols; j++) {
+                sched->val[k][j] = sched->val[k][j]*factor1
+                    - sched->val[i][j]*(_lcm/sched->val[i][i]);
+            }
+
+        }
+        //printf("after iteration %d\n", i); 
+        //pluto_matrix_print(stdout, sched);
+    }
+
+    //pluto_matrix_print(stdout, sched);
+
+    /* Solve upper triangular system now */
+    for (i=stmt->dim-1; i>=0; i--)  {
+        assert(sched->val[i][i] != 0);
+        for (k=i-1; k>=0; k--) {
+            if (sched->val[k][i] == 0) continue;
+            _lcm = lcm(sched->val[k][i], sched->val[i][i]);
+            factor1 = _lcm/sched->val[k][i];
+            for (j=0; j<sched->ncols; j++) {
+                sched->val[k][j] = sched->val[k][j]*(factor1) 
+                    - sched->val[i][j]*(_lcm/sched->val[i][i]);
+            }
+        }
+    }
+
+    assert(sched->nrows >= stmt->dim);
+    for (i=sched->nrows-1; i>=stmt->dim; i--) {
+        pluto_matrix_remove_row(sched, sched->nrows-1);
+    }
+    //pluto_matrix_print(stdout, sched);
+
+    for (i=0; i<stmt->dim; i++) {
+        if (abs(sched->val[i][i]) >= 2) {
+            /* Indicates non-unit stride */
+            printf("[Pluto] WARNING: generated communication code is very likely incorrect\n");
+        }
+        if (sched->val[i][i] <= -1) {
+            pluto_matrix_negate_row(sched, i);
+        }
+    }
+    //pluto_matrix_print(stdout, sched);
+
+    for (i=0; i<stmt->dim; i++) {
+        pluto_matrix_remove_col(sched, 0);
+    }
+
+    for (i=0; i<stmt->dim; i++) {
+        pluto_matrix_negate_row(sched, i);
+    }
+
+    for (i=0; i<npar+1; i++) {
+        pluto_matrix_add_row(sched, sched->nrows);
+        sched->val[sched->nrows-1][sched->ncols-npar-1+i] = 1;
+    }
+
+    // printf("Remapping using new technique is\n");
+    // pluto_matrix_print(stdout, sched);
+
+    return sched;
+}
+
+
+void pluto_prog_params_print(const PlutoProg *prog)
+{
+    int i;
+    for (i=0; i<prog->npar; i++) {
+        printf("%s\n", prog->params[i]);
+    }
+}
+
+
+/* Get new access function */
+PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc) 
+{
+    PlutoMatrix *remap, *newacc;
+
+    int npar = stmt->domain->ncols - stmt->dim - 1;
+
+    // printf("Old access function is \n");;
+    // pluto_matrix_print(stdout, acc);;
+
+    // printf("Stmt trans\n");
+    // pluto_matrix_print(stdout, stmt->trans);
+
+    remap = pluto_stmt_get_remapping(stmt);
+    // printf("Remapping matrix\n");
+    // pluto_matrix_print(stdout, remap);
+
+    newacc = pluto_matrix_product(acc, remap);
+
+    // printf("New access function is \n");
+    // pluto_matrix_print(stdout, newacc);
+
+    assert(newacc->ncols = stmt->trans->nrows+npar+1);
+
+    pluto_matrix_free(remap);
+
+    return newacc;
+}
+
+
 /* Separates a list of statements */
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level)
 {
@@ -1781,15 +1982,14 @@ void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level)
 
     // pluto_matrix_print(stdout, stmt->trans);
     for (i=0; i<nstmts; i++)    {
-        pluto_matrix_add_row(prog->stmts[i]->trans, level);
+        pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, level);
     }
     // pluto_matrix_print(stdout, stmt->trans);
     for (k=0; k<num; k++)   {
         stmts[k]->trans->val[level][stmts[k]->trans->ncols-1] = 1+k;
     }
 
-    pluto_prog_add_hyperplane(prog, level);
-    prog->hProps[level].type = H_SCALAR;
+    pluto_prog_add_hyperplane(prog, level, H_SCALAR);
     prog->hProps[level].dep_prop = SEQ;
 }
 
@@ -1804,14 +2004,67 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
 
     // pluto_matrix_print(stdout, stmt->trans);
     for (i=0; i<nstmts; i++)    {
-        pluto_matrix_add_row(prog->stmts[i]->trans, level);
+        pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, level);
     }
     // pluto_matrix_print(stdout, stmt->trans);
     stmt->trans->val[level][stmt->trans->ncols-1] = 1;
 
-    pluto_prog_add_hyperplane(prog, level);
-    prog->hProps[level].type = H_SCALAR;
+    pluto_prog_add_hyperplane(prog, level, H_SCALAR);
     prog->hProps[level].dep_prop = SEQ;
+}
+
+int pluto_stmt_is_member_of(Stmt *s, Stmt **slist, int len)
+{
+    int i;
+    for (i=0; i<len; i++) {
+        if (s->id == slist[i]->id) return 1;
+    }
+    return 0;
+}
+
+
+int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2)
+{
+    int i;
+
+    for (i=0; i<n1; i++) {
+        if (!pluto_stmt_is_member_of(s1[i], s2, n2)) return 0;
+    }
+
+    return 1;
+}
+
+void add_if_new(PlutoAccess ***accs, int *num, PlutoAccess *new)
+{
+    int i;
+
+    for (i=0; i<*num; i++) {
+        if (!strcmp((*accs)[i]->name, new->name)) {
+            break;
+        }
+    }
+
+    if (i==*num) {
+        *accs = realloc(*accs, (*num+1)*sizeof(PlutoAccess *));
+        (*accs)[*num] = new;
+        (*num)++;
+    }
+}
+
+
+/* Get all write accesses in the program */
+PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num)
+{
+    int i;
+
+    PlutoAccess **accs = NULL;
+    *num = 0;
+
+    for (i=0; i<prog->nstmts; i++) {
+        assert(prog->stmts[i]->nwrites == 1);
+        add_if_new(&accs, num, prog->stmts[i]->writes[0]);
+    }
+    return accs;
 }
 
 /* Temporary data structure used inside extra_stmt_domains
