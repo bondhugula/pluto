@@ -634,6 +634,7 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
 {
     int i, j;
 
+    //assert(cst->next == NULL);
     assert(pmat != NULL);
 
     for (i=0; i<cst->nrows; i++)    {
@@ -648,7 +649,6 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
 
     return pmat;
 }
-
 
 /* Use isl to solve these constraints */
 int *pluto_constraints_solve_isl(const PlutoConstraints *cst) 
@@ -1130,6 +1130,26 @@ PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints 
     return ineq;
 }
 
+
+void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
+        int col2)
+{
+    int r, tmp;
+
+    //assert(cst->next == NULL);
+
+    for (r=0; r<cst->nrows; r++)    {
+        tmp = cst->val[r][col1];
+        cst->val[r][col1] = cst->val[r][col2];
+        cst->val[r][col2] = tmp;
+    }
+
+    if(cst->next != NULL)
+    	pluto_constraints_interchange_cols(cst->next, col1, col2);
+
+}
+
+
 void check_redundancy(PlutoConstraints *cst)
 {
     int i;
@@ -1182,6 +1202,30 @@ PlutoConstraints *pluto_constraints_empty(int ncols)
 }
 
 
+int pluto_constraints_is_empty(PlutoConstraints *cst)
+{
+    int *sol;
+    bool is_empty;
+    PlutoConstraints *next = cst->next;
+
+    //Setting cst->next to NULL since constraints_solve expects next to be NULL
+    cst->next = NULL;
+
+    sol = pluto_constraints_solve(cst);
+    
+    //restoring next pointer
+    cst->next = next;
+
+    is_empty = (sol == NULL);
+    if (sol != NULL) free(sol);
+
+    if (!is_empty) return 0;
+
+    if (cst->next != NULL)  return pluto_constraints_is_empty(cst->next);
+
+    /* This one is empty and there are no more */
+    return 1;
+}
 
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2)
@@ -1194,6 +1238,7 @@ PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1,
 
     return cst1;
 }
+
 /*
  * Construct a non-parametric basic set from the constraints in cst
  */

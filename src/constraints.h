@@ -95,8 +95,12 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
 PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
 
+int pluto_constraints_num_in_list(const PlutoConstraints *const cst);
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2);
+
+int pluto_constraints_is_empty(PlutoConstraints *cst);
+
 PlutoConstraints *pluto_constraints_empty(int ncols);
 PlutoConstraints *pluto_constraints_universe(int ncols);
 
