@@ -433,12 +433,20 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
         }
     }
 
+    if (stmt->nwrites==0) {
+        fprintf(fp, "No write access\n");
+    }else{
+        fprintf(fp, "Write accesses\n");
+        for (i=0; i<stmt->nwrites; i++)  {
+            pluto_matrix_print(fp, stmt->writes[i]->mat);
+        }
+    }
+
     for (i=0; i<stmt->dim; i++) {
         printf("Original loop: %d -> %d\n", i, stmt->is_orig_loop[i]);
     }
 
     fprintf(fp, "\n");
-
 }
 
 

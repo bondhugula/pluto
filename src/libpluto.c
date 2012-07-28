@@ -7,20 +7,17 @@
  * This library is free software; you can redistribute it and/or              *
  * modify it under the terms of the GNU Lesser General Public                 *
  * License as published by the Free Software Foundation; either               *
- * version 2.1 of the License, or (at your option) any later version.         *
+ * version 2 of the License, or (at your option) any later version.         *
  *                                                                            *
  * This library is distributed in the hope that it will be useful,            *
  * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU          *
  * Lesser General Public License for more details.                            *
  *                                                                            *
- * You should have received a copy of the GNU Lesser General Public           *
- * License along with this library; if not, write to the Free Software        *
- * Foundation, Inc., 51 Franklin Street, Fifth Floor,                         *
- * Boston, MA  02110-1301  USA                                                *
- *                                                                            *
- ******************************************************************************/
-
+ * A copy of the GNU Lesser General Public Licence can be found in the file
+ * `LICENSE.LGPL2' in the top-level directory of this distribution. 
+ *
+ */
 #include "pluto.h"
 #include "constraints.h"
 #include "candl/candl.h"
@@ -89,11 +86,10 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     isl_union_map *schedules = isl_union_map_empty(space);
 
     for (i=0; i<prog->nstmts; i++) {
-        Stmt *stmt = prog->stmts[i];
-        PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
-
         isl_basic_map *bmap;
         isl_map *map;
+        Stmt *stmt = prog->stmts[i];
+        PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched, 
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
@@ -102,6 +98,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
         pluto_constraints_free(sched);
     }
+
+    /* pluto_stmts_print(stdout, prog->stmts, prog->nstmts); */
 
     pluto_prog_free(prog);
     isl_ctx_free(ctx);

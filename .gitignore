@@ -5,6 +5,7 @@
 *.swp
 # python byte compiled files in orio
 *.pyc
+test_plutolib
 
 test/*.cloog
 test/*.pluto.c
