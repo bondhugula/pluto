@@ -859,7 +859,6 @@ void pluto_constraints_remove_row(PlutoConstraints *cst, int pos)
 void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
 {
     int i, j;
-    assert(cst->next == NULL);
 
     assert(pos >= 0 && pos <= cst->ncols-2);
 
@@ -869,6 +868,8 @@ void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
         }
     }
     cst->ncols--;
+
+    if (cst->next != NULL) pluto_constraints_remove_dim(cst->next, pos);
 }
 
 
