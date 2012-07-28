@@ -460,7 +460,6 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 }
 
 
-
 void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
@@ -975,7 +974,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                 dim = set_names(dim, isl_dim_set, stmt->iterators);
                 dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
                 dom = scoplib_matrix_list_to_isl_set(stmt->domain, dim);
-                dom = isl_set_intersect(dom, isl_set_copy(context));
+                // dom = isl_set_intersect(dom, isl_set_copy(context));
 
                 dim = isl_dim_alloc(ctx, scop->nb_parameters, stmt->nb_iterators,
                         2 * stmt->nb_iterators + 1);
