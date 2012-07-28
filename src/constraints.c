@@ -843,8 +843,6 @@ void pluto_constraints_remove_row(PlutoConstraints *cst, int pos)
 {
     int i, j;
 
-    assert(cst->next == NULL);
-
     assert(pos >= 0 && pos <= cst->nrows-1);
 
     for (i=pos; i<cst->nrows-1; i++) {
