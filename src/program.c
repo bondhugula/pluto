@@ -1455,11 +1455,13 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
     pluto_constraints_remove_dim(stmt->domain, pos);
     stmt->dim--;
 
-    free(stmt->iterators[pos]);
-    for (i=pos; i<=stmt->dim-1; i++) {
-        stmt->iterators[i] = stmt->iterators[i+1];
+    if (stmt->iterators != NULL) {
+        free(stmt->iterators[pos]);
+        for (i=pos; i<=stmt->dim-1; i++) {
+            stmt->iterators[i] = stmt->iterators[i+1];
+        }
+        stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
     }
-    stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
 
     pluto_matrix_remove_col(stmt->trans, pos);
 
