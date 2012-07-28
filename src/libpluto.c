@@ -27,10 +27,16 @@
 
 PlutoOptions *options;
 
-void normalize_schedule(PlutoConstraints *sched, Stmt *stmt)
+/*
+ * Bring domain back to its original dimensionality; move things
+ * into the schedule
+ */
+PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog)
 {
     int del, r, c, j, snodes, nrows;
     PlutoConstraints *domain;
+
+    PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
 
     domain = stmt->domain;
     snodes = stmt->dim - stmt->dim_orig;
@@ -54,6 +60,11 @@ void normalize_schedule(PlutoConstraints *sched, Stmt *stmt)
         }
         domain = domain->next;
     }
+
+    for (c=0; c<snodes; c++) {
+        pluto_stmt_remove_dim(stmt, 0, prog);
+    }
+    return sched;
 }
 
 /*
@@ -129,8 +140,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_basic_map *bmap;
         isl_map *map;
         Stmt *stmt = prog->stmts[i];
-        PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
-        normalize_schedule(sched, stmt);
+        PlutoConstraints *sched = normalize_domain_schedule(stmt, prog);
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched, 
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
