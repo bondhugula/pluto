@@ -15,6 +15,7 @@ pluto_CPPFLAGS = -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../clan-0.6.0/scoplib/scoplib-0.2.0/include \
    -I../candl-0.4.0/include \
    -I../isl/include -I../cloog-isl/include
+pluto_LDFLAGS = -static
 pluto_LDADD = ../candl-0.4.0/source/libcandl.la \
    ../clan-0.6.0/source/libclan.la \
    ../piplib/libpiplib64.la \
