@@ -44,8 +44,8 @@ binit:
 pclean:
 	$(MAKE) -C src clean
 
-test_plutolib: test_plutolib.c
-	gcc -g test_plutolib.c -L isl/.libs/ -L src/.libs/ -I include -lisl -lpluto -o test_plutolib
+test_plutolib: src/test_plutolib.c
+	gcc -g src/test_plutolib.c -L isl/.libs/ -L src/.libs/ -I include -lisl -lpluto -o test_plutolib
 
 test: .PHO
 
