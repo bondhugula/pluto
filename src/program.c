@@ -267,7 +267,9 @@ void pluto_dep_print(FILE *fp, Dep *dep)
     }
 
     fprintf(fp, "\n");
-    fprintf(fp, "Var: %s\n", dep->src_acc->name);
+    if (dep->src_acc != NULL) {
+        fprintf(fp, "Var: %s\n", dep->src_acc->name);
+    }
 
     fprintf(fp, "Dependence polyhedron\n");
     pluto_constraints_print(fp, dep->dpolytope);
@@ -424,7 +426,8 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
     int i;
 
-    fprintf(fp, "S%d \"%s\"; dims: %d\n", stmt->id+1, stmt->text, stmt->dim);
+    fprintf(fp, "S%d \"%s\"; ndims: %d; orig_depth: %d\n", 
+            stmt->id+1, stmt->text, stmt->dim, stmt->dim_orig);
     fprintf(fp, "Domain\n");
     pluto_constraints_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
@@ -817,25 +820,30 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     // pluto_stmt_print(stdout, stmts[dep->dest]);
     // printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num);
 
-    switch (info->type) {
-        case CANDL_RAW: 
-            dep->src_acc = stmts[dep->src]->writes[src_acc_num];
-            dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
-            break;
-        case CANDL_WAW: 
-            dep->src_acc = stmts[dep->src]->writes[src_acc_num];
-            dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
-            break;
-        case CANDL_WAR: 
-            dep->src_acc = stmts[dep->src]->reads[src_acc_num];
-            dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
-            break;
-        case CANDL_RAR: 
-            dep->src_acc = stmts[dep->src]->reads[src_acc_num];
-            dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
-            break;
-        default:
-            assert(0);
+    if (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL) {
+        switch (info->type) {
+            case CANDL_RAW: 
+                dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                break;
+            case CANDL_WAW: 
+                dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                break;
+            case CANDL_WAR: 
+                dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                break;
+            case CANDL_RAR: 
+                dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                break;
+            default:
+                assert(0);
+        }
+    }else{
+        dep->src_acc = NULL;
+        dep->dest_acc = NULL;
     }
 
     /* Initialize other fields (used for auto transform) */
@@ -1973,7 +1981,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc)
 }
 
 
-/* Separates a list of statements */
+/* Separates a list of statements at level 'level' */
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level)
 {
     int i, nstmts, k;
@@ -2083,7 +2091,7 @@ static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
     Stmt *stmt;
     PlutoConstraints *bcst;
     struct pluto_extra_stmt_info *info;
-    
+
     info = (struct pluto_extra_stmt_info *)user;
 
     stmts = info->stmts;
