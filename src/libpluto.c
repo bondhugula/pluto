@@ -119,7 +119,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, CANDL_RAW);
 
-    // pluto_deps_print(stdout, prog->deps, prog->ndeps);
+    pluto_prog_print(prog);
 
     pluto_auto_transform(prog);
 
@@ -145,6 +145,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     /* Detect properties again after tiling */
     pluto_detect_transformation_properties(prog);
 
+    if (options->tile && !options->silent)  {
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
+    }
+
     /* Intra-tile optimization */
     if (options->intratileopt) {
         int nbands;
@@ -153,9 +159,10 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         for (i=0; i<nbands; i++) {
             retval |= pluto_intra_tile_optimize(bands[i], 0, prog); 
         }
-        if (retval) {
+        if (retval) pluto_detect_transformation_properties(prog);
+        if (retval & !options->silent) {
             printf("[Pluto] after intra tile opt\n");
-            pluto_transformations_print(prog);
+            pluto_transformations_pretty_print(prog);
         }
         pluto_bands_free(bands, nbands);
     }
@@ -174,9 +181,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         if (retval && !options->silent)   {
             printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("use --tile for better parallelization \n");
-            IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
-            IF_DEBUG(pluto_transformations_print(prog););
-            IF_DEBUG(pluto_print_hyperplane_properties(prog););
+            fprintf(stdout, "[Pluto] After skewing:\n");
+            pluto_transformations_pretty_print(prog);
+            pluto_print_hyperplane_properties(prog);
         }
 
     }
@@ -188,11 +195,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         pluto_loops_print(ploops, nploops);
         printf("\n");
         pluto_loops_free(ploops, nploops);
-    }
-
-    if (options->tile && !options->silent)  {
-        IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
-        IF_DEBUG(pluto_print_hyperplane_properties(prog););
     }
 
     // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);

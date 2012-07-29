@@ -322,6 +322,8 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog);
 void pluto_compute_dep_satisfaction_complex(PlutoProg *prog);
 bool dep_is_satisfied(Dep *dep);
 void pluto_detect_transformation_properties(PlutoProg *prog);
+void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
+
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 

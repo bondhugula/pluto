@@ -14,7 +14,9 @@ int main() {
 
 	isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
-	isl_union_map_dump(schedule);
+    isl_printer *printer = isl_printer_to_file(ctx, stdout);
+    isl_printer_print_union_map(printer, schedule);
+    printf("\n");
 
     isl_union_set_free(domains);
     isl_union_map_free(deps);

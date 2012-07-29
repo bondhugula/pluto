@@ -887,6 +887,17 @@ void pluto_compute_dep_directions(PlutoProg *prog)
     }
 }
 
+void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog)
+{
+    int s, i;
+
+    for (s=0; s<prog->nstmts; s++) {
+        Stmt *stmt = prog->stmts[s];
+        for (i=0; i<stmt->trans->nrows; i++) {
+            stmt->hyp_types[i] = pluto_is_hyperplane_loop(stmt, i)? H_LOOP:H_SCALAR;
+        }
+    }
+}
 
 /* Detect H_LOOP or H_SCALAR from scratch */
 void pluto_detect_hyperplane_types(PlutoProg *prog)
@@ -1016,6 +1027,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
             }
         }
     }
+
+    pluto_detect_hyperplane_types_stmtwise(prog);
 }
 
 
@@ -1163,7 +1176,6 @@ void normalize_domains(PlutoProg *prog)
         int target_dim = prog->stmts[dep->dest]->dim;
         assert(dep->dpolytope->ncols == src_dim+target_dim+prog->npar+1);
     }
-
 
     /* Normalize rows of dependence polyhedra */
     for (k=0; k<prog->ndeps; k++)   {

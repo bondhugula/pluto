@@ -342,8 +342,6 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             stmt->is_orig_loop[j] = true;
         }
 
-        stmt->num_ind_sols = 0;
-
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
@@ -466,6 +464,15 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
     for(i=0; i<nstmts; i++)  {
         pluto_stmt_print(fp, stmts[i]);
     }
+}
+
+
+void pluto_prog_print(PlutoProg *prog)
+{
+    printf("nvar = %d, npar = %d\n", prog->nvar, prog->npar);
+
+    pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
+    pluto_deps_print(stdout, prog->deps, prog->ndeps);
 }
 
 
