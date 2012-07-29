@@ -85,7 +85,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     PlutoProg *prog = pluto_prog_alloc();
 
     prog->nvar = -1;
-
     prog->nstmts = isl_union_set_n_set(domains);
 
     if (prog->nstmts >= 1) {
@@ -115,7 +114,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     for (i=0; i<prog->ndeps; i++) {
         prog->deps[i] = pluto_dep_alloc();
     }
-    extract_deps(prog->deps, prog->ndeps, prog->stmts,
+    extract_deps(prog->deps, 0, prog->stmts,
             dependences, CANDL_RAW);
 
     pluto_auto_transform(prog);
