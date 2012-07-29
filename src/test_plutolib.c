@@ -10,6 +10,7 @@ int main() {
 
 	PlutoOptions *options = pluto_options_alloc();
     options->tile = 1;
+    options->parallel = 1;
 
 	isl_union_map *schedule = pluto_schedule(domains, deps, options);
 

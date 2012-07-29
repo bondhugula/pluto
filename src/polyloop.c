@@ -37,7 +37,7 @@ Ploop *pluto_loop_alloc()
 void pluto_loop_print(const Ploop *loop)
 {
     int i;
-    printf("{Loop (depth %d) -> ", loop->depth);
+    printf("t%d {loop with stmts: ", loop->depth+1);
     for (i=0; i<loop->nstmts; i++) {
         printf("S%d, ", loop->stmts[i]->id+1);
     }
@@ -47,7 +47,6 @@ void pluto_loop_print(const Ploop *loop)
 void pluto_loops_print(Ploop **loops, int num)
 {
     int i;
-    printf("%d loops\n", num);
     for (i=0; i<num; i++) {
         pluto_loop_print(loops[i]);
     }
@@ -403,15 +402,22 @@ Band *pluto_band_alloc(Ploop *loop, int width)
 
 void pluto_band_print(const Band *band)
 {
-    printf("(width %d) -> ", band->width);
-    pluto_loop_print(band->loop);
+    int i;
+    printf("(");
+    for (i=band->loop->depth; i<band->loop->depth+band->width; i++) {
+        printf("t%d, ", i+1);
+    }
+    printf(") with stmts {");
+    for (i=0; i<band->loop->nstmts; i++) {
+        printf("S%d, ", band->loop->stmts[i]->id+1);
+    }
+    printf("}\n");
 }
 
 
 void pluto_bands_print(Band **bands, int num)
 {
     int i;
-    printf("%d bands\n", num);
     for (i=0; i<num; i++) {
         pluto_band_print(bands[i]);
     }
@@ -568,6 +574,7 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
     loops = pluto_get_all_loops(prog, &num);
 
     // pluto_print_dep_directions(prog);
+    // pluto_loops_print(loops, num);
 
     nbands = 0;
     for (i=0; i<num; i++) {
@@ -660,4 +667,3 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands)
 
     return dbands;
 }
-

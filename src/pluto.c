@@ -1636,7 +1636,11 @@ void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level)
     int j;
 
     for (j=0; j<stmt->dim; j++)  {
-        var[j] = strdup(stmt->iterators[j]);
+        if (stmt->iterators[j]) var[j] = strdup(stmt->iterators[j]);
+        else{
+            var[j] = malloc(5);
+            sprintf(var[j], "x%d", j+1);
+        }
     }
 
     int flag = 0;

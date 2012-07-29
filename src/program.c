@@ -1736,6 +1736,7 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     stmt->writes = NULL;
     stmt->nreads = 0;
     stmt->nwrites = 0;
+    stmt->num_ind_sols = 0;
 
     stmt->first_tile_dim = 0;
     stmt->last_tile_dim = -1;
@@ -2128,6 +2129,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
 
     Stmt *stmt = stmts[info->index];
     stmt->id = info->index;
+    stmt->type = ORIG;
 
     r = isl_set_foreach_basic_set(set, &extract_basic_set, info);
 

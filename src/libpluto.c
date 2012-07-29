@@ -28,8 +28,10 @@
 PlutoOptions *options;
 
 /*
- * Bring domain back to its original dimensionality; move things
- * into the schedule
+ * Pluto tiling modifies the domain; move the information from the
+ * domain to the schedules (inequalities will be added to the schedules)
+ * Polly for LLVM expects domains to remain unchanged
+ * (space/dimensionality-wise)
  */
 PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog)
 {
@@ -75,7 +77,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences, 
         PlutoOptions *options_l)
 {
-    int i;
+    int i, nbands, n_ibands;
     isl_ctx *ctx;
 
     ctx = isl_ctx_alloc();
@@ -117,24 +119,87 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, CANDL_RAW);
 
+    // pluto_deps_print(stdout, prog->deps, prog->ndeps);
+
     pluto_auto_transform(prog);
 
-    pluto_transformations_print(prog);
     pluto_detect_transformation_properties(prog);
 
-    pluto_print_hyperplane_properties(prog);
+    if (!options->silent) {
+        pluto_transformations_print(prog);
+        pluto_print_hyperplane_properties(prog);
+    }
+
+    Band **bands, **ibands;
+    bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+    printf("Outermost tilable bands: %d bands\n", nbands);
+    pluto_bands_print(bands, nbands);
+    printf("Innermost tilable bands: %d bands\n", n_ibands);
+    pluto_bands_print(ibands, n_ibands);
 
     if (options->tile) {
         pluto_tile(prog);
     }
 
-    /* Extract schedules */
-    isl_space *space = isl_space_alloc(ctx, prog->npar, 0, 0);
+    /* Detect properties again after tiling */
+    pluto_detect_transformation_properties(prog);
 
-    isl_union_map *schedules = isl_union_map_empty(space);
+    /* Intra-tile optimization */
+    if (options->intratileopt) {
+        int nbands;
+        Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+        int retval = 0;
+        for (i=0; i<nbands; i++) {
+            retval |= pluto_intra_tile_optimize(bands[i], 0, prog); 
+        }
+        if (retval) {
+            printf("[Pluto] after intra tile opt\n");
+            pluto_transformations_print(prog);
+        }
+        pluto_bands_free(bands, nbands);
+    }
+
+    if ((options->parallel) && !options->tile)   {
+        /* Obtain wavefront/pipelined parallelization by skewing if
+         * necessary */
+        int nbands;
+        Band **bands;
+        bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+        bool retval = create_tile_schedule(prog, bands, nbands);
+        pluto_bands_free(bands, nbands);
+
+        /* If the user hasn't supplied --tile and there is only pipelined
+         * parallelism, we will warn the user */
+        if (retval && !options->silent)   {
+            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("use --tile for better parallelization \n");
+            IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
+            IF_DEBUG(pluto_transformations_print(prog););
+            IF_DEBUG(pluto_print_hyperplane_properties(prog););
+        }
+
+    }
+
+    if (options->parallel && !options->silent) {
+        int nploops;
+        Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
+        printf("[pluto_mark_parallel] %d parallel loops\n", nploops);
+        pluto_loops_print(ploops, nploops);
+        printf("\n");
+        pluto_loops_free(ploops, nploops);
+    }
+
+    if (options->tile && !options->silent)  {
+        IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
+        IF_DEBUG(pluto_print_hyperplane_properties(prog););
+    }
 
     // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
 
+    /* Construct isl_union_map for pluto schedules */
+    isl_space *space = isl_space_alloc(ctx, prog->npar, 0, 0);
+    isl_union_map *schedules = isl_union_map_empty(space);
     for (i=0; i<prog->nstmts; i++) {
         isl_basic_map *bmap;
         isl_map *map;
@@ -148,8 +213,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
         pluto_constraints_free(sched);
     }
-
-    // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
 
     pluto_prog_free(prog);
     isl_ctx_free(ctx);
