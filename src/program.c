@@ -2149,6 +2149,8 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
 
     info->index++;
 
+    isl_set_free(set);
+
     return r;
 }
 
