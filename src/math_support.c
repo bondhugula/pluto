@@ -42,12 +42,12 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
 
     mat->val = (int **) malloc(PLMAX(alloc_nrows,1)*sizeof(int *));
 
-    for (i=0; i<alloc_nrows; i++) {
-        mat->val[i] = (int *) malloc(PLMAX(alloc_ncols,1)*sizeof(int));
-    }
-
     mat->alloc_nrows = PLMAX(alloc_nrows,1);
     mat->alloc_ncols = PLMAX(alloc_ncols,1);
+
+    for (i=0; i<mat->alloc_nrows; i++) {
+        mat->val[i] = (int *) malloc(mat->alloc_ncols*sizeof(int));
+    }
 
     mat->nrows = alloc_nrows;
     mat->ncols = alloc_ncols;
