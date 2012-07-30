@@ -108,7 +108,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     if (prog->nstmts >= 1) {
         Stmt *stmt = prog->stmts[0];
         prog->npar = stmt->domain->ncols - stmt->dim - 1;
+        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
     }else prog->npar = 0;
+
+    for (i=0; i<prog->npar; i++) {
+        prog->params[i] = NULL;
+    }
 
     prog->ndeps = isl_union_map_n_map(dependences);
 
