@@ -215,7 +215,10 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched,
                 stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
+        char name[20];
+        snprintf(name, sizeof(name), "S_%d", i);
         map = isl_map_from_basic_map(bmap);
+        map = isl_map_set_tuple_name(map, isl_dim_in, name);
         schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));
 
         pluto_constraints_free(sched);
