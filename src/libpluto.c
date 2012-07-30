@@ -80,7 +80,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     int i, nbands, n_ibands;
     isl_ctx *ctx;
 
-    ctx = isl_ctx_alloc();
+    ctx = isl_union_set_get_ctx(domains);
 
     options = options_l;
 
@@ -222,7 +222,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }
 
     pluto_prog_free(prog);
-    isl_ctx_free(ctx);
 
     return schedules;
 }
