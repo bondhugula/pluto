@@ -212,9 +212,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_map *map;
         Stmt *stmt = prog->stmts[i];
         PlutoConstraints *sched = normalize_domain_schedule(stmt, prog);
+        // pluto_constraints_print(stdout, sched);
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched,
-                stmt->domain->ncols-1, stmt->trans->nrows, prog->npar);
+                sched->ncols - stmt->trans->nrows - prog->npar - 1, 
+                stmt->trans->nrows, prog->npar);
+        bmap = isl_basic_map_project_out(bmap, isl_dim_in, 0, sched->ncols - stmt->trans->nrows - stmt->domain->ncols);
         char name[20];
         snprintf(name, sizeof(name), "S_%d", i);
         map = isl_map_from_basic_map(bmap);
