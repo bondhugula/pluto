@@ -142,6 +142,24 @@ configureopts="--enable-llint-version --prefix=$prefix \
  )
 
 
+AC_SUBST(ISL_INCLUDE)
+AC_SUBST(ISL_LDFLAGS)
+AC_SUBST(ISL_LIBADD)
+
+dnl Provide --with-isl-prefix
+AC_ARG_WITH(isl-prefix,
+            AC_HELP_STRING([--with-isl-prefix=DIR],
+              	             [DIR location where isl is installed]),
+              [isl_prefix=$withval;
+               ISL_INCLUDE="-I$withval/include";
+               ISL_LDFLAGS="-L$withval/lib";
+               ISL_LIBADD="$withval/lib/libisl.la";
+               external_isl=true
+               ],
+              [external_isl=false])
+AM_CONDITIONAL(EXTERNAL_ISL, test x$external_isl = xtrue)
+
+if test x$external_isl = xtrue; then
 dnl Configuring isl
 echo -e "\n======================"
 echo "Configuring isl"
@@ -150,14 +168,20 @@ configureopts="--with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX 
 (cd isl/
  ./configure ${configureopts}
 )
+fi
 
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo -e "\n=========================="
 echo "Configuring Cloog-isl"
 echo "=========================="
+if test x$external_isl = xfalse; then
 configureopts="--with-isl-builddir=../isl --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX
 --prefix=$prefix"
+else
+configureopts="--with-isl=system --with-isl-prefix=$isl_prefix --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX
+--prefix=$prefix"
+fi
 (cd cloog-isl/
  ./configure ${configureopts}
  )
