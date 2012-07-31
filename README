@@ -39,7 +39,7 @@ $ make test
 
 $ tar zxvf pluto-0.8.1.tar.gz
 $ cd pluto-0.8.1/
-$ ./configure [--enable-debug]
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl location>]
 $ make
 $ make test
 
@@ -54,7 +54,12 @@ $ ./configure [--enable-debug]
 $ make
 $ make test
 
-If you have ICC, uncomment line 7 and comment line 8 of examples/common.mk.
+  
+* --with-isl-prefix=<location> to compile and link with an already installed 
+isl. By default, the version of isl bundled with Pluto will be used.
+
+If you do not have ICC, uncomment line 7 and comment line 8 of 
+examples/common.mk.
 
 'polycc' is the wrapper script around src/pluto (core transformer) and 
 all other components. 'polycc' runs all of these in sequence on an input 
@@ -178,9 +183,6 @@ doc/DOC.txt
 
 * For specifying custom fusion structure through '.fst' file, see 
 doc/DOC.txt
-
-* See cloog-isl/PLUTO_CHANGES for minor changes made to Cloog's 
-configure.in
 
 
 CONTACT

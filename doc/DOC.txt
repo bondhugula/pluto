@@ -90,15 +90,21 @@ COMMAND-LINE OPTIONS
     also allows extraction of coarse-grained pipelined parallelism with 
     the Pluto model.
 
-    --intratileopt
-    Optimize intra-tile execution for spatial locality. Apply this even
-    when not tiling
+    --intratileopt 
+    Optimize a tile's execution order for locality (spatial and temporal
+    reuse); the right loop permutation for a tile will be chosen, in particular,
+    the right innermost loop. Spatial locality is not otherwise captured 
+    by Pluto's cost function.
 
     --parallel [--multipipe]
     Parallelize code with OpenMP (usually useful when used with --tile) 
 
     --parallelize
     Same as --parallel
+
+    --innnerpar
+    Prever inner parallelism over pipelined/wavefront parallelism obtained
+    via skewing whenever both exist
 
     --multipipe 
     Will enable extraction of multiple degrees of parallelism (upto 2 as 
@@ -163,6 +169,10 @@ COMMAND-LINE OPTIONS
     --readscoplib
     Read input from a scoplib file
 
+    --context=<value>
+    An assertion from the user that all program parameters are greater than 
+    or equal to <value>
+
     --version
     Print version number and exit
 
@@ -199,7 +209,8 @@ SPECIFYING A CUSTOM FUSION STRUCTURE THROUGH '.fst' or '.precut' file
 One can force a particular fusion structure in two ways: either using 
 the .fst file or the .precut file. In either case, the file has to be in 
 your `present working directory'.  If both files exist in the directory 
-polycc is run from, '.fst' takes precedence.
+polycc is run from, '.fst' takes precedence. If --nofuse is specified, 
+distribution will be done in spite of a .fst/.precut.
 
 Alternative 1 (.fst file)
 
