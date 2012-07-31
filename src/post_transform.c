@@ -145,7 +145,8 @@ int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog)
         a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
-        if (a == s + t) break;
+        /* if accesses haven't been provided, a will be 0 */
+        if (a >= 1 && a == s + t) break;
     }
 
     if (l < num) {
