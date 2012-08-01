@@ -9,10 +9,14 @@ RM = rm -f
 LN = ln -s
 
 if EXTERNAL_ISL
-	MAY_ISL =
+MAY_ISL =
+# ISL_INCLUDE and ISL_LIBADD were already defined
 else
-	MAY_ISL = isl
+MAY_ISL = isl
+ISL_INCLUDE += -I$(top_srcdir)/isl/include
+ISL_LIBADD += $(top_srcdir)/isl/libisl.la
 endif
+
 
 SUBDIRS = piplib $(MAY_ISL) cloog-isl clan-0.6.0 candl-0.4.0 src
 

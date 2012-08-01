@@ -9,11 +9,10 @@ MAINTAINERCLEANFILES = Makefile.in
 
 
 if EXTERNAL_ISL
-	ISL_INCLUDE=@ISL_INCLUDE@
-	ISL_LIBADD=@ISL_LIBADD@
+# ISL_INCLUDE, ISL_LIBADD were already defined
 else
-	ISL_INCLUDE = -I$(top_srcdir)/isl/include
-	ISL_LIBADD = $(top_srcdir)/isl/libisl.la
+ISL_INCLUDE += -I$(top_srcdir)/isl/include
+ISL_LIBADD += $(top_srcdir)/isl/libisl.la
 endif
 
 bin_PROGRAMS = pluto
