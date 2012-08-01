@@ -8,7 +8,13 @@
 RM = rm -f
 LN = ln -s
 
-SUBDIRS = piplib isl cloog-isl clan-0.6.0 candl-0.4.0 src
+if EXTERNAL_ISL
+	MAY_ISL =
+else
+	MAY_ISL = isl
+endif
+
+SUBDIRS = piplib $(MAY_ISL) cloog-isl clan-0.6.0 candl-0.4.0 src
 
 ACLOCAL_AMFLAGS = -I m4
 

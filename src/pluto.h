@@ -372,6 +372,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cl
 
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
+int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
