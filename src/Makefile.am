@@ -7,12 +7,13 @@ SUBDIRS =
 
 MAINTAINERCLEANFILES = Makefile.in
 
-ISL_INCLUDE = -I$(top_srcdir)/isl/include
-ISL_LIBADD = $(top_srcdir)/isl/libisl.la
 
 if EXTERNAL_ISL
 	ISL_INCLUDE=@ISL_INCLUDE@
 	ISL_LIBADD=@ISL_LIBADD@
+else
+	ISL_INCLUDE = -I$(top_srcdir)/isl/include
+	ISL_LIBADD = $(top_srcdir)/isl/libisl.la
 endif
 
 bin_PROGRAMS = pluto
@@ -46,7 +47,7 @@ libpluto_la_CPPFLAGS =  -O3 -funroll-loops -fopenmp \
    -I../clan-0.6.0/scoplib/scoplib-0.2.0/include \
    -I../candl-0.4.0/include \
    $(ISL_INCLUDE)
-#libpluto_la_LDFLAGS = -fopenmp
+
 libpluto_la_LIBADD = ../candl-0.4.0/source/libcandl.la \
    ../clan-0.6.0/source/libclan.la \
    ../piplib/libpiplib64.la \
