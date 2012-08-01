@@ -52,4 +52,4 @@ libpluto_la_LIBADD = ../candl-0.4.0/source/libcandl.la \
    ../clan-0.6.0/source/libclan.la \
    ../piplib/libpiplib64.la \
    $(ISL_LIBADD) \
-   -lm
+   -lm -lgomp
