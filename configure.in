@@ -40,7 +40,7 @@ AC_ARG_ENABLE(debug,
 if test $debug = "true"; then
     CFLAGS="$CFLAGS -g -DDEBUG"
 else
-    CFLAGS="$CFLAGS -O3 -funroll-loops -fopenmp"
+    CFLAGS="$CFLAGS "
 fi
 
 dnl check for programs

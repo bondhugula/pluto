@@ -213,11 +213,9 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     CloogInput *input ;
     CloogOptions *cloogOptions ;
     CloogState *state;
-    CloogDomain *domain;
-    int i, j;
+    int i;
 
-    struct clast_stmt *root,*split;
-    split = NULL;
+    struct clast_stmt *root;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -284,7 +282,6 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     /* Get the code from CLooG */
     IF_DEBUG(printf("[Pluto] cloog_input_read\n"));
     input = cloog_input_read(cloogfp, cloogOptions) ;
-    domain = cloog_domain_copy(input->context);
     IF_DEBUG(printf("[Pluto] cloog_clast_create\n"));
     root = cloog_clast_create_from_input(input, cloogOptions);
     if (options->prevector) {

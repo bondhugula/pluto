@@ -30,6 +30,7 @@ void pluto_stmts_print(FILE *fp, Stmt **, int);
 void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
 
+void pluto_prog_print(PlutoProg *prog);
 
 Dep *pluto_dep_alloc();
 void pluto_dep_print(FILE *fp, Dep *dep);

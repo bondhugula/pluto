@@ -381,12 +381,14 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog, CloogOp
 void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog, CloogOptions *options);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
+Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
+int pluto_is_band_innermost(const Band *band, int is_tiled);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
