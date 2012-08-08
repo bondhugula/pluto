@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- *
- * Copyright (C) 2007-2008 Uday Kumar Bondhugula
+ * 
+ * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,11 +29,13 @@
 
 #include <cloog/cloog.h>
 
+#include "version.h"
+
 #include "pluto.h"
 #include "math_support.h"
 #include "constraints.h"
 #include "program.h"
-#include "version.h"
+#include "ast_transform.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog)
 {

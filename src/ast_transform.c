@@ -4,6 +4,7 @@
 #include "pluto.h"
 #include "program.h"
 #include "cloog/cloog.h"
+#include "ast_transform.h"
 
 /*
  * Clast-based parallel loop marking */

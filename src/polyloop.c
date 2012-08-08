@@ -22,6 +22,7 @@
  */
 #include "pluto.h"
 #include "program.h"
+#include "assert.h"
 
 
 Ploop *pluto_loop_alloc()

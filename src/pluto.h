@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007 Uday Kumar Bondhugula
+ * Copyright (C) 2007 Uday Bondhugula
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 #include <stdbool.h>
 
 #include "scoplib/symbol.h"
-#include "cloog/cloog.h"
-#include "cloog/clast.h"
 
 #include "math_support.h"
 #include "constraints.h"
@@ -378,8 +376,6 @@ void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
-void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog, CloogOptions *options);
-void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog, CloogOptions *options);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
