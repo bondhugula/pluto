@@ -32,6 +32,7 @@
 #include "isl/set.h"
 
 #ifdef PIP_WIDTH_MP
+/* Not tested */
 #include "piplib/piplibMP.h"
 #else
 #include "piplib/piplib64.h"

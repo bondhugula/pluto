@@ -30,14 +30,13 @@
 
 #include "pluto.h"
 #include "transforms.h"
-
-#include "clan/clan.h"
-#include "candl/candl.h"
-
 #include "math_support.h"
 #include "post_transform.h"
 #include "program.h"
 #include "version.h"
+
+#include "clan/clan.h"
+#include "candl/candl.h"
 
 PlutoOptions *options;
 

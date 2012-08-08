@@ -20,9 +20,10 @@
 #ifndef _PROGRAM_H
 
 #include "pluto.h"
+#include "constraints.h"
+
 #include "clan/clan.h"
 #include "candl/candl.h"
-#include "constraints.h"
 
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);

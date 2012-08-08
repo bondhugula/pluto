@@ -20,10 +20,10 @@
  * AST is generated, a single Ploop can get separated into multiple ones.
  *
  */
+#include <assert.h>
+
 #include "pluto.h"
 #include "program.h"
-#include "assert.h"
-
 
 Ploop *pluto_loop_alloc()
 {

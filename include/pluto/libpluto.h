@@ -114,6 +114,17 @@ struct plutoOptions{
 };
 typedef struct plutoOptions PlutoOptions;
 
+
+/* Fusion options for options->fuse */
+
+/* Do not fuse across SCCs */
+#define NO_FUSE 0
+/* Geared towards maximal fusion, but not really maximal fusion */
+#define MAXIMAL_FUSE 1
+/* Something in between the above two */
+#define SMART_FUSE 2
+
+
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 

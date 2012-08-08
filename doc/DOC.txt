@@ -299,3 +299,8 @@ or
 to just look at the transformation without the actual tiling and 
 parallelization performed; the transformation is just applied, and loop 
 fusion can be seen.
+
+USING PLUTO AS A LIBRARY
+
+See src/test_plutolib.c
+
