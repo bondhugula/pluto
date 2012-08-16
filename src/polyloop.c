@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007-2008 Uday Kumar Bondhugula
+ * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,6 +82,7 @@ void pluto_loops_free(Ploop **loops, int nloops)
     for (i=0; i<nloops; i++) {
         pluto_loop_free(loops[i]);
     }
+    free(loops);
 }
 
 
@@ -431,18 +432,13 @@ Band *pluto_band_dup(Band *b)
 }
 
 
-/* Concatenates both and returns the results; pointers are copied - not 
+/* Concatenates both and puts them in bands1; pointers are copied - not 
  * the structures */
-Band **pluto_bands_concat(Band **bands1, int num1, Band **bands2, int num2)
+void pluto_bands_concat(Band ***bands1, int num1, Band **bands2, int num2)
 {
-    Band **cat_bands;
-    if (num1 == 0 && num2 == 0) {
-        return NULL;
-    }
-    cat_bands = malloc((num1+num2)*sizeof(Band *));
-    memcpy(cat_bands, bands1, num1*sizeof(Band *));
-    memcpy(cat_bands+num1, bands2, num2*sizeof(Band *));
-    return cat_bands;
+    if (num1 == 0 && num2 == 0) return;
+    *bands1 = realloc(*bands1, (num1+num2)*sizeof(Band *));
+    memcpy((*bands1)+num1, bands2, num2*sizeof(Band *));
 }
 
 
@@ -465,7 +461,7 @@ static int is_band_dominated(Band *band1, Band *band2)
 
 void pluto_band_free(Band *band)
 {
-    free(band->loop);
+    pluto_loop_free(band->loop);
     free(band);
 }
 
@@ -477,6 +473,7 @@ void pluto_bands_free(Band **bands, int nbands)
     for (i=0; i<nbands; i++) {
         pluto_band_free(bands[i]);
     }
+    free(bands);
 }
 
 int pluto_is_depth_scalar(Ploop *loop, int depth)
@@ -539,7 +536,7 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
 /* Returns subset of these bands that are not dominated by any other band */
 Band **pluto_get_dominator_bands(Band **bands, int nbands, int *ndom_bands)
 {
-    Band **tmp_bands, **dom_bands;
+    Band **dom_bands;
     int i, j, ndbands;
 
     dom_bands = NULL;
@@ -550,10 +547,7 @@ Band **pluto_get_dominator_bands(Band **bands, int nbands, int *ndom_bands)
         }
         if (j==nbands) {
             Band *dup = pluto_band_dup(bands[i]);
-            tmp_bands = pluto_bands_concat(dom_bands, ndbands, 
-                    &dup, 1);
-            free(dom_bands);
-            dom_bands = tmp_bands;
+            pluto_bands_concat(&dom_bands, ndbands, &dup, 1);
             ndbands++;
         }
     }
@@ -570,20 +564,19 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
     int num, i, nbands;
     Band **bands, **dbands;
 
-    bands = NULL;
     num = 0;
     loops = pluto_get_all_loops(prog, &num);
 
     // pluto_print_dep_directions(prog);
     // pluto_loops_print(loops, num);
 
+    bands = NULL;
     nbands = 0;
     for (i=0; i<num; i++) {
         Band *band = pluto_get_permutable_band(loops[i], prog);
         if (band != NULL) {
             bands = realloc(bands, (nbands+1)*sizeof(Band *));
-            bands[nbands] = band;
-            nbands++;
+            bands[nbands++] = band;
         }
     }
 
@@ -591,16 +584,9 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
 
     dbands = pluto_get_dominator_bands(bands, nbands, ndbands);
 
-    for (i=0; i<num; i++) {
-        pluto_loop_free(loops[i]);
-    }
-    free(loops);
+    pluto_loops_free(loops, num);
 
-    for (i=0; i<nbands; i++) {
-        pluto_band_free(bands[i]);
-    }
-
-    // pluto_bands_print(dbands, *ndbands);
+    pluto_bands_free(bands, nbands);
 
     return dbands;
 }
