@@ -153,7 +153,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
 
     /* Generate pragmas for Bee/Cl@k */
     if (options->bee)   {
-        fprintf(outfp, " schedule");
+        fprintf(outfp, " __bee_schedule");
         for (j=0; j<stmt->trans->nrows; j++)    {
             fprintf(outfp, "[");
             pretty_print_affine_function(outfp, stmt, j);

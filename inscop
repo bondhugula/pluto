@@ -17,7 +17,7 @@ cat .head > __tmp
 # when '--bee' was used - instead we will add it here
 cat $2 | grep "^#include" > .includes
 cat $2 | grep -v "^#include" > .body.c
-gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/schedule/#pragma schedule/' |  \
+gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
 sed -e 's/_NL_DELIMIT_/\n/' >> __tmp
 
 cat .tail >> __tmp
