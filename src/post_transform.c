@@ -32,9 +32,11 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
     PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
     assert(depth <= newacc->ncols-1);
     for (i=0; i<newacc->nrows; i++) {
-        if (newacc->val[i][depth] != 0) return 0;
+        if (newacc->val[i][depth] != 0) break;
     }
-    return 1;
+    int is_invariant = (i==newacc->nrows);
+    pluto_matrix_free(newacc);
+    return is_invariant;
 }
 
 #define SHORT_STRIDE 4
@@ -44,10 +46,18 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
     PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
     assert(depth <= newacc->ncols-1);
     for (i=0; i<newacc->nrows-1; i++) {
-        if (newacc->val[i][depth] != 0) return 0;
+        if (newacc->val[i][depth] != 0) {
+            pluto_matrix_free(newacc);
+            return 0;
+        }
     }
     if (newacc->val[newacc->nrows-1][depth] >= 1 &&
-            newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) return 1;
+            newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) {
+        pluto_matrix_free(newacc);
+        return 1;
+    }
+
+    pluto_matrix_free(newacc);
 
     return 0;
 }
@@ -321,9 +331,11 @@ int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog)
         pluto_make_innermost(maxloc, prog);
         IF_DEBUG(printf("[Pluto] intratile_loc: loop to be made innermost:"););
         IF_DEBUG(pluto_loop_print(maxloc););
+        pluto_loops_free(loops, num);
         return 1;
     }
 
+    pluto_loops_free(loops, num);
     return 0;
 }
 
@@ -400,7 +412,7 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor)
                     pluto_constraints_add_dim(zstmt->domain, zstmt->dim);
                     /* Just put a dummy iterator name since Cloog will
                      * generate a remapping for this too */
-                    sprintf(zstmt->iterators[zstmt->dim], "zU%d", j);
+                    sprintf(zstmt->iterators[zstmt->dim], "zU%d", j); // where is memory for iterators allocated?
 
                     /* Now add rows */
 
