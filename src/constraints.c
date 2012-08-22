@@ -327,7 +327,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
     tmpcst->nrows = p;
     tmpcst->ncols = cst->ncols;
 
-    pluto_constraints_copy(cst, tmpcst);
+    pluto_constraints_copy_single(cst, tmpcst);
     pluto_constraints_free(tmpcst);
 
     free(is_redun);
@@ -352,7 +352,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
     for (i=0; i<cst->nrows; i++) {
         if (cst->is_eq[i] == 1) {
             PlutoConstraints *tmpcst = pluto_constraints_to_pure_inequalities(cst);
-            pluto_constraints_copy(cst, tmpcst);
+            pluto_constraints_copy_single(cst, tmpcst);
             pluto_constraints_free(tmpcst);
         }
     }
@@ -449,7 +449,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
     }
 
     pluto_constraints_simplify(newcst);
-    pluto_constraints_copy(cst, newcst);
+    pluto_constraints_copy_single(cst, newcst);
     pluto_constraints_free(newcst);
 
     if (cst->next != NULL) fourier_motzkin_eliminate(cst->next,pos);
@@ -490,7 +490,28 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
     return dest;
 }
 
+/* Copy constraints from the first element of src into the first element
+ * of dest; if dest does not have enough space, resize it */
+PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const PlutoConstraints *src)
+{
+    int i;
 
+    if (src->nrows > dest->alloc_nrows || src->ncols > dest->alloc_ncols) {
+        pluto_constraints_resize(dest, PLMAX(src->nrows,dest->alloc_nrows), 
+                PLMAX(src->ncols,dest->alloc_ncols));
+    }   
+
+    dest->nrows = src->nrows;
+    dest->ncols = src->ncols;
+
+    for (i=0; i<dest->nrows; i++) {
+        memcpy(dest->val[i], src->val[i], src->ncols*sizeof(int));
+    }
+
+    memcpy(dest->is_eq, src->is_eq, dest->nrows*sizeof(int));
+
+    return dest;
+}
 
 /* Duplicate constraints; returned constraints should be freed with
  * pluto_constraints_free */

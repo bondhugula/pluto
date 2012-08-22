@@ -57,6 +57,7 @@ PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
 void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src);
+PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 
 int best_elim_candidate(const PlutoConstraints *, int);
