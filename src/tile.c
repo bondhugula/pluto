@@ -299,6 +299,7 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
     }
     /* Re-detect hyperplane types (H_SCALAR, H_LOOP) */
     pluto_detect_hyperplane_types(prog);
+    pluto_detect_hyperplane_types_stmtwise(prog);
 
     // print_hyperplane_properties(prog);
     // pluto_transformations_pretty_print(prog);
