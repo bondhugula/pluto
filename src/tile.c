@@ -7,7 +7,6 @@
 #include "transforms.h"
 
 
-
 /* Read tile sizes from file tile.sizes */
 static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
         int num_tile_dims, Stmt **stmts, int nstmts, int firstLoop)
@@ -79,7 +78,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
              * NOTE: tile shape info comes in here */
 
             /* 1.1 Add additional dimensions */
-            char iter[5];
+            char iter[6];
             sprintf(iter, "zT%d", stmt->dim);
 
             int hyp_type = (stmt->hyp_types[depth + depth - firstD] == H_SCALAR)? H_SCALAR: 
@@ -235,9 +234,11 @@ void pluto_tile(PlutoProg *prog)
         for (i=0; i<nbands; i++) {
             retval |= pluto_pre_vectorize_band(bands[i], 1, prog); 
         }
-        if (retval) pluto_transformations_pretty_print(prog);
+        if (retval && !options->silent) {
+            printf("After pre_vectorize:\n");
+            pluto_transformations_pretty_print(prog);
+        }
     }
-
 
     if (options->parallel) {
         create_tile_schedule(prog, bands, nbands);
