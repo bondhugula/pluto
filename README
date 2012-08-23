@@ -30,15 +30,15 @@ Stable release
 
 Run 'install from Pluto's top-level directory
 
-$ tar zxvf pluto-0.8.1.tar.gz
-$ cd pluto-0.8.1/
+$ tar zxvf pluto-0.9.0.tar.gz
+$ cd pluto-0.9.0/
 $ ./install
 $ make test
 
     OR
 
-$ tar zxvf pluto-0.8.1.tar.gz
-$ cd pluto-0.8.1/
+$ tar zxvf pluto-0.9.0.tar.gz
+$ cd pluto-0.9.0/
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl location>]
 $ make
 $ make test
@@ -54,7 +54,6 @@ $ ./configure [--enable-debug]
 $ make
 $ make test
 
-  
 * --with-isl-prefix=<location> to compile and link with an already installed 
 isl. By default, the version of isl bundled with Pluto will be used.
 

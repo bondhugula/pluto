@@ -1,3 +1,12 @@
+0.9.0
+
+Making parallelization, tiling, and other transformations work with bands
+and poly scattering tree prefixes as opposed to depths. Mark parallel and 
+vectorizable loops via clast processing instead of scripts. All of this 
+gets rid of a long-standing limitation. 
+
+See git history for all changes.
+
 0.8.1
 
 Minor bug fixes; see git log. Bail out with identity transformation on a
