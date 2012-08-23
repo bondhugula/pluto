@@ -304,3 +304,6 @@ USING PLUTO AS A LIBRARY
 
 See src/test_plutolib.c
 
+To install libpluto on a system, run 'make install' from Pluto's top-level 
+directory.  libpluto.{so,a} can be found in src/.libs/
+

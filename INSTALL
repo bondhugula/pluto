@@ -27,9 +27,10 @@ $ cd pluto-0.9.0/
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
 
-* polycc is the script wrapper around src/pluto and all other 
-components, and it is the one to run. Please refer to the README 
-for more details.
+* polycc is the script wrapper around src/pluto and all other components, 
+and it is the one to run. libpluto.{so,a} can be found in src/.libs/ and can 
+be installed at the installation prefix (/usr/local default) with 
+'make install'. Please refer to the README for more details.
 
 * --with-isl-prefix=<location> to compile and link with an already installed 
 isl. By default, the version of isl bundled with Pluto will be used.

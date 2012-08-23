@@ -64,8 +64,9 @@ examples/common.mk.
 all other components. 'polycc' runs all of these in sequence on an input 
 C program (with the section to  parallelize/optimize marked) and is what 
 a user should use on input. Output generated is OpenMP parallel C code 
-that can be readily compiled and run on shared-memory parallel machines 
-like general-purpose multicores.
+that can be readily compiled and run on shared-memory parallel machines like 
+general-purpose multicores. libpluto.{so,a} is also built and can be found 
+in src/.libs/. 'make install' will install it.
 
 
 TRYING A NEW CODE
