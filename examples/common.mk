@@ -8,7 +8,6 @@ CC=icc
 #CC=gcc
 
 NPROCS=4
-POLYRTLIBDIR=/home/uday/poly/pluto/polyrt/.libs
 
 # Intel MKL and AMD ACML library paths
 MKL=/opt/intel/mkl
