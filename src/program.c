@@ -812,22 +812,24 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
-    int src_acc_num, dest_acc_num;
-    const char *name;
-
-    name = isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2;
-    while (*(name++) != '_');
-    src_acc_num = atoi(name+1);
-
-    name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
-    while (*(name++) != '_');
-    dest_acc_num = atoi(name+1);
-
     // pluto_stmt_print(stdout, stmts[dep->src]);
     // pluto_stmt_print(stdout, stmts[dep->dest]);
     // printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num);
 
     if (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL) {
+        /* Extract access function information */
+        int src_acc_num, dest_acc_num;
+        const char *name;
+        name = isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2;
+        while (*name != '\0' && *(name++) != '_');
+        if (*name != '\0') src_acc_num = atoi(name+1);
+        else assert(0); // access function num not encoded in dependence
+
+        name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
+        while (*name != '\0' && *(name++) != '_');
+        if (*name != '\0') dest_acc_num = atoi(name+1);
+        else assert(0); // access function num not encoded in dependence
+
         switch (info->type) {
             case CANDL_RAW: 
                 dep->src_acc = stmts[dep->src]->writes[src_acc_num];
