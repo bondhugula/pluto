@@ -82,6 +82,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     ctx = isl_union_set_get_ctx(domains);
 
+    // isl_union_set_dump(domains);
+    // isl_union_map_dump(dependences);
+
     options = options_l;
 
     PlutoProg *prog = pluto_prog_alloc();

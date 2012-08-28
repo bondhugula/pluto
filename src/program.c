@@ -789,8 +789,11 @@ struct pluto_extra_dep_info {
 
 
 /* Convert an isl_basic_map describing part of a dependence to a Dep.
- * The names of the input and output spaces are of the form S_d
- * with d an integer identifying the statement.
+ * The names of the input and output spaces are of the form S_d or S_d_e
+ * with d an integer identifying the statement, e identifying the access
+ * (relative to the statement). If it's of the form S_d_e and read/write
+ * accesses for the statement are available, source and target accesses 
+ * are set for the dependence, otherwise not.
  */
 static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
 {
@@ -2123,10 +2126,9 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
 {
     int r;
     Stmt **stmts;
-    struct pluto_extra_stmt_info *info;
+    int id;
 
-    info = (struct pluto_extra_stmt_info *)user;
-    stmts = info->stmts;
+    stmts = (Stmt **) user;
 
     int dim = isl_set_dim(set, isl_dim_all);
     int npar = isl_set_dim(set, isl_dim_param);
@@ -2134,13 +2136,16 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     pluto_matrix_initialize(trans, 0);
     trans->nrows = 0;
 
-    stmts[info->index] = pluto_stmt_alloc(dim-npar, NULL, trans);
+    id = atoi(isl_set_get_tuple_name(set)+2);
 
-    Stmt *stmt = stmts[info->index];
-    stmt->id = info->index;
+    stmts[id] = pluto_stmt_alloc(dim-npar, NULL, trans);
+
+    Stmt *stmt = stmts[id];
     stmt->type = ORIG;
+    stmt->id = id;
 
-    r = isl_set_foreach_basic_set(set, &extract_basic_set, info);
+    struct pluto_extra_stmt_info info = {stmts, id};
+    r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
 
     pluto_matrix_free(trans);
 
@@ -2149,8 +2154,6 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
         stmt->is_orig_loop[j] = true;
     }
 
-    info->index++;
-
     isl_set_free(set);
 
     return r;
@@ -2158,8 +2161,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
 
 int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
 {
-    struct pluto_extra_stmt_info info = {stmts, 0};
-    isl_union_set_foreach_set(domains, &extract_stmt, &info);
+    isl_union_set_foreach_set(domains, &extract_stmt, stmts);
 
-    return info.index;
+    return 0;
 }
