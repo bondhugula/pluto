@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if [ ! -x configure ]; then
-    echo "ERROR: Please run install from Pluto's top-level directory"
-    exit
-fi
-
-./configure --enable-debug
-make

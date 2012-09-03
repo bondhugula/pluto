@@ -28,18 +28,9 @@ BUILDING PLUTO
 
 Stable release
 
-Run 'install from Pluto's top-level directory
-
 $ tar zxvf pluto-0.9.0.tar.gz
 $ cd pluto-0.9.0/
-$ ./install
-$ make test
-
-    OR
-
-$ tar zxvf pluto-0.9.0.tar.gz
-$ cd pluto-0.9.0/
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl location>]
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
 $ make test
 
@@ -50,7 +41,7 @@ $ cd pluto/
 $ git submodule init 
 $ git submodule update
 $ ./bootstrap.sh
-$ ./configure [--enable-debug]
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
 $ make test
 
