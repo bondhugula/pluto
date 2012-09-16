@@ -54,8 +54,8 @@ binit:
 pclean:
 	$(MAKE) -C src clean
 
-test_plutolib: src/test_plutolib.c
-	libtool --mode=link gcc -g src/test_plutolib.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -lpluto -o test_plutolib
+test_libpluto: src/test_libpluto.c
+	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -lpluto -o test_libpluto
 
 test: .PHO
 
