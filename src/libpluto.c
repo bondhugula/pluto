@@ -118,7 +118,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         prog->params[i] = NULL;
     }
 
-    prog->ndeps = isl_union_map_n_map(dependences);
+    prog->ndeps = 0;
+    isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
 
     prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
     for (i=0; i<prog->ndeps; i++) {

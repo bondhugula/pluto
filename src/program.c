@@ -764,7 +764,7 @@ static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
 }
 
 
-static int map_count(__isl_take isl_map *map, void *user)
+int isl_map_count(__isl_take isl_map *map, void *user)
 {
     int r;
 
@@ -1090,10 +1090,10 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     dep_rar = isl_union_map_coalesce(dep_rar);
 
     prog->ndeps = 0;
-    isl_union_map_foreach_map(dep_raw, &map_count, &prog->ndeps);
-    isl_union_map_foreach_map(dep_war, &map_count, &prog->ndeps);
-    isl_union_map_foreach_map(dep_waw, &map_count, &prog->ndeps);
-    isl_union_map_foreach_map(dep_rar, &map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ndeps);
 
     prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
     for (i=0; i<prog->ndeps; i++) {
