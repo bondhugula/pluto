@@ -17,6 +17,8 @@ int main() {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);
     printf("\n");
+    isl_printer_free(printer);
+
 
     isl_union_set_free(domains);
     isl_union_map_free(deps);
