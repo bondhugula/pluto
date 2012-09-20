@@ -77,10 +77,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences, 
         PlutoOptions *options_l)
 {
-    int i, nbands, n_ibands;
+    int i, j, nbands, n_ibands;
     isl_ctx *ctx;
+    isl_space *space;
 
     ctx = isl_union_set_get_ctx(domains);
+    space = isl_union_set_get_space(domains);
 
     // isl_union_set_dump(domains);
     // isl_union_map_dump(dependences);
@@ -209,8 +211,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
 
     /* Construct isl_union_map for pluto schedules */
-    isl_space *space = isl_space_alloc(ctx, prog->npar, 0, 0);
-    isl_union_map *schedules = isl_union_map_empty(space);
+    isl_union_map *schedules = isl_union_map_empty(isl_space_copy(space));
     for (i=0; i<prog->nstmts; i++) {
         isl_basic_map *bmap;
         isl_map *map;
@@ -225,6 +226,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         char name[20];
         snprintf(name, sizeof(name), "S_%d", i);
         map = isl_map_from_basic_map(bmap);
+
+        /* Copy the ids of the original parameter dimensions  */
+	for (j=0; j<isl_space_dim(space, isl_dim_param); j++) {
+            isl_id *id = isl_space_get_dim_id(space, isl_dim_param, j);
+            map = isl_map_set_dim_id(map, isl_dim_param, j, id);
+	}
+
         map = isl_map_set_tuple_name(map, isl_dim_in, name);
         schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));
 
@@ -232,6 +240,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }
 
     pluto_prog_free(prog);
+    isl_space_free(space);
 
     return schedules;
 }
