@@ -1273,6 +1273,9 @@ PlutoProg *pluto_prog_alloc()
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
 
+    prog->globcst = NULL;
+    prog->depcst = NULL;
+
     return prog;
 }
 
@@ -1315,6 +1318,8 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
+    pluto_constraints_free(prog->depcst);
+    pluto_constraints_free(prog->globcst);
 
     free(prog);
 }

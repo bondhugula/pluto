@@ -401,13 +401,14 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
         const PlutoProg *prog)
 {
-    int i;
-    static PlutoConstraints *globcst = NULL;
-    static PlutoConstraints **depcst = NULL;
+    int i, nstmts, nvar, npar;
+    PlutoConstraints **depcst, *globcst;
 
-    int nstmts = prog->nstmts;
-    int nvar = prog->nvar;
-    int npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+    depcst = prog->depcst;
+    globcst = prog->globcst;
 
     if (!depcst)   {
         depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));

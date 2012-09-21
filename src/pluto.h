@@ -256,6 +256,10 @@ struct plutoProg{
     /* Param context */
     PlutoConstraints *context;
 
+    /* Temp autotransform data */
+    PlutoConstraints *globcst;
+    PlutoConstraints **depcst;
+
 };
 typedef struct plutoProg PlutoProg;
 
