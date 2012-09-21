@@ -77,7 +77,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences, 
         PlutoOptions *options_l)
 {
-    int i, j, nbands, n_ibands;
+    int i, j, nbands, n_ibands, retval;
     isl_ctx *ctx;
     isl_space *space;
 
@@ -130,9 +130,21 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, CANDL_RAW);
 
-    pluto_prog_print(prog);
+    IF_DEBUG(pluto_prog_print(prog););
 
-    pluto_auto_transform(prog);
+    retval = pluto_auto_transform(prog);
+
+    if (retval) {
+        /* Failure */
+        pluto_prog_free(prog);
+        isl_space_free(space);
+
+        if (!options->silent) {
+            printf("[libpluto] failure, returning NULL schedules\n");
+        }
+
+        return NULL;
+    }
 
     pluto_detect_transformation_properties(prog);
 
