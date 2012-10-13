@@ -1,6 +1,26 @@
 
-- Use spaces instead of tabs for indenting (for vim, set expandtab)
+- Please make sure your code is indented the same way as surrounding code
 
-- Send to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
+- Use spaces instead of tabs for indenting (for vim, set expandtab). All of
+  Pluto uses a 4-space indent, please try using the same.
 
-- To create patch, use 'git format-patch -M'
+- For if/else that have their blocks on a separate line, use braces, 
+  i.e., even if the block has a single line. 
+
+if (...) {
+   code;
+}else{
+   code;
+}
+
+No need of braces if the then/else block appears on the same line
+
+if (...) code;
+else more code;
+
+- Please generate patch against the git version, i.e., use 
+
+'git format-patch -M origin' 
+
+and send to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
+
