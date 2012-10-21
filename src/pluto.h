@@ -120,9 +120,6 @@ struct statement{
     /* Used by scheduling algo */
     /***/
 
-    /* Num of independent soln's needed */
-    int num_ind_sols;
-
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
 
@@ -325,14 +322,18 @@ void pluto_compute_dep_directions(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-        const PlutoConstraints *currcst,
-        int *orthonum);
-PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *);
+        const PlutoConstraints *currcst, int *orthonum);
+PlutoConstraints *get_global_independence_cst(
+        PlutoConstraints ***ortho_cst, int *orthonum, 
+        const PlutoProg *prog);
+PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 
 int pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
-int  find_permutable_hyperplanes(PlutoProg *prog, int max_sols);
+int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
+       bool loop_search_mode, int max_sols);
+
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
 DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
 

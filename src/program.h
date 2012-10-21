@@ -70,7 +70,10 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc)
 
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type);
-
 int isl_map_count(__isl_take isl_map *map, void *user);
+
+int pluto_get_max_ind_hyps(const PlutoProg *prog);
+int pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
+int pluto_transformations_full_ranked(PlutoProg *prog);
 
 #endif

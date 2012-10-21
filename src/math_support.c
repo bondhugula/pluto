@@ -513,7 +513,6 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat)
         }
         if (mat->val[r][i] != 0) {
             for (k=r+1; k<mat->nrows; k++) {
-                printf("i=%d, r=%d\n", i, r);
                 if (mat->val[k][i] == 0) continue;
                 _lcm = lcm(mat->val[k][i], mat->val[r][i]);
                 factor1 = _lcm/mat->val[k][i];

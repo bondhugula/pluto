@@ -1318,7 +1318,7 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
-    pluto_constraints_free(prog->depcst);
+    free(prog->depcst);
     pluto_constraints_free(prog->globcst);
 
     free(prog);
@@ -1753,7 +1753,6 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
     stmt->writes = NULL;
     stmt->nreads = 0;
     stmt->nwrites = 0;
-    stmt->num_ind_sols = 0;
 
     stmt->first_tile_dim = 0;
     stmt->last_tile_dim = -1;
@@ -2169,4 +2168,47 @@ int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
     isl_union_set_foreach_set(domains, &extract_stmt, stmts);
 
     return 0;
+}
+
+int pluto_get_max_ind_hyps(const PlutoProg *prog)
+{
+    int max, i;
+
+    max = 0;
+
+    for (i=0; i<prog->nstmts; i++) {
+        max = PLMAX(max, pluto_stmt_get_num_ind_hyps(prog->stmts[i]));
+    }
+
+    return max;
+}
+
+int pluto_stmt_get_num_ind_hyps(const Stmt *stmt)
+{
+    int isols, i;
+
+    PlutoMatrix *tprime = pluto_matrix_dup(stmt->trans);
+
+    /* Ignore padding dimensions, params, and constant part */
+    for (i=stmt->dim_orig; i<stmt->trans->ncols; i++) {
+        pluto_matrix_remove_col(tprime, stmt->dim_orig);
+    }
+
+    isols = pluto_matrix_get_rank(tprime);
+    pluto_matrix_free(tprime);
+
+    return isols;
+}
+
+int pluto_transformations_full_ranked(PlutoProg *prog)
+{
+    int i;
+
+    for (i=0; i<prog->nstmts; i++) {
+        if (pluto_stmt_get_num_ind_hyps(prog->stmts[i]) < prog->stmts[i]->dim_orig) {
+            return 0;
+        }
+    }
+
+    return 1;
 }

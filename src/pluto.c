@@ -33,6 +33,10 @@
 #include "ddg.h"
 #include "version.h"
 
+/* Iterative search modes */
+#define EAGER 0
+#define LAZY 1
+
 int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
@@ -171,6 +175,65 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
 }
 
 
+/* PlutoConstraints to avoid trivial solutions (all zeros)
+ *
+ * loop_search_mode = EAGER: If a statement's transformation is not full-ranked, 
+ * a hyperplane, if found, will be a loop hyperplane.
+ *                 = LAZY: at least one of the hyperplanes for non-full statements 
+ *  should be a loop hyperplane as opposed to all 
+ */
+PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog, 
+        bool loop_search_mode)
+{
+    PlutoConstraints *nzcst;
+    int i, j, stmt_offset, nvar, npar, nstmts;
+
+    Stmt **stmts = prog->stmts;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
+    nzcst->ncols = CST_WIDTH;
+
+    if (loop_search_mode == EAGER) {
+        for (i=0; i<nstmts; i++) {
+            /* Don't add the constraint if enough solutions have been found */
+            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+                continue;
+            }
+            stmt_offset = npar+1+i*(nvar+1);
+            for (j=0; j<nvar; j++)  {
+                if (stmts[i]->is_orig_loop[j] == 1) {
+                    nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
+                }
+            }
+            nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
+            nzcst->nrows++;
+        }
+    }else{
+        assert(loop_search_mode == LAZY);
+        for (i=0; i<nstmts; i++) {
+            /* Don't add the constraint if enough solutions have been found */
+            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+                continue;
+            }
+            stmt_offset = npar+1+i*(nvar+1);
+            for (j=0; j<nvar; j++)  {
+                if (stmts[i]->is_orig_loop[j] == 1) {
+                    nzcst->val[0][stmt_offset+j] = 1;
+                }
+            }
+            nzcst->val[0][CST_WIDTH-1] = -1;
+        }
+        nzcst->nrows = 1;
+    }
+
+    return nzcst;
+}
+
 
 /*
  * This calls pluto_constraints_solve, but before doing that does some preprocessing
@@ -233,7 +296,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
      */
     if (ub >= 10)   {
         for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            // printf("Adding upper bound %d for transformation coefficients\n", ub);
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
             pluto_constraints_add_ub(newcst, npar+1+i, ub);
         }
     }
@@ -539,16 +602,97 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
     }
 }
 
+/* 
+ * Determine constraints to ensure linear independence of hyperplanes 
+ *
+ * lin_ind_mode = EAGER: all statement hyperplanes have to be linearly independent
+ * w.r.t existing ones (ignoring stmts that already have enough lin ind solns)
+ *              = LAZY: at least one statement that does not have enough
+ * linearly independent solutions will get a new linearly independent
+ * hyperplane (this is enough to make progress)
+ */
+PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog, 
+        const PlutoConstraints *cst, bool lin_ind_mode)
+{
+    int npar, nvar, nstmts, i, j, k, orthosum;
+    int orthonum[prog->nstmts];
+    PlutoConstraints ***orthcst;
+    Stmt **stmts;
 
-/* Find all independent permutable hyperplanes at a level. Corresponds to a
- * band of permutable loops in the transformed space */
-int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
+    npar = prog->npar;
+    nvar = prog->nvar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    orthcst = (PlutoConstraints ***) malloc(nstmts*sizeof(PlutoConstraints **));
+
+    orthosum = 0;
+
+    /* Get orthogonality constraints for each statement */
+    for (j=0; j<nstmts; j++)    {
+        orthcst[j] = get_stmt_ortho_constraints(stmts[j], 
+                prog, cst, &orthonum[j]);
+        orthosum += orthonum[j];
+    }
+
+    PlutoConstraints *indcst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    if (orthosum >= 1) {
+        if (lin_ind_mode == EAGER) {
+            /* Look for linearly independent hyperplanes for all stmts */
+            for (j=0; j<nstmts; j++)    {
+                if (orthonum[j] >= 1)   {
+                    IF_DEBUG2(printf("Added ortho constraints for S%d\n", j+1););
+                    pluto_constraints_add(indcst, orthcst[j][orthonum[j]-1]);
+                }
+            }
+        }else{
+            assert(lin_ind_mode == LAZY);
+            /* At least one stmt should have a linearly independent hyperplane */
+            
+            for (i=0; i<prog->nstmts; i++) {
+                /* Everything was initialized to zero */
+                if (orthonum[i] >= 1) {
+                    for (j=0; j<CST_WIDTH-1; j++) {
+                        indcst->val[0][j] += orthcst[i][orthonum[i]-1]->val[0][j];
+                    }
+                }
+            }
+            indcst->val[0][CST_WIDTH-1] = -1;
+            indcst->nrows = 1;
+            IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
+            IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
+        }
+    }
+
+    for (j=0; j<nstmts; j++)    {
+        for (k=0; k<orthonum[j]; k++)   {
+            pluto_constraints_free(orthcst[j][k]);
+        }
+        free(orthcst[j]);
+    }
+    free(orthcst);
+
+    return indcst;
+}
+
+
+/* Find all linearly independent permutable band of hyperplanes at a level. 
+ *
+ * See sub-functions for loop_search_mode and lin_ind_mode
+ *
+ * If all statements already have enough linearly independent solutions, no
+ * independence constraints will be generated, and since no non-trivial
+ * solution constraints are added in such a case, the trivial zero solution will 
+ * end up being returned.
+ * */
+int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
+        bool loop_search_mode, int max_sols)
 {
     int num_sols_found, j, k;
     int *bestsol;
     PlutoConstraints *basecst, *nzcst;
     PlutoConstraints *currcst;
-    PlutoConstraints ***orthcst;
 
     int ndeps = prog->ndeps;
     int nstmts = prog->nstmts;
@@ -557,22 +701,11 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    int orthonum[nstmts];
-
-#if 0
-    int orthoprod;
-    int step;
-    PlutoConstraints *tmpcst;
-    int num[nstmts];
-#endif
+    IF_DEBUG(fprintf(stdout, "Finding hyperplanes: max %d\n", max_sols));
 
     assert(max_sols >= 0);
 
-    if (max_sols == 0)  return 0;
-
-    IF_DEBUG(fprintf(stdout, "Finding hyperplanes: max: %d\n", max_sols));
-
-    orthcst = (PlutoConstraints ***) malloc (nstmts*sizeof(PlutoConstraints **));
+    if (max_sols == 0) return 0;
 
     basecst = get_permutability_constraints(deps, ndeps, prog);
 
@@ -583,72 +716,25 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
 
     do{
         pluto_constraints_copy(currcst, basecst);
-        nzcst = get_non_trivial_sol_constraints(prog);
+        nzcst = get_non_trivial_sol_constraints(prog, loop_search_mode);
         pluto_constraints_add(currcst, nzcst);
         pluto_constraints_free(nzcst);
 
-        int orthosum = 0;
+        PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, lin_ind_mode);
 
-        /* Get orthogonality constraints for each statement */
-        for (j=0; j<nstmts; j++)    {
-            orthcst[j] = get_stmt_ortho_constraints(stmts[j], 
-                    prog, currcst, &orthonum[j]);
-            // if (orthonum[j] > 0)    {
-            //   if (orthoprod == 0) orthoprod = orthonum[j];
-            //   else orthoprod = orthoprod*orthonum[j];
-            // }
-            // num[j] = 0;
-            orthosum += orthonum[j];
-        }
-
-        bestsol = NULL;
-
-        if (orthosum == 0)  {
-            /* IF_DEBUG2(pluto_constraints_print(stdout, currcst)); */
-            bestsol = pluto_prog_constraints_solve(currcst, prog);
-
+        if (indcst->nrows == 0) {
+            /* If you don't have any independence constraints, we would end up finding
+             * the same solution that was found earlier; so we won't find anything
+             * new */
+            bestsol = NULL;
         }else{
-#if 0
-            /* Look at all orthants */
-            tmpcst = pluto_constraints_alloc(MAX_CONSTRAINTS, CST_WIDTH);
-
-            /* Try all orthogonality cases one by one and keep the best */
-            IF_DEBUG(fprintf(stdout, "Trying %d orthogonality cases\n", orthoprod));
-
-            for (k=0; k<orthoprod; k++)  {
-                pluto_constraints_copy(tmpcst, currcst);
-
-                step=1;
-                for (j=0; j<nstmts; j++)    {
-                    if (orthonum[j] > 0)    {
-                        num[j] = (k/step)%orthonum[j];
-                        step *= orthonum[j];
-                        pluto_constraints_add(tmpcst, orthcst[j][num[j]]);
-                    }
-                }
-                IF_DEBUG2(pluto_constraints_print(stdout, tmpcst));
-                sol = pluto_prog_constraints_solve(tmpcst, prog, use_isl);
-
-                if (sol)    {
-                    if (bestsol == NULL) bestsol = sol;
-                    else bestsol = min_lexical(sol, bestsol, npar+1);
-                }
-                IF_DEBUG(if (k%50==0) fprintf(stdout, "- %d\n", k));
-            }
-            pluto_constraints_free(tmpcst);
-#endif 
-            /* Just look at the "all non-negative" orthant */
-            for (j=0; j<nstmts; j++)    {
-                if (orthonum[j] >= 1)   {
-                    pluto_constraints_add(currcst, orthcst[j][orthonum[j]-1]);
-                }
-            }
-
-            // IF_DEBUG2(printf("Solving for %d th solution\n", num_sols_found+1));
-            // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
+            pluto_constraints_add(currcst, indcst);
+            IF_DEBUG2(printf("Solving for %d solution\n", num_sols_found+1));
+            IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_solve(currcst, prog);
-
         }
+        pluto_constraints_free(indcst);
+
         if (bestsol != NULL)    {
             IF_DEBUG(fprintf(stdout, "Found a hyperplane\n"));
             num_sols_found++;
@@ -673,22 +759,12 @@ int find_permutable_hyperplanes(PlutoProg *prog, int max_sols)
                     pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
                     H_SCALAR: H_LOOP;
 
-                stmt->num_ind_sols++;
             }
             free(bestsol);
         }
+    }while (bestsol != NULL && num_sols_found < max_sols);
 
-        for (j=0; j<nstmts; j++)    {
-            for (k=0; k<orthonum[j]; k++)   {
-                pluto_constraints_free(orthcst[j][k]);
-            }
-            free(orthcst[j]);
-        }
-
-    }while (num_sols_found < max_sols && bestsol != NULL);
-
-    free(orthcst);
-
+    pluto_constraints_free(basecst);
     pluto_constraints_free(currcst);
 
     /* Same number of solutions are found for each stmt */
@@ -935,6 +1011,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     level = 0;
     num_loops_in_band = 0;
     int bandStart = 0;
+
 
     do{
         for (i=0; i<prog->ndeps; i++)   {
@@ -1258,7 +1335,9 @@ void denormalize_domains(PlutoProg *prog)
 int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j;
-    int sols_found, num_ind_sols, depth;
+    int num_ind_sols, depth;
+    bool lin_ind_mode;
+    bool loop_search_mode;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -1271,8 +1350,6 @@ int pluto_auto_transform(PlutoProg *prog)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    HyperplaneProperties *hProps = prog->hProps;
-
     if (nstmts == 0)  return 0;
 
     normalize_domains(prog);
@@ -1280,6 +1357,9 @@ int pluto_auto_transform(PlutoProg *prog)
     PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
     int orig_num_hyperplanes = prog->num_hyperplanes;
     HyperplaneProperties *orig_hProps = prog->hProps;
+
+    lin_ind_mode = EAGER;
+    loop_search_mode = EAGER;
 
     /* Get rid of any existing transformation */
     for (i=0; i<nstmts; i++) {
@@ -1306,13 +1386,8 @@ int pluto_auto_transform(PlutoProg *prog)
     if (precut(prog, ddg, depth))   {
         /* Distributed based on .fst or .precut file (customized user-supplied
          * fusion structure */
+        num_ind_sols = pluto_get_max_ind_hyps(prog);
         printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
-        for (i=0; i<stmts[0]->trans->nrows; i++)   {
-            if (hProps[i].type == H_LOOP) {
-                /* Already some independent solns to start with */
-                num_ind_sols++;
-            }
-        }
         IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
                     num_ind_sols));
     }else{
@@ -1322,18 +1397,20 @@ int pluto_auto_transform(PlutoProg *prog)
     }
 
     do{
+        int sols_found;
+
         if (options->fuse == NO_FUSE)   {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
 
-        sols_found = find_permutable_hyperplanes(prog,
-                nsols-num_ind_sols);
+        sols_found = find_permutable_hyperplanes(prog, lin_ind_mode, 
+                loop_search_mode, PLMAX(1,nsols-num_ind_sols));
 
-        IF_DEBUG(fprintf(stdout, "Level: %d: \t%d hyperplanes found\n", 
+        IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n", 
                     depth, sols_found));
-        IF_DEBUG2(pluto_transformations_print(prog));
-        num_ind_sols += sols_found;
+        IF_DEBUG2(pluto_transformations_pretty_print(prog));
+        num_ind_sols = pluto_get_max_ind_hyps(prog);
 
         if (sols_found > 0) {
             for (j=0; j<sols_found; j++)      {
@@ -1343,24 +1420,29 @@ int pluto_auto_transform(PlutoProg *prog)
                 ddg_update(ddg, prog);
             }
         }else{
-            /* Remove inter statement dependences since we have no more
-             * fusable loops */
+            /* Satisfy inter-scc dependences via distribution since we have 
+             * no more fusable loops */
 
             ddg_compute_scc(prog);
 
-            if (ddg->num_sccs <= 1 || depth > 32)   {
+            if (lin_ind_mode == LAZY && (ddg->num_sccs <= 1 || depth > 3*nvar))   {
                 if (options->debug) {
                     printf("Number of unsatisfied deps: %d\n", 
                             get_num_unsatisfied_deps(prog->deps, prog->ndeps));
                     printf("Number of unsatisfied inter-stmt deps: %d\n", 
                             get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
-                    fprintf(stderr, "\tUnfortunately, pluto cannot find any more hyperplanes.\n");
+                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
+                    fprintf(stderr, "[Pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
                     fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
                     fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
                     fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
+                    pluto_transformations_pretty_print(prog);
+                    pluto_compute_dep_directions(prog);
+                    pluto_print_dep_directions(prog);
                 }
                 denormalize_domains(prog);
+                fprintf(stdout, "[Pluto] working with original (identity) transformation (if they exist)\n");
                 /* Restore original ones */
                 for (i=0; i<nstmts; i++) {
                     stmts[i]->trans = orig_trans[i];
@@ -1368,6 +1450,11 @@ int pluto_auto_transform(PlutoProg *prog)
                     prog->hProps = orig_hProps;
                 }
                 return 1;
+            }
+
+            if (lin_ind_mode == EAGER && (ddg->num_sccs <= 1 || depth > 32))   {
+                IF_DEBUG2(printf("switching to incremental ortho constr mode\n"););
+                lin_ind_mode = LAZY;
             }
 
             if (options->fuse == NO_FUSE)  {
@@ -1384,7 +1471,8 @@ int pluto_auto_transform(PlutoProg *prog)
         }
         depth++;
 
-    }while (num_ind_sols < nsols || !deps_satisfaction_check(prog->deps, prog->ndeps));
+    }while (!pluto_transformations_full_ranked(prog) || 
+            !deps_satisfaction_check(prog->deps, prog->ndeps));
 
     denormalize_domains(prog);
 

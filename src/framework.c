@@ -25,6 +25,7 @@
 #include "math_support.h"
 #include "constraints.h"
 #include "pluto.h"
+#include "program.h"
 
 #include <isl/constraint.h>
 #include <isl/mat.h>
@@ -397,7 +398,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 }
 
 
-/* This function itself is NOT thread-safe */
+/* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
         const PlutoProg *prog)
 {
@@ -495,39 +496,6 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 }
 
 
-/* PlutoConstraints to avoid trivial solutions (all zeros) */
-PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog)
-{
-    PlutoConstraints *nzcst;
-    int i, j, stmt_offset;
-
-    Stmt **stmts = prog->stmts;
-    int nstmts = prog->nstmts;
-    int nvar = prog->nvar;
-    int npar = prog->npar;
-
-    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
-    nzcst->ncols = CST_WIDTH;
-
-    for (i=0; i<nstmts; i++) {
-        /* Don't add the constraint if enough solutions have been found */
-        if (stmts[i]->num_ind_sols >= stmts[i]->dim_orig)   {
-            IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
-            continue;
-        }
-        stmt_offset = npar+1+i*(nvar+1);
-        for (j=0; j<nvar; j++)  {
-            if (stmts[i]->is_orig_loop[j] == 1)
-                nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
-        }
-        nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
-        nzcst->nrows++;
-    }
-
-    return nzcst;
-}
-
-
 /*
  * Eliminates the last num_elim variables from farkas_cst -- these are the
  * farkas multipliers
@@ -603,7 +571,7 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
  * to the linear expressions that form a basis of the null space
  * and the final constraint the actual linear independence constraint.
  *
- * If the null space is 0-dimensional, *orthonum is zero and the return
+ * If the null space is 0-dimensional, *orthonum will be zero and the return
  * value is NULL
  */
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
@@ -621,32 +589,25 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int nstmts = prog->nstmts;
     HyperplaneProperties *hProps = prog->hProps;
 
-    if (stmt->num_ind_sols >= stmt->dim_orig) {
+    if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
     }
 
     /* Get rid of the variables that don't appear in the domain of this
-     * statement and also beta rows
-     */
+     * statement and also beta rows */
     for (i = 0, p = 0; i < nvar; i++) {
         if (stmt->is_orig_loop[i]) {
-           p++;
+            p++;
         }
     }
 
     assert(stmt->trans != NULL);
 
     for (j = 0, q = 0; j < stmt->trans->nrows; j++) {
-       if (hProps[j].type != H_SCALAR) {
-           q++;
-       }
-    }
-
-    if (q == 0) {
-        /* No need to add any orthogonality constraints */
-        *orthonum = 0;
-        return NULL;
+        if (hProps[j].type != H_SCALAR) {
+            q++;
+        }
     }
 
     ctx = isl_ctx_alloc();
@@ -663,8 +624,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
             for (j=0; j<stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
                 if (hProps[j].type != H_SCALAR)   {
-                   isl_int_set_si(v, stmt->trans->val[j][i]);
-                   h = isl_mat_set_element(h, q, p, v);
+                    isl_int_set_si(v, stmt->trans->val[j][i]);
+                    h = isl_mat_set_element(h, q, p, v);
                     q++;
                 }
             }
@@ -678,14 +639,14 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     isl_mat_free(h);
 
-    orthcst = (PlutoConstraints **) malloc(nvar*sizeof(PlutoConstraints *)); 
+    orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *)); 
 
-    for (i=0; i<nvar; i++)  {
+    for (i=0; i<nvar+1; i++)  {
         orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
         orthcst[i]->ncols = CST_WIDTH;
     }
 
-    /* Positive orthant only */
+    /* All non-negative orthant only */
     /* An optimized version where the constraints are added as
      * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
      *
@@ -733,13 +694,24 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
         orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
+        // printf("currcst\n");
+        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
+        // pluto_constraints_pretty_print(stdout, currcst);
+        // printf("orthcst\n");
+        // pluto_constraints_pretty_print(stdout, orthcst[p]);
+        // isl_basic_set_dump(orthcst_i);
+        // isl_basic_set_dump(isl_currcst);
+        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(orthcst_i)));
+        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
+
         orthcst_i = isl_basic_set_intersect(orthcst_i,
                 isl_basic_set_copy(isl_currcst));
+        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(orthcst_i)));
         if (isl_basic_set_fast_is_empty(orthcst_i))
             pluto_constraints_negate_row(orthcst[p], 0);
         isl_basic_set_free(orthcst_i);
         p++;
-        assert(p<=nvar-1);
+        /* assert(p<=nvar-1); */
     }
 
     // pluto_matrix_print(stdout, stmt->trans);
@@ -756,43 +728,15 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         p++;
     }
 
-#if 0
-    /* Since each of the ortho constraints is tried and the
-     * best of the solutions will be kept; give all constraints for the 
-     * statement
-     * */
-    p=0;
-    for (i=0; i<ncols; i++) {
-        for (j=0; j<ncols; j++) {
-            if (ortho->val[j][i] != 0) break;
-        }
-        /* Ignore all zero cols */
-        if (j==ncols) continue;
-
-        /* We have a non-zero col */
-        j=0;
-        for (q=0; q<nvar; q++) {
-            if (stmt->is_outer_loop[q])    {
-                orthcst[p]->val[0][npar+1+(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
-                j++;
-            }
-        }
-        orthcst[p]->nrows = 1;
-        orthcst[p]->val[0][CST_WIDTH-1] = -1;
-        p++;
-    }
-#endif
-
     *orthonum = p;
 
-    /*
     IF_DEBUG2(printf("Ortho constraints for S%d; %d sets\n", stmt->id+1, *orthonum));
     for (i=0; i<*orthonum; i++) {
         IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
-    }*/
+    }
 
     /* Free the unnecessary ones */
-    for (i=p; i<nvar; i++)    {
+    for (i=p; i<nvar+1; i++)    {
         pluto_constraints_free(orthcst[i]);
     }
 
@@ -944,7 +888,7 @@ void pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
 
         if (dep->satvec != NULL) free(dep->satvec);
         dep->satvec = (int *) malloc(prog->num_hyperplanes*sizeof(int));
-        
+
         dep->satisfaction_level = -1;
 
         for (level=0; level<prog->num_hyperplanes; level++) {
