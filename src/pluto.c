@@ -799,8 +799,6 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
     int stmtGrp[nstmts][nstmts];
     int grpCount[nstmts];
 
-    HyperplaneProperties *hProps = prog->hProps;
-
     int i, j, k;
 
     if (depth != 0) return false;
@@ -812,7 +810,6 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
     FILE *cutFp = fopen(".fst", "r");
 
     if (cutFp)  {
-
         int tile;
 
         fscanf(cutFp, "%d", &ncomps);
@@ -824,7 +821,6 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
         }
 
         for (i=0; i<ncomps; i++)    {
-
             fscanf(cutFp, "%d", &grpCount[i]);
             assert(grpCount[i] <= nstmts);
             for (j=0; j<grpCount[i]; j++)    {
@@ -861,7 +857,6 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
 
         return true;
     }else{
-
         FILE *precut = fopen(".precut", "r");
         int ignore, rows, cols, tile, tiling_depth;
 
@@ -880,9 +875,8 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                 fscanf(precut, "%d", &cols);
 
                 for (k=0; k<rows; k++)  {
-
-                    /* Careful here; transformation is in LooPo
-                     * format <global_nvar>+<npar>+1 */
+                    /* Transformation is in polylib format
+                     * <stmt_orig_dim>+<npar>+1 (first column for equality) */
                     assert(cols == 1+stmts[i]->dim_orig+npar+1);
 
                     /* For equality - ignore the zero */
@@ -928,10 +922,10 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     if (get_loop_type(stmts[i], stmts[0]->trans->nrows-rows+k)
                             == H_LOOP)  {
                         stmts[i]->hyp_types[prog->num_hyperplanes-1] = H_LOOP;
-                        hProps[prog->num_hyperplanes-1].type = H_LOOP;
+                        prog->hProps[prog->num_hyperplanes-1].type = H_LOOP;
                     }else{
                         stmts[i]->hyp_types[prog->num_hyperplanes-1] = H_SCALAR;
-                        hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+                        prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
                     }
                 }
 
@@ -1012,7 +1006,6 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     num_loops_in_band = 0;
     int bandStart = 0;
 
-
     do{
         for (i=0; i<prog->ndeps; i++)   {
             if (IS_RAR(deps[i]->type)) continue;
@@ -1024,16 +1017,13 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
         }
 
         if (i==prog->ndeps) {
+            /* This band information is not used later; since band detection
+             * is done again more accurately based on the scattering tree as
+             * opposed to global depths; this is only used to output band
+             * numbers conservatively when printing transformation properties */
             hProps[level].dep_prop = PARALLEL;
             hProps[level].band_num = band;
             if (hProps[level].type != H_SCALAR) num_loops_in_band++;
-            // num_loops_in_band++;
-
-            // if (hProps[level].type == H_SCALAR)  {
-            // band++;
-            // bandStart = level+1;
-            // num_loops_in_band = 0;
-            // }
             level++;
 
         }else{
@@ -1059,14 +1049,15 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    IF_DEBUG(pluto_print_dep_directions(prog););
                     IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
-                    IF_DEBUG(pluto_transformations_pretty_print(prog));
-                    fprintf(stderr, "\tUnfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stderr, "[Pluto] Unfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
                     fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
+                    pluto_transformations_pretty_print(prog);
+                    pluto_compute_dep_directions(prog);
+                    pluto_print_dep_directions(prog);
                     assert(0);
                 }
 
