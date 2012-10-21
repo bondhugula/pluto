@@ -239,11 +239,11 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         snprintf(name, sizeof(name), "S_%d", i);
         map = isl_map_from_basic_map(bmap);
 
-        /* Copy the ids of the original parameter dimensions  */
-	for (j=0; j<isl_space_dim(space, isl_dim_param); j++) {
+        /* Copy ids of the original parameter dimensions  */
+        for (j=0; j<isl_space_dim(space, isl_dim_param); j++) {
             isl_id *id = isl_space_get_dim_id(space, isl_dim_param, j);
             map = isl_map_set_dim_id(map, isl_dim_param, j, id);
-	}
+        }
 
         map = isl_map_set_tuple_name(map, isl_dim_in, name);
         schedules = isl_union_map_union(schedules, isl_union_map_from_map(map));
