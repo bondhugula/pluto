@@ -757,23 +757,24 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     PlutoConstraints *cst;
-    int j, src, dest, src_dim, dest_dim, *sol, npar;
+    int j, src_dim, dest_dim, *sol, npar;
     bool retval;
 
     npar = prog->npar;
 
-    Stmt **stmts = prog->stmts;
+    Stmt *src_stmt = prog->stmts[dep->src];
+    Stmt *dest_stmt = prog->stmts[dep->dest];
 
-    src = dep->src;
-    dest = dep->dest;
+    src_dim = src_stmt->dim;
+    dest_dim = dest_stmt->dim;
 
-    src_dim = prog->stmts[src]->dim;
-    dest_dim = prog->stmts[dest]->dim;
+    assert(src_stmt->trans != NULL);
+    assert(dest_stmt->trans != NULL);
+    assert(level < src_stmt->trans->nrows);
+    assert(level < dest_stmt->trans->nrows);
 
-    assert(level < stmts[src]->trans->nrows);
-    assert(level < stmts[dest]->trans->nrows);
-
-    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), src_dim+dest_dim+npar+1);
+    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), 
+            src_dim+dest_dim+npar+1);
 
     /*
      * constraint format 
@@ -783,14 +784,14 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     cst->is_eq[0] = 0;
     for (j=0; j<src_dim; j++)    {
-        cst->val[0][j] = stmts[src]->trans->val[level][j];
+        cst->val[0][j] = src_stmt->trans->val[level][j];
     }
     for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
+        cst->val[0][j] = -dest_stmt->trans->val[level][j-src_dim];
     }
     for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar+1; j++)    {
         cst->val[0][j] = 
-            stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
+            src_stmt->trans->val[level][j-dest_dim] - dest_stmt->trans->val[level][j-src_dim];
     }
 
     cst->nrows = 1;
