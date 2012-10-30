@@ -28,15 +28,11 @@
 #include "math_support.h"
 #include "constraints.h"
 #include "pluto.h"
+
 #include "isl/map.h"
 #include "isl/set.h"
 
-#ifdef PIP_WIDTH_MP
-/* Not tested */
-#include "piplib/piplibMP.h"
-#else
 #include "piplib/piplib64.h"
-#endif
 
 #define UB 0
 #define LB 1
@@ -108,7 +104,7 @@ void pluto_constraints_resize(PlutoConstraints *cst, int nrows, int ncols)
     pluto_constraints_resize_single(cst, nrows, ncols);
 
     if (cst->next != NULL)  {
-        pluto_constraints_resize_single(cst->next, nrows, ncols);
+        pluto_constraints_resize(cst->next, nrows, ncols);
     }
 }
 
@@ -121,7 +117,8 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols
 
     assert(nrows >= 0 && ncols >= 0);
 
-    newCst = pluto_constraints_alloc(PLMAX(nrows,cst->alloc_nrows), PLMAX(ncols,cst->alloc_ncols));
+    newCst = pluto_constraints_alloc(PLMAX(nrows,cst->alloc_nrows), 
+            PLMAX(ncols,cst->alloc_ncols));
 
     newCst->nrows = nrows;
     newCst->ncols = ncols;
@@ -180,7 +177,8 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConst
 
 
 /* Adds cs2 to each element in cst1's list; cst2 should have a single element */
-PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1, const PlutoConstraints *cst2)
+PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
 {
     int i;
 
@@ -497,7 +495,7 @@ PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const Pl
     int i;
 
     if (src->nrows > dest->alloc_nrows || src->ncols > dest->alloc_ncols) {
-        pluto_constraints_resize(dest, PLMAX(src->nrows,dest->alloc_nrows), 
+        pluto_constraints_resize_single(dest, PLMAX(src->nrows,dest->alloc_nrows),
                 PLMAX(src->ncols,dest->alloc_ncols));
     }   
 
@@ -629,6 +627,10 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 
     assert(cst->next == NULL);
 
+    if (nrows == 0) {
+        printf("No constraints!\n");
+    }
+
     for (i=0; i<nrows; i++) {
         var = 'i';
         for (j=0; j<ncols; j++)    {
@@ -745,7 +747,7 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     pipOptions = pip_options_init();
 
     /* IF_DEBUG2(fprintf(stdout, "Calling PIP on a %dx%d formulation\n", 
-                pipmat->nrows, pipmat->ncols)); */
+       pipmat->nrows, pipmat->ncols)); */
 
     solution = pip_solve(domain,context,bignum,pipOptions) ;
 
@@ -822,7 +824,7 @@ void pluto_constraints_add_inequality(PlutoConstraints *cst)
         cst->nrows++;
     }
 
-        for (j=0; j<cst->ncols; j++) {
+    for (j=0; j<cst->ncols; j++) {
         cst->val[cst->nrows-1][j] = 0;
     }
     cst->is_eq[cst->nrows-1] = 0;
@@ -848,7 +850,7 @@ void pluto_constraints_add_equality(PlutoConstraints *cst)
         cst->nrows++;
     }
 
-        for (j=0; j<cst->ncols; j++) {
+    for (j=0; j<cst->ncols; j++) {
         cst->val[cst->nrows-1][j] = 0;
     }
     cst->is_eq[cst->nrows-1] = 1;
@@ -975,8 +977,8 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int lb)
     pluto_constraints_add_inequality(cst);
 
     while (cst != NULL) {
-    cst->val[cst->nrows-1][varnum] = 1;
-    cst->val[cst->nrows-1][cst->ncols-1] = -lb;
+        cst->val[cst->nrows-1][varnum] = 1;
+        cst->val[cst->nrows-1][cst->ncols-1] = -lb;
         cst = cst->next;
     }
 }
@@ -989,8 +991,8 @@ void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int ub)
     pluto_constraints_add_inequality(cst);
 
     while (cst != NULL) {
-    cst->val[cst->nrows-1][varnum] = -1;
-    cst->val[cst->nrows-1][cst->ncols-1] = ub;
+        cst->val[cst->nrows-1][varnum] = -1;
+        cst->val[cst->nrows-1][cst->ncols-1] = ub;
         cst = cst->next;
     }
 }
@@ -1005,8 +1007,8 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)
     pluto_constraints_add_equality(cst);
 
     while (cst != NULL)  {
-    cst->val[cst->nrows-1][varnum] = 1;
-    cst->val[cst->nrows-1][cst->ncols-1] = -val;
+        cst->val[cst->nrows-1][varnum] = 1;
+        cst->val[cst->nrows-1][cst->ncols-1] = -val;
         cst = cst->next;
     }
 }
@@ -1057,11 +1059,7 @@ PipMatrix *pip_matrix_populate(int **cst, int nrows, int ncols)
     p = matrix->p_Init ;
     for (i=0;i<matrix->NbRows;i++)  {
         for (j=0;j<matrix->NbColumns;j++)   {
-#ifdef PIP_WIDTH_MP
-            mpz_set_si(*(p++), cst[i][j]) ;
-#else
             *(p++) = cst[i][j];
-#endif
         }
     }
     return matrix ;
@@ -1223,19 +1221,12 @@ PlutoConstraints *pluto_constraints_empty(int ncols)
 }
 
 
-int pluto_constraints_is_empty(PlutoConstraints *cst)
+int pluto_constraints_is_empty(const PlutoConstraints *cst)
 {
     int *sol;
     bool is_empty;
-    PlutoConstraints *next = cst->next;
-
-    //Setting cst->next to NULL since constraints_solve expects next to be NULL
-    cst->next = NULL;
 
     sol = pluto_constraints_solve(cst);
-    
-    //restoring next pointer
-    cst->next = next;
 
     is_empty = (sol == NULL);
     if (sol != NULL) free(sol);
@@ -1248,20 +1239,21 @@ int pluto_constraints_is_empty(PlutoConstraints *cst)
     return 1;
 }
 
+/* Append the constraints together */
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2)
 {
     while (cst1->next != NULL) {
         cst1 = cst1->next;
     }
-
     cst1->next = pluto_constraints_dup(cst2);
-
     return cst1;
 }
 
+
 /*
- * Construct a non-parametric basic set from the constraints in cst
+ * Construct a non-parametric basic set from the constraints in cst;
+ * uses the first element in cst
  */
 __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
        isl_ctx *ctx, const PlutoConstraints *cst)
@@ -1325,6 +1317,8 @@ __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
     isl_mat *eq, *ineq;
     isl_basic_map *bmap;
     isl_space *space;
+
+    assert(cst->ncols == n_in + n_out + n_par + 1);
 
     space = isl_space_alloc(ctx, n_par, n_in, n_out);
 

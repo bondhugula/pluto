@@ -100,7 +100,7 @@ int pluto_constraints_num_in_list(const PlutoConstraints *const cst);
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2);
 
-int pluto_constraints_is_empty(PlutoConstraints *cst);
+int pluto_constraints_is_empty(const PlutoConstraints *cst);
 
 PlutoConstraints *pluto_constraints_empty(int ncols);
 PlutoConstraints *pluto_constraints_universe(int ncols);
