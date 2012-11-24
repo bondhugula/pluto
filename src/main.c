@@ -248,7 +248,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(srcfp, "%s\n", srcFileName);
         fclose(srcfp);
     }
-        
+
     /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
 
     /* Convert clan scop to Pluto program */
@@ -322,8 +322,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    if (options->parallel && !options->tile)   {
-
+    if (options->parallel && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;
@@ -345,6 +344,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile && !options->silent)  {
         IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
+        IF_DEBUG(pluto_transformations_pretty_print(prog););
         IF_DEBUG(pluto_print_hyperplane_properties(prog););
     }
 
