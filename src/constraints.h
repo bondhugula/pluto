@@ -60,7 +60,6 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
 PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 
-int best_elim_candidate(const PlutoConstraints *, int);
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat);

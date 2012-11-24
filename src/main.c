@@ -260,7 +260,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     char* irroption = scoplib_scop_tag_content(scop, "<irregular>",
             "</irregular>");
 
-    IF_DEBUG2(pluto_deps_print(stdout, prog->deps, prog->ndeps));
+    IF_DEBUG2(pluto_deps_print(stdout, prog));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
 

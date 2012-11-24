@@ -186,7 +186,6 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
         dep->src = candl_dep->source->label;
         dep->dest = candl_dep->target->label;
-        dep->dirvec = NULL;
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = candl_matrix_to_pluto_constraints(candl_dep->domain);
@@ -262,8 +261,8 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
 void pluto_dep_print(FILE *fp, Dep *dep)
 {
-    fprintf(fp, "--- Dep %d from S%d to S%d; sat level: %d; Type: ",
-            dep->id+1, dep->src+1, dep->dest+1, dep->satisfaction_level);
+    fprintf(fp, "--- Dep %d from S%d to S%d; satisfied: %d, sat level: %d; Type: ",
+            dep->id+1, dep->src+1, dep->dest+1, dep->satisfied, dep->satisfaction_level);
 
     switch (dep->type) {
         case CANDL_UNSET : fprintf(fp, "UNSET"); break;
@@ -285,11 +284,11 @@ void pluto_dep_print(FILE *fp, Dep *dep)
 }
 
 
-void pluto_deps_print(FILE *fp, Dep **deps, int ndeps)
+void pluto_deps_print(FILE *fp, PlutoProg *prog)
 {
     int i;
-    for (i=0; i<ndeps; i++) {
-        pluto_dep_print(fp, deps[i]);
+    for (i=0; i<prog->ndeps; i++) {
+        pluto_dep_print(fp, prog->deps[i]);
     }
 }
 
@@ -480,7 +479,7 @@ void pluto_prog_print(PlutoProg *prog)
     printf("nvar = %d, npar = %d\n", prog->nvar, prog->npar);
 
     pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
-    pluto_deps_print(stdout, prog->deps, prog->ndeps);
+    pluto_deps_print(stdout, prog);
 }
 
 
@@ -1722,6 +1721,8 @@ Dep *pluto_dep_alloc()
     dep->id = -1;
     dep->satvec = NULL;
     dep->depsat_poly = NULL;
+    dep->satisfied = false;
+    dep->dirvec = NULL;
 
     return dep;
 }

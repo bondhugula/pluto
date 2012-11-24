@@ -35,7 +35,7 @@ void pluto_prog_print(PlutoProg *prog);
 
 Dep *pluto_dep_alloc();
 void pluto_dep_print(FILE *fp, Dep *dep);
-void pluto_deps_print(FILE *, Dep **, int);
+void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
