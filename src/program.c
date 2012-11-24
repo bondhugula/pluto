@@ -42,6 +42,14 @@
 #include <isl/flow.h>
 #include <isl/union_map.h>
 
+void pluto_add_dep(PlutoProg *prog, Dep *dep)
+{
+    dep->id = prog->ndeps;
+    prog->ndeps++;
+    prog->deps = (Dep **) realloc(prog->deps, sizeof(Dep *)*prog->ndeps);
+    prog->deps[prog->ndeps-1] = dep;
+}
+
 
 PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
 {

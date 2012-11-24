@@ -616,8 +616,6 @@ PlutoConstraints *pluto_constraints_read(FILE *fp)
 }
 
 
-
-
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 {
     int i, j, var;
@@ -1014,37 +1012,6 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int val)
 }
 
 
-
-/*
- * Returns the best candidate to eliminate (exact index in cst)
- * max_elim: maximum number of variables to eliminate (from the right)
- */
-int best_elim_candidate(const PlutoConstraints *cst, int max_elim)
-{
-    int **csm, i, j, ub, lb, cost;
-
-    int min_cost = cst->nrows*cst->nrows/4;
-    int best_candidate = cst->ncols-2;
-
-    csm = cst->val;
-
-    for (j=cst->ncols-2; j > cst->ncols-2-max_elim; j--)    {
-        ub=0;
-        lb=0;
-        for (i=0; i < cst->nrows; i++)    {
-            if (csm[i][j] > 0) ub++;
-            else if (csm[i][j] < 0) lb++;
-        }
-        /* cost = MIN(lb, ub); */
-        cost = lb*ub;
-        if (cost < min_cost)    {
-            min_cost = cost;
-            best_candidate = j;
-        }
-    }
-
-    return best_candidate;
-}
 
 
 /* Populate a PIP matrix */
