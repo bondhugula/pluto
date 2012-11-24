@@ -50,7 +50,6 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
 {
     int i;
     int num_new_carried;
-    Dep *dep;
 
     int ndeps = prog->ndeps;
     Dep **deps = prog->deps;
@@ -58,7 +57,7 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
     num_new_carried=0;
 
     for (i=0; i<ndeps; i++) {
-        dep = deps[i];
+        Dep *dep = deps[i];
         if (!dep_is_satisfied(dep))   {
             dep->satisfied = dep_satisfaction_test(dep, prog, level);
             if (dep->satisfied)    { 
@@ -761,7 +760,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
             }
             free(bestsol);
         }
-    }while (bestsol != NULL && num_sols_found < max_sols);
+    }while (num_sols_found < max_sols && bestsol != NULL);
+
 
     pluto_constraints_free(basecst);
     pluto_constraints_free(currcst);
@@ -1048,12 +1048,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
                     fprintf(stderr, "[Pluto] Unfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
                     fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
+                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
                     pluto_transformations_pretty_print(prog);
                     pluto_compute_dep_directions(prog);
                     pluto_print_dep_directions(prog);
@@ -1131,7 +1131,7 @@ void pluto_print_dep_directions(PlutoProg *prog)
         for (j=0; j<nlevels; j++) {
             printf("%c, ", deps[i]->dirvec[j]);
         }
-        printf(") Sat level: %d\n", deps[i]->satisfaction_level);
+        printf(") Satisfied: %d, Sat level: %d\n", deps[i]->satisfied, deps[i]->satisfaction_level);
 
         for (j=0; j<nlevels; j++) {
             if (deps[i]->dirvec[j] > 0)  {
@@ -1552,9 +1552,10 @@ void ddg_update(Graph *g, PlutoProg *prog)
  */
 Graph *ddg_create(PlutoProg *prog)
 {
+    int i;
+
     Graph *g = graph_alloc(prog->nstmts);
 
-    int i;
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* no input dep edges in the graph */
