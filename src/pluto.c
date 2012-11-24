@@ -1548,7 +1548,7 @@ void ddg_update(Graph *g, PlutoProg *prog)
 
 
 /* 
- * Create the DDG (RAR deps not included)
+ * Create the DDG (RAR deps not included) from the unsatisfied deps
  */
 Graph *ddg_create(PlutoProg *prog)
 {
@@ -1650,7 +1650,8 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
         printf("(");
         for (level=0; level<stmt->trans->nrows; level++) {
             if (level > 0) printf(", ");
-            pretty_print_affine_function(stdout, stmt, level);
+            pretty_print_affine_function(stdout, stmt->trans->val[level], 
+                    stmt->dim, stmt->iterators);
         }
         printf(")\n");
 
@@ -1724,45 +1725,53 @@ void pluto_print_hyperplane_properties(const PlutoProg *prog)
 
 
 /*
- * Pretty prints a one-dimensional affine transformation */
-void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level)
+ * Pretty prints a one-dimensional affine function
+ * ndims: number of variables
+ * func should have ndims+1 elements (affine function)
+ * vars: names of the variables; if NULL, x0, x1, ... are used
+ */
+void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
 {
-    char *var[stmt->domain->ncols-1];
-
+    char *var[ndims];
     int j;
 
-    for (j=0; j<stmt->dim; j++)  {
-        if (stmt->iterators[j]) var[j] = strdup(stmt->iterators[j]);
-        else{
+    if (vars) {
+        for (j=0; j<ndims; j++)  {
+            var[j] = strdup(vars[j]);
+        }
+    }else{
+        for (j=0; j<ndims; j++)  {
             var[j] = malloc(5);
             sprintf(var[j], "x%d", j+1);
         }
     }
 
-    int flag = 0;
-    for (j=0; j<stmt->dim; j++)   {
-        if (stmt->trans->val[level][j] == 1)  {
-            if (flag) fprintf(fp, "+");
+    int sign_flag = 0;
+    for (j=0; j<ndims; j++)   {
+        if (func[j] == 1)  {
+            if (sign_flag) fprintf(fp, "+");
             fprintf(fp, "%s", var[j]);
-            flag = 1;
-        }else if (stmt->trans->val[level][j] != 0)  {
-            if (flag) fprintf(fp, "+");
-            if (stmt->trans->val[level][j] > 0) {
-                fprintf(fp, "%d%s", stmt->trans->val[level][j], var[j]);
+        }else if (func[j] == -1)  {
+            if (sign_flag) fprintf(fp, "-");
+            fprintf(fp, "%s", var[j]);
+        }else if (func[j] != 0)  {
+            if (sign_flag) fprintf(fp, "+");
+            if (func[j] > 0) {
+                fprintf(fp, "%d%s", func[j], var[j]);
             }else{
-                fprintf(fp, "(%d%s)", stmt->trans->val[level][j], var[j]);
+                fprintf(fp, "(%d%s)", func[j], var[j]);
             }
-            flag = 1;
         }
+        if (func[j] != 0) sign_flag = 1;
     }
-    if (stmt->trans->val[level][stmt->trans->ncols-1] > 0)  {
-        if (flag) fprintf(fp, "+");
-        fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
+    if (func[ndims] >= 1)  {
+        if (sign_flag) fprintf(fp, "+");
+        fprintf(fp, "%d", func[ndims]);
     }else{
-        if (!flag) fprintf(fp, "%d", stmt->trans->val[level][stmt->trans->ncols-1]);
+        if (!sign_flag) fprintf(fp, "%d", func[ndims]);
     }
 
-    for (j=0; j<stmt->dim; j++)  {
+    for (j=0; j<ndims; j++)  {
         free(var[j]);
     }
 }

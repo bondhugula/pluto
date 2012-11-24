@@ -354,7 +354,7 @@ int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
-void pretty_print_affine_function(FILE *fp, const Stmt *stmt, int level);
+void pretty_print_affine_function(FILE *fp, int *, int, char **);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
