@@ -221,7 +221,7 @@ void pluto_tile(PlutoProg *prog)
     if (options->intratileopt) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize(bands[i], 1, prog); 
+            retval |= pluto_intra_tile_optimize_band(bands[i], 1, prog); 
         }
         if (retval) pluto_transformations_pretty_print(prog);
     }

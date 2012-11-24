@@ -388,6 +388,7 @@ int pluto_is_band_innermost(const Band *band, int is_tiled);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
-int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog);
+int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
+int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 #endif

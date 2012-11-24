@@ -290,7 +290,7 @@ int gen_unroll_file(PlutoProg *prog)
 /*
  * is_tiled: is band tiled?
  */
-int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog)
+int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
 {
     int num, l, max_score;
     Ploop *maxloc;
@@ -337,6 +337,20 @@ int pluto_intra_tile_optimize(Band *band, int is_tiled, PlutoProg *prog)
 
     pluto_loops_free(loops, num);
     return 0;
+}
+
+
+/* is_tiled: is the band tiled */
+int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
+{
+    int i, nbands, retval;
+    Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    retval = 0;
+    for (i=0; i<nbands; i++) {
+        retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog); 
+    }
+    pluto_bands_free(bands, nbands);
+    return retval;
 }
 
 

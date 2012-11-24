@@ -180,7 +180,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
         int retval = 0;
         for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize(bands[i], 0, prog); 
+            retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog); 
         }
         if (retval) pluto_detect_transformation_properties(prog);
         if (retval & !options->silent) {

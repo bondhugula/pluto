@@ -310,17 +310,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_tile(prog);
     }else{
         if (options->intratileopt) {
-            int nbands;
-            Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-            int retval = 0;
-            for (i=0; i<nbands; i++) {
-                retval |= pluto_intra_tile_optimize(bands[i], 0, prog); 
-            }
+            int retval = pluto_intra_tile_optimize(prog, 0); 
             if (retval) {
-                printf("[Pluto] after intra tile opt\n");
-                pluto_transformations_pretty_print(prog);
+                /* Detect properties again */
+                pluto_detect_transformation_properties(prog);
+                if (!options->silent) {
+                    printf("[Pluto] after intra tile opt\n");
+                    pluto_transformations_pretty_print(prog);
+                }
             }
-            pluto_bands_free(bands, nbands);
         }
     }
 
