@@ -649,7 +649,6 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
         }else{
             assert(lin_ind_mode == LAZY);
             /* At least one stmt should have a linearly independent hyperplane */
-            
             for (i=0; i<prog->nstmts; i++) {
                 /* Everything was initialized to zero */
                 if (orthonum[i] >= 1) {
@@ -1416,48 +1415,53 @@ int pluto_auto_transform(PlutoProg *prog)
 
             ddg_compute_scc(prog);
 
-            if (lin_ind_mode == LAZY && (ddg->num_sccs <= 1 || depth > 3*nvar))   {
-                if (options->debug) {
-                    printf("Number of unsatisfied deps: %d\n", 
-                            get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-                    printf("Number of unsatisfied inter-stmt deps: %d\n", 
-                            get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
-                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
-                    fprintf(stderr, "[Pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
-                    fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
-                    fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
-                    fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
-                    fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
-                    pluto_transformations_pretty_print(prog);
-                    pluto_compute_dep_directions(prog);
-                    pluto_print_dep_directions(prog);
+            if (ddg->num_sccs >= 2) {
+                if (options->fuse == NO_FUSE)  {
+                    /* No fuse */
+                    cut_all_sccs(prog, ddg);
+                }else if (options->fuse == SMART_FUSE)  {
+                    /* Smart fuse (default) */
+                    cut_smart(prog, ddg);
+                }else{
+                    /* Max fuse */
+                    if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
+                    else cut_conservative(prog, ddg);
                 }
-                denormalize_domains(prog);
-                fprintf(stdout, "[Pluto] working with original (identity) transformation (if they exist)\n");
-                /* Restore original ones */
-                for (i=0; i<nstmts; i++) {
-                    stmts[i]->trans = orig_trans[i];
-                    prog->num_hyperplanes = orig_num_hyperplanes;
-                    prog->hProps = orig_hProps;
-                }
-                return 1;
-            }
-
-            if (lin_ind_mode == EAGER && (ddg->num_sccs <= 1 || depth > 32))   {
-                IF_DEBUG2(printf("switching to incremental ortho constr mode\n"););
-                lin_ind_mode = LAZY;
-            }
-
-            if (options->fuse == NO_FUSE)  {
-                /* No fuse */
-                cut_all_sccs(prog, ddg);
-            }else if (options->fuse == SMART_FUSE)  {
-                /* Smart fuse (default) */
-                cut_smart(prog, ddg);
             }else{
-                /* Max fuse */
-                if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
-                else cut_conservative(prog, ddg);
+                /* Only one SCC */
+                if (lin_ind_mode == EAGER)   {
+                    IF_DEBUG2(printf("Switching to incremental ortho constr mode\n"););
+                    lin_ind_mode = LAZY;
+                    /* loop_search_mode = LAZY; */
+                }else{
+                    /* LAZY mode */
+                    assert(lin_ind_mode == LAZY);
+                    /* There is a problem; solutions should have been found */
+                    if (options->debug) {
+                        printf("Number of unsatisfied deps: %d\n", 
+                                get_num_unsatisfied_deps(prog->deps, prog->ndeps));
+                        printf("Number of unsatisfied inter-stmt deps: %d\n", 
+                                get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
+                        IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
+                        fprintf(stderr, "[Pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
+                        fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
+                        fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
+                        fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
+                        fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
+                        pluto_transformations_pretty_print(prog);
+                        pluto_compute_dep_directions(prog);
+                        pluto_print_dep_directions(prog);
+                    }
+                    denormalize_domains(prog);
+                    fprintf(stdout, "[Pluto] working with original (identity) transformation (if they exist)\n");
+                    /* Restore original ones */
+                    for (i=0; i<nstmts; i++) {
+                        stmts[i]->trans = orig_trans[i];
+                        prog->num_hyperplanes = orig_num_hyperplanes;
+                        prog->hProps = orig_hProps;
+                    }
+                    return 1;
+                }
             }
         }
         depth++;
