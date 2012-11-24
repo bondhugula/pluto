@@ -472,7 +472,6 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             fclose(fp);
             if (found)  {
                 printf("Skipping dep %d\n", num);
-              
                 continue;
             }
         }
@@ -540,10 +539,10 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
     isl_int_init(v);
 
     for (i = 0; i < rows; ++i)
-       for (j = 0; j < cols; ++j) {
-           isl_mat_get_element(mat, i, j, &v);
-           pluto->val[i][j] = isl_int_get_si(v);
-       }
+        for (j = 0; j < cols; ++j) {
+            isl_mat_get_element(mat, i, j, &v);
+            pluto->val[i][j] = isl_int_get_si(v);
+        }
 
     isl_int_clear(v);
 
