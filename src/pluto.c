@@ -92,7 +92,7 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog)
 
     for (i=0; i<prog->ndeps; i++) {
         prog->deps[i]->satisfied =  false;
-        prog->deps[i]->satisfaction_level =  -1;
+        prog->deps[i]->satisfaction_level =  prog->num_hyperplanes;
     }
 
     for (i=0; i<prog->num_hyperplanes; i++) {
@@ -105,6 +105,8 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog)
         Dep *dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
 
+        /* Dep satisfaction level should have been set */
+        assert(dep->satisfaction_level >= 0);
         if (dep->satvec != NULL) free(dep->satvec);
         dep->satvec = (int *) malloc(prog->num_hyperplanes*sizeof(int));
 
@@ -995,6 +997,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     HyperplaneProperties *hProps = prog->hProps;
 
     assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
+
+    // pluto_deps_print(stdout, prog);
 
     /* First compute satisfaction levels */
     pluto_compute_dep_directions(prog);

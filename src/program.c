@@ -177,13 +177,9 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
 
     /* Dependence polyhedra information */
     for (i=0; i<ndeps; i++)  {
-
         Dep *dep = deps[i];
-
         dep->id = i;
-
         dep->type = candl_dep->type;
-
         dep->src = candl_dep->source->label;
         dep->dest = candl_dep->target->label;
 
@@ -248,10 +244,6 @@ static Dep **deps_read(CandlDependence *candlDeps, PlutoProg *prog)
         int target_dim = stmts[dep->dest]->dim;
 
         assert(candl_dep->domain->NbColumns-1 == src_dim+target_dim+npar+1);
-
-        /* Initialize other fields used for auto transform */
-        dep->satisfied = false;
-        dep->satisfaction_level = -1;
 
         candl_dep = candl_dep->next;
     }
@@ -864,10 +856,6 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
         dep->src_acc = NULL;
         dep->dest_acc = NULL;
     }
-
-    /* Initialize other fields (used for auto transform) */
-    dep->satisfied = false;
-    dep->satisfaction_level = -1;
 
     info->index++;
     isl_basic_map_free(bmap);
@@ -1722,6 +1710,7 @@ Dep *pluto_dep_alloc()
     dep->satvec = NULL;
     dep->depsat_poly = NULL;
     dep->satisfied = false;
+    dep->satisfaction_level = -1;
     dep->dirvec = NULL;
 
     return dep;
