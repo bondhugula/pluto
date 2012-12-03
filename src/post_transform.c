@@ -28,8 +28,8 @@
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
 {
-    int i;
-    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
+    int i, *divs;
+    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
     assert(depth <= newacc->ncols-1);
     for (i=0; i<newacc->nrows; i++) {
         if (newacc->val[i][depth] != 0) break;
@@ -42,8 +42,8 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
 {
-    int i;
-    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat);
+    int i, *divs;
+    PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
     assert(depth <= newacc->ncols-1);
     for (i=0; i<newacc->nrows-1; i++) {
         if (newacc->val[i][depth] != 0) {
@@ -129,7 +129,7 @@ int getDeepestNonScalarLoop(PlutoProg *prog)
 }
 
 
-/* FIXME: one loop per band */
+/* Vectorize first loop in band that meets criteria */
 int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog)
 {
     int num, l;
@@ -155,7 +155,9 @@ int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog)
         a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
-        /* if accesses haven't been provided, a will be 0 */
+        /* Vectorize only if each access has either spatial or temporal
+         * reuse */
+        /* if accesses haven't been provided, a would be 0 */
         if (a >= 1 && a == s + t) break;
     }
 

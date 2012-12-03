@@ -1847,114 +1847,117 @@ int pluto_is_hyperplane_loop(const Stmt *stmt, int level)
     return !pluto_is_hyperplane_scalar(stmt, level);
 }
 
-/* Get the remapping matrix */
-PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt)
+/* Get the remapping matrix: maps time iterators back to the domain 
+ * iterators; divs: divisors for the rows */
+PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs)
 {
     int i, j, k, _lcm, factor1, npar;
 
-    PlutoMatrix *sched, *trans;
+    PlutoMatrix *remap, *trans;
 
     trans = stmt->trans;
-    sched = pluto_matrix_dup(trans);
+    remap = pluto_matrix_dup(trans);
 
     npar = stmt->domain->ncols - stmt->dim - 1;
 
-    for (i=0; i<sched->nrows; i++)  {
-        pluto_matrix_negate_row(sched, sched->nrows-1-i);
-        pluto_matrix_add_col(sched, 0);
-        sched->val[trans->nrows-1-i][0] = 1;
+    *divs = malloc(sizeof(int)*(stmt->dim+npar+1));
+
+    for (i=0; i<remap->nrows; i++)  {
+        pluto_matrix_negate_row(remap, remap->nrows-1-i);
+        pluto_matrix_add_col(remap, 0);
+        remap->val[trans->nrows-1-i][0] = 1;
     }
 
     /* Bring the stmt iterators to the left */
     for (i=0; i<stmt->dim; i++)  {
-        pluto_matrix_move_col(sched, sched->nrows+i, i);
+        pluto_matrix_move_col(remap, remap->nrows+i, i);
     }
 
-    assert(stmt->dim <= sched->nrows);
+    assert(stmt->dim <= remap->nrows);
 
     for (i=0; i<stmt->dim; i++)  {
-        // pluto_matrix_print(stdout, sched);
-        if (sched->val[i][i] == 0) {
-            for (k=i+1; k<sched->nrows; k++) {
-                if (sched->val[k][i] != 0) break;
+        // pluto_matrix_print(stdout, remap);
+        if (remap->val[i][i] == 0) {
+            for (k=i+1; k<remap->nrows; k++) {
+                if (remap->val[k][i] != 0) break;
             }
-            if (k<sched->nrows)    {
-                pluto_matrix_interchange_rows(sched, i, k);
+            if (k<remap->nrows)    {
+                pluto_matrix_interchange_rows(remap, i, k);
             }else{
                 /* Can't associate domain iterator with time iterator */
                 /* Shouldn't happen with a full-ranked transformation */
                 printf("Can't associate domain iterator #%d with time iterators\n", i+1);
-                pluto_matrix_print(stdout, sched);
+                pluto_matrix_print(stdout, remap);
                 assert(0);
             }
         }
         //printf("after interchange %d\n", i); 
-        //pluto_matrix_print(stdout, sched);
-        assert(sched->val[i][i] != 0);
-        for (k=i+1; k<sched->nrows; k++) {
-            if (sched->val[k][i] == 0) continue;
-            _lcm = lcm(sched->val[k][i], sched->val[i][i]);
-            factor1 = _lcm/sched->val[k][i];
-            for (j=i; j<sched->ncols; j++) {
-                sched->val[k][j] = sched->val[k][j]*factor1
-                    - sched->val[i][j]*(_lcm/sched->val[i][i]);
+        //pluto_matrix_print(stdout, remap);
+        assert(remap->val[i][i] != 0);
+        for (k=i+1; k<remap->nrows; k++) {
+            if (remap->val[k][i] == 0) continue;
+            _lcm = lcm(remap->val[k][i], remap->val[i][i]);
+            factor1 = _lcm/remap->val[k][i];
+            for (j=i; j<remap->ncols; j++) {
+                remap->val[k][j] = remap->val[k][j]*factor1
+                    - remap->val[i][j]*(_lcm/remap->val[i][i]);
             }
 
         }
         //printf("after iteration %d\n", i); 
-        //pluto_matrix_print(stdout, sched);
+        //pluto_matrix_print(stdout, remap);
     }
 
-    //pluto_matrix_print(stdout, sched);
+    //pluto_matrix_print(stdout, remap);
 
     /* Solve upper triangular system now */
     for (i=stmt->dim-1; i>=0; i--)  {
-        assert(sched->val[i][i] != 0);
+        assert(remap->val[i][i] != 0);
         for (k=i-1; k>=0; k--) {
-            if (sched->val[k][i] == 0) continue;
-            _lcm = lcm(sched->val[k][i], sched->val[i][i]);
-            factor1 = _lcm/sched->val[k][i];
-            for (j=0; j<sched->ncols; j++) {
-                sched->val[k][j] = sched->val[k][j]*(factor1) 
-                    - sched->val[i][j]*(_lcm/sched->val[i][i]);
+            if (remap->val[k][i] == 0) continue;
+            _lcm = lcm(remap->val[k][i], remap->val[i][i]);
+            factor1 = _lcm/remap->val[k][i];
+            for (j=0; j<remap->ncols; j++) {
+                remap->val[k][j] = remap->val[k][j]*(factor1) 
+                    - remap->val[i][j]*(_lcm/remap->val[i][i]);
             }
         }
     }
 
-    assert(sched->nrows >= stmt->dim);
-    for (i=sched->nrows-1; i>=stmt->dim; i--) {
-        pluto_matrix_remove_row(sched, sched->nrows-1);
+    assert(remap->nrows >= stmt->dim);
+    for (i=remap->nrows-1; i>=stmt->dim; i--) {
+        pluto_matrix_remove_row(remap, remap->nrows-1);
     }
-    //pluto_matrix_print(stdout, sched);
+    // pluto_matrix_print(stdout, remap);
 
     for (i=0; i<stmt->dim; i++) {
-        if (abs(sched->val[i][i]) >= 2) {
-            /* Indicates non-unit stride */
-            printf("[Pluto] WARNING: generated communication code is very likely incorrect\n");
+        assert(remap->val[i][i] != 0);
+        if (remap->val[i][i] <= -1) {
+            pluto_matrix_negate_row(remap, i);
         }
-        if (sched->val[i][i] <= -1) {
-            pluto_matrix_negate_row(sched, i);
-        }
+        (*divs)[i] = abs(remap->val[i][i]);
     }
-    //pluto_matrix_print(stdout, sched);
+    // pluto_matrix_print(stdout, remap);
 
     for (i=0; i<stmt->dim; i++) {
-        pluto_matrix_remove_col(sched, 0);
+        pluto_matrix_remove_col(remap, 0);
     }
 
     for (i=0; i<stmt->dim; i++) {
-        pluto_matrix_negate_row(sched, i);
+        pluto_matrix_negate_row(remap, i);
     }
 
+    /* Identity for the parameter and constant part */
     for (i=0; i<npar+1; i++) {
-        pluto_matrix_add_row(sched, sched->nrows);
-        sched->val[sched->nrows-1][sched->ncols-npar-1+i] = 1;
+        pluto_matrix_add_row(remap, remap->nrows);
+        remap->val[remap->nrows-1][remap->ncols-npar-1+i] = 1;
+        (*divs)[stmt->dim+i] = 1;
     }
 
     // printf("Remapping using new technique is\n");
-    // pluto_matrix_print(stdout, sched);
+    // pluto_matrix_print(stdout, remap);
 
-    return sched;
+    return remap;
 }
 
 
@@ -1968,11 +1971,14 @@ void pluto_prog_params_print(const PlutoProg *prog)
 
 
 /* Get new access function */
-PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc) 
+PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, 
+        const PlutoMatrix *acc, int **divs) 
 {
     PlutoMatrix *remap, *newacc;
+    int r, c, npar, *remap_divs;
 
-    int npar = stmt->domain->ncols - stmt->dim - 1;
+    npar = stmt->domain->ncols - stmt->dim - 1;
+    *divs = malloc(sizeof(int)*acc->nrows);
 
     // printf("Old access function is \n");;
     // pluto_matrix_print(stdout, acc);;
@@ -1980,11 +1986,27 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc)
     // printf("Stmt trans\n");
     // pluto_matrix_print(stdout, stmt->trans);
 
-    remap = pluto_stmt_get_remapping(stmt);
+    remap = pluto_stmt_get_remapping(stmt, &remap_divs);
     // printf("Remapping matrix\n");
     // pluto_matrix_print(stdout, remap);
+    //
+
+    int _lcm = 1;
+    for (r=0; r<remap->nrows; r++) {
+        assert(remap_divs[r] != 0);
+        _lcm = lcm(_lcm,remap_divs[r]);
+    }
+    for (r=0; r<remap->nrows; r++) {
+        for (c=0; c<remap->ncols; c++) {
+            remap->val[r][c] = (remap->val[r][c]*_lcm)/remap_divs[r];
+        }
+    }
 
     newacc = pluto_matrix_product(acc, remap);
+
+    for (r=0; r<newacc->nrows; r++) {
+        (*divs)[r] = _lcm;
+    }
 
     // printf("New access function is \n");
     // pluto_matrix_print(stdout, newacc);
@@ -1992,6 +2014,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc)
     assert(newacc->ncols = stmt->trans->nrows+npar+1);
 
     pluto_matrix_free(remap);
+    free(remap_divs);
 
     return newacc;
 }
