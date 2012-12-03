@@ -57,6 +57,7 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
 void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType type);
 
+PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **strides);
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
 
@@ -66,7 +67,8 @@ int pluto_stmt_is_member_of(Stmt *s, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos);
-PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc);
+PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, int **divs); 
+
 
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type);
