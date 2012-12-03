@@ -1335,6 +1335,7 @@ PlutoOptions *pluto_options_alloc()
     options->parallel = 0;
     options->innerpar = 0;
     options->identity = 0;
+    options->lbtile = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */
@@ -2168,6 +2169,19 @@ int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
     return 0;
 }
 
+int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
+{
+    int max, i;
+
+    max = 0;
+
+    for (i=0; i<prog->nstmts; i++) {
+        max = PLMAX(max, pluto_stmt_get_num_ind_hyps_non_scalar(prog->stmts[i]));
+    }
+
+    return max;
+}
+
 int pluto_get_max_ind_hyps(const PlutoProg *prog)
 {
     int max, i;
@@ -2179,6 +2193,29 @@ int pluto_get_max_ind_hyps(const PlutoProg *prog)
     }
 
     return max;
+}
+
+int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt)
+{
+    int isols, i,j=0;
+
+    PlutoMatrix *tprime = pluto_matrix_dup(stmt->trans);
+
+    /* Ignore padding dimensions, params, and constant part */
+    for (i=stmt->dim_orig; i<stmt->trans->ncols; i++) {
+        pluto_matrix_remove_col(tprime, stmt->dim_orig);
+    }
+    for (i=0; i<stmt->trans->nrows; i++) {
+        if (stmt->hyp_types[i]==H_SCALAR) {   
+            pluto_matrix_remove_row(tprime, i-j); 
+            j++; 
+        }
+    }
+
+    isols = pluto_matrix_get_rank(tprime);
+    pluto_matrix_free(tprime);
+
+    return isols;
 }
 
 int pluto_stmt_get_num_ind_hyps(const Stmt *stmt)

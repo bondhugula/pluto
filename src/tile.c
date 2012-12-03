@@ -418,3 +418,19 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
     }
     *bandStart = *bandEnd = lastloop;
 }
+
+
+void pluto_reschedule_tile(PlutoProg *prog)
+{
+    int i, j, temp;
+    for(i=0;i<prog->nstmts;i++){
+        if(prog->stmts[i]->last!=NULL){
+            int fl = prog->stmts[i]->num_tiled_loops;
+            for(j=0;j<prog->stmts[i]->last->ncols;j++){
+                temp=prog->stmts[i]->last->val[0][j];
+                prog->stmts[i]->last->val[0][j]=prog->stmts[i]->trans->val[fl][fl+j];
+                prog->stmts[i]->trans->val[fl][fl+j]=temp;
+            }
+        }
+    }
+}

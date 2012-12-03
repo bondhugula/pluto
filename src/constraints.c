@@ -673,7 +673,7 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
 }
 
 /* Use isl to solve these constraints */
-int *pluto_constraints_solve_isl(const PlutoConstraints *cst) 
+int *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar) 
 {
   int i, *sol;
   isl_ctx *ctx;
@@ -687,10 +687,11 @@ int *pluto_constraints_solve_isl(const PlutoConstraints *cst)
   domain = isl_set_from_basic_set(bset);
 
   // Allow only positive values.
-  all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
-  all_positive_set = isl_set_from_basic_set(all_positive);
-  domain = isl_set_intersect(domain, all_positive_set);
-
+  if(negvar==0){
+    all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
+    all_positive_set = isl_set_from_basic_set(all_positive);
+    domain = isl_set_intersect(domain, all_positive_set);
+  }
   // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
   lexmin = isl_set_lexmin(domain);
 
@@ -719,7 +720,7 @@ int *pluto_constraints_solve_isl(const PlutoConstraints *cst)
 }
 
 /* Use PIP to solve these constraints */
-int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
+int *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
 {
     int bignum, i;
     PipMatrix  *domain, *context;
@@ -743,6 +744,10 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     domain = pip_matrix_populate(pipmat->val, pipmat->nrows, 
             pipmat->ncols);
     pipOptions = pip_options_init();
+    if(negvar==1){
+        pipOptions->Urs_parms=1;
+        pipOptions->Urs_unknowns=1;
+    }
 
     /* IF_DEBUG2(fprintf(stdout, "Calling PIP on a %dx%d formulation\n", 
        pipmat->nrows, pipmat->ncols)); */
@@ -781,11 +786,11 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 }
 
 /* Solve these constraints */
-int *pluto_constraints_solve(const PlutoConstraints *cst) {
+int *pluto_constraints_solve(const PlutoConstraints *cst, int negvar) {
     if (options->islsolve) {
-        return pluto_constraints_solve_isl(cst);
+        return pluto_constraints_solve_isl(cst, negvar);
     }else{
-        return pluto_constraints_solve_pip(cst);
+        return pluto_constraints_solve_pip(cst, negvar);
     }
 }
 
@@ -1152,7 +1157,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_remove_row(check, i); 
         pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
-        if (!pluto_constraints_solve(check))  {
+        if (!pluto_constraints_solve(check,DO_NOT_ALLOW_NEGATIVE_COEFF))  {
             // printf("%dth constraint is redundant\n", i);
             count++;
         }else{
@@ -1193,7 +1198,7 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst)
     int *sol;
     bool is_empty;
 
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     is_empty = (sol == NULL);
     if (sol != NULL) free(sol);

@@ -340,7 +340,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst->val = newcstmat->val;
 
     // IF_DEBUG(dump_poly(newcst));
-    sol = pluto_constraints_solve(newcst);
+    sol = pluto_constraints_solve(newcst,DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* Put it back so that it can be freed correctly */
     newcst->val = save;
 
@@ -1324,17 +1324,183 @@ void denormalize_domains(PlutoProg *prog)
     }
 }
 
+//Function to find the hyperplane which is inside the cone
+//of already found hyperplane and the face allowing concurrent start
+int find_cone_complement_hyperplane(int cone_complement,int face, PlutoProg *prog)
+{
+    int nstmts= prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+    int ndeps = prog->ndeps;
+    Stmt **stmts = prog->stmts;
+    Dep **deps = prog->deps;
 
-/* Top-level automatic transformation algoritm */
+    int *bestsol;
+    PlutoConstraints *currcstnw;
+
+    PlutoConstraints *basecst,*lastcst,*currcst;
+    basecst = get_permutability_constraints(deps, ndeps, prog);
+    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
+    pluto_constraints_copy(currcst, basecst);
+    //at this point currcst contains only legality constraints
+    //we don't add non_zero constraints as they are implicitly taken care of 
+
+
+    int i,j,k;
+    lastcst= pluto_constraints_alloc(2*nvar*nstmts, CST_WIDTH+nvar*nstmts);
+    // lastcst is the set of additional constraints
+
+    //we first add all the lambdas >=1
+    for (i=0; i<nstmts; i++) {
+        int stmt_offset = npar+1+nstmts*(nvar+1)+i*nvar;
+        for (j=0; j<nvar; j++)  {
+            lastcst->val[lastcst->nrows][stmt_offset+j] =1;
+            lastcst->val[lastcst->nrows][lastcst->ncols-1] = -1;
+            lastcst->nrows++;
+        }
+    }
+
+    //constraints to put the last hyperplane inside the cone
+    //int dimOfConStart;
+    //if(!options->partlbtile   )  {
+    //dimOfConStart=nvar-1;
+    //}
+    //else{ 
+    //dimOfConStart=1;
+    //printf("\npartial\n");
+    //}
+    for (i=0; i<nstmts; i++) {
+        int stmt_offset1= npar+1+i*(nvar+1);
+        int stmt_offset2= npar+1+nstmts*(nvar+1)+i*nvar;
+        for (j=0; j<nvar; j++)  {
+            lastcst->is_eq[lastcst->nrows]= 1;
+            lastcst->val[lastcst->nrows][stmt_offset1+j] =1;
+            lastcst->val[lastcst->nrows][stmt_offset2] =-prog->stmts[i]->trans->val[face][j]; 
+            lastcst->val[lastcst->nrows][stmt_offset2+1] = prog->stmts[i]->trans->val[cone_complement][j]; 
+            lastcst->val[lastcst->nrows][lastcst->ncols-1] = 0;
+            lastcst->nrows++;
+        }
+    }
+
+    //currcstnw serves the same purpose of currcst, but as expanded constraint-width 
+    //to incorporate lambdas
+    currcstnw = pluto_constraints_alloc(basecst->nrows+nstmts+2*nvar*nstmts, CST_WIDTH+nvar*nstmts);
+
+    for(i=0;i<currcst->nrows;i++) {
+        for(j=0;j<currcst->ncols-1;j++){
+            currcstnw->val[i][j]=currcst->val[i][j];
+        }
+        for(;j<currcstnw->ncols-1;j++){
+            currcstnw->val[i][j]=0;
+        }
+        currcstnw->val[i][currcstnw->ncols-1]=currcst->val[i][currcst->ncols-1];
+        currcstnw->nrows++;
+    }
+
+    pluto_constraints_add(currcstnw, lastcst);
+    pluto_constraints_free(lastcst);
+    bestsol = pluto_constraints_solve(currcstnw,ALLOW_NEGATIVE_COEFF);
+    //TODO:pluto_constraints_solve is being called directly, where as 
+    //pluto_prog_constraints_solve must be called
+    if(bestsol==NULL)
+    {
+        printf("No concurrent start");
+    }else{
+        for (j=0; j<nstmts; j++)    {
+            Stmt *stmt = stmts[j];
+            stmt->last= pluto_matrix_alloc(1,stmt->dim+npar+1);
+        }
+        for (j=0; j<nstmts; j++)    {
+            Stmt *stmt = stmts[j];
+            for (k=0; k<nvar; k++)    {
+                stmt->last->val[0][k] = 
+                    bestsol[npar+1+j*(nvar+1)+k];
+                //if(num_sols_found == max_sols ){
+                //printf("%d",stmt->last->val[0][k]);
+                //}
+            }
+            /* No parameteric shifts */
+            for (k=nvar; k<nvar+npar; k++)    {
+                stmt->last->val[0][k] = 0;
+            }
+            stmt->last->val[0][nvar+npar] = 
+                bestsol[npar+1+j*(nvar+1)+nvar];
+            //printf("%d",stmt->last->val[0][nvar+npar]);
+        }
+        pluto_constraints_free(currcstnw);
+        free(bestsol);
+    }
+
+    pluto_constraints_free(basecst);
+    pluto_constraints_free(currcst);
+    return ((prog->stmts[0]->last==NULL)?0:1); 
+
+}
+
+
+
+//check if k'th row for any statement is the face allowing the concurrent start itself
+int is_face(PlutoProg *prog, int k){
+    int i,j;
+    for(i=0;i<prog->nstmts;i++){
+        if(prog->stmts[i]->trans->val[k][0]!=1) return 0;
+        for(j=1;j<prog->nvar;j++){
+            if(prog->stmts[i]->trans->val[k][j]!=0) return 0;
+        }
+    }
+    return 1;
+}
+
+//find the hyperplace which has face so that it can be replaced, else return the 
+//last hyperplane number so that it's replaced
+int find_hyperplane_to_be_replaced(PlutoProg *prog,int first,int sols_found){
+    int j;
+    for(j=first;j<first+sols_found-1;j++){
+        if(is_face(prog,j)) return j;
+    }
+    return first+sols_found-1; //replace the last one for now thinking allowing concurrent start
+}
+
+int first_non_scalar_hyperplane(PlutoProg *prog,int start,int end){
+    int i;
+    for(i=start;i<end;i++){
+        if(prog->stmts[0]->hyp_types[i]==H_LOOP) return i;
+    }
+    return -1;
+}
+void swap_prog_hyperplanes_with_last(PlutoProg *prog,int first){
+    int i,j,temp;
+    for(i=0;i<prog->nstmts;i++){
+        if(prog->stmts[i]->last!=NULL){
+            for(j=0;j<prog->stmts[i]->trans->ncols;j++){
+                temp=prog->stmts[i]->trans->val[first][j];
+                prog->stmts[i]->trans->val[first][j]=prog->stmts[i]->last->val[0][j];
+                prog->stmts[i]->last->val[0][j]=temp;
+            }
+        }
+    }
+}
+
+/* 
+ * Top-level automatic transformation algoritm 
+ *
+ * All dependences are reset to unsatisfied before starting
+ *
+ */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j;
-    int num_ind_sols, depth;
+    int num_ind_sols, depth, num_ind_sols_non_scalar;
     bool lin_ind_mode;
     bool loop_search_mode;
 
+    int first,replace;
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
+
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i]->satisfied = false;
+    }
 
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);
@@ -1390,6 +1556,13 @@ int pluto_auto_transform(PlutoProg *prog)
         }
     }
 
+    for (j=0; j<nstmts; j++)    {
+        Stmt *stmt = stmts[j];
+        stmt->last= NULL; //pluto_matrix_alloc(1,stmt->dim+npar+1);
+    }
+    int cone_complement=-1;
+    int con_start_possible=1;
+    int con_start_found=0;
     do{
         int sols_found;
 
@@ -1405,6 +1578,28 @@ int pluto_auto_transform(PlutoProg *prog)
                     depth, sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
         num_ind_sols = pluto_get_max_ind_hyps(prog);
+        num_ind_sols_non_scalar = pluto_get_max_ind_hyps_non_scalar(prog);
+
+        if (options->lbtile && con_start_possible==1 && 
+                con_start_found==0 && sols_found!=0){
+            if (num_ind_sols_non_scalar==1){
+                if(is_face(prog, first_non_scalar_hyperplane(prog, 0 ,prog->stmts[0]->trans->nrows))){
+                    printf("\nconcurrent start impossible\n");
+                    con_start_possible=0;
+                }
+                else{
+                    cone_complement = first_non_scalar_hyperplane(prog, 0 , 
+                            prog->stmts[0]->trans->nrows);
+                }
+            }else if (num_ind_sols_non_scalar>=2){
+                first=first_non_scalar_hyperplane(prog,prog->stmts[0]->trans->nrows-sols_found,prog->stmts[0]->trans->nrows);
+                replace=find_hyperplane_to_be_replaced(prog,first,sols_found);
+                if (cone_complement==-1) cone_complement =first;
+                if (replace==first)cone_complement++ ;
+                con_start_possible=find_cone_complement_hyperplane(cone_complement,replace,prog); 
+                con_start_found=1;
+            }
+        }
 
         if (sols_found > 0) {
             for (j=0; j<sols_found; j++)      {
@@ -1473,6 +1668,10 @@ int pluto_auto_transform(PlutoProg *prog)
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog->deps, prog->ndeps));
 
+    if (con_start_found==1) {
+        swap_prog_hyperplanes_with_last(prog,first);  
+        if(replace!=first) swap_prog_hyperplanes_with_last(prog,replace);
+    }
     denormalize_domains(prog);
 
     //pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);

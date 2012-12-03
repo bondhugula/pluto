@@ -14,6 +14,9 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
+    /* Load-balanced tiling */
+    int lbtile;
+
     /* parallelization */
     int parallel;
 

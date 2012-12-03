@@ -43,6 +43,9 @@
 
 #define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
+#define ALLOW_NEGATIVE_COEFF 1 
+#define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
+
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
 /* H_TILE_SPACE_LOOP may not always be distinguished from H_LOOP */
@@ -103,6 +106,7 @@ struct statement{
      *       stmt->dim + npar + 1 after auto_transform (after denormalize)
      */
     PlutoMatrix *trans;
+    PlutoMatrix *last;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;

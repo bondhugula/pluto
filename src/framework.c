@@ -832,7 +832,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     retval = (sol)? false:true;
@@ -991,7 +991,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int *sol = pluto_constraints_solve(cst);
+    int *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         for (j=0; j<src_dim; j++)    {
@@ -1006,7 +1006,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
         pluto_constraints_add(cst, dep->dpolytope);
 
-        sol = pluto_constraints_solve(cst);
+        sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
@@ -1037,7 +1037,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         pluto_constraints_free(cst);
@@ -1065,7 +1065,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     if (!sol)   {   

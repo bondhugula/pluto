@@ -45,6 +45,7 @@ void usage_message(void)
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
     fprintf(stdout, "       --tile               Tile for locality\n");
+    fprintf(stdout, "       --lbtile             Tile for load-balance\n");
     fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
     fprintf(stdout, "       | --parallelize\n");
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
+        {"lbtile", no_argument, &options->lbtile, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -270,6 +272,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
+    if (options->lbtile == 1 && options->tile == 0)    {
+        options->tile = 1;
+    }
+
     if (options->multipipe == 1 && options->parallel == 0)    {
         fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
         options->parallel = 1;
@@ -308,6 +314,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile)   {
         pluto_tile(prog);
+
+        if (options->lbtile) {
+            pluto_reschedule_tile(prog);
+        }
     }else{
         if (options->intratileopt) {
             int retval = pluto_intra_tile_optimize(prog, 0); 
