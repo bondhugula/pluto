@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
         {"context", required_argument, 0, 'c'},
         {"cloogf", required_argument, 0, 'F'},
         {"cloogl", required_argument, 0, 'L'},
+        {"cloogsh", no_argument, &options->cloogsh, 1},
+        {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
         {"multipipe", no_argument, &options->multipipe, 1},
