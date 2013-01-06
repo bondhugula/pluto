@@ -323,7 +323,8 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
         score = (2*s + 4*t)*loops[l]->nstmts;
-        if (score > max_score) {
+        /* Using >= since we'll take the last one if all else is the same */
+        if (score >= max_score) {
             max_score = score;
             maxloc = loops[l];
         }

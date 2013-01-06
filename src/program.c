@@ -1352,6 +1352,10 @@ PlutoOptions *pluto_options_alloc()
     options->cloogf = -1;
     options->cloogl = -1;
 
+    options->cloogsh = 0;
+
+    options->cloogbacktrack = 1;
+
     options->multipipe = 0;
     options->l2tile = 0;
     options->prevector = 1;
