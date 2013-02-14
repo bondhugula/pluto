@@ -240,7 +240,8 @@ void pluto_tile(PlutoProg *prog)
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
-            retval |= pluto_pre_vectorize_band(bands[i], 1, prog); 
+            int num_tiling_levels = options->tile + options->l2tile;
+            retval |= pluto_pre_vectorize_band(bands[i], num_tiling_levels, prog); 
         }
         if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {

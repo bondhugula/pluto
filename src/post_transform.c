@@ -130,27 +130,20 @@ int getDeepestNonScalarLoop(PlutoProg *prog)
 
 
 /* Vectorize first loop in band that meets criteria */
-int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog)
+int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 {
     int num, l;
 
     /* Band has to be the innermost band as well */
-    if (!pluto_is_band_innermost(band, is_tiled)) return 0;
+    if (!pluto_is_band_innermost(band, num_tiling_levels)) return 0;
 
     Ploop **loops;
 
-    if (is_tiled) { 
-        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-                band->loop->depth + band->width, prog, &num);
-    }else{
-        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-                band->loop->depth, prog, &num);
-    }
+    loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+            band->loop->depth + num_tiling_levels*band->width, prog, &num);
 
     for (l=0; l<num; l++) {
         if (!pluto_loop_is_parallel(prog, loops[l])) continue;
-        // printf("checking: ");
-        // pluto_loop_print(loops[l]);
         int s, t, a;
         a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
