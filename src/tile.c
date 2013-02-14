@@ -183,7 +183,11 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
 /* Updates the statement domains and transformations to represent the new
  * tiled code. A schedule of tiles is created for parallel execution if
- * --parallel is on */
+ * --parallel is on 
+ *
+ *  Pre-vectorization is also done inside a tile
+ *
+ *  */
 void pluto_tile(PlutoProg *prog)
 {
     int nbands, i, n_ibands;
@@ -234,6 +238,7 @@ void pluto_tile(PlutoProg *prog)
         for (i=0; i<nbands; i++) {
             retval |= pluto_pre_vectorize_band(bands[i], 1, prog); 
         }
+        if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {
             printf("After pre_vectorize:\n");
             pluto_transformations_pretty_print(prog);

@@ -86,7 +86,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
 
     for (i=0; i<nploops; i++) {
         /* Only the innermost ones */
-        IF_DEBUG(pluto_loop_print(ploops[i]););
         if (!pluto_is_loop_innermost(ploops[i], prog)) continue;
 
         IF_DEBUG(printf("[pluto_mark_vector] marking loop\n"););
