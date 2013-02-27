@@ -443,4 +443,9 @@ void pluto_reschedule_tile(PlutoProg *prog)
             }
         }
     }
+
+    if (!options->silent) {
+        printf("After intra_tile reschedule\n");
+        pluto_transformations_pretty_print(prog);
+    }
 }
