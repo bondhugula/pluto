@@ -600,11 +600,11 @@ int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog)
     return (num==0);
 }
 
-int pluto_is_band_innermost(const Band *band, int is_tiled)
+int pluto_is_band_innermost(const Band *band, int num_tiling_levels)
 {
     int i, j;
     for (i=0; i<band->loop->nstmts; i++) {
-        int firstd = is_tiled?band->loop->depth+2*band->width: band->loop->depth + band->width;
+        int firstd = band->loop->depth+(num_tiling_levels+1)*band->width;
         for (j=firstd; j<band->loop->stmts[i]->trans->nrows; j++) {
             if (pluto_is_hyperplane_loop(band->loop->stmts[i], j)) return 0;
         }

@@ -89,6 +89,12 @@ struct plutoOptions{
     /* Force this for cloog's -l */
     int cloogl;
 
+    /* Enable cloog's -sh (simple convex hull) */
+    int cloogsh;
+
+    /* Enable cloog's -backtrack */
+    int cloogbacktrack;
+
     /* Use isl to compute dependences */
     int isldep;
 

@@ -242,7 +242,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     cloogOptions->quiet = options->silent;
 
     /* Generates better code in general */
-    cloogOptions->backtrack = 1;
+    cloogOptions->backtrack = options->cloogbacktrack;
 
     if (options->cloogf >= 1 && options->cloogl >= 1) {
         cloogOptions->f = options->cloogf;
@@ -278,6 +278,9 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
                     cloogOptions->f, cloogOptions->l);
         }
     }
+
+    if (options->cloogsh)
+        cloogOptions->sh = 1;
 
     cloogOptions->name = "PLUTO-produced CLooG file";
 
