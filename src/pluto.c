@@ -1842,7 +1842,7 @@ void ddg_compute_scc(PlutoProg *prog)
 
 void pluto_transformations_pretty_print(const PlutoProg *prog)
 {
-    int nstmts, i;
+    int nstmts, i, j;
 
     nstmts = prog->nstmts;
 
@@ -1852,9 +1852,17 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
         int level;
         printf("(");
         for (level=0; level<stmt->trans->nrows; level++) {
+            char **vars = malloc((stmt->dim+prog->npar)*sizeof(char *));
+            for (j=0; j<stmt->dim; j++) {
+                vars[j] = stmt->iterators[j];
+            }
+            for (j=0; j<prog->npar; j++) {
+                vars[stmt->dim+j] = prog->params[j];
+            }
             if (level > 0) printf(", ");
             pretty_print_affine_function(stdout, stmt->trans->val[level], 
-                    stmt->dim, stmt->iterators);
+                    stmt->dim+prog->npar, vars);
+            free(vars);
         }
         printf(")\n");
 

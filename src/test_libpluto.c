@@ -15,13 +15,17 @@ int main() {
 
 	isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
-    isl_printer *printer = isl_printer_to_file(ctx, stdout);
-    isl_printer_print_union_map(printer, schedule);
-    printf("\n");
-    isl_printer_free(printer);
+    if (schedule) {
+        isl_printer *printer = isl_printer_to_file(ctx, stdout);
+        isl_printer_print_union_map(printer, schedule);
+        printf("\n");
+        isl_printer_free(printer);
 
-    // Check if the schedule can be applied to the domain.
-    domains = isl_union_set_apply(domains, schedule);
+        // Check if the schedule can be applied to the domain.
+        domains = isl_union_set_apply(domains, schedule);
+    }else{
+        printf("No schedule\n");
+    }
 
     isl_union_set_free(domains);
     isl_union_map_free(deps);
