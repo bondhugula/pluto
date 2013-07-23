@@ -6,6 +6,10 @@
 # uday@csa.iisc.ernet.in
 #
 
+LICENSE
+
+Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
+
 INSTALLING PLUTO
 
 Requirements: A Linux distribution. Pluto has been tested on x86 and 
