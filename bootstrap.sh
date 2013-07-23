@@ -22,3 +22,7 @@ cd ..
 cd piplib
 ./autogen.sh
 cd ..
+
+cd polylib
+autoreconf -vi
+cd ..

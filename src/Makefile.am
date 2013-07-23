@@ -26,17 +26,21 @@ pluto_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -I../clan-0.6.0/scoplib/scoplib-0.2.0/include \
    -I../candl-0.4.0/include \
    $(ISL_INCLUDE) \
-   -I../cloog-isl/include
+   -I../cloog-isl/include \
+   -I../polylib/include
+
 pluto_LDFLAGS = -static -fopenmp
 pluto_LDADD = ../candl-0.4.0/source/libcandl.la \
    ../clan-0.6.0/source/libclan.la \
    ../piplib/libpiplib64.la \
    ../cloog-isl/libcloog-isl.la \
    $(ISL_LIBADD) \
+   ../polylib/libpolylib64.la \
    -lm
 
 lib_LTLIBRARIES = libpluto.la
 
+# libpluto doesn't use polylib-based functions
 libpluto_la_SOURCES = constraints.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c polyloop.c libpluto.c constraints.h math_support.h pluto.h program.c program.h tile.c
 libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
@@ -47,6 +51,7 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -I../candl-0.4.0/include \
    $(ISL_INCLUDE)
 
+# libpluto doesn't use polylib
 libpluto_la_LIBADD = ../candl-0.4.0/source/libcandl.la \
    ../clan-0.6.0/source/libclan.la \
    ../piplib/libpiplib64.la \
