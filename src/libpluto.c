@@ -163,34 +163,19 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     if (options->tile) {
         pluto_tile(prog);
-    }
-
-    /* Detect properties again after tiling */
-    pluto_detect_transformation_properties(prog);
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
-    /* Intra-tile optimization */
-    if (options->intratileopt) {
-        int nbands;
-        Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-        int retval = 0;
-        for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog); 
+    }else{
+        int retval = pluto_intra_tile_optimize(prog, 0); 
+        if (retval) {
+            /* Detect properties again */
+            pluto_detect_transformation_properties(prog);
+            if (!options->silent) {
+                printf("[Pluto] after intra tile opt\n");
+                pluto_transformations_pretty_print(prog);
+            }
         }
-        if (retval) pluto_detect_transformation_properties(prog);
-        if (retval & !options->silent) {
-            printf("[Pluto] after intra tile opt\n");
-            pluto_transformations_pretty_print(prog);
-        }
-        pluto_bands_free(bands, nbands);
     }
 
-    if ((options->parallel) && !options->tile)   {
+    if ((options->parallel) && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;
@@ -210,6 +195,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         }
 
     }
+
+    if (options->tile && !options->silent)  {
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
+    }
+
 
     if (options->parallel && !options->silent) {
         int nploops;
