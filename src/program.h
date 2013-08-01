@@ -27,10 +27,10 @@
 
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
-void pluto_stmts_print(FILE *fp, Stmt **, int);
-void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
 
+void pluto_stmts_print(FILE *fp, Stmt **, int);
+void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 void pluto_prog_print(PlutoProg *prog);
 
 Dep *pluto_dep_alloc();
@@ -52,18 +52,38 @@ void pluto_add_stmt(PlutoProg *prog,
         PlutoStmtType type
         );
 
+void pluto_add_stmt_to_end(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        char **iterators,
+        const char *text,
+        int level,
+        PlutoStmtType type
+        );
+
 void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter, 
         PlutoHypType type, PlutoProg *prog);
 void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType type);
 
+int get_const_bound_difference(const PlutoConstraints *cst, int depth);
+PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog);
 PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **strides);
+
+void get_parametric_extent(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent);
+
+void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent);
+
+char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
+        int num, int npar, const char **params);
+
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
 
 int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts);
 int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
-int pluto_stmt_is_member_of(Stmt *s, Stmt **slist, int len);
+int pluto_stmt_is_member_of(const Stmt *s, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos);
@@ -75,7 +95,10 @@ int extract_deps(Dep **deps, int first, Stmt **stmts,
 int isl_map_count(__isl_take isl_map *map, void *user);
 
 int pluto_get_max_ind_hyps(const PlutoProg *prog);
+int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog);
 int pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
+int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
+void pluto_pad_stmt_transformations(PlutoProg *prog);
 
 #endif

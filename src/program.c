@@ -72,6 +72,25 @@ PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
     return mat;
 }
 
+scoplib_matrix_p pluto_trans_to_scoplib_schedule(PlutoMatrix *mat)
+{
+    int i, j;
+
+    scoplib_matrix_p smat;
+    smat = scoplib_matrix_malloc(mat->nrows, mat->ncols+1);
+
+    for (i=0; i<mat->nrows; i++)  {
+        /* Only equalities in schedule expected */
+        smat->p[i][0] = 0;
+
+        for (j=0; j<mat->ncols; j++)  {
+            smat->p[i][j+1] = mat->val[i][j];
+        }
+    }
+
+    return smat;
+}
+
 PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
 {
     int i, j;
@@ -88,6 +107,22 @@ PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
     return mat;
 }
 
+
+scoplib_matrix_p pluto_matrix_to_scoplib_matrix(PlutoMatrix *mat)
+{
+    int i, j;
+
+    scoplib_matrix_p smat;
+
+    smat = scoplib_matrix_malloc(mat->nrows, mat->ncols);
+    for(i=0; i<mat->nrows; i++){
+        for(j=0; j<mat->ncols; j++){
+            smat->p[i][j] = mat->val[i][j];
+        }
+    }
+
+    return smat;
+}
 
 PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 {
@@ -106,6 +141,35 @@ PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatri
     return cst;
 }
 
+scoplib_matrix_p pluto_constraints_to_scoplib_matrix(PlutoConstraints *cst)
+{
+    int i, j;
+    scoplib_matrix_p smat;
+
+    smat = scoplib_matrix_malloc(cst->nrows, cst->ncols+1);
+
+    for(i=0; i<cst->nrows; i++){
+        smat->p[i][0] = (cst->is_eq[i] == 0);
+        for(j=0; j<cst->ncols; j++){
+            smat->p[i][j+1] = cst->val[i][j];
+        }
+    }
+    return smat;
+}
+
+scoplib_matrix_list_p pluto_constraints_list_to_scoplib_matrix_list(PlutoConstraints *cst){
+
+    scoplib_matrix_list_p list = scoplib_matrix_list_malloc();
+
+    assert (cst != NULL);
+
+    list->elt = pluto_constraints_to_scoplib_matrix(cst);
+
+    if(cst->next != NULL)
+        list->next = pluto_constraints_list_to_scoplib_matrix_list(cst->next);
+
+    return list;
+}
 
 PlutoConstraints *candl_matrix_to_pluto_constraints(const CandlMatrix *candlMatrix)
 {
@@ -474,6 +538,7 @@ void pluto_prog_print(PlutoProg *prog)
 
     pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
     pluto_deps_print(stdout, prog);
+    pluto_transformations_pretty_print(prog);
 }
 
 
@@ -579,6 +644,40 @@ static __isl_give isl_set *scoplib_matrix_list_to_isl_set(
     return set;
 }
 
+/* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
+        PlutoMatrix *matrix)
+{
+    int i, j;
+    int n_col, n;
+    isl_int v;
+    isl_mat *eq;
+
+    n_col = matrix->ncols;
+    n = matrix->nrows;
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n, n + n_col);
+
+    for (i = 0; i < n; ++i) {
+        isl_int_set_si(v, 0);
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element(eq, i, j, v);
+        isl_int_set_si(v, -1);
+        eq = isl_mat_set_element(eq, i, i, v);
+        for (j = 0; j < n_col ; ++j) {
+            int t = SCOPVAL_get_si(matrix->val[i][j]);
+            isl_int_set_si(v, t);
+            eq = isl_mat_set_element(eq, i, n + j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    return eq;
+}
 
 /* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
@@ -700,7 +799,7 @@ static __isl_give isl_union_map *scoplib_access_to_isl_union_map(
         eq = extract_equalities(ctx, access, i, len);
 
         bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
-            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+                isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
         map = isl_map_from_basic_map(bmap);
         map = isl_map_intersect_domain(map, isl_set_copy(dom));
         res = isl_union_map_union(res, isl_union_map_from_map(map));
@@ -745,6 +844,48 @@ static __isl_give isl_map *scoplib_basic_access_to_isl_union_map(
 
     ineq = isl_mat_alloc(ctx, 0, len + n_col - 1);
     eq = extract_equalities(ctx, access, pos, len);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    map = isl_map_from_basic_map(bmap);
+    map = isl_map_intersect_domain(map, dom);
+
+    return map;
+}
+
+/*
+ * Like scoplib_access_to_isl_union_map, but just for a single pluto access
+ * (read or write)
+ * pos: position (starting row) of the access in 'access'
+ */
+static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
+        PlutoMatrix  *mat, char* access_name,  __isl_take isl_set *dom)
+{
+    int len, n_col;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_mat *eq, *ineq;
+
+    ctx = isl_set_get_ctx(dom);
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+
+    n_col = mat->ncols;
+
+    isl_basic_map *bmap;
+    isl_map *map;
+    //int arr = SCOPVAL_get_si(access->p[pos][0]) - 1;
+
+    len = mat->nrows;
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_from_domain(dim);
+    dim = isl_dim_add(dim, isl_dim_out, len);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_out, access_name);
+
+    ineq = isl_mat_alloc(ctx, 0, len + n_col);
+    eq = pluto_extract_equalities(ctx, mat);
 
     bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
             isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
@@ -927,8 +1068,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     param_space = isl_space_params(isl_space_copy(dim));
     context = scoplib_matrix_to_isl_set(scop->context, param_space);
 
-    if (!options->rar)
-        dep_rar = isl_union_map_empty(isl_dim_copy(dim));
+    if (!options->rar) dep_rar = isl_union_map_empty(isl_dim_copy(dim));
     empty = isl_union_map_empty(isl_dim_copy(dim));
     write = isl_union_map_empty(isl_dim_copy(dim));
     read = isl_union_map_empty(isl_dim_copy(dim));
@@ -1041,11 +1181,13 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     }
 
     if (options->lastwriter) {
+        // compute RAW dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(read),
                 isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
+        // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(write),
                 isl_union_map_copy(read),
@@ -1114,6 +1256,21 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_set_free(context);
 
     isl_ctx_free(ctx);
+}
+
+scoplib_matrix_p get_identity_schedule(int dim, int npar){
+    scoplib_matrix_p smat = scoplib_matrix_malloc(2*dim+1, dim+npar+1+1);
+
+    int i, j;
+    for(i =0; i<2*dim+1; i++)
+        for(j=0; j<dim+1+npar+1; j++)
+            smat->p[i][j] = 0;
+
+    for(i=1; i<dim; i++)
+        smat->p[2*i-1][i] = 1;
+
+    return smat;
+
 }
 
 
@@ -1315,6 +1472,9 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
+    if (prog->depcst != NULL) {
+        pluto_constraints_free(*prog->depcst);
+    }
     free(prog->depcst);
     pluto_constraints_free(prog->globcst);
 
@@ -1586,94 +1746,64 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType hyp_type)
 }
 
 
-/* Add statement to program; can't reuse arg stmt pointer any more */
-void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
+/* Statement that has the same transformed domain up to 'level' */
+Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level,
+        const char *text, PlutoStmtType type)
 {
-    int i, j, max_nrows;
+    int i, npar;
 
-    prog->stmts = (Stmt **) realloc(prog->stmts, ((prog->nstmts+1)*sizeof(Stmt *)));
+    assert(level >= 0);
+    assert(level <= anchor_stmt->trans->nrows);
 
-    stmt->id = prog->nstmts;
+    PlutoConstraints *newdom = pluto_get_new_domain(anchor_stmt);
 
-    prog->nvar = PLMAX(prog->nvar, stmt->dim);
-    prog->stmts[prog->nstmts] = stmt;
-    prog->nstmts++;
+    /* Lose everything but 0 to level-1 loops */
 
-    /* Pad all trans matrices if necessary with zeros */
-    Stmt **stmts = prog->stmts;
-    int nstmts = prog->nstmts;
+    pluto_constraints_project_out(newdom, level, 
+            anchor_stmt->trans->nrows-level);
 
-    max_nrows = 0;
+    npar = anchor_stmt->domain->ncols - anchor_stmt->dim - 1;
+    PlutoMatrix *newtrans = pluto_matrix_alloc(level, newdom->ncols);
 
-    for (i=0; i<nstmts; i++)    {
-        if (stmts[i]->trans != NULL)    {
-            max_nrows = PLMAX(max_nrows, prog->stmts[i]->trans->nrows);
-        }
+    /* Create new stmt */
+    Stmt *newstmt = pluto_stmt_alloc(level, newdom, newtrans);
+
+    newstmt->type = type;
+    newstmt->parent_compute_stmt = (type == ORIG)? NULL: anchor_stmt;
+
+    pluto_matrix_initialize(newstmt->trans, 0);
+    for (i=0; i<newstmt->trans->nrows; i++)   {
+        newstmt->trans->val[i][i] = 1;
+    }
+    newstmt->text = strdup(text);
+
+    for (i=0; i<level; i++) {
+        char *tmpstr = malloc(4);
+        snprintf(tmpstr, 4, "t%d", i+1);
+        newstmt->iterators[i] = tmpstr;
+    }
+    for (i=level; i<newstmt->dim;  i++) {
+        char iter[5];
+        sprintf(iter, "d%d", i-level+1);
+        newstmt->iterators[i] = strdup(iter);
     }
 
-    if (max_nrows >= 1) {
-        for (i=0; i<nstmts; i++)    {
-            if (stmts[i]->trans == NULL)    {
-                stmts[i]->trans = pluto_matrix_alloc(max_nrows, 
-                        stmts[i]->dim+prog->npar+1);
-                stmts[i]->trans->nrows = 0;
-            }
+    pluto_constraints_free(newdom);
+    pluto_matrix_free(newtrans);
 
-            int curr_rows = stmts[i]->trans->nrows;
+    assert(newstmt->dim+npar+1 == newstmt->domain->ncols);
 
-            /* Add all zero rows */
-            for (j=curr_rows; j<max_nrows; j++)    {
-                pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
-            }
-        }
-
-        int old_hyp_num = prog->num_hyperplanes;
-        for (i=old_hyp_num; i<max_nrows; i++) {
-            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
-        }
-    }
+    return newstmt;
 }
 
-
-/* Create a statement and add it to the program
- * iterators: domain iterators
- * trans: schedule/transformation
- * domain: domain
- * text: statement text
- */
-void pluto_add_stmt(PlutoProg *prog, 
-        const PlutoConstraints *domain,
-        const PlutoMatrix *trans,
-        char ** iterators,
-        const char *text,
-        PlutoStmtType type)
+/* Pad statement transformations so that they all equal number
+ * of rows */
+void pluto_pad_stmt_transformations(PlutoProg *prog)
 {
-    int i, j, nstmts, max_nrows;
-
-    assert(trans != NULL);
-    assert(trans->ncols == domain->ncols);
+    int max_nrows, i, j, nstmts;
 
     nstmts = prog->nstmts;
-
-    prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
-
     Stmt **stmts = prog->stmts;
-
-    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
-
-    stmt->id = nstmts;
-    stmt->type = type;
-
-    stmt->text = strdup(text);
-    prog->nvar = PLMAX(prog->nvar, stmt->dim);
-
-    for (i=0; i<stmt->dim; i++) {
-        stmt->iterators[i] = strdup(iterators[i]);
-    }
-
-    prog->stmts[nstmts] = stmt;
-    prog->nstmts++;
-    nstmts = prog->nstmts;
 
     /* Pad all trans if necessary with zeros */
     max_nrows = 0;
@@ -1701,10 +1831,68 @@ void pluto_add_stmt(PlutoProg *prog,
 
         int old_hyp_num = prog->num_hyperplanes;
         for (i=old_hyp_num; i<max_nrows; i++) {
-            /* Not clear if this should be H_SCALAR */
+            /* This is not really H_SCALAR, but this is the best we can do */
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
         }
     }
+}
+
+
+/* Add statement to program; can't reuse arg stmt pointer any more */
+void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
+{
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((prog->nstmts+1)*sizeof(Stmt *)));
+
+    stmt->id = prog->nstmts;
+
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
+    prog->stmts[prog->nstmts] = stmt;
+    prog->nstmts++;
+
+    pluto_pad_stmt_transformations(prog);
+
+}
+
+
+
+/* Create a statement and add it to the program
+ * iterators: domain iterators
+ * trans: schedule/transformation
+ * domain: domain
+ * text: statement text
+ */
+void pluto_add_stmt(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        const PlutoMatrix *trans,
+        char ** iterators,
+        const char *text,
+        PlutoStmtType type)
+{
+    int i, nstmts;
+
+    assert(trans != NULL);
+    assert(trans->ncols == domain->ncols);
+
+    nstmts = prog->nstmts;
+
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
+
+    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
+
+    stmt->id = nstmts;
+    stmt->type = type;
+
+    stmt->text = strdup(text);
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
+
+    for (i=0; i<stmt->dim; i++) {
+        stmt->iterators[i] = strdup(iterators[i]);
+    }
+
+    prog->stmts[nstmts] = stmt;
+    prog->nstmts++;
+
+    pluto_pad_stmt_transformations(prog);
 }
 
 
@@ -1830,6 +2018,447 @@ void pluto_stmt_free(Stmt *stmt)
     }
 
     free(stmt);
+}
+
+
+/* Get transformed domain */
+PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
+{
+    int i;
+    PlutoConstraints *sched;
+
+    PlutoConstraints *newdom = pluto_constraints_dup(stmt->domain);
+    for (i=0; i<stmt->trans->nrows; i++)  {
+        pluto_constraints_add_dim(newdom, 0);
+    }
+
+    sched = pluto_stmt_get_schedule(stmt);
+
+    pluto_constraints_intersect(newdom, sched);
+
+    // IF_DEBUG(printf("New pre-domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_project_out(newdom, 
+            stmt->trans->nrows, stmt->dim);
+
+    // IF_DEBUG(printf("New domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_free(sched);
+
+    return newdom;
+}
+
+
+/* 
+ * Checks if the range of the variable at depth 'depth' can be bound by a
+ * constant; returns the constant of -1 if it can't be
+ *
+ * WARNING: If cnst is a list, looks at just the first element
+ *
+ * TODO: Not general now: difference being constant can be implied through
+ * other inequalities 
+ *
+ * */
+int get_const_bound_difference(const PlutoConstraints *cnst, int depth)
+{
+    int constdiff, r, r1, c, _lcm;
+
+    assert(cnst != NULL);
+    PlutoConstraints *cst = pluto_constraints_dup(cnst);
+
+    pluto_constraints_project_out(cst, depth+1, cst->ncols-1-depth-1);
+    assert(depth >= 0 && depth <= cst->ncols-2);
+
+    // printf("Const bound diff at depth: %d\n", depth);
+    // pluto_constraints_print(stdout, cst);
+
+    constdiff = INT_MAX;
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0)  break;
+    }
+    /* Variable doesn't appear */
+    if (r==cst->nrows) return -1;
+
+    /* Scale rows so that the coefficient of depth var is the same */
+    _lcm = 1;
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) _lcm = lcm(_lcm, abs(cst->val[r][depth]));
+    }
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) {
+            for (c=0; c<cst->ncols; c++) {
+                cst->val[r][c] = cst->val[r][c]*(_lcm/abs(cst->val[r][depth]));
+            }
+        }
+    }
+
+    /* Equality to a function of parameters/constant implies single point */
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r] && cst->val[r][depth] != 0)  {
+            for (c=depth+1; c<cst->ncols-1; c++)  { 
+                if (cst->val[r][c] != 0)    {
+                    break;
+                }
+            }
+            if (c==cst->ncols-1) {
+                constdiff = 1;
+                //printf("constdiff is 1\n");
+            }
+        }
+    }
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r])  continue;
+        if (cst->val[r][depth] <= -1)  {
+            /* Find a lower bound with constant difference */
+            for (r1=0; r1<cst->nrows; r1++) {
+                if (cst->is_eq[r1])  continue;
+                if (cst->val[r1][depth] >= 1) {
+                    for (c=0; c<cst->ncols-1; c++)  { 
+                        if (cst->val[r1][c] + cst->val[r][c] != 0)    {
+                            break;
+                        }
+                    }
+                    if (c==cst->ncols-1) {
+                        constdiff = PLMIN(constdiff, 
+                                floorf(cst->val[r][c]/(float)-cst->val[r][depth]) 
+                                + ceilf(cst->val[r1][c]/(float)cst->val[r1][depth])
+                                +1);
+                    }
+                }
+            }
+        }
+    }
+    pluto_constraints_free(cst);
+
+    if (constdiff == INT_MAX)   {
+        return -1;
+    }
+
+    /* Sometimes empty sets imply negative difference */
+    /* It basically means zero points */
+    if (constdiff <= -1) constdiff = 0;
+    //printf("constdiff is %d\n", constdiff);
+
+    return constdiff;
+}
+
+#define MINF 0
+#define MAXF 1
+
+/* Get expression for pos^{th} constraint in cst;
+ * Returned string should be freed with 'free' */
+char *get_expr(PlutoConstraints *cst, int pos, const char **params,
+        int bound_type)
+{
+    int c, sum;
+
+    char *expr = malloc(512);
+    strcpy(expr, "");
+
+    // printf("Get expr\n");
+    // pluto_constraints_print(stdout, cst);
+
+    if (bound_type == MINF) assert(cst->val[pos][0] <= -1);
+    else assert(cst->val[pos][0] >= 1);
+
+    sum = 0;
+    for (c=1; c<cst->ncols-1; c++)    {
+        sum += abs(cst->val[pos][c]);
+    }
+
+    if (sum == 0)   {
+        /* constant */
+        if (bound_type == MINF) {
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)floorf(cst->val[pos][cst->ncols-1]/-(float)cst->val[pos][0]));
+        }else{
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)ceilf(-cst->val[pos][cst->ncols-1]/(float)cst->val[pos][0]));
+        }
+    }else{
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), "floorf((");
+            }else{
+                sprintf(expr+strlen(expr), "ceilf((");
+            }
+        }
+
+
+        for (c=1; c<cst->ncols-1; c++)    {
+            if (cst->val[pos][c] != 0) {
+                if (bound_type == MINF) {
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%d*%s": "%d*%s", 
+                            cst->val[pos][c], params[c-1]);
+                }else{
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%d*%s": "%d*%s", 
+                            -cst->val[pos][c], params[c-1]);
+                }
+            }
+        }
+
+        if (cst->val[pos][c] != 0) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%d": "%d", 
+                        cst->val[pos][c]);
+            }else{
+                sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%d": "%d", 
+                        -cst->val[pos][c]);
+            }
+        }
+
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            sprintf(expr+strlen(expr), ")/(float)%d)",
+                    (bound_type==MINF)? -cst->val[pos][0]: cst->val[pos][0]);
+        }
+    }
+
+    return expr;
+}
+
+/*
+ * Get min or max of all upper or lower bounds (resp).
+ * Returned string should be freed with free
+ */
+char *get_func_of_expr(PlutoConstraints *cst, int offset, int bound_type,
+        const char **params)
+{
+    char *fexpr;
+    char *expr, *expr1;
+
+    fexpr = malloc(512);
+
+    strcpy(fexpr, "");
+
+    char func[5];
+    if (bound_type == MINF)  strcpy(func, "min(");
+    else strcpy(func, "max(");
+
+    if (cst->nrows - offset == 1) {
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, expr);
+    }else{
+        /* cst->nrows >= 2 */
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, func);
+        strcat(fexpr, expr);
+        expr1 = get_func_of_expr(cst, offset+1,bound_type,params);
+        strcat(fexpr, ",");
+        strcat(fexpr, expr1);
+        strcat(fexpr, ")");
+        free(expr1);
+    }
+    free(expr);
+
+    return fexpr;
+}
+
+/* Return the size of the parametric bounding box for a (contiguous) 
+ * block of dimensions
+ * start: position of start of block
+ * num: number of dimensions in block
+ * npar: number of parameters in terms of which expression will be computed;
+ * these are assumed to be the last 'npar' variables of cst
+ * parmas: strings for 'npar' parameters
+ * Return: expression describing the maximum number of points 'block' 
+ * vars traverse for any value of '0..start-1' variables
+ *
+ * This function is constant-aware, i.e., if possible, it will exploit the
+ * fact that the range of a variable is bounded by a constant. The underlying
+ * call to get_parametric_extent_const for each of the 'num' dimensions
+ * achieves this.
+ */
+char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
+        int num, int npar, const char **params)
+{
+    int k;
+    char *buf_size;
+
+    buf_size = malloc(2048 * 8);
+    strcpy(buf_size, "(");
+
+    const PlutoConstraints *cst_tmp = cst;
+    while (cst_tmp != NULL) {
+        sprintf(buf_size+strlen(buf_size), "+1");
+        for (k=0; k<num; k++) {
+            char *extent;
+            get_parametric_extent_const(cst_tmp, start+k, npar,
+                    params, &extent);
+            sprintf(buf_size+strlen(buf_size), "*(%s)", extent);
+            free(extent);
+        }
+        cst_tmp = cst_tmp->next;
+    }
+    sprintf(buf_size+strlen(buf_size), ")");
+
+    return buf_size;
+}
+
+
+/*  Parametric extent of the pos^th variable in cst
+ *  Extent computation is constant-aware, i.e., look when it can be 
+ *  bounded by a constant; if not, just a difference of max and min 
+ *  expressions of parameters is returned;  last 'npar'  ones are 
+ *  treated as parameters; *extent should be freed by 'free' 
+ */
+void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent)
+{
+    int constdiff;
+
+    // printf("Parametric/const bounds at pos: %d\n", pos);
+    //pluto_constraints_print(stdout, cst);
+
+    constdiff = get_const_bound_difference(cst, pos);
+
+    if (constdiff != -1)    {
+        *extent = malloc(sizeof(int)*8);
+        sprintf(*extent, "%d", constdiff);
+    }else{
+        get_parametric_extent(cst, pos, npar, params, extent);
+    }
+}
+
+
+/* Get lower and upper bound expression as a function of parameters for pos^th
+ * variable; last npar in cst are treated as parameters 
+ * lbexpr and ubexpr should be freed with free
+ * */
+void get_lb_ub_expr(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **lbexpr, char **ubexpr)
+{
+    int i;
+    PlutoConstraints *lb, *ub, *lbs, *ubs;
+    char *lbe, *ube;
+
+    PlutoConstraints *dup = pluto_constraints_dup(cst);
+
+    pluto_constraints_project_out(dup, 0, pos);
+    pluto_constraints_project_out(dup, 1, dup->ncols-npar-1-1);
+
+    // printf("Parametric bounds at 0th pos\n");
+    // pluto_constraints_print(stdout, dup);
+
+    //pluto_constraints_simplify(dup);
+    //pluto_constraints_print(stdout, dup);
+
+    lbs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+    ubs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+
+    for (i=0; i<dup->nrows; i++)    {
+        if (dup->is_eq[i] && dup->val[i][0] != 0) {
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_negate_row(ub, 0);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+        if (dup->val[i][0] >= 1)    {
+            /* Lower bound */
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+        }else if (dup->val[i][0] <= -1) {
+            /* Upper bound */
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+    }
+
+    assert(lbs->nrows >= 1);
+    assert(ubs->nrows >= 1);
+    pluto_constraints_free(dup);
+
+    lbe = get_func_of_expr(lbs, 0, MAXF, params);
+    ube = get_func_of_expr(ubs, 0, MINF, params);
+
+    *lbexpr = lbe;
+    *ubexpr = ube;
+
+    // printf("lbexpr: %s\n", lbe);
+    // printf("ubexpr: %s\n", ube);
+
+    pluto_constraints_free(lbs);
+    pluto_constraints_free(ubs);
+}
+
+
+/* 
+ * Get expression for difference of upper and lower bound of pos^th variable
+ * in cst in terms of parameters;  last 'npar' dimensions of cst are treated 
+ * as parameters; *extent should be freed by 'free'
+ */
+void get_parametric_extent(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent)
+{
+    char *lbexpr, *ubexpr;
+
+    get_lb_ub_expr(cst, pos, npar, params, &lbexpr, &ubexpr);
+
+    if (!strcmp(lbexpr, ubexpr)) {
+        *extent = strdup("1");
+    }else{
+        *extent = malloc(strlen(lbexpr) + strlen(ubexpr) + strlen(" -  + 1")+1);
+        sprintf(*extent, "%s - %s + 1", ubexpr, lbexpr);
+    }
+
+#if 0
+    if (cst->next != NULL)  {
+        char *extent_next;
+        get_parametric_extent(cst->next, pos, npar, params, &extent_next);
+        *extent = realloc(*extent, strlen(*extent)+strlen(extent_next) + strlen(" + "));
+        sprintf(*extent+strlen(*extent), " + %s", extent_next);
+        free(extent_next);
+    }
+#endif
+
+    // printf("Extent: %s\n", *extent);
+
+    free(lbexpr);
+    free(ubexpr);
+}
+
+
+char *get_data_extent(PlutoAccess *acc, char **params, int npars, int dim)
+{
+    return scoplib_symbol_table_get_bound(acc->symbol, dim, params, npars);
+}
+
+/* Get Alpha matrix (A matrix - INRIA transformation representation */
+PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog)
+{
+    int r, c, i;
+
+    PlutoMatrix *a;
+    a = pluto_matrix_alloc(stmt->dim, stmt->dim);
+
+    r=0;
+    for (i=0; i<stmt->trans->nrows; i++)    {
+        if (stmt->hyp_types[i] == H_LOOP || 
+                stmt->hyp_types[i] == H_TILE_SPACE_LOOP) {
+            for (c=0; c<stmt->dim; c++) {
+                a->val[r][c] = stmt->trans->val[i][c];
+            }
+            r++;
+            if (r==stmt->dim)   break;
+        }
+    }
+
+    assert(r==stmt->dim);
+
+    return a;
 }
 
 
@@ -2065,7 +2694,7 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
     prog->hProps[level].dep_prop = SEQ;
 }
 
-int pluto_stmt_is_member_of(Stmt *s, Stmt **slist, int len)
+int pluto_stmt_is_member_of(const Stmt *s, Stmt **slist, int len)
 {
     int i;
     for (i=0; i<len; i++) {
@@ -2197,6 +2826,19 @@ int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
     return 0;
 }
 
+int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
+{
+    int max, i;
+
+    max = 0;
+
+    for (i=0; i<prog->nstmts; i++) {
+        max = PLMAX(max, pluto_stmt_get_num_ind_hyps_non_scalar(prog->stmts[i]));
+    }
+
+    return max;
+}
+
 int pluto_get_max_ind_hyps(const PlutoProg *prog)
 {
     int max, i;
@@ -2208,6 +2850,29 @@ int pluto_get_max_ind_hyps(const PlutoProg *prog)
     }
 
     return max;
+}
+
+int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt)
+{
+    int isols, i,j=0;
+
+    PlutoMatrix *tprime = pluto_matrix_dup(stmt->trans);
+
+    /* Ignore padding dimensions, params, and constant part */
+    for (i=stmt->dim_orig; i<stmt->trans->ncols; i++) {
+        pluto_matrix_remove_col(tprime, stmt->dim_orig);
+    }
+    for (i=0; i<stmt->trans->nrows; i++) {
+        if (stmt->hyp_types[i]==H_SCALAR) {   
+            pluto_matrix_remove_row(tprime, i-j); 
+            j++; 
+        }
+    }
+
+    isols = pluto_matrix_get_rank(tprime);
+    pluto_matrix_free(tprime);
+
+    return isols;
 }
 
 int pluto_stmt_get_num_ind_hyps(const Stmt *stmt)
