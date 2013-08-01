@@ -64,13 +64,15 @@ void fourier_motzkin_eliminate(PlutoConstraints *, int n);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat);
 PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints *cst);
+PlutoConstraints *pluto_constraints_from_inequalities(const PlutoMatrix *mat);
 
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *, const PlutoConstraints *);
 PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1, const PlutoConstraints *cst2);
 
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int *pluto_constraints_solve(const PlutoConstraints *);
+int *pluto_constraints_solve(const PlutoConstraints *,int);
+int *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar);
 void pluto_constraints_add_inequality(PlutoConstraints *cst);
 void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos);
@@ -94,19 +96,42 @@ void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
 PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
+PlutoConstraints *pluto_constraints_from_matrix(const PlutoMatrix *mat);
+PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func);
+void pluto_constraints_project_out(PlutoConstraints *cst, int start, int end);
+
 
 int pluto_constraints_num_in_list(const PlutoConstraints *const cst);
+
+PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_difference(const PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_subtract(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+PlutoConstraints *pluto_constraints_unionize(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2);
 
+int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int depth, int *ub);
+int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int depth, int *lb);
+
 int pluto_constraints_is_empty(const PlutoConstraints *cst);
+int pluto_constraints_are_equal(const PlutoConstraints *cst1, const PlutoConstraints *cst2);
 
 PlutoConstraints *pluto_constraints_empty(int ncols);
 PlutoConstraints *pluto_constraints_universe(int ncols);
 
-/*
- * Construct a non-parametric basic set from the constraints in cst.
- */
+void print_polylib_visual_sets(char* name, PlutoConstraints *cst);
+void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst);
+
+__isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst);
+PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set);
 __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
         const PlutoConstraints *cst);
 PlutoConstraints *isl_basic_set_to_pluto_constraints(

@@ -342,7 +342,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst->val = newcstmat->val;
 
     // IF_DEBUG(dump_poly(newcst));
-    sol = pluto_constraints_solve(newcst);
+    sol = pluto_constraints_solve(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* Put it back so that it can be freed correctly */
     newcst->val = save;
 

@@ -26,13 +26,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <limits.h>
 
 #include "math_support.h"
 #include "constraints.h"
 #include "pluto.h"
-
-#include "isl/map.h"
-#include "isl/set.h"
 
 #include "piplib/piplib64.h"
 
@@ -595,6 +593,48 @@ PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst)
 }
 
 
+/* Create pluto_constraints from polylib-style matrix  */
+PlutoConstraints *pluto_constraints_from_matrix(const PlutoMatrix *mat)
+{
+    int i, j;
+    PlutoConstraints *cst;
+
+    cst = pluto_constraints_alloc(mat->nrows, mat->ncols-1);
+
+    cst->nrows = mat->nrows;
+
+    for (i=0; i<cst->nrows; i++)    {
+        cst->is_eq[i] = (mat->val[i][0] == 0);
+        for (j=0; j<cst->ncols; j++)    {
+            cst->val[i][j] = mat->val[i][j+1];
+        }
+    }
+
+    return cst;
+}
+
+/* Create pluto_constraints from matrix  */
+PlutoConstraints *pluto_constraints_from_inequalities(const PlutoMatrix *mat)
+{
+    int i, j;
+    PlutoConstraints *cst;
+
+    cst = pluto_constraints_alloc(mat->nrows, mat->ncols);
+    cst->nrows = mat->nrows;
+
+    for (i=0; i<cst->nrows; i++)    {
+        cst->is_eq[i] = 0;
+        for (j=0; j<cst->ncols; j++)    {
+            cst->val[i][j] = mat->val[i][j];
+        }
+    }
+    return cst;
+}
+
+
+
+
+
 /* Read constraints in polylib format from a file */
 PlutoConstraints *pluto_constraints_read(FILE *fp)
 {
@@ -674,54 +714,9 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
     return pmat;
 }
 
-/* Use isl to solve these constraints */
-int *pluto_constraints_solve_isl(const PlutoConstraints *cst) 
-{
-  int i, *sol;
-  isl_ctx *ctx;
-  isl_basic_set *bset, *all_positive;
-  isl_set *domain, *all_positive_set, *lexmin;
-
-  assert(cst->next == NULL);
-
-  ctx = isl_ctx_alloc();
-  bset = isl_basic_set_from_pluto_constraints(ctx, cst);
-  domain = isl_set_from_basic_set(bset);
-
-  // Allow only positive values.
-  all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
-  all_positive_set = isl_set_from_basic_set(all_positive);
-  domain = isl_set_intersect(domain, all_positive_set);
-
-  // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
-  lexmin = isl_set_lexmin(domain);
-
-  if (isl_set_is_empty(lexmin))
-    return NULL;
-
-  int num_dimensions = isl_set_n_dim(lexmin);
-  sol = (int *) malloc((num_dimensions)*sizeof(int));
-
-  // As the set is non parametric, there is only a single point in the set.
-  // This point is the lexicographic minimum of the set.
-  isl_point *p = isl_set_sample_point(lexmin);
-
-  for (i = 0; i < num_dimensions; i++) {
-    isl_int v;
-    isl_int_init(v);
-    isl_point_get_coordinate(p, isl_dim_set, i, &v);
-    sol[i] = isl_int_get_si(v);
-    isl_int_clear(v);
-  }
-
-  isl_point_free(p);
-  isl_ctx_free(ctx);
-
-  return sol;
-}
-
-/* Use PIP to solve these constraints */
-int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
+/* Use PIP to solve these constraints (solves for the first element
+ * if it's a list of constraints) */
+int *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
 {
     int bignum, i;
     PipMatrix  *domain, *context;
@@ -736,20 +731,25 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
     /* Convert constraints to PIP format */
     pluto_constraints_to_pip_matrix(cst, pipmat);
 
-    /* First column says whether it's an inequality and the last is for the constant;
-     * so we have ncols-2 variables */
-
+    /* First column says whether it's an inequality and  
+     * the last is for the constant; so we have ncols-2 variables */
     context = NULL;
     bignum = -1;
 
     domain = pip_matrix_populate(pipmat->val, pipmat->nrows, 
             pipmat->ncols);
+
     pipOptions = pip_options_init();
+
+    if(negvar == 1) {
+        pipOptions->Urs_parms=1;
+        pipOptions->Urs_unknowns=1;
+    }
 
     /* IF_DEBUG2(fprintf(stdout, "Calling PIP on a %dx%d formulation\n", 
        pipmat->nrows, pipmat->ncols)); */
 
-    solution = pip_solve(domain,context,bignum,pipOptions) ;
+    solution = pip_solve(domain, context, bignum, pipOptions) ;
 
     // IF_DEBUG2(pip_quast_print(stdout, solution, 0));
 
@@ -783,11 +783,11 @@ int *pluto_constraints_solve_pip(const PlutoConstraints *cst)
 }
 
 /* Solve these constraints */
-int *pluto_constraints_solve(const PlutoConstraints *cst) {
+int *pluto_constraints_solve(const PlutoConstraints *cst, int negvar) {
     if (options->islsolve) {
-        return pluto_constraints_solve_isl(cst);
+        return pluto_constraints_solve_isl(cst, negvar);
     }else{
-        return pluto_constraints_solve_pip(cst);
+        return pluto_constraints_solve_pip(cst, negvar);
     }
 }
 
@@ -1120,6 +1120,52 @@ PlutoConstraints *pluto_constraints_to_pure_inequalities(const PlutoConstraints 
 }
 
 
+/* start: 0-indexed */
+void pluto_constraints_project_out_single(
+        PlutoConstraints *cst, 
+        int start, 
+        int num)
+{
+    int i, end;
+
+    assert(num>= 0);
+
+    if (num == 0)   return;
+
+    end = start + num - 1;
+
+    assert(start >= 0 && end <= cst->ncols-2);
+
+    PlutoMatrix *func = pluto_matrix_alloc(cst->ncols-num, cst->ncols);
+    pluto_matrix_initialize(func, 0);
+    for (i=0; i<start; i++) {
+        func->val[i][i] = 1;
+    }
+    for (i=end+1; i<cst->ncols; i++) {
+        func->val[i-num][i] = 1;
+    }
+
+    PlutoConstraints *img =  pluto_constraints_image(cst, func);
+    pluto_constraints_copy_single(cst, img);
+
+    pluto_constraints_free(img);
+    pluto_matrix_free(func);
+}
+
+/* start: 0-indexed */
+void pluto_constraints_project_out(
+        PlutoConstraints *cst, 
+        int start, 
+        int num)
+{
+    pluto_constraints_project_out_single(cst, start, num);
+
+    if (cst->next != NULL)  {
+        pluto_constraints_project_out(cst->next, start, num);
+    }
+}
+
+
 void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
         int col2)
 {
@@ -1133,8 +1179,10 @@ void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
         cst->val[r][col2] = tmp;
     }
 
-    if(cst->next != NULL)
-        pluto_constraints_interchange_cols(cst->next, col1, col2);
+    if(cst->next != NULL) {
+    	pluto_constraints_interchange_cols(cst->next, col1, col2);
+    }
+
 }
 
 
@@ -1154,7 +1202,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_remove_row(check, i); 
         pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
-        if (!pluto_constraints_solve(check))  {
+        if (!pluto_constraints_solve(check,DO_NOT_ALLOW_NEGATIVE_COEFF))  {
             // printf("%dth constraint is redundant\n", i);
             count++;
         }else{
@@ -1170,6 +1218,28 @@ int pluto_constraints_num_in_list(const PlutoConstraints *const cst)
     if (cst == NULL)  return 0;
 
     return 1 + pluto_constraints_num_in_list(cst->next);
+}
+
+/* In-place union: first argument is modified */
+PlutoConstraints *pluto_constraints_unionize(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *ucst = pluto_constraints_union(cst1, cst2);
+    pluto_constraints_copy(cst1, ucst);
+    pluto_constraints_free(ucst);
+    return cst1;
+}
+
+
+/* In-place intersection: first argument is modified */
+PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *icst = pluto_constraints_intersection(cst1, cst2);
+    pluto_constraints_copy(cst1, icst);
+    pluto_constraints_free(icst);
+
+    return cst1;
 }
 
 
@@ -1195,7 +1265,7 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst)
     int *sol;
     bool is_empty;
 
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     is_empty = (sol == NULL);
     if (sol != NULL) free(sol);
@@ -1220,210 +1290,296 @@ PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1,
 }
 
 
-/*
- * Construct a non-parametric basic set from the constraints in cst;
- * uses the first element in cst
- */
-__isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
-       isl_ctx *ctx, const PlutoConstraints *cst)
+/* Get lower bound for pos^th variable if it's a (single) constant: return 0 
+ * if not constant, 1 otherwise */
+int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int pos, 
+        int *lb)
 {
-    int i, j;
-    int n_eq = 0, n_ineq = 0;
-    isl_int v;
-    isl_dim *dim;
-    isl_mat *eq, *ineq;
-    isl_basic_set *bset;
+    int i, retval;
 
-    isl_int_init(v);
+    PlutoConstraints *cst = pluto_constraints_dup(cnst);
 
-    for (i = 0; i < cst->nrows; ++i)
-        if (cst->is_eq[i])
-            n_eq++;
+    pluto_constraints_project_out_single(cst, 0, pos);
+    pluto_constraints_project_out_single(cst, 1, cst->ncols-2);
+
+    retval = 0;
+    *lb = INT_MIN;
+    for (i=0; i<cst->nrows; i++) {
+        if (cst->is_eq[i]) {
+            *lb = cst->val[i][cst->ncols-1];
+            retval = 1;
+            break;
+        }
+        if (!cst->is_eq[i] && cst->val[i][0] >= 1) {
+            retval = 1;
+            *lb = PLMAX(*lb,-cst->val[i][cst->ncols-1]);
+        }
+    }
+    pluto_constraints_free(cst);
+
+    if (retval && cnst->next != NULL) {
+        int next_lb;
+        retval = pluto_constraints_get_const_lb(cnst->next, pos, &next_lb);
+        if (*lb != next_lb)  retval = 0;
+    }
+
+    return retval;
+}
+
+
+/* Get upper bound for the pos^th variable if it's a (single) constant: return 
+ * 0 if not constant,  1 otherwise */
+int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos, 
+        int *ub)
+{
+    int i, retval;
+
+    PlutoConstraints *cst = pluto_constraints_dup(cnst);
+
+    pluto_constraints_project_out_single(cst, 0, pos);
+    pluto_constraints_project_out_single(cst, 1, cst->ncols-2);
+    //pluto_constraints_project_out_single_isl(cst, 0, pos);
+    //pluto_constraints_project_out_single_isl(cst, 1, cst->ncols-2);
+
+    retval = 0;
+    *ub = INT_MAX;
+    for (i=0; i<cst->nrows; i++) {
+        if (cst->is_eq[i]) {
+            *ub = cst->val[i][cst->ncols-1];
+            retval = 1;
+            break;
+        }
+        if (!cst->is_eq[i] && cst->val[i][0] <= -1) {
+            *ub = PLMIN(*ub,cst->val[i][cst->ncols-1]);
+            retval = 1;
+        }
+    }
+    pluto_constraints_free(cst);
+
+    if (retval && cnst->next != NULL) {
+        int next_ub;
+        retval = pluto_constraints_get_const_ub(cnst->next, pos, &next_ub);
+        if (*ub != next_ub)  retval = 0;
+    }
+
+    return retval;
+}
+
+void print_polylib_visual_sets_internal(char* str, int k,  PlutoConstraints *cst){
+    int i, j, first = 0;
+	char name[100];
+
+	sprintf(name, "%si%d", str, k);
+
+    printf("%s := { ", name );
+    for( i=0; i<cst->ncols-1; i++){
+        if(i == cst->ncols-2)
+            printf("t%d | ", i);
         else
-            n_ineq++;
-
-    eq = isl_mat_alloc(ctx, n_eq, cst->ncols);
-    ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
-
-    dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
-
-    n_eq = n_ineq = 0;
-    for (i = 0; i < cst->nrows; ++i) {
-        isl_mat **m;
-        int row;
-
-        if (cst->is_eq[i]) {
-            m = &eq;
-            row = n_eq++;
-        } else {
-            m = &ineq;
-            row = n_ineq++;
-        }
-
-        for (j = 0; j < cst->ncols; ++j) {
-            isl_int_set_si(v, cst->val[i][j]);
-            *m = isl_mat_set_element(*m, row, j, v);
-        }
+            printf("t%d,", i);
     }
 
-    isl_int_clear(v);
+    for(i=0; i<cst->nrows; i++ ){
+        first = 0;
+        for(j=0; j<cst->ncols-1; j++){
+            if(cst->val[i][j] == 0)
+                continue;
 
-    bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
-                isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
-    return bset;
-}
-
-/*
- * Construct a non-parametric basic map from the constraints in cst
- */
-__isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
-       isl_ctx *ctx, const PlutoConstraints *cst, int n_in, int n_out,
-       int n_par)
-{
-    int i, j;
-    int n_eq = 0, n_ineq = 0;
-    isl_int v;
-    isl_mat *eq, *ineq;
-    isl_basic_map *bmap;
-    isl_space *space;
-
-    assert(cst->ncols == n_in + n_out + n_par + 1);
-
-    space = isl_space_alloc(ctx, n_par, n_in, n_out);
-
-    isl_int_init(v);
-
-    for (i = 0; i < cst->nrows; ++i) {
-        if (cst->is_eq[i]) n_eq++;
-        else n_ineq++;
-    }
-
-    eq = isl_mat_alloc(ctx, n_eq, cst->ncols);
-    ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
-
-    n_eq = n_ineq = 0;
-    for (i = 0; i < cst->nrows; ++i) {
-        isl_mat **m;
-        int row;
-
-        if (cst->is_eq[i]) {
-            m = &eq;
-            row = n_eq++;
-        } else {
-            m = &ineq;
-            row = n_ineq++;
+            if(first == 0){
+                first = 1;
+                if(cst->val[i][j] == 1)
+                    printf("t%d", j);
+                else if(cst->val[i][j] == -1)
+                    printf("-t%d", j);
+                else if(cst->val[i][j] != 0)
+                    printf("%d*t%d", cst->val[i][j], j);
+            }
+            else {
+                first = 1;
+                if(cst->val[i][j] == 1)
+                    printf("+t%d", j);
+                else if(cst->val[i][j] == -1)
+                    printf("-t%d", j);
+                else if(cst->val[i][j] != 0)
+                    printf("%+d*t%d", cst->val[i][j], j);
+            }
         }
 
-        for (j = 0; j < cst->ncols; ++j) {
-            isl_int_set_si(v, cst->val[i][j]);
-            *m = isl_mat_set_element(*m, row, j, v);
+        if(cst->val[i][j] != 0){
+            if(first != 0)
+                printf("%+d", cst->val[i][j]);
+            else
+                printf("%d", cst->val[i][j]);
         }
+
+        printf("%s0 ", cst->is_eq[i]?"=":">=" );
+        if(i != cst->nrows -1)
+            printf(",");
     }
 
-    isl_int_clear(v);
+    printf("};\n\n");
 
-    bmap = isl_basic_map_from_constraint_matrices(space, eq, ineq,
-            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
-    return bmap;
+    if(cst->next != NULL)
+        print_polylib_visual_sets_internal(str,k+1,  cst->next);
 }
 
 
-/* Convert an isl_basic_set to PlutoConstraints */
-PlutoConstraints *isl_basic_set_to_pluto_constraints(
-        __isl_keep isl_basic_set *bset)
-{
-    int i, j;
-    int eq_row;
-    int ineq_row;
-    int n_col;
-    isl_int v;
-    isl_mat *eq, *ineq;
-    PlutoConstraints *cons;
 
-    isl_int_init(v);
+void print_polylib_visual_sets_internal_new(char* str, int k,  PlutoConstraints *cst) {
 
-    eq = isl_basic_set_equalities_matrix(bset,
-            isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
-    ineq = isl_basic_set_inequalities_matrix(bset,
-            isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
+    int i, j, first = 0;
+	char name[100];
 
-    eq_row = isl_mat_rows(eq);
-    ineq_row = isl_mat_rows(ineq);
-    n_col = isl_mat_cols(eq);
+	sprintf(name, "%s%d", str, k);
 
-    cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
-    cons->nrows = eq_row + ineq_row;
-
-    for (i = 0; i < eq_row; ++i) {
-        cons->is_eq[i] = 1;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(eq, i, j, &v);
-            cons->val[i][j] = isl_int_get_si(v);
-        }
+    printf("%s := { ", name );
+    for( i=0; i<cst->ncols-1; i++){
+        if(i == cst->ncols-2)
+            printf("t%d | ", i);
+        else
+            printf("t%d,", i);
     }
 
-    for (i = 0; i < ineq_row; ++i) {
-        cons->is_eq[eq_row+i] = 0;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(ineq, i, j, &v);
-            cons->val[eq_row + i][j] = isl_int_get_si(v);
+    for(i=0; i<cst->nrows; i++ ){
+        first = 0;
+        for(j=0; j<cst->ncols-1; j++){
+            if(cst->val[i][j] == 0)
+                continue;
+
+            if(first == 0){
+                first = 1;
+                if(cst->val[i][j] == 1)
+                    printf("t%d", j);
+                else if(cst->val[i][j] == -1)
+                    printf("-t%d", j);
+                else if(cst->val[i][j] != 0)
+                    printf("%d*t%d", cst->val[i][j], j);
+            }
+            else {
+                first = 1;
+                if(cst->val[i][j] == 1)
+                    printf("+t%d", j);
+                else if(cst->val[i][j] == -1)
+                    printf("-t%d", j);
+                else if(cst->val[i][j] != 0)
+                    printf("%+d*t%d", cst->val[i][j], j);
+            }
         }
+
+        if(cst->val[i][j] != 0){
+            if(first != 0)
+                printf("%+d", cst->val[i][j]);
+            else
+                printf("%d", cst->val[i][j]);
+        }
+
+        printf("%s0 ", cst->is_eq[i]?"=":">=" );
+        if(i != cst->nrows -1)
+            printf(",");
     }
 
-    isl_mat_free(eq);
-    isl_mat_free(ineq);
+    printf("};\n\n");
 
-    isl_int_clear(v);
-
-    return cons;
+    if(cst->next != NULL)
+        print_polylib_visual_sets_internal(str,k+1,  cst->next);
 }
 
-/* Convert an isl_basic_map to a PlutoConstraints object */
-PlutoConstraints *isl_basic_map_to_pluto_constraints(
-        __isl_keep isl_basic_map *bmap)
-{
-    int i, j;
-    int eq_row;
-    int ineq_row;
-    int n_col;
-    isl_int v;
-    isl_mat *eq, *ineq;
-    PlutoConstraints *cons;
+void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst){
+	print_polylib_visual_sets_internal_new(name, 0, cst);
+	return;
+}
 
-    isl_int_init(v);
+void print_polylib_visual_sets(char* name, PlutoConstraints *cst){
+	print_polylib_visual_sets_internal(name, 0, cst);
+	return;
+}
 
-    eq = isl_basic_map_equalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
-    ineq = isl_basic_map_inequalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
+PlutoDepList* pluto_dep_list_alloc(Dep *dep){
+    PlutoDepList *list = (PlutoDepList *)malloc(sizeof(PlutoDepList));
+    assert(dep!= NULL);
+    //list->dep = pluto_dependence_dup(dep, dep->dpolytope);
+    list->dep = dep;
+    list->next = NULL;
+    return list;
+}
 
-    eq_row = isl_mat_rows(eq);
-    ineq_row = isl_mat_rows(ineq);
-    n_col = isl_mat_cols(eq);
+void pluto_deps_list_free(PlutoDepList *deplist) {
+    if (deplist == NULL)
+        return;
+    pluto_deps_list_free(deplist->next);
+}
 
-    cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
-    cons->nrows = eq_row + ineq_row;
+PlutoDepList* pluto_deps_list_dup(PlutoDepList *src){
 
-    for (i = 0; i < eq_row; ++i) {
-        cons->is_eq[i] = 1;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(eq, i, j, &v);
-            cons->val[i][j] = isl_int_get_si(v);
-        }
+    assert(src != NULL);
+
+    PlutoDepList *new = pluto_dep_list_alloc(src->dep);
+
+    if(src->next != NULL) {
+        new->next = pluto_deps_list_dup(src->next);
     }
 
-    for (i = 0; i < ineq_row; ++i) {
-        cons->is_eq[eq_row+i] = 0;
-        for (j = 0; j < n_col; ++j) {
-            isl_mat_get_element(ineq, i, j, &v);
-            cons->val[eq_row + i][j] = isl_int_get_si(v);
-        }
+    return new;
+}
+
+
+void pluto_deps_list_append(PlutoDepList *list, Dep *dep) {
+
+    assert(list != NULL);
+    assert(dep != NULL);
+
+    PlutoDepList *new = pluto_dep_list_alloc(dep);
+    new->next = list->next;
+    list->next = new;
+
+    return;
+}
+
+PlutoConstraintsList* pluto_constraints_list_alloc(PlutoConstraints *cst) {
+
+    PlutoConstraintsList *list = (PlutoConstraintsList *)malloc(sizeof(PlutoConstraintsList));
+    list->constraints = cst;
+    list->deps = NULL;
+    list->next = NULL;
+    return list;
+}
+
+void pluto_constraints_list_free(PlutoConstraintsList *cstlist) {
+    if (cstlist == NULL)
+        return;
+    pluto_constraints_list_free(cstlist->next);
+    pluto_constraints_free(cstlist->constraints);
+    pluto_deps_list_free(cstlist->deps);
+}
+
+/*adds a new element to constraints list
+*/
+void pluto_constraints_list_add(PlutoConstraintsList *list,const PlutoConstraints *cst, Dep *dep, int copyDep) {
+
+    assert(list != NULL);
+    assert(cst != NULL);
+
+    PlutoConstraintsList *new = pluto_constraints_list_alloc(pluto_constraints_dup(cst));
+    new->next = list->next;
+    list->next = new;
+
+    if(copyDep) {
+        new->deps = pluto_deps_list_dup(list->deps);
+        pluto_deps_list_append(new->deps,dep);
     }
+    else {
+        new->deps = pluto_dep_list_alloc(dep);
+    }
+    return;
+}
 
-    isl_mat_free(eq);
-    isl_mat_free(ineq);
+void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints *cst) {
 
-    isl_int_clear(v);
+    assert(list != NULL);
+    assert(cst != NULL);
 
-    return cons;
+    pluto_constraints_free(list->constraints);
+    list->constraints = pluto_constraints_dup(cst);
+
+    return;
 }

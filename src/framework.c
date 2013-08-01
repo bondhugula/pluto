@@ -471,6 +471,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
             total_cst_rows += depcst[i]->nrows;
+            /* IF_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1)); */
+            /* IF_DEBUG(pluto_constraints_pretty_print(stdout, depcst[i])); */
         }
     }
 
@@ -524,7 +526,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
     pluto_constraints_simplify(globcst);
 
-    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d\n", globcst->nrows));
+    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, \
+num variables: %d\n", globcst->nrows, globcst->ncols-1));
 
     return globcst;
 }
@@ -834,7 +837,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     retval = (sol)? false:true;
@@ -886,18 +889,14 @@ static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int leve
 
     cst->nrows = 1;
 
-    /* UB: assert since intersect/subtract are not in */
-    assert(0);
-    //UB: commenting temp
-    //pluto_constraints_intersect(cst, dep->depsat_poly);
+    pluto_constraints_intersect(cst, dep->depsat_poly);
+    // pluto_constraints_print(stdout, cst);
 
     retval = !pluto_constraints_is_empty(cst);
     //printf("Constraints are empty: %d\n", !retval);
 
     /* All solutions are those that are satisfied */
-
-    //UB: commenting temp
-    //pluto_constraints_subtract(dep->depsat_poly,cst);
+    pluto_constraints_subtract(dep->depsat_poly,cst);
     pluto_constraints_free(cst);
 
     return retval;
@@ -918,7 +917,9 @@ void pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
         int level;
         Dep *dep = prog->deps[i];
 
-        if (dep->depsat_poly != NULL)   pluto_constraints_free(dep->depsat_poly);
+        if (dep->depsat_poly != NULL)   {
+            pluto_constraints_free(dep->depsat_poly);
+        }
         dep->depsat_poly = pluto_constraints_dup(dep->dpolytope);
 
         if (dep->satvec != NULL) free(dep->satvec);
@@ -993,7 +994,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int *sol = pluto_constraints_solve(cst);
+    int *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         for (j=0; j<src_dim; j++)    {
@@ -1008,7 +1009,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
         pluto_constraints_add(cst, dep->dpolytope);
 
-        sol = pluto_constraints_solve(cst);
+        sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
         if (!sol)   {
@@ -1039,7 +1040,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         pluto_constraints_free(cst);
@@ -1067,7 +1068,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     pluto_constraints_add(cst, dep->dpolytope);
 
     free(sol);
-    sol = pluto_constraints_solve(cst);
+    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     if (!sol)   {   
