@@ -334,19 +334,15 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
             }
         }
     }
-    /* matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
-    /* matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
+    /* pluto_matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
+    /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
-    /* Save it so that it can be put back and freed correctly */
-    int **save = newcst->val;
-    newcst->val = newcstmat->val;
+    PlutoConstraints *newcst_permuted;
+    newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
 
-    // IF_DEBUG(dump_poly(newcst));
-    sol = pluto_constraints_solve(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
-    /* Put it back so that it can be freed correctly */
-    newcst->val = save;
+    sol = pluto_constraints_solve(newcst_permuted,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
-    pluto_matrix_free(newcstmat);
+    pluto_constraints_free(newcst_permuted);
 
     fsol = NULL;
     if (sol != NULL)    {
