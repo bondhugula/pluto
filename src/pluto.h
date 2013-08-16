@@ -381,6 +381,9 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
+PlutoConstraints *pluto_compute_region_data(const Stmt *stmt, const PlutoConstraints *dom,
+        const PlutoAccess *acc, int copy_level, const PlutoProg *prog);
+
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
 Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtType);
