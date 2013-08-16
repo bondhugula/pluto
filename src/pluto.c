@@ -1858,4 +1858,63 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
             pluto_constraints_free(cst_l);
         }
     }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        Dep *dep = prog->transdeps[i];
+        if (stmts[dep->src] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *tstmt = stmts[dep->dest];
+            for (c=0; c<tstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, stmt->dim);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+        if (stmts[dep->dest] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *sstmt = stmts[dep->src];
+            for (c=0; c<sstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, 0);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+    }
+}
+
+
+/*
+ * Detect scattering functions that map to a single value, and modify the
+ * scattering function to set it to that value; if the domain is  empty, this 
+ * function ends up setting all of the scattering functions to zero */
+void pluto_detect_scalar_dimensions(PlutoProg *prog)
+{
+    int s, d;
+
+    for (s=0; s<prog->nstmts; s++) {
+        Stmt *stmt = prog->stmts[s];
+        PlutoConstraints *newdom = pluto_get_new_domain(stmt);
+
+        /* If it's empty, we'll just change it to zero */
+        int is_empty = pluto_constraints_is_empty(newdom);
+        if (is_empty) {
+            for (d=0; d<stmt->trans->nrows; d++) {
+                pluto_matrix_zero_row(stmt->trans, d);
+            }
+            continue;
+        }
+
+        for (d=0; d<stmt->trans->nrows; d++) {
+            int is_const_ub, is_const_lb, ub, lb;
+            is_const_lb = pluto_constraints_get_const_lb(newdom, d, &lb);
+            is_const_ub = pluto_constraints_get_const_ub(newdom, d, &ub);
+            if (is_const_lb && is_const_ub) {
+                if (ub == lb) {
+                    pluto_matrix_zero_row(stmt->trans, d);
+                    stmt->trans->val[d][stmt->trans->ncols-1] = -lb;
+                }
+            }
+        }
+        pluto_constraints_free(newdom);
+    }
 }

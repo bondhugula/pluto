@@ -216,6 +216,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
             free(groups[i]);
         }
 
+        free(num_stmts_per_grp);
         free(groups);
     }
 
@@ -290,25 +291,21 @@ static int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
     return 1;
 }
 
-/* For sorting loops based on depth in descending order */
-int loop_compar(const void *_l1, const void *_l2)
+/* For sorting loops in increasing order of their depths */
+int pluto_loop_compar(const void *_l1, const void *_l2)
 {
-    Ploop *l1 = (Ploop *) _l1;
-    Ploop *l2 = (Ploop *) _l2;
+    Ploop *l1 = *(Ploop **) _l1;
+    Ploop *l2 = *(Ploop **) _l2;
 
     if (l1->depth < l2->depth) {
-        return 1;
-    }else if (l1->depth == l2->depth) {
+        return -1;
+    }
+    
+    if (l1->depth == l2->depth) {
         return 0;
     }
 
-    return -1;
-}
-
-void sort(Ploop **loops, int nloops)
-{
-    /* Sort in descending order of depths */
-    qsort(loops, nloops, sizeof(Ploop *), loop_compar);
+    return 1;
 }
 
 
@@ -340,6 +337,7 @@ Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops)
 }
 
 
+/* List of parallel loops such that no loop dominates another in the list */
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *ndploops)
 {
     Ploop **loops, **tmp_loops, **dom_loops;
@@ -445,8 +443,8 @@ void pluto_bands_concat(Band ***bands1, int num1, Band **bands2, int num2)
 
 
 
-/* Is band1 dominated by band2; a band is dominated by another if it either
- * completely includes it or covers it in the tree */
+/* Is band1 dominated by band2; a band is dominated by another if the latter either
+ * completely includes the former or the former is in the subtree rooted at the parent */
 static int is_band_dominated(Band *band1, Band *band2)
 {
     int is_subset = pluto_stmt_is_subset_of(band1->loop->stmts, band1->loop->nstmts,

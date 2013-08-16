@@ -52,6 +52,53 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
     prog->deps[prog->ndeps-1] = dep;
 }
 
+/*
+ * Computes the transitive dependence via dep1 and dep2 
+ * Note: dep1's target statement should be same as dep2's source
+ */
+Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog)
+{
+    int i;
+
+    assert(dep1->dest == dep2->src);
+
+    Stmt *s1 = prog->stmts[dep1->src];
+    Stmt *s2 = prog->stmts[dep2->src];
+    Stmt *s3 = prog->stmts[dep2->dest];
+
+    PlutoConstraints *d1 = pluto_constraints_dup(dep1->dpolytope);
+    PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
+
+    for (i=0; i<s3->dim ; i++) {
+        pluto_constraints_add_dim(d1, s1->dim+s2->dim);
+    }
+    for (i=0; i<s1->dim; i++) {
+        pluto_constraints_add_dim(d2, 0);
+    }
+
+    PlutoConstraints *d3poly = pluto_constraints_dup(d1);
+    pluto_constraints_add(d3poly, d2);
+
+    pluto_constraints_project_out(d3poly, s1->dim, s2->dim);
+    pluto_constraints_free(d1);
+    pluto_constraints_free(d2);
+
+    if (pluto_constraints_is_empty(d3poly)) {
+        pluto_constraints_free(d3poly);
+        return NULL;
+    }
+
+    Dep *dep = pluto_dep_alloc();
+
+    dep->src = dep1->src;
+    dep->dest = dep2->dest;
+    dep->src_acc = dep1->src_acc;
+    dep->dest_acc = dep2->dest_acc;
+
+    dep->dpolytope = d3poly;
+
+    return dep;
+}
 
 PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
 {
@@ -1057,7 +1104,8 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map *write;
     isl_union_map *read;
     isl_union_map *schedule;
-    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
+    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war;
+    isl_union_map *trans_dep_waw;
     scoplib_statement_p stmt;
 
     ctx = isl_ctx_alloc();
@@ -1193,46 +1241,75 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 &dep_waw, &dep_war, NULL, NULL);
-        if (options->rar)
+        // compute WAR dependences which may contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(read),
+                isl_union_map_copy(schedule),
+                NULL, &trans_dep_war, NULL, NULL);
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(write),
+                isl_union_map_copy(schedule),
+                NULL, &trans_dep_waw, NULL, NULL);
+        if (options->rar) {
+            // compute RAR dependences which do not contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
                     isl_union_map_copy(read),
                     isl_union_map_copy(empty),
                     isl_union_map_copy(schedule),
                     &dep_rar, NULL, NULL, NULL);
+        }
     }else {
+        // compute RAW dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(read),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(write),
                 isl_union_map_copy(schedule),
                 NULL, &dep_raw, NULL, NULL);
+        // compute WAR dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 NULL, &dep_war, NULL, NULL);
+        // compute WAW dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(write),
                 isl_union_map_copy(schedule),
                 NULL, &dep_waw, NULL, NULL);
-        if (options->rar)
+        if (options->rar) {
+            // compute RAR dependences which may contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
                     isl_union_map_copy(empty),
                     isl_union_map_copy(read),
                     isl_union_map_copy(schedule),
                     NULL, &dep_rar, NULL, NULL);
+        }
     }
 
     dep_raw = isl_union_map_coalesce(dep_raw);
     dep_war = isl_union_map_coalesce(dep_war);
     dep_waw = isl_union_map_coalesce(dep_waw);
     dep_rar = isl_union_map_coalesce(dep_rar);
+    if (options->lastwriter) {
+        trans_dep_war = isl_union_map_coalesce(trans_dep_war);
+        trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
+    }
 
     prog->ndeps = 0;
     isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ndeps);
+    if (options->lastwriter) {
+        prog->ntransdeps = 0;
+        isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_waw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ntransdeps);
+    }
 
     prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
     for (i=0; i<prog->ndeps; i++) {
@@ -1243,11 +1320,29 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, CANDL_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, CANDL_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, CANDL_RAR);
+    if (options->lastwriter) {
+        prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
+        for (i=0; i<prog->ntransdeps; i++) {
+            prog->transdeps[i] = pluto_dep_alloc();
+        }
+        prog->ntransdeps = 0;
+        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_raw, CANDL_RAW);
+        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_war, CANDL_WAR);
+        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_waw, CANDL_WAW);
+        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_rar, CANDL_RAR);
+    }else{
+        prog->transdeps = NULL;
+        prog->ntransdeps = 0;
+    }
 
     isl_union_map_free(dep_raw);
     isl_union_map_free(dep_war);
     isl_union_map_free(dep_waw);
     isl_union_map_free(dep_rar);
+    if (options->lastwriter) {
+        isl_union_map_free(trans_dep_war);
+        isl_union_map_free(trans_dep_waw);
+    }
 
     isl_union_map_free(empty);
     isl_union_map_free(write);
@@ -1272,7 +1367,6 @@ scoplib_matrix_p get_identity_schedule(int dim, int npar){
     return smat;
 
 }
-
 
 /* 
  * Extract necessary information from clan_scop to create PlutoProg - a
@@ -1332,6 +1426,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     }
 
     prog->stmts = scoplib_to_pluto_stmts(scop);
+    prog->scop = scop;
 
     /* Compute dependences */
     if (options->isldep) {
@@ -1355,6 +1450,9 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         candl_options_free(candlOptions);
         candl_dependence_free(candl_deps);
         candl_program_free(candl_program);
+
+        prog->transdeps = NULL;
+        prog->ntransdeps = 0;
     }
 
     /* Add hyperplanes */
@@ -1657,6 +1755,17 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
                     prog->stmts[prog->deps[i]->src]->dim+pos);
         }
     }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        assert(prog->transdeps[i] != NULL);
+        if (prog->transdeps[i]->src == stmt->id) {
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos);
+        }
+        if (prog->transdeps[i]->dest == stmt->id) {
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, 
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
+        }
+    }
 }
 
 /* Warning: use it only to knock off a dummy dimension (unrelated to 
@@ -1705,6 +1814,18 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
             // if (i==0)  printf("removing dim\n");
             pluto_constraints_remove_dim(prog->deps[i]->dpolytope, 
                     prog->stmts[prog->deps[i]->src]->dim+pos);
+        }
+    }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        assert(prog->transdeps[i] != NULL);
+        if (prog->transdeps[i]->src == stmt->id) {
+            pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope, pos);
+        }
+        if (prog->transdeps[i]->dest == stmt->id) {
+            // if (i==0)  printf("removing dim\n");
+            pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope,
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
         }
     }
 }

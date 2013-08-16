@@ -23,6 +23,7 @@
 #include <stdbool.h>
 
 #include "scoplib/symbol.h"
+#include "scoplib/scop.h"
 
 #include "math_support.h"
 #include "constraints.h"
@@ -55,14 +56,16 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 /* Candl dependences are not marked uniform/non-uniform */
 #define IS_UNIFORM(type) (0)
 #define IS_RAR(type) (type == CANDL_RAR)
+#define IS_RAW(type) (type == CANDL_RAW)
+#define IS_WAR(type) (type == CANDL_WAR)
+#define IS_WAW(type) (type == CANDL_WAW)
 
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
     PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
 
 
 /* ORIG is an original compute statement provided by a polyhedral extractor */
-typedef enum stmttype {ORIG=0, COPY_OUT, FLOW_COPY_IN, LW_COPY_IN, 
-    COMM_CALL, SIGMA, TAU, MISC, STMT_UNKNOWN} PlutoStmtType;
+typedef enum stmttype {ORIG=0, STMT_UNKNOWN} PlutoStmtType;
 
 typedef struct pluto_access{
     int sym_id;
@@ -161,8 +164,8 @@ struct dependence{
      * Dependence polyhedra (both src & dest) 
      * (product space)
      *
-     * [src|dest|par|const] >= 0
-     * [nvar|nvar|npar|1]
+     *        [src iterators|dest iterators | params |const] >= 0
+     * sizes: [src_dim      |dest_dim       |npar    |1    ]
      */
     PlutoConstraints *dpolytope;
 
@@ -219,8 +222,15 @@ struct plutoProg{
     int nstmts;
 
     /* Array of dependences */
+    /* Does not contain transitive dependences if options->lastwriter */
     Dep **deps;
     int ndeps;
+
+    /* Array of dependences */
+    /* Used for calculating write-out set only if options->lastwriter */
+    /* May contain transitive WAR dependences */
+    Dep **transdeps;
+    int ntransdeps;
 
     /* Array of data variable names */
     // required only by commopt_foifi option
@@ -260,6 +270,8 @@ struct plutoProg{
     PlutoConstraints *globcst;
     PlutoConstraints **depcst;
 
+    /* Pointer toScoplib structure */
+    scoplib_scop_p scop;
 };
 typedef struct plutoProg PlutoProg;
 
@@ -371,29 +383,38 @@ PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
+Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtType);
+void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
-int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
+int pluto_loop_compar(const void *_l1, const void *_l2);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
-int pluto_is_band_innermost(const Band *band, int is_tiled);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
+
+int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
+int pluto_is_band_innermost(const Band *band, int is_tiled);
+Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
+int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog);
+
+PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *dest);
+
+void pluto_detect_scalar_dimensions(PlutoProg *prog);
 
 #endif
