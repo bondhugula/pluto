@@ -43,6 +43,9 @@ struct plutoOptions{
     /* setting parameter context for cloog */
     int context;
 
+    /* Loop depth (1-indexed) to force as parallel */
+    int forceparallel;
+
     /* multiple (currently two) degrees of pipelined parallelism */
     int multipipe;
 

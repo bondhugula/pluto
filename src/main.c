@@ -58,6 +58,7 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
     fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
     fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
@@ -124,6 +125,7 @@ int main(int argc, char *argv[])
         {"cloogl", required_argument, 0, 'L'},
         {"cloogsh", no_argument, &options->cloogsh, 1},
         {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+        {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
         {"multipipe", no_argument, &options->multipipe, 1},
@@ -191,6 +193,7 @@ int main(int argc, char *argv[])
                 options->out_file = strdup(optarg);
                 break;
             case 'p':
+                options->forceparallel = atoi(optarg);
                 break;
             case 'q':
                 options->silent = 1;
