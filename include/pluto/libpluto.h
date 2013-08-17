@@ -14,6 +14,9 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
+    /* dynamic scheduling */
+    int dynschedule;
+
     /* parallelization */
     int parallel;
 
@@ -118,6 +121,38 @@ struct plutoOptions{
 
     /* Use isl as ilp solver. */
     int islsolve;
+
+    int distmem;
+
+    /*  adding support to generate opencl code */
+    int opencl; 
+
+    int commopt;
+
+    /*Communication code generation using depedence based spliting */
+    int commopt_dep_split;
+    /*use FOIFI pack for each dependence based split based on runtime heuristics*/
+    int dsfo_pack_foifi;
+    int dsfo_dup_limit;
+
+    /*Communication code generation using flow-out intersection flow-in */
+    int commopt_foifi;
+    /*Allowed duplication factor*/
+    int foifi_dup_factor;
+
+    /*Report communication for distributed memory*/
+    int commreport;
+
+    /* if true, variables are not declared globally
+     * but each variable's declaration is provided 
+     * through the macro '#define __DECLARATION_OF_<variable-name> <declaration>'*/
+    int variables_not_global;
+
+    int mpiomp;
+    int fusesends;
+    int blockcyclic;
+    int cyclesize;
+
     /* Output file name supplied from -o */
     char *out_file;
 };

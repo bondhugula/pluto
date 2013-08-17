@@ -99,6 +99,7 @@ clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.guess
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.sub
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/libtool.m4
 clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/texinfo.tex
+polyrt/Makefile
 depcomp
 install-sh
 aclocal.m4

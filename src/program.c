@@ -1241,17 +1241,19 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 &dep_waw, &dep_war, NULL, NULL);
-        // compute WAR dependences which may contain transitive dependences
-        isl_union_map_compute_flow(isl_union_map_copy(write),
-                isl_union_map_copy(empty),
-                isl_union_map_copy(read),
-                isl_union_map_copy(schedule),
-                NULL, &trans_dep_war, NULL, NULL);
-        isl_union_map_compute_flow(isl_union_map_copy(write),
-                isl_union_map_copy(empty),
-                isl_union_map_copy(write),
-                isl_union_map_copy(schedule),
-                NULL, &trans_dep_waw, NULL, NULL);
+        if (options->distmem) {
+            // compute WAR dependences which may contain transitive dependences
+            isl_union_map_compute_flow(isl_union_map_copy(write),
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(read),
+                    isl_union_map_copy(schedule),
+                    NULL, &trans_dep_war, NULL, NULL);
+            isl_union_map_compute_flow(isl_union_map_copy(write),
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(write),
+                    isl_union_map_copy(schedule),
+                    NULL, &trans_dep_waw, NULL, NULL);
+        }
         if (options->rar) {
             // compute RAR dependences which do not contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
@@ -1293,7 +1295,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     dep_war = isl_union_map_coalesce(dep_war);
     dep_waw = isl_union_map_coalesce(dep_waw);
     dep_rar = isl_union_map_coalesce(dep_rar);
-    if (options->lastwriter) {
+    if (options->lastwriter && options->distmem) {
         trans_dep_war = isl_union_map_coalesce(trans_dep_war);
         trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
     }
@@ -1303,7 +1305,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ndeps);
-    if (options->lastwriter) {
+    if (options->lastwriter && options->distmem) {
         prog->ntransdeps = 0;
         isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
         isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
@@ -1320,7 +1322,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, CANDL_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, CANDL_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, CANDL_RAR);
-    if (options->lastwriter) {
+    if (options->lastwriter && options->distmem) {
         prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
         for (i=0; i<prog->ntransdeps; i++) {
             prog->transdeps[i] = pluto_dep_alloc();
@@ -1339,7 +1341,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map_free(dep_war);
     isl_union_map_free(dep_waw);
     isl_union_map_free(dep_rar);
-    if (options->lastwriter) {
+    if (options->lastwriter && options->distmem) {
         isl_union_map_free(trans_dep_war);
         isl_union_map_free(trans_dep_waw);
     }
@@ -1366,6 +1368,202 @@ scoplib_matrix_p get_identity_schedule(int dim, int npar){
 
     return smat;
 
+}
+
+/*
+ * Computes the dependence polyhedron between the source iterators of dep1 and dep2
+ * domain1:  source iterators of dep1
+ * domain2:  source iterators of dep2
+ * dep1: first dependence
+ * dep2: second dependence
+ * access_matrix: access function matrix for source iterators of dep2. pass NULL to use access function in dep2
+ * returns dependence polyhedron
+ */
+
+PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstraints *domain2, Dep *dep1, Dep *dep2,
+        PlutoProg *prog, PlutoMatrix *access_matrix)
+{
+    int i, *divs;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_space *param_space;
+    isl_set *context;
+    isl_union_map *empty;
+    isl_union_map *write;
+    isl_union_map *read;
+    isl_union_map *schedule;
+    isl_union_map *dep_raw;
+
+    ctx = isl_ctx_alloc();
+    assert(ctx);
+
+    dim = isl_dim_set_alloc(ctx, prog->npar , 0);
+    dim = set_names(dim, isl_dim_param,prog->params );
+    param_space = isl_space_params(isl_space_copy(dim));
+    context = scoplib_matrix_to_isl_set(pluto_constraints_to_scoplib_matrix(prog->context), param_space);
+
+    empty = isl_union_map_empty(isl_dim_copy(dim));
+    write = isl_union_map_empty(isl_dim_copy(dim));
+    read = isl_union_map_empty(isl_dim_copy(dim));
+    schedule = isl_union_map_empty(dim);
+
+    isl_set *dom;
+
+    //Add the source iterators of dep1 and corresponding access function to isl
+    PlutoConstraints *source_iterators = domain2;
+    PlutoAccess *access = dep2->src_acc;
+    Stmt *s = prog->stmts[dep2->src];
+    int domain_dim = source_iterators->ncols - prog->npar -1;
+    char **iter = (char**)malloc(domain_dim*sizeof(char*));
+
+    for (i=0; i < domain_dim; i++) {
+        iter[i] = malloc(10 * sizeof(char));
+        sprintf(iter[i], "d%d", i+1);
+    }
+
+    //assert(domain_dim <= s->dim);
+    isl_map *read_pos;
+    isl_map *write_pos;
+    isl_map *schedule_i;
+
+    char name[20];
+
+    snprintf(name, sizeof(name), "S_%d_r%d", 0, 0);
+
+
+    dim = isl_dim_set_alloc(ctx,prog->npar ,domain_dim );
+    dim = set_names(dim, isl_dim_param,prog->params);
+    dim = set_names(dim, isl_dim_set,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+    dom = scoplib_matrix_list_to_isl_set(pluto_constraints_list_to_scoplib_matrix_list(source_iterators), dim);
+    dom = isl_set_intersect_params(dom, isl_set_copy(context));
+
+
+    dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
+            2*domain_dim +1);
+    dim = set_names(dim, isl_dim_param, prog->params);
+    dim = set_names(dim, isl_dim_in,iter );
+    dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+
+    scoplib_matrix_p smat = get_identity_schedule(domain_dim, prog->npar);
+    smat->p[0][smat->NbColumns-1] = 1;
+    schedule_i = scoplib_schedule_to_isl_map(smat, dim);
+    if(access_matrix == NULL)
+		read_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs),access->name,  dom);
+    else
+		read_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
+    read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
+
+    schedule = isl_union_map_union(schedule,
+            isl_union_map_from_map(schedule_i));
+
+
+    for(i=0;i<domain_dim; i++){
+        free(iter[i]);
+    }
+
+    free(iter);
+
+
+    //Add the source iterators of dep2 and corresponding access function to isl
+    source_iterators = domain1;
+    access = dep1->src_acc;
+    s = prog->stmts[dep1->src];
+    domain_dim = source_iterators->ncols - prog->npar -1;
+
+    iter = (char**)malloc(domain_dim*sizeof(char*));
+
+    for (i=0; i < domain_dim; i++) {
+        iter[i] = malloc(10 * sizeof(char));
+        sprintf(iter[i], "d%d", i+1);
+    }
+
+    snprintf(name, sizeof(name), "S_%d_w%d", 0, 0);
+
+    dim = isl_dim_set_alloc(ctx,prog->npar , domain_dim );
+    dim = set_names(dim, isl_dim_param,prog->params);
+    dim = set_names(dim, isl_dim_set,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+    dom = scoplib_matrix_list_to_isl_set(pluto_constraints_list_to_scoplib_matrix_list(source_iterators), dim);
+    dom = isl_set_intersect_params(dom, isl_set_copy(context));
+
+    dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
+            2*domain_dim +1);
+    dim = set_names(dim, isl_dim_param, prog->params);
+    dim = set_names(dim, isl_dim_in,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+
+    scoplib_matrix_free(smat);
+    smat = get_identity_schedule(domain_dim, prog->npar);
+    schedule_i = scoplib_schedule_to_isl_map(smat, dim);
+
+    write_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
+    //write_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
+    write = isl_union_map_union(write, isl_union_map_from_map(write_pos));
+
+    schedule = isl_union_map_union(schedule,
+            isl_union_map_from_map(schedule_i));
+    isl_union_map_compute_flow(isl_union_map_copy(read),
+            isl_union_map_copy(empty),
+            isl_union_map_copy(write),
+            isl_union_map_copy(schedule),
+            NULL, &dep_raw, NULL, NULL);
+
+
+    /*
+    //Find dep with last writer option
+    isl_union_map_compute_flow(isl_union_map_copy(read),
+    isl_union_map_copy(write),
+    isl_union_map_copy(empty),
+    isl_union_map_copy(schedule),
+    &dep_raw, NULL, NULL, NULL);
+    */
+
+    dep_raw = isl_union_map_coalesce(dep_raw);
+
+    int ndeps = 0;
+    isl_union_map_foreach_map(dep_raw, &isl_map_count, &ndeps);
+
+    if(ndeps == 0) {
+        return NULL;
+    }
+
+    Dep **deps = (Dep **)malloc(ndeps * sizeof(Dep *));
+    for (i=0; i<ndeps; i++) {
+        deps[i] = pluto_dep_alloc();
+    }
+    ndeps = 0;
+    ndeps += extract_deps(deps, ndeps, prog->stmts, dep_raw, CANDL_RAW);
+
+    PlutoConstraints *tdpoly = NULL;
+    for(i=0; i<ndeps; i++){
+        if(tdpoly == NULL)
+            tdpoly = pluto_constraints_dup(deps[i]->dpolytope);
+        else
+            pluto_constraints_unionize(tdpoly, deps[i]->dpolytope);
+    }
+
+
+
+    //TODO: Free deps
+
+    isl_union_map_free(dep_raw);
+
+    isl_union_map_free(empty);
+    isl_union_map_free(write);
+    isl_union_map_free(read);
+    isl_union_map_free(schedule);
+    isl_set_free(context);
+
+    isl_ctx_free(ctx);
+
+    for(i=0;i<domain_dim; i++){
+        free(iter[i]);
+    }
+
+    free(iter);
+
+    return tdpoly;
 }
 
 /* 
@@ -1569,6 +1767,9 @@ PlutoProg *pluto_prog_alloc()
     prog->ddg = NULL;
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
+    prog->decls = malloc(16384*9);
+
+    strcpy(prog->decls, "");
 
     prog->globcst = NULL;
     prog->depcst = NULL;
@@ -1621,6 +1822,8 @@ void pluto_prog_free(PlutoProg *prog)
     free(prog->depcst);
     pluto_constraints_free(prog->globcst);
 
+    free(prog->decls);
+
     free(prog);
 }
 
@@ -1634,12 +1837,33 @@ PlutoOptions *pluto_options_alloc()
     /* Initialize to default */
     options->tile = 0;
     options->intratileopt = 1;
+    options->dynschedule = 0;
     options->debug = 0;
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
     options->innerpar = 0;
     options->identity = 0;
+
+    /* Distmem parallelization options */
+    options->distmem = 0;
+
+#ifdef PLUTO_OPENCL
+    options->opencl = 0;
+#endif
+
+    options->commopt = 1;
+    options->commopt_dep_split = 0;
+    options->dsfo_pack_foifi = 0;
+    options->commopt_foifi = 0;
+    options->commreport = 0;
+    options->variables_not_global = 0;
+    /* Can be bad for performance (overhead in its absence acceptable) */
+    options->fusesends = 0;
+    options->mpiomp = 0;
+    options->blockcyclic = 0;
+    options->cyclesize = 32;
+
     options->unroll = 0;
 
     /* Unroll/jam factor */

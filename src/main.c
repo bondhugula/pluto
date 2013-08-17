@@ -52,6 +52,7 @@ void usage_message(void)
     fprintf(stdout, "       | --parallelize\n");
     fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
     fprintf(stdout, "       --multipipe            Extract two degrees of pipelined parallelism if possible;\n");
+    fprintf(stdout, "       --distmem            Parallelize for distributed memory (generate MPI)\n");
     fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
     fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
     fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
@@ -89,7 +90,9 @@ int main(int argc, char *argv[])
 
     char *srcFileName;
 
-    FILE *cloogfp, *outfp;
+    FILE *cloogfp, *outfp, *dynschedfp;
+
+    dynschedfp = NULL;
 
     if (argc <= 1)  {
         usage_message();
@@ -113,6 +116,20 @@ int main(int argc, char *argv[])
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
+        {"dynschedule", no_argument, &options->dynschedule, 1},
+        {"distmem", no_argument, &options->distmem, 1},
+#ifdef PLUTO_OPENCL
+        {"opencl", no_argument, &options->opencl, 1},
+#endif
+        {"commopt", no_argument, &options->commopt, 1},
+        {"commopt_dep_split", no_argument, &options->commopt_dep_split, 1},
+        {"dsfo_pack_foifi", no_argument, &options->dsfo_pack_foifi, 1},
+        {"commopt_foifi", no_argument, &options->commopt_foifi, 1},
+        {"nocommopt", no_argument, &options->commopt, 0},
+        {"commreport", no_argument, &options->commreport, 1},
+        {"variables_not_global", no_argument, &options->variables_not_global, 1},
+        {"mpiomp", no_argument, &options->mpiomp, 1},
+        {"blockcyclic", no_argument, &options->blockcyclic, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -125,6 +142,7 @@ int main(int argc, char *argv[])
         {"cloogl", required_argument, 0, 'L'},
         {"cloogsh", no_argument, &options->cloogsh, 1},
         {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+        {"cyclesize", required_argument, 0, 'S'},
         {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
@@ -141,6 +159,7 @@ int main(int argc, char *argv[])
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscoplib", no_argument, &options->readscoplib, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
+        {"fusesends", no_argument, &options->fusesends, 1},
         {0, 0, 0, 0}
     };
 
@@ -163,13 +182,14 @@ int main(int argc, char *argv[])
             case 'L':
                 options->cloogl = atoi(optarg);
                 break;
+            case 'S':
+                options->cyclesize = atoi(optarg);
+                break;
             case 'b':
                 options->bee = 1;
                 break;
             case 'c':
                 options->context = atoi(optarg);
-                break;
-            case 'd':
                 break;
             case 'f':
                 options->ft = atoi(optarg);
@@ -236,6 +256,16 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 6;
     }
 
+    if (options->fusesends && options->mpiomp) {
+        fprintf(stderr, "Error: fusesends should not be used with mpiomp\n");
+        return 7;
+    }
+
+    if (options->isldepcompact && options->distmem) {
+        fprintf(stderr, "Error: shouldn't compact deps for distmem parallelization\n");
+        return 7;
+    }
+
     /* Extract polyhedral representation from input program */
     scoplib_scop_p scop;
 
@@ -248,7 +278,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
         pluto_options_free(options);
-        return 7;
+        return 8;
     }
     FILE *srcfp = fopen(".srcfilename", "w");
     if (srcfp)    {
@@ -277,9 +307,42 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
+    if (options->distmem == 1 && options->parallel == 0)    {
+        options->parallel = 1;
+    }
+
     if (options->multipipe == 1 && options->parallel == 0)    {
         fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
         options->parallel = 1;
+    }
+
+    if (options->dynschedule && !options->tile)  {
+        fprintf(stderr, "[Pluto] WARNING: dynschedule needs tile to be on; turning on tile\n");
+        options->tile = 1;
+    }
+
+    if (options->dynschedule && (options->parallel || options->multipipe))  {
+        fprintf(stderr, "[Pluto] WARNING: --parallel or --multipipe options not needed with --dynschedule; turning off parallel and multipipe\n");
+        options->parallel = 0;
+        options->multipipe = 0;
+    }
+
+    if (options->dynschedule && options->distmem)  {
+        fprintf(stderr, "[Pluto] WARNING: dynschedule is not compatible with distributed memory yet; turning off distmem\n");
+        options->distmem = 0;
+    }
+
+    //reset commopt and commopt_foifi when commopt_dep_split is selected, default of commopt is 1
+    if(options->commopt && options->commopt_dep_split) {
+        options->commopt = 0;
+    }
+    if(options->commopt_foifi && options->commopt_dep_split) {
+        options->commopt_foifi = 0;
+    }
+
+    //reset commopt when commopt_foifi is selected, default of commopt is 1
+    if(options->commopt && options->commopt_foifi) {
+        options->commopt = 0;
     }
 
     /* Disable pre-vectorization if tile is not on */
@@ -350,9 +413,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->tile && !options->silent)  {
-        IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
-        IF_DEBUG(pluto_transformations_pretty_print(prog););
-        IF_DEBUG(pluto_print_hyperplane_properties(prog););
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->unroll || options->polyunroll)    {
@@ -378,90 +441,184 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
+    int distretval = 1;
 
-    /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-    /* Since meta info about loops
-     * is printed to be processed by scripts - if transformations are
-     * performed, changed loop order/iterator names will be missed  */
-    gen_unroll_file(prog);
+#ifdef PLUTO_OPENCL
+    if (options->distmem || options->opencl)  {
+#else
+        if (options->distmem)  {
+#endif
+            distretval = pluto_distmem_parallelize(prog);
+            pluto_compute_dep_satisfaction_complex(prog);
+            IF_DEBUG(pluto_transformations_pretty_print(prog));
+            IF_DEBUG(pluto_print_hyperplane_properties(prog));
+        }
 
-    char *outFileName;
-    char *cloogFileName;
-    if (options->out_file == NULL)  {
-        /* Get basename, remove .c extension and append a new one */
-        char *basec, *bname;
-        basec = strdup(srcFileName);
-        bname = basename(basec);
 
-        /* max size when tiled.* */
-        outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
-        cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
+        /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+        /* Since meta info about loops
+         * is printed to be processed by scripts - if transformations are
+         * performed, changed loop order/iterator names will be missed  */
+        gen_unroll_file(prog);
+
+        char *outFileName;
+        char *cloogFileName;
+        char *dynschedFileName;
+        char *bname, *basec;
+        if (options->out_file == NULL)  {
+            /* Get basename, remove .c extension and append a new one */
+            basec = strdup(srcFileName);
+            bname = basename(basec);
+
+            if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+                outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
+                strncpy(outFileName, bname, strlen(bname)-2);
+                outFileName[strlen(bname)-2] = '\0';
+            }else{
+                outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
+                strcpy(outFileName, bname);
+            }
+            strcat(outFileName, ".pluto.c");
+        }else{
+            basec = strdup(options->out_file);
+            bname = basename(basec);
+
+            outFileName = malloc(strlen(options->out_file)+1);
+            strcpy(outFileName, options->out_file);
+        }
 
         if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-            strncpy(outFileName, bname, strlen(bname)-2);
+            cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
+            dynschedFileName = malloc(strlen(bname)-2+strlen(".pluto.append.c")+1);
             strncpy(cloogFileName, bname, strlen(bname)-2);
-            outFileName[strlen(bname)-2] = '\0';
+            strncpy(dynschedFileName, bname, strlen(bname)-2);
             cloogFileName[strlen(bname)-2] = '\0';
+            dynschedFileName[strlen(bname)-2] = '\0';
         }else{
-            strcpy(outFileName, bname);
+            cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
+            dynschedFileName = malloc(strlen(bname)+strlen(".pluto.append.c")+1);
             strcpy(cloogFileName, bname);
+            strcpy(dynschedFileName, bname);
         }
-        strcat(outFileName, ".pluto.c");
+        strcat(cloogFileName, ".pluto.cloog");
+        strcat(dynschedFileName, ".pluto.append.c");
         free(basec);
-    }else{
-        outFileName = options->out_file;
-        cloogFileName = alloca(strlen(options->out_file)+1);
-        strcpy(cloogFileName, options->out_file);
-    }
 
-    strcat(cloogFileName, ".pluto.cloog");
+        cloogfp = fopen(cloogFileName, "w+");
+        if (!cloogfp)   {
+            fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
+            free(cloogFileName);
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            return 9;
+        }
+        free(cloogFileName);
 
-    cloogfp = fopen(cloogFileName, "w+");
-    if (!cloogfp)   {
-        fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
-        pluto_options_free(options);
-        pluto_prog_free(prog);
-        return 9;
-    }
+        outfp = fopen(outFileName, "w");
+        if (!outfp) {
+            fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+            free(outFileName);
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            fclose(cloogfp);
+            return 10;
+        }
 
-    outfp = fopen(outFileName, "w");
-    if (!outfp) {
-        fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
-        pluto_options_free(options);
-        pluto_prog_free(prog);
+        if (options->dynschedule) {
+            dynschedfp = fopen(dynschedFileName, "w");
+            if (!dynschedfp) {
+                fprintf(stderr, "[Pluto] Can't open file %s for writing\n", dynschedFileName);
+                free(dynschedFileName);
+                pluto_options_free(options);
+                pluto_prog_free(prog);
+                fclose(cloogfp);
+                fclose(outfp);
+                return 11;
+            }
+        }
+
+        pluto_detect_scalar_dimensions(prog);
+        if (options->moredebug) {
+            printf("After scalar dimension detection (final transformations)\n");
+            pluto_transformations_pretty_print(prog);
+        }
+
+        /* Generate .cloog file */
+        pluto_gen_cloog_file(cloogfp, prog);
+        /* Add the <irregular> tag from clan, if any */
+        if (irroption != NULL) {
+            fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
+            free(irroption);
+        }
+        rewind(cloogfp);
+
+        /* Very important: Dont change the order of calls to print_dynsched_file
+         * between pluto_gen_cloog_file() and pluto_*_codegen()
+         */
+        if (options->dynschedule) {
+            print_dynsched_file(srcFileName, cloogfp, dynschedfp, prog);
+            rewind(cloogfp);
+        }
+
+        /* Generate code using Cloog and add necessary stuff before/after code */
+        if (options->distmem && !distretval)   {
+            pluto_distmem_codegen(prog, cloogfp, outfp);
+        }else{
+            if (options->distmem) { // no parallel loops to distribute
+                // ensure only one processor will output the data
+                fprintf(outfp, "#include <mpi.h>\n\n");
+                fprintf(outfp, "#define MPI \n\n");
+                fprintf(outfp, "\n##ifndef GLOBAL_MY_RANK\n\tint my_rank;\n##endif\n");
+                fprintf(outfp, "\tMPI_Init(NULL, NULL);\n");
+                fprintf(outfp, "\tMPI_Comm_rank(MPI_COMM_WORLD, &my_rank);\n");
+                fprintf(outfp, "\tMPI_Finalize();\n");
+            }
+            pluto_multicore_codegen(cloogfp, options->dynschedule ? dynschedfp : outfp, prog);
+        }
+
+        FILE *tmpfp = fopen(".outfilename", "w");
+        if (tmpfp)    {
+            fprintf(tmpfp, "%s\n", outFileName);
+            fclose(tmpfp);
+            printf( "[Pluto] Output written to %s\n", outFileName);
+        }
+        free(outFileName);
+
+        if (options->dynschedule) {
+            tmpfp = fopen(".appendfilename", "w");
+            if (tmpfp) {
+                fprintf(tmpfp, "%s\n", dynschedFileName);
+                fclose(tmpfp);
+            }
+        }
+        free(dynschedFileName);
+
+        /* create main file for dynschedule */
+        if (options->dynschedule) {
+            fprintf(outfp,"\n\n#include \"scheduler.h\"\n");
+            fprintf(outfp,"\n\n\tgenerate_dag();\n");
+            fprintf(outfp,"\t##ifdef __STATIC_SCHEDULE__\n");
+            fprintf(outfp,"\t\tinit_schedule(atoi(argv[1]));\n");
+            fprintf(outfp,"\t\tschedule_dag_using_mcp();\n");
+            fprintf(outfp,"\t##endif\n");
+            fprintf(outfp,"\tdag_execute();\n");
+            fprintf(outfp,"\t##ifdef __STATIC_SCHEDULE__\n");
+            fprintf(outfp,"\t\tfree_schedule();\n");
+            fprintf(outfp,"\t##endif\n");
+            fprintf(outfp,"\tfree_dag();\n");
+        }
+
+        if (options->dynschedule) {
+            fclose(dynschedfp);
+        }
         fclose(cloogfp);
-        return 10;
+        fclose(outfp);
+
+        pluto_options_free(options);
+
+        pluto_prog_free(prog);
+
+        scoplib_scop_free(scop);
+
+        return 0;
     }
-
-    /* Generate .cloog file */
-    pluto_gen_cloog_file(cloogfp, prog);
-    /* Add the <irregular> tag from clan, if any */
-    if (irroption != NULL) {
-        fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-        free(irroption);
-    }
-
-    rewind(cloogfp);
-
-
-    /* Generate code using Cloog and add necessary stuff before/after code */
-    pluto_multicore_codegen(cloogfp, outfp, prog);
-
-    FILE *tmpfp = fopen(".outfilename", "w");
-    if (tmpfp)    {
-        fprintf(tmpfp, "%s\n", outFileName);
-        fclose(tmpfp);
-        printf( "[Pluto] Output written to %s\n", outFileName);
-    }
-
-    fclose(cloogfp);
-    fclose(outfp);
-
-    pluto_options_free(options);
-
-    pluto_prog_free(prog);
-
-    scoplib_scop_free(scop);
-
-    return 0;
-}

@@ -268,7 +268,7 @@ int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop)
 }
 
 /* Is loop1 dominated by loop2 */
-static int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
+int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
 {
     int i;
     assert(loop1->nstmts >= 1);

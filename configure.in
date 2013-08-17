@@ -192,6 +192,7 @@ AC_CONFIG_COMMANDS([version.h],
 
 AC_OUTPUT(Makefile \
           src/Makefile \
+          polyrt/Makefile \
           polycc.sh
           )
 
