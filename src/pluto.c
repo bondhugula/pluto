@@ -1738,17 +1738,19 @@ void pluto_print_hyperplane_properties(const PlutoProg *prog)
  * Pretty prints a one-dimensional affine function
  * ndims: number of variables
  * func should have ndims+1 elements (affine function)
- * vars: names of the variables; if either of them are NULL, x0, x1, ... are used
+ * vars: names of the variables; if NULL, x0, x1, ... are used
  */
 void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
 {
     char *var[ndims];
     int j;
 
-    for (j=0; j<ndims; j++)  {
-        if (vars[j]) {
+    if (vars) {
+        for (j=0; j<ndims; j++)  {
             var[j] = strdup(vars[j]);
-        }else{
+        }
+    }else{
+        for (j=0; j<ndims; j++)  {
             var[j] = malloc(5);
             sprintf(var[j], "x%d", j+1);
         }
