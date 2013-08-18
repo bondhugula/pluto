@@ -416,7 +416,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
 
             pluto_pad_stmt_transformations(sigma);
             pluto_detect_hyperplane_types(prog);
-            pluto_prog_print(sigma);
+            //pluto_prog_print(sigma);
             if (sigma->nstmts >= 1) {
                 assert(sigma->stmts[0]->trans->nrows == sigma->num_hyperplanes);
             }
@@ -680,7 +680,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts,
 
         pluto_pad_stmt_transformations(sigma);
         pluto_detect_hyperplane_types(prog);
-        pluto_prog_print(sigma);
+        //pluto_prog_print(sigma);
         if (sigma->nstmts >= 1) {
             assert(sigma->stmts[0]->trans->nrows == sigma->num_hyperplanes);
         }
