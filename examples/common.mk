@@ -126,8 +126,8 @@ dist_test: orig_par distopt
 
 dist_test2: orig_par distopt
 	touch .test
-	OMP_NUM_THREADS=$(NPROCS) ./orig_par > out_orig_par
-	OMP_NUM_THREADS=1 mpirun -np $(NPROCS) ./distopt > out_distopt
+	OMP_NUM_THREADS=$(NPROCS) ./orig_par 2> out_orig_par
+	OMP_NUM_THREADS=1 mpirun -np $(NPROCS) ./distopt 2> out_distopt
 	rm -f .test
 	diff -q out_orig_par out_distopt
 	@echo Success!

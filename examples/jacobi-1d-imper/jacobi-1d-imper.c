@@ -29,10 +29,10 @@ void print_array()
     int j;
 
     for (j=0; j<N; j++) {
-        fprintf(stdout, "%lf ", a[j]);
-        if (j%80 == 20) fprintf(stdout, "\n");
+        fprintf(stderr, "%lf ", a[j]);
+        if (j%80 == 20) fprintf(stderr, "\n");
     }
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
 }
 
 
@@ -56,7 +56,7 @@ int main()
 #pragma endscop
 
     IF_TIME(t_end = rtclock());
-    IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
 #ifdef MPI
