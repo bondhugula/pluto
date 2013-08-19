@@ -1,12 +1,28 @@
 # Ignore objects and archives.
 *.[oa]
 *.lo
+*.la
+*.Po
+*.Plo
+src/pluto
+candl-0.4.0/source/candl
+
+test_libpluto
+
 # vim swap files
 *.swp
+
+# backup files
+*~
+*.orig
+
 # python byte compiled files in orio
 *.pyc
 test_plutolib
 
+# generated when polycc is run
+*.cloog
+*.pluto.c
 test/*.cloog
 test/*.pluto.c
 test/*.opt.c
@@ -22,6 +38,10 @@ tags
 .body.c
 .linearized
 .nonlinearized
+polylib/include/polylib/polylib.h
+polylib/include/polylib/polylib.doxygen
+polylib/include/polylib/polylib64-uninstalled.pc
+polylib/include/polylib/polylib64-uninstalled.sh
 candl-0.4.0/Makefile
 candl-0.4.0/Makefile.in
 candl-0.4.0/config.log
@@ -107,11 +127,18 @@ config.h.in
 config.guess
 config.sub
 ltmain.sh
+texinfo.tex
+libtool.m4
+ltoptions.m4
+ltsugar.m4
+ltversion.m4
+lt~obsolete.m4
 compile
 config.h
 config.log
 config.status
 configure
+configure.lineno
 stamp-h1
 Makefile
 Makefile.in
@@ -121,3 +148,7 @@ polycc
 libtool
 getversion.sh
 missing
+m4
+traces.*
+output.*
+requests
