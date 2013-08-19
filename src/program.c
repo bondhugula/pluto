@@ -1566,6 +1566,8 @@ PlutoProg *pluto_prog_alloc()
     prog->context = pluto_constraints_alloc(1, prog->npar+1);
     prog->deps = NULL;
     prog->ndeps = 0;
+    prog->transdeps = NULL;
+    prog->ntransdeps = 0;
     prog->ddg = NULL;
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
