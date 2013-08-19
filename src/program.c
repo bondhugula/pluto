@@ -1369,13 +1369,125 @@ scoplib_matrix_p get_identity_schedule(int dim, int npar){
 }
 
 /* 
+ * FIXME: should be called on identity schedules (in normal 2*d+1 form)
+ *
+ * For dependences on the original loop nest (with identity
+ * transformation), we expect a dependence to be completely satisfied at
+ * some level; they'll have a component of zero for all levels up to the level at
+ * which they are satisfied; so if a loop is forced parallel, removing all
+ * dependences satisfied at that level will lead to the loop being
+ * detected as parallel 
+ * depth: 0-indexed depth to be forced parallel
+ * */
+void pluto_force_parallelize(PlutoProg *prog, int depth) 
+{
+    int i, j;
+
+    pluto_detect_transformation_properties(prog);
+    if (options->lastwriter) {
+        /* Add transitive edges that weren't included */
+        int num_new_deps = prog->ndeps;
+        while (num_new_deps > 0) {
+            int first_new_dep = prog->ndeps - num_new_deps;
+            num_new_deps = 0;
+            for (i=first_new_dep; i<prog->ndeps; i++) {
+                if (prog->deps[i]->satisfaction_level < 2*depth-1) {
+                    for (j=0; j<prog->ndeps; j++) {
+                        if (prog->deps[j]->satisfaction_level == 2*depth-1
+                                && prog->deps[i]->dest_acc == prog->deps[j]->src_acc) {
+                            Dep *dep = pluto_dep_compose(prog->deps[i], prog->deps[j], prog);
+                            if (dep == NULL) continue;
+                            dep->satisfaction_level = prog->deps[i]->satisfaction_level;
+                            dep->satisfied = true;
+                            switch(prog->deps[i]->type) {
+                                case CANDL_WAR:
+                                    if (IS_RAW(prog->deps[j]->type)) {
+                                        dep->type = CANDL_RAR;
+                                    }else{ // IS_WAW(prog->deps[j]->type)
+                                        dep->type = CANDL_WAR;
+                                    }
+                                    break;
+                                case CANDL_RAW:
+                                    if (IS_RAR(prog->deps[j]->type)) {
+                                        dep->type = CANDL_RAW;
+                                    }else{ // IS_WAR(prog->deps[j]->type)
+                                        dep->type = CANDL_WAW;
+                                    }
+                                    break;
+                                case CANDL_WAW:
+                                case CANDL_RAR:
+                                    dep->type = prog->deps[j]->type;
+                                    break;
+                                default:
+                                    assert(0);
+                            }
+                            pluto_add_dep(prog, dep);
+                            /* printf("Adding transitive edge\n"); */
+                            num_new_deps++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!options->rar) { // remove RAR dependences that were added
+            Dep **nonrardeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
+            int count = 0;
+            for (i=0; i<prog->ndeps; i++) {
+                if (!IS_RAR(prog->deps[i]->type)) {
+                    prog->deps[i]->id = count;
+                    nonrardeps[count++] = prog->deps[i];
+                }else{
+                    // printf("removing edge\n");
+                    pluto_dep_free(prog->deps[i]);
+                }
+            }
+            free(prog->deps);
+            prog->deps = nonrardeps;
+            prog->ndeps = count;
+        }
+    }
+
+    Dep **rdeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
+    int count = 0;
+    for (i=0; i<prog->ndeps; i++) {
+        if (prog->deps[i]->satisfaction_level != 2*depth-1) {
+            prog->deps[i]->id = count;
+            rdeps[count++] = prog->deps[i];
+        }else{
+            // printf("removing edge\n");
+            pluto_dep_free(prog->deps[i]);
+        }
+    }
+    free(prog->deps);
+    prog->deps = rdeps;
+    prog->ndeps = count;
+
+    Dep **rtransdeps = (Dep **) malloc(sizeof(Dep *)*prog->ntransdeps);
+    count = 0;
+    for (i=0; i<prog->ntransdeps; i++) {
+        if (prog->transdeps[i]->satisfaction_level != 2*depth-1) {
+            prog->transdeps[i]->id = count;
+            rtransdeps[count++] = prog->transdeps[i];
+        }else{
+            // printf("removing edge\n");
+            pluto_dep_free(prog->transdeps[i]);
+        }
+    }
+    free(prog->transdeps);
+    prog->transdeps = rtransdeps;
+    prog->ntransdeps = count;
+}
+
+
+/* 
  * Extract necessary information from clan_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto. 
  * PlutoProg also includes dependences; so candl is run here.
  */
 PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
 {
-    int i, j, max_sched_rows;
+    int i, max_sched_rows;
 
     PlutoProg *prog = pluto_prog_alloc();
 
@@ -1486,49 +1598,8 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         fclose(nlfp);
     }
 
-    /* For dependences on the original loop nest (with identity
-     * transformation), we expect a dependence to be completely satisfied at
-     * some level; they'll have a component of zero for all levels up to the level at
-     * which they are satisfied; so if a loop is forced parallel, removing all
-     * dependences satisfied at that level will lead to the loop being
-     * detected as parallel */
     if (options->forceparallel >= 1) {
-        pluto_detect_transformation_properties(prog);
-        if (options->lastwriter) {
-            /* Add transitive edges that weren't included */
-            for (i=0; i<prog->ndeps; i++) {
-                if (prog->deps[i]->satisfaction_level < 2*options->forceparallel-1) {
-                    for (j=0; j<prog->ndeps; j++) {
-                        if (prog->deps[j]->satisfaction_level == 2*options->forceparallel-1
-                                && IS_WAW(prog->deps[i]->type) && IS_RAW(prog->deps[j]->type)
-                                && prog->deps[i]->dest == prog->deps[j]->src) {
-                            Dep *dep = pluto_dep_compose(prog->deps[i], prog->deps[j], prog);
-                            if (dep == NULL) continue;
-                            dep->satisfaction_level = prog->deps[i]->satisfaction_level;
-                            dep->satisfied = true;
-                            dep->type = CANDL_RAW;
-                            pluto_add_dep(prog, dep);
-                            /* printf("Adding transitive edge\n"); */
-                        }
-                    }
-                }
-            }
-        }
-
-        Dep **rdeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
-        int count = 0;
-        for (i=0; i<prog->ndeps; i++) {
-            if (prog->deps[i]->satisfaction_level != 2*options->forceparallel-1) {
-                prog->deps[i]->id = count;
-                rdeps[count++] = prog->deps[i];
-            }else{
-                // printf("removing edge\n");
-                pluto_dep_free(prog->deps[i]);
-            }
-        }
-        free(prog->deps);
-        prog->deps = rdeps;
-        prog->ndeps = count;
+        pluto_force_parallelize(prog, options->forceparallel);
     }
 
     return prog;
