@@ -24,7 +24,7 @@ double rtclock()
 
 double t_start, t_end;
 
-#define NUM_NODES 4096
+#define NUM_NODES 2048
 #pragma declarations
 double pathDistanceMatrix[NUM_NODES][NUM_NODES];
 #pragma enddeclarations
