@@ -51,9 +51,9 @@ void print_array()
 
     for (i=0; i<nx; i++) {
         for (j=0; j<ny; j++) {
-            fprintf(stdout, "%lf ", hz[i][j]);
-            if (j%80 == 20) fprintf(stdout, "\n");
+            fprintf(stderr, "%lf ", hz[i][j]);
+            if (j%80 == 20) fprintf(stderr, "\n");
         }
     }
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
 }
