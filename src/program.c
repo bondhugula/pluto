@@ -1260,7 +1260,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
                     isl_union_map_copy(schedule),
                     &dep_rar, NULL, NULL, NULL);
         }
-    }else {
+    }else{
         // compute RAW dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(read),
                 isl_union_map_copy(empty),
@@ -1293,23 +1293,12 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     dep_war = isl_union_map_coalesce(dep_war);
     dep_waw = isl_union_map_coalesce(dep_waw);
     dep_rar = isl_union_map_coalesce(dep_rar);
-    if (options->lastwriter) {
-        trans_dep_war = isl_union_map_coalesce(trans_dep_war);
-        trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
-    }
 
     prog->ndeps = 0;
     isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
     isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ndeps);
-    if (options->lastwriter) {
-        prog->ntransdeps = 0;
-        isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
-        isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
-        isl_union_map_foreach_map(trans_dep_waw, &isl_map_count, &prog->ntransdeps);
-        isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ntransdeps);
-    }
 
     prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
     for (i=0; i<prog->ndeps; i++) {
@@ -1320,29 +1309,37 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, CANDL_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, CANDL_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, CANDL_RAR);
+
     if (options->lastwriter) {
-        prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
-        for (i=0; i<prog->ntransdeps; i++) {
-            prog->transdeps[i] = pluto_dep_alloc();
+        trans_dep_war = isl_union_map_coalesce(trans_dep_war);
+        trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
+
+        prog->ntransdeps = 0;
+        isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_waw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ntransdeps);
+
+        if (prog->ntransdeps >= 1) {
+            prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
+            for (i=0; i<prog->ntransdeps; i++) {
+                prog->transdeps[i] = pluto_dep_alloc();
+            }
+            prog->ntransdeps = 0;
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_raw, CANDL_RAW);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_war, CANDL_WAR);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_waw, CANDL_WAW);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_rar, CANDL_RAR);
         }
-        prog->ntransdeps = 0;
-        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_raw, CANDL_RAW);
-        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_war, CANDL_WAR);
-        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_waw, CANDL_WAW);
-        prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_rar, CANDL_RAR);
-    }else{
-        prog->transdeps = NULL;
-        prog->ntransdeps = 0;
+
+        isl_union_map_free(trans_dep_war);
+        isl_union_map_free(trans_dep_waw);
     }
 
     isl_union_map_free(dep_raw);
     isl_union_map_free(dep_war);
     isl_union_map_free(dep_waw);
     isl_union_map_free(dep_rar);
-    if (options->lastwriter) {
-        isl_union_map_free(trans_dep_war);
-        isl_union_map_free(trans_dep_waw);
-    }
 
     isl_union_map_free(empty);
     isl_union_map_free(write);
