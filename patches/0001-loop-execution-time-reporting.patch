@@ -1,14 +1,14 @@
-From dccac6e5d81f052182b3a072e38d1a813606f97e Mon Sep 17 00:00:00 2001
+From fb40b5a5c0279a585f03ce42253ff7352fed2869 Mon Sep 17 00:00:00 2001
 From: Uday Bondhugula <udayreddy@gmail.com>
 Date: Sun, 18 Aug 2013 12:07:55 +0530
 Subject: [PATCH] loop execution time reporting
 
 Signed-off-by: Uday Bondhugula <udayreddy@gmail.com>
 ---
- include/cloog/clast.h |  6 ++++++
- source/clast.c        |  3 +++
- source/pprint.c       | 13 ++++++++++++-
- 3 files changed, 21 insertions(+), 1 deletion(-)
+ include/cloog/clast.h |    6 ++++++
+ source/clast.c        |    3 +++
+ source/pprint.c       |   13 ++++++++++++-
+ 3 files changed, 21 insertions(+), 1 deletions(-)
 
 diff --git a/include/cloog/clast.h b/include/cloog/clast.h
 index fd56dd7..1698d21 100644
@@ -62,7 +62,7 @@ index 78143c3..1700116 100644
      if (stride)
  	cloog_int_set(f->stride, stride->stride);
 diff --git a/source/pprint.c b/source/pprint.c
-index 2db7542..99dc996 100644
+index 2db7542..d77e01d 100644
 --- a/source/pprint.c
 +++ b/source/pprint.c
 @@ -70,7 +70,8 @@ static void pprint_minmax_c(struct cloogoptions *info,
@@ -92,7 +92,7 @@ index 2db7542..99dc996 100644
 +
 +    if (options->language == CLOOG_LANGUAGE_C) {
 +        if (f->time) {
-+            fprintf(dst, "IF_TIME(%s += rtclock() - %s_start);\n", 
++            fprintf(dst, "IF_TIME(%s += rtclock() - %s_start);\n",
 +                    (f->time_name)?f->time_name:"", (f->time_name)?f->time_name:"");
 +        }
 +    }
@@ -100,5 +100,5 @@ index 2db7542..99dc996 100644
  
  void pprint_stmt_list(struct cloogoptions *options, FILE *dst, int indent,
 -- 
-1.8.3.1
+1.7.7.6
 
