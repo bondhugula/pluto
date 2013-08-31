@@ -99,18 +99,18 @@ perf: orig tiled par orig_par
 
 test: orig tiled par
 	touch .test
-	./orig > out_orig
-	./tiled > out_tiled
+	./orig 2> out_orig
+	./tiled 2> out_tiled
 	diff -q out_orig out_tiled
-	export OMP_NUM_THREADS=4; ./par > out_par4
+	export OMP_NUM_THREADS=4; ./par 2> out_par4
 	rm -f .test
 	diff -q out_orig out_par4
 	@echo Success!
 
 opt-test: orig opt
 	touch .test
-	./orig > out_orig
-	./opt > out_opt
+	./orig 2> out_orig
+	./opt 2> out_opt
 	rm -f .test
 	diff -q out_orig out_opt
 	@echo Success!
@@ -118,8 +118,8 @@ opt-test: orig opt
 
 dist_test: orig_par distopt
 	touch .test
-	OMP_NUM_THREADS=8 ./orig_par > out_orig_par
-	mpirun_rsh  -np $(NPROCS) -hostfile $(HOSTS_FILE) MV2_ENABLE_AFFINITY=0 OMP_NUM_THREADS=$(NTHREADS) ./distopt > out_distopt
+	OMP_NUM_THREADS=8 ./orig_par 2> out_orig_par
+	mpirun_rsh  -np $(NPROCS) -hostfile $(HOSTS_FILE) MV2_ENABLE_AFFINITY=0 OMP_NUM_THREADS=$(NTHREADS) ./distopt 2> out_distopt
 	rm -f .test
 	diff -q out_orig_par out_distopt
 	@echo Success!
