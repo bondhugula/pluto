@@ -896,9 +896,7 @@ static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int leve
     //printf("Constraints are empty: %d\n", !retval);
 
     /* All solutions are those that are satisfied */
-
-    /* UB: commenting this out for now */
-    /* pluto_constraints_subtract(dep->depsat_poly,cst); */
+    pluto_constraints_subtract(dep->depsat_poly,cst);
     pluto_constraints_free(cst);
 
     return retval;
