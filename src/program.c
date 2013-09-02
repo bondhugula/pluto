@@ -1795,7 +1795,26 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     }
 
     if (options->forceparallel >= 1) {
-        pluto_force_parallelize(prog, options->forceparallel);
+        // forceparallel support only for 6 dimensions
+        // force parallellize dimension-by-dimension, from innermost to outermost
+        if (options->forceparallel & 32) {
+            pluto_force_parallelize(prog, 6);
+        }
+        if (options->forceparallel & 16) {
+            pluto_force_parallelize(prog, 5);
+        }
+        if (options->forceparallel & 8) {
+            pluto_force_parallelize(prog, 4);
+        }
+        if (options->forceparallel & 4) {
+            pluto_force_parallelize(prog, 3);
+        }
+        if (options->forceparallel & 2) {
+            pluto_force_parallelize(prog, 2);
+        }
+        if (options->forceparallel & 1) {
+            pluto_force_parallelize(prog, 1);
+        }
     }
 
     return prog;
@@ -1966,7 +1985,7 @@ PlutoOptions *pluto_options_alloc()
     /* Default context is no context */
     options->context = -1;
 
-    options->forceparallel = -42;
+    options->forceparallel = 0;
 
     options->bee = 0;
 

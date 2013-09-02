@@ -1,6 +1,6 @@
 SRC= floyd
 
-PLCFLAGS += --forceparallel=2 #--unroll
+PLCFLAGS += --forceparallel=6 #--unroll
 TILEFLAGS += #--l2tile
 
 include ../common.mk

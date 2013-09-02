@@ -59,7 +59,7 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
+    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
     fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
     fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
