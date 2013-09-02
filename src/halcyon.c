@@ -290,7 +290,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
         PlutoProg *sigma = pluto_prog_alloc();
         PlutoProg *is_receiver = pluto_prog_alloc();
         PlutoProg *sigma_check = NULL;
-        if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) sigma_check = pluto_prog_alloc();
+        if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) sigma_check = pluto_prog_alloc();
 
         // printf("Compute sigma\n");
 
@@ -313,7 +313,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
         }
 #endif
 
-        if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) {
+        if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) {
             for (i=0; i<src_copy_level; i++) {
                 char param[6];
                 sprintf(param, "ts%d",i+1);
@@ -387,16 +387,16 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
                 sprintf(is_receiver_text, "if (pi_%d(%s, nprocs) == my_rank) return 1;",
                         dep_loop_num, indices);
                 char *sigma_check_text = NULL;
-                if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) {
-                    sigma_check_text = malloc(strlen("recv_proc = pi_(, nprocs); if (recv_proc != my_rank) { if (receiver_list[recv_proc] > __DSFO_UNICAST_RECV_LIMIT) return 0; else receiver_list[recv_proc]++; }")
+                if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) {
+                    sigma_check_text = malloc(strlen("recv_proc = pi_(, nprocs); if (recv_proc != my_rank) { if (receiver_list[recv_proc] > __FOP_UNICAST_RECV_LIMIT) return 0; else receiver_list[recv_proc]++; }")
                             +5+strlen(indices)+1);
-                    sprintf(sigma_check_text,"recv_proc = pi_%d(%s, nprocs); if (recv_proc != my_rank) { if (receiver_list[recv_proc] > __DSFO_UNICAST_RECV_LIMIT) return 0; else receiver_list[recv_proc]++; }",
+                    sprintf(sigma_check_text,"recv_proc = pi_%d(%s, nprocs); if (recv_proc != my_rank) { if (receiver_list[recv_proc] > __FOP_UNICAST_RECV_LIMIT) return 0; else receiver_list[recv_proc]++; }",
                             dep_loop_num, indices);
                 }
 
                 pluto_add_stmt(sigma,tdpoly,trans,iters,sigma_text, SIGMA);
                 pluto_add_stmt(is_receiver,tdpoly,trans,iters,is_receiver_text, SIGMA);
-                if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) pluto_add_stmt(sigma_check,tdpoly,trans,iters,sigma_check_text, SIGMA);
+                if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) pluto_add_stmt(sigma_check,tdpoly,trans,iters,sigma_check_text, SIGMA);
 
                 // pluto_stmt_print(stdout, sigma->stmts[0]);
                 for (j=0; j<dest_copy_level; j++) {
@@ -406,7 +406,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
 
                 free(sigma_text);
                 free(is_receiver_text);
-                if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) free(sigma_check_text);
+                if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) free(sigma_check_text);
                 free(indices);
                 pluto_matrix_free(trans);
                 pluto_constraints_free(tdpoly);
@@ -423,11 +423,11 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
 
             pluto_separate_stmts(sigma, sigma->stmts, sigma->nstmts, 0);
             pluto_separate_stmts(is_receiver, is_receiver->stmts, is_receiver->nstmts, 0);
-            if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) pluto_separate_stmts(sigma_check, sigma_check->stmts, sigma_check->nstmts, 0);
+            if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) pluto_separate_stmts(sigma_check, sigma_check->stmts, sigma_check->nstmts, 0);
         }
 
         FILE *outfp, *cloogfp=NULL;
-        outfp = fopen("sigma_dsfo.c", "a");
+        outfp = fopen("sigma_fop.c", "a");
         assert(outfp != NULL);
 
         fprintf(outfp, "void sigma_%s_%d_%d(", acc_name, partition_id+1, loop_num);
@@ -442,7 +442,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
             fprintf(outfp, "int __p;\nfor (__p=0; __p<nprocs; __p++) add_proc_to_receiver_list(__p, my_rank);\n");
         }
         else {
-            cloogfp = fopen("sigma_dsfo.cloog", "w+");
+            cloogfp = fopen("sigma_fop.cloog", "w+");
             assert(cloogfp != NULL);
             pluto_gen_sigma_cloog_code(sigma, cloogfp, outfp, partition_id);
             fclose(cloogfp);
@@ -467,7 +467,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
             fprintf(outfp, "\nreturn 1;\n");
         }
         else {
-            cloogfp = fopen("is_receiver_dsfo.cloog", "w+");
+            cloogfp = fopen("is_receiver_fop.cloog", "w+");
             assert(cloogfp != NULL);
             pluto_gen_sigma_cloog_code(is_receiver, cloogfp, outfp, partition_id);
             fclose(cloogfp);
@@ -481,7 +481,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
 
         pluto_prog_free(is_receiver);
 
-        if (options->dsfo_pack_foifi && !broadcast_of_partition[partition_id]) {
+        if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) {
             fprintf(outfp, "int sigma_check_%s_%d_%d(", acc_name, partition_id+1, loop_num);
             for (i=0; i<src_copy_level+prog->npar; i++)    {
                 if (i!=0) fprintf(outfp, ", ");
@@ -492,7 +492,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
             fprintf(outfp, "int i, recv_proc;\n");
             fprintf(outfp, "\nint receiver_list[nprocs];\n for (i=0; i<nprocs; i++) receiver_list[i]=0;\n");
 
-            cloogfp = fopen("sigma_check_dsfo.cloog", "w+");
+            cloogfp = fopen("sigma_check_fop.cloog", "w+");
             assert(cloogfp != NULL);
             pluto_gen_sigma_cloog_code(sigma_check, cloogfp, outfp, partition_id);
             fclose(cloogfp);
@@ -1949,7 +1949,7 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
  *
  * Output format:  src_copy_level, acc->nrows, prog->npar + 1
  */
-void compute_flow_out_dep_split(struct stmt_access_pair *wacc_stmt,
+void compute_flow_out_partitions(struct stmt_access_pair *wacc_stmt,
         int src_copy_level, int *copy_level, PlutoProg *prog, PlutoConstraintsList *atomic_flowouts, int *pi_mappings)
 {
     int i;

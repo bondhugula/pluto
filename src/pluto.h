@@ -174,7 +174,7 @@ struct dependence{
 
     /*
      * Polyhedra used to store source unique dependence polyhedra
-     * in dsfo scheme
+     * in FOP scheme
      */
     PlutoConstraints *src_unique_dpolytype;
 
@@ -423,7 +423,7 @@ PlutoConstraints *compute_flow_out_of_dep(Dep *dep,
         int src_copy_level, int *copy_level, PlutoProg *prog, int split, PlutoConstraints **dcst1, int *pi_mappings);
 PlutoConstraints *compute_flow_out(struct stmt_access_pair *wacc_stmt, 
         int src_copy_level, int *copy_level, PlutoProg *prog, int *pi_mappings);
-void compute_flow_out_dep_split(struct stmt_access_pair *wacc_stmt,
+void compute_flow_out_partitions(struct stmt_access_pair *wacc_stmt,
         int src_copy_level, int *copy_level, PlutoProg *prog, PlutoConstraintsList *atomic_flowouts, int *pi_mappings);
 PlutoConstraints *compute_write_out(struct stmt_access_pair *wacc_stmt,
         int copy_level, PlutoProg *prog);

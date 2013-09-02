@@ -46,36 +46,45 @@ void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
-    fprintf(stdout, "       --tile               Tile for locality\n");
-    fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
-    fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
+    fprintf(stdout, "       --tile                    Tile for locality\n");
+    fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
+    fprintf(stdout, "       --parallel                Automatically parallelize using OpenMP pragmas\n");
     fprintf(stdout, "       | --parallelize\n");
-    fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --multipipe            Extract two degrees of pipelined parallelism if possible;\n");
-    fprintf(stdout, "       --distmem            Parallelize for distributed memory (generate MPI)\n");
-    fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
-    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
-    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
+    fprintf(stdout, "       --multipipe               Extract two degrees of pipelined parallelism if possible;\n");
+    fprintf(stdout, "                                     by default one degree is extracted (if it exists)\n");
+    fprintf(stdout, "       --variables_not_global    Variables not declared globally (if so, macros provide variable declarations)\n");
+    fprintf(stdout, "       --distmem                 Parallelize for distributed memory (generate MPI)\n");
+    fprintf(stdout, "       --mpiomp                  Parallelize for shared-memory along with distributed-memory (generate OpenMP along with MPI)\n");
+    fprintf(stdout, "\n   Communication code    Options related to communication code generation schemes for distributed-memory\n");
+    fprintf(stdout, "       --commopt                 Generate communication code using Flow-Out (FO) scheme (enabled by default)\n");
+    fprintf(stdout, "       --commopt_foifi           Generate communication code using Flow-Out Intersection Flow-In (FOIFI) scheme\n");
+    fprintf(stdout, "       --commopt_fop             Generate communication code using Flow-Out Partitioning (FOP) scheme (multicast pack by default)\n");
+    fprintf(stdout, "       --fop_unicast_runtime     FOP: generate code to choose between unicast and multicast pack at runtime\n");
+    fprintf(stdout, "       --commreport              Generate code to report communication volume and time\n\n");
+    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --[no]prevector           Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
+    fprintf(stdout, "       --context=<context>       Parameters are at least as much as <context>\n");
     fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
-    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
-    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
-    fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
-    fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
-    fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
-    fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
-    fprintf(stdout, "       --help    | -h         Print this help menu\n");
-    fprintf(stdout, "       --version | -v         Display version number\n");
+    fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (enabled by default with --distmem; disabled otherwise)\n");
+    fprintf(stdout, "       --islsolve                Use ISL as ilp solver\n");
+    fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
+    fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
+    fprintf(stdout, "                                     (enabled by default with --distmem; disabled otherwise)\n");
+    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
+    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
+    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
+    fprintf(stdout, "       --help    | -h            Print this help menu\n");
+    fprintf(stdout, "       --version | -v            Display version number\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
-    fprintf(stdout, "       --nofuse               Do not fuse across SCCs of data dependence graph\n");
-    fprintf(stdout, "       --maxfuse              Maximal fusion\n");
-    fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
+    fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
+    fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
     fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "       --moredebug    More verbose output\n");
+    fprintf(stdout, "       --debug                   Verbose output\n");
+    fprintf(stdout, "       --moredebug               More verbose output\n");
     fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
 }
 
@@ -122,8 +131,8 @@ int main(int argc, char *argv[])
         {"opencl", no_argument, &options->opencl, 1},
 #endif
         {"commopt", no_argument, &options->commopt, 1},
-        {"commopt_dep_split", no_argument, &options->commopt_dep_split, 1},
-        {"dsfo_pack_foifi", no_argument, &options->dsfo_pack_foifi, 1},
+        {"commopt_fop", no_argument, &options->commopt_fop, 1},
+        {"fop_unicast_runtime", no_argument, &options->fop_unicast_runtime, 1},
         {"commopt_foifi", no_argument, &options->commopt_foifi, 1},
         {"nocommopt", no_argument, &options->commopt, 0},
         {"commreport", no_argument, &options->commreport, 1},
@@ -153,9 +162,11 @@ int main(int argc, char *argv[])
         {"indent", no_argument, 0, 'i'},
         {"silent", no_argument, &options->silent, 1},
         {"lastwriter", no_argument, &options->lastwriter, 1},
+        {"nolastwriter", no_argument, &options->nolastwriter, 1},
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
+        {"noisldep", no_argument, &options->noisldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscoplib", no_argument, &options->readscoplib, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
@@ -307,8 +318,24 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
+    if (options->noisldep == 1) {
+        options->isldep = 0;
+    }
+
+    if (options->nolastwriter == 1) {
+        options->lastwriter = 0;
+    }
+
     if (options->distmem == 1 && options->parallel == 0)    {
         options->parallel = 1;
+    }
+
+    if (options->distmem == 1 && options->noisldep == 0)    {
+        options->isldep = 1;
+    }
+
+    if (options->distmem == 1 && options->nolastwriter == 0)    {
+        options->lastwriter = 1;
     }
 
     if (options->multipipe == 1 && options->parallel == 0)    {
@@ -332,11 +359,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->distmem = 0;
     }
 
-    //reset commopt and commopt_foifi when commopt_dep_split is selected, default of commopt is 1
-    if(options->commopt && options->commopt_dep_split) {
+    //reset commopt and commopt_foifi when commopt_fop is selected, default of commopt is 1
+    if(options->commopt && options->commopt_fop) {
         options->commopt = 0;
     }
-    if(options->commopt_foifi && options->commopt_dep_split) {
+    if(options->commopt_foifi && options->commopt_fop) {
         options->commopt_foifi = 0;
     }
 

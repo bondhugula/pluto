@@ -478,7 +478,7 @@ void generate_pack_or_unpack(FILE *packfp, PlutoProg *prog,
  * wacc_stmts:  all <statements, wacc> writing to this data variable
  * This function is called per data variable
  */  
-Stmt **gen_comm_code_opt_dep_split(struct stmt_access_pair **wacc_stmts, int num_accs, int nloops,
+Stmt **gen_comm_code_opt_fop(struct stmt_access_pair **wacc_stmts, int num_accs, int nloops,
         PlutoProg *prog, int *copy_level, int loop_num, int *pi_mappings, int* num_comm_stmts)
 {
     int i, k, src_copy_level, acc_nrows;
@@ -508,7 +508,7 @@ Stmt **gen_comm_code_opt_dep_split(struct stmt_access_pair **wacc_stmts, int num
 		}
 		pluto_constraints_free(flow_out_one);
 
-        compute_flow_out_dep_split(wacc_stmts[k], src_copy_level, copy_level, prog, atomic_flowouts, pi_mappings);
+        compute_flow_out_partitions(wacc_stmts[k], src_copy_level, copy_level, prog, atomic_flowouts, pi_mappings);
     }
 
     PlutoConstraintsList *prev = NULL, *curr = atomic_flowouts;
@@ -731,7 +731,7 @@ Stmt **gen_comm_code_opt_dep_split(struct stmt_access_pair **wacc_stmts, int num
         char acc_name_k[512];
         sprintf(acc_name_k, "%s_%d", acc_name, k+1);
 
-        if (options->dsfo_pack_foifi) {
+        if (options->fop_unicast_runtime) {
             PlutoConstraints *foifi_sets[nloops];
             PlutoConstraints *receivers[nloops];
             PlutoDepList *dep_list = curr->deps;
@@ -914,7 +914,7 @@ Stmt **gen_comm_code_opt_dep_split(struct stmt_access_pair **wacc_stmts, int num
         if (options->variables_not_global) sprintf(pack_stmt_text+strlen(pack_stmt_text), ",%s", acc_name);
         sprintf(pack_stmt_text+strlen(pack_stmt_text), "); } }");
 
-        if (options->dsfo_pack_foifi && !broadcast) sprintf(pack_stmt_text+strlen(pack_stmt_text), "}");
+        if (options->fop_unicast_runtime && !broadcast) sprintf(pack_stmt_text+strlen(pack_stmt_text), "}");
 
         if(curr!= NULL && curr->deps == NULL){
         	curr->constraints = pluto_constraints_empty(src_copy_level + acc_nrows + prog->npar +1);
@@ -934,7 +934,7 @@ Stmt **gen_comm_code_opt_dep_split(struct stmt_access_pair **wacc_stmts, int num
         if (options->variables_not_global) sprintf(unpack_stmt_text+strlen(unpack_stmt_text), ",%s", acc_name);
         sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "); }");
 
-        if (options->dsfo_pack_foifi && !broadcast) sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "}");
+        if (options->fop_unicast_runtime && !broadcast) sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "}");
         
         fprintf(packfp, "int unpack_%s_%d(%s,double *%s,int %s", acc_name_k, loop_num, decl_args, recvbufname, currdisplsname);
         if (options->variables_not_global) fprintf(packfp, ", __DECLARATION_OF_%s", acc_name);
@@ -1868,7 +1868,7 @@ void pluto_add_distmem_decls(PlutoProg *prog)
                 "int displs_%s[nprocs];\n", name);
         sprintf(prog->decls+strlen(prog->decls), 
                 "int displs_lw_%s[nprocs];\n", name);
-        if (options->commopt_foifi || options->commopt_dep_split) {
+        if (options->commopt_foifi || options->commopt_fop) {
             sprintf(prog->decls+strlen(prog->decls), 
                     "double *send_buf_%s[nprocs];\n", name);
             sprintf(prog->decls+strlen(prog->decls), 
@@ -1935,11 +1935,11 @@ int pluto_distmem_parallelize(PlutoProg *prog)
     /* Create a new sigma.c file */
 
     FILE *sigmafp = NULL;
-    if (options->commopt_dep_split) {
-        sigmafp = fopen("sigma_dsfo.c", "w");
-        if (options->dsfo_pack_foifi) {
-            fprintf(sigmafp, "#ifndef __DSFO_UNICAST_RECV_LIMIT\n");
-            fprintf(sigmafp, "#define __DSFO_UNICAST_RECV_LIMIT 1\n");
+    if (options->commopt_fop) {
+        sigmafp = fopen("sigma_fop.c", "w");
+        if (options->fop_unicast_runtime) {
+            fprintf(sigmafp, "#ifndef __FOP_UNICAST_RECV_LIMIT\n");
+            fprintf(sigmafp, "#define __FOP_UNICAST_RECV_LIMIT 1\n");
             fprintf(sigmafp, "#endif\n\n");
         }
     }else if (!options->commopt_foifi) {
@@ -2034,9 +2034,9 @@ int pluto_distmem_parallelize(PlutoProg *prog)
         copy_comm_stmts[l] = (Stmt ***) malloc(num_data[l]*sizeof(Stmt **));
         write_out_stmts[l] = (Stmt ***) malloc(num_data[l]*sizeof(Stmt **));
         for (i=0; i<num_data[l]; i++)    {
-            if (options->commopt_dep_split) {
+            if (options->commopt_fop) {
                 copy_comm_stmts[l][i] = 
-                    gen_comm_code_opt_dep_split(wacc_stmts[i],num_stmts_per_wacc[i],nloops,prog,
+                    gen_comm_code_opt_fop(wacc_stmts[i],num_stmts_per_wacc[i],nloops,prog,
                         copy_level,l,pi_mappings,&num_comm_stmts);
             }else if (options->commopt_foifi) {
                 copy_comm_stmts[l][i] = 

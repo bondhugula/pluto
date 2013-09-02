@@ -1943,8 +1943,8 @@ PlutoOptions *pluto_options_alloc()
 #endif
 
     options->commopt = 1;
-    options->commopt_dep_split = 0;
-    options->dsfo_pack_foifi = 0;
+    options->commopt_fop = 0;
+    options->fop_unicast_runtime = 0;
     options->commopt_foifi = 0;
     options->commreport = 0;
     options->variables_not_global = 0;

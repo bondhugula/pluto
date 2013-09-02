@@ -100,12 +100,14 @@ struct plutoOptions{
 
     /* Use isl to compute dependences */
     int isldep;
+    int noisldep;
 
     /* Compact dependences with ISL */
     int isldepcompact;
 
     /* Compute lastwriter for dependences */
     int lastwriter;
+    int nolastwriter;
 
     /* DEV: Don't use cost function */
     int nobound;
@@ -129,16 +131,14 @@ struct plutoOptions{
 
     int commopt;
 
-    /*Communication code generation using depedence based spliting */
-    int commopt_dep_split;
-    /*use FOIFI pack for each dependence based split based on runtime heuristics*/
-    int dsfo_pack_foifi;
-    int dsfo_dup_limit;
+    /*Communication code generation using flow-out partioning */
+    int commopt_fop;
+    /* generate code to choose between unicast pack and multicast pack 
+     * for each partition at runtime */
+    int fop_unicast_runtime;
 
     /*Communication code generation using flow-out intersection flow-in */
     int commopt_foifi;
-    /*Allowed duplication factor*/
-    int foifi_dup_factor;
 
     /*Report communication for distributed memory*/
     int commreport;
