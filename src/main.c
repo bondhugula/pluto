@@ -1,11 +1,13 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007--2012 Uday Bondhugula
+ * Copyright (C) 2007-2012 Uday Bondhugula
  *
- * This program is free software; you can redistribute it and/or modify
+ * This file is part of Pluto.
+ *
+ * Pluto is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
 
  * This program is distributed in the hope that it will be useful,
@@ -57,6 +59,7 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
     fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
     fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
     fprintf(stdout, "       --readscoplib          Read input from a scoplib file\n");
@@ -124,6 +127,7 @@ int main(int argc, char *argv[])
         {"cloogl", required_argument, 0, 'L'},
         {"cloogsh", no_argument, &options->cloogsh, 1},
         {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+        {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
         {"multipipe", no_argument, &options->multipipe, 1},
@@ -191,6 +195,7 @@ int main(int argc, char *argv[])
                 options->out_file = strdup(optarg);
                 break;
             case 'p':
+                options->forceparallel = atoi(optarg);
                 break;
             case 'q':
                 options->silent = 1;

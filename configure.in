@@ -130,6 +130,15 @@ configureopts="--enable-llint-version --prefix=$prefix \
  ./configure ${configureopts}
  )
 
+dnl Configuring polylib
+echo -e "\n======================"
+echo "Configuring polylib"
+echo "======================"
+configureopts="--enable-longlongint-lib --prefix=$prefix"
+(cd polylib/
+ ./configure ${configureopts}
+)
+
 
 AC_SUBST(ISL_INCLUDE)
 AC_SUBST(ISL_LDFLAGS)

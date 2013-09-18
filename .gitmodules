@@ -7,3 +7,6 @@
 [submodule "piplib"]
 	path = piplib
 	url = git://repo.or.cz/piplib.git
+[submodule "polylib"]
+	path = polylib
+	url = git://repo.or.cz/polylib.git

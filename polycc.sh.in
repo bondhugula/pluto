@@ -9,7 +9,7 @@
 # 
 # Copyright (C) 2007-2008 Uday Bondhugula 
 #
-# Available under GNU GPL v2 or (at your option) any later version
+# Available under GNU GPL version 3 or (at your option) any later version
 # 
 
 pluto=@SOURCE_DIR@/src/pluto

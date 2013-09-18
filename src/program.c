@@ -1,11 +1,13 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007-2012 Uday Kumar Bondhugula
+ * Copyright (C) 2007-2012 Uday Bondhugula
  *
- * This program is free software; you can redistribute it and/or modify
+ * This file is part of Pluto.
+ *
+ * Pluto is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
 
  * This program is distributed in the hope that it will be useful,
@@ -50,7 +52,6 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
     prog->deps[prog->ndeps-1] = dep;
 }
 
-
 PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
 {
     int i, j;
@@ -70,6 +71,25 @@ PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
     return mat;
 }
 
+scoplib_matrix_p pluto_trans_to_scoplib_schedule(PlutoMatrix *mat)
+{
+    int i, j;
+
+    scoplib_matrix_p smat;
+    smat = scoplib_matrix_malloc(mat->nrows, mat->ncols+1);
+
+    for (i=0; i<mat->nrows; i++)  {
+        /* Only equalities in schedule expected */
+        smat->p[i][0] = 0;
+
+        for (j=0; j<mat->ncols; j++)  {
+            smat->p[i][j+1] = mat->val[i][j];
+        }
+    }
+
+    return smat;
+}
+
 PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
 {
     int i, j;
@@ -86,6 +106,22 @@ PlutoMatrix *scoplib_matrix_to_pluto_matrix(scoplib_matrix_p smat)
     return mat;
 }
 
+
+scoplib_matrix_p pluto_matrix_to_scoplib_matrix(PlutoMatrix *mat)
+{
+    int i, j;
+
+    scoplib_matrix_p smat;
+
+    smat = scoplib_matrix_malloc(mat->nrows, mat->ncols);
+    for(i=0; i<mat->nrows; i++){
+        for(j=0; j<mat->ncols; j++){
+            smat->p[i][j] = mat->val[i][j];
+        }
+    }
+
+    return smat;
+}
 
 PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatrix)
 {
@@ -104,6 +140,35 @@ PlutoConstraints *scoplib_matrix_to_pluto_constraints(scoplib_matrix_p clanMatri
     return cst;
 }
 
+scoplib_matrix_p pluto_constraints_to_scoplib_matrix(PlutoConstraints *cst)
+{
+    int i, j;
+    scoplib_matrix_p smat;
+
+    smat = scoplib_matrix_malloc(cst->nrows, cst->ncols+1);
+
+    for(i=0; i<cst->nrows; i++){
+        smat->p[i][0] = (cst->is_eq[i] == 0);
+        for(j=0; j<cst->ncols; j++){
+            smat->p[i][j+1] = cst->val[i][j];
+        }
+    }
+    return smat;
+}
+
+scoplib_matrix_list_p pluto_constraints_list_to_scoplib_matrix_list(PlutoConstraints *cst){
+
+    scoplib_matrix_list_p list = scoplib_matrix_list_malloc();
+
+    assert (cst != NULL);
+
+    list->elt = pluto_constraints_to_scoplib_matrix(cst);
+
+    if(cst->next != NULL)
+        list->next = pluto_constraints_list_to_scoplib_matrix_list(cst->next);
+
+    return list;
+}
 
 PlutoConstraints *candl_matrix_to_pluto_constraints(const CandlMatrix *candlMatrix)
 {
@@ -472,6 +537,7 @@ void pluto_prog_print(PlutoProg *prog)
 
     pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
     pluto_deps_print(stdout, prog);
+    pluto_transformations_pretty_print(prog);
 }
 
 
@@ -577,6 +643,40 @@ static __isl_give isl_set *scoplib_matrix_list_to_isl_set(
     return set;
 }
 
+/* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
+        PlutoMatrix *matrix)
+{
+    int i, j;
+    int n_col, n;
+    isl_int v;
+    isl_mat *eq;
+
+    n_col = matrix->ncols;
+    n = matrix->nrows;
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n, n + n_col);
+
+    for (i = 0; i < n; ++i) {
+        isl_int_set_si(v, 0);
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element(eq, i, j, v);
+        isl_int_set_si(v, -1);
+        eq = isl_mat_set_element(eq, i, i, v);
+        for (j = 0; j < n_col ; ++j) {
+            int t = SCOPVAL_get_si(matrix->val[i][j]);
+            isl_int_set_si(v, t);
+            eq = isl_mat_set_element(eq, i, n + j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    return eq;
+}
 
 /* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
@@ -698,7 +798,7 @@ static __isl_give isl_union_map *scoplib_access_to_isl_union_map(
         eq = extract_equalities(ctx, access, i, len);
 
         bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
-            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+                isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
         map = isl_map_from_basic_map(bmap);
         map = isl_map_intersect_domain(map, isl_set_copy(dom));
         res = isl_union_map_union(res, isl_union_map_from_map(map));
@@ -743,6 +843,48 @@ static __isl_give isl_map *scoplib_basic_access_to_isl_union_map(
 
     ineq = isl_mat_alloc(ctx, 0, len + n_col - 1);
     eq = extract_equalities(ctx, access, pos, len);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    map = isl_map_from_basic_map(bmap);
+    map = isl_map_intersect_domain(map, dom);
+
+    return map;
+}
+
+/*
+ * Like scoplib_access_to_isl_union_map, but just for a single pluto access
+ * (read or write)
+ * pos: position (starting row) of the access in 'access'
+ */
+static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
+        PlutoMatrix  *mat, char* access_name,  __isl_take isl_set *dom)
+{
+    int len, n_col;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_mat *eq, *ineq;
+
+    ctx = isl_set_get_ctx(dom);
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+
+    n_col = mat->ncols;
+
+    isl_basic_map *bmap;
+    isl_map *map;
+    //int arr = SCOPVAL_get_si(access->p[pos][0]) - 1;
+
+    len = mat->nrows;
+
+    dim = isl_set_get_dim(dom);
+    dim = isl_dim_from_domain(dim);
+    dim = isl_dim_add(dim, isl_dim_out, len);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_out, access_name);
+
+    ineq = isl_mat_alloc(ctx, 0, len + n_col);
+    eq = pluto_extract_equalities(ctx, mat);
 
     bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
             isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
@@ -914,7 +1056,8 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_union_map *write;
     isl_union_map *read;
     isl_union_map *schedule;
-    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
+    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war;
+    isl_union_map *trans_dep_waw;
     scoplib_statement_p stmt;
 
     ctx = isl_ctx_alloc();
@@ -925,8 +1068,7 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     param_space = isl_space_params(isl_space_copy(dim));
     context = scoplib_matrix_to_isl_set(scop->context, param_space);
 
-    if (!options->rar)
-        dep_rar = isl_union_map_empty(isl_dim_copy(dim));
+    if (!options->rar) dep_rar = isl_union_map_empty(isl_dim_copy(dim));
     empty = isl_union_map_empty(isl_dim_copy(dim));
     write = isl_union_map_empty(isl_dim_copy(dim));
     read = isl_union_map_empty(isl_dim_copy(dim));
@@ -1039,44 +1181,64 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     }
 
     if (options->lastwriter) {
+        // compute RAW dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(read),
                 isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
+        // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(write),
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 &dep_waw, &dep_war, NULL, NULL);
-        if (options->rar)
+        // compute WAR dependences which may contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(read),
+                isl_union_map_copy(schedule),
+                NULL, &trans_dep_war, NULL, NULL);
+        isl_union_map_compute_flow(isl_union_map_copy(write),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(write),
+                isl_union_map_copy(schedule),
+                NULL, &trans_dep_waw, NULL, NULL);
+        if (options->rar) {
+            // compute RAR dependences which do not contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
                     isl_union_map_copy(read),
                     isl_union_map_copy(empty),
                     isl_union_map_copy(schedule),
                     &dep_rar, NULL, NULL, NULL);
-    }else {
+        }
+    }else{
+        // compute RAW dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(read),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(write),
                 isl_union_map_copy(schedule),
                 NULL, &dep_raw, NULL, NULL);
+        // compute WAR dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 NULL, &dep_war, NULL, NULL);
+        // compute WAW dependences which may contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(empty),
                 isl_union_map_copy(write),
                 isl_union_map_copy(schedule),
                 NULL, &dep_waw, NULL, NULL);
-        if (options->rar)
+        if (options->rar) {
+            // compute RAR dependences which may contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
                     isl_union_map_copy(empty),
                     isl_union_map_copy(read),
                     isl_union_map_copy(schedule),
                     NULL, &dep_rar, NULL, NULL);
+        }
     }
 
     dep_raw = isl_union_map_coalesce(dep_raw);
@@ -1100,6 +1262,32 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, CANDL_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, CANDL_RAR);
 
+    if (options->lastwriter) {
+        trans_dep_war = isl_union_map_coalesce(trans_dep_war);
+        trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
+
+        prog->ntransdeps = 0;
+        isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(trans_dep_waw, &isl_map_count, &prog->ntransdeps);
+        isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ntransdeps);
+
+        if (prog->ntransdeps >= 1) {
+            prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
+            for (i=0; i<prog->ntransdeps; i++) {
+                prog->transdeps[i] = pluto_dep_alloc();
+            }
+            prog->ntransdeps = 0;
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_raw, CANDL_RAW);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_war, CANDL_WAR);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, trans_dep_waw, CANDL_WAW);
+            prog->ntransdeps += extract_deps(prog->transdeps, prog->ntransdeps, prog->stmts, dep_rar, CANDL_RAR);
+        }
+
+        isl_union_map_free(trans_dep_war);
+        isl_union_map_free(trans_dep_waw);
+    }
+
     isl_union_map_free(dep_raw);
     isl_union_map_free(dep_war);
     isl_union_map_free(dep_waw);
@@ -1114,6 +1302,20 @@ static void compute_deps(scoplib_scop_p scop, PlutoProg *prog,
     isl_ctx_free(ctx);
 }
 
+scoplib_matrix_p get_identity_schedule(int dim, int npar){
+    scoplib_matrix_p smat = scoplib_matrix_malloc(2*dim+1, dim+npar+1+1);
+
+    int i, j;
+    for(i =0; i<2*dim+1; i++)
+        for(j=0; j<dim+1+npar+1; j++)
+            smat->p[i][j] = 0;
+
+    for(i=1; i<dim; i++)
+        smat->p[2*i-1][i] = 1;
+
+    return smat;
+
+}
 
 /* 
  * Extract necessary information from clan_scop to create PlutoProg - a
@@ -1173,6 +1375,7 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
     }
 
     prog->stmts = scoplib_to_pluto_stmts(scop);
+    prog->scop = scop;
 
     /* Compute dependences */
     if (options->isldep) {
@@ -1196,6 +1399,9 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         candl_options_free(candlOptions);
         candl_dependence_free(candl_deps);
         candl_program_free(candl_program);
+
+        prog->transdeps = NULL;
+        prog->ntransdeps = 0;
     }
 
     /* Add hyperplanes */
@@ -1264,6 +1470,8 @@ PlutoProg *pluto_prog_alloc()
     prog->context = pluto_constraints_alloc(1, prog->npar+1);
     prog->deps = NULL;
     prog->ndeps = 0;
+    prog->transdeps = NULL;
+    prog->ntransdeps = 0;
     prog->ddg = NULL;
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
@@ -1313,6 +1521,9 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
+    if (prog->depcst != NULL) {
+        pluto_constraints_free(*prog->depcst);
+    }
     free(prog->depcst);
     pluto_constraints_free(prog->globcst);
 
@@ -1366,6 +1577,8 @@ PlutoOptions *pluto_options_alloc()
 
     /* Default context is no context */
     options->context = -1;
+
+    options->forceparallel = -42;
 
     options->bee = 0;
 
@@ -1496,6 +1709,17 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
                     prog->stmts[prog->deps[i]->src]->dim+pos);
         }
     }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        assert(prog->transdeps[i] != NULL);
+        if (prog->transdeps[i]->src == stmt->id) {
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos);
+        }
+        if (prog->transdeps[i]->dest == stmt->id) {
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, 
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
+        }
+    }
 }
 
 /* Warning: use it only to knock off a dummy dimension (unrelated to 
@@ -1546,6 +1770,18 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
                     prog->stmts[prog->deps[i]->src]->dim+pos);
         }
     }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        assert(prog->transdeps[i] != NULL);
+        if (prog->transdeps[i]->src == stmt->id) {
+            pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope, pos);
+        }
+        if (prog->transdeps[i]->dest == stmt->id) {
+            // if (i==0)  printf("removing dim\n");
+            pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope,
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
+        }
+    }
 }
 
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos)
@@ -1585,94 +1821,14 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType hyp_type)
 }
 
 
-/* Add statement to program; can't reuse arg stmt pointer any more */
-void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
+/* Pad statement transformations so that they all equal number
+ * of rows */
+void pluto_pad_stmt_transformations(PlutoProg *prog)
 {
-    int i, j, max_nrows;
-
-    prog->stmts = (Stmt **) realloc(prog->stmts, ((prog->nstmts+1)*sizeof(Stmt *)));
-
-    stmt->id = prog->nstmts;
-
-    prog->nvar = PLMAX(prog->nvar, stmt->dim);
-    prog->stmts[prog->nstmts] = stmt;
-    prog->nstmts++;
-
-    /* Pad all trans matrices if necessary with zeros */
-    Stmt **stmts = prog->stmts;
-    int nstmts = prog->nstmts;
-
-    max_nrows = 0;
-
-    for (i=0; i<nstmts; i++)    {
-        if (stmts[i]->trans != NULL)    {
-            max_nrows = PLMAX(max_nrows, prog->stmts[i]->trans->nrows);
-        }
-    }
-
-    if (max_nrows >= 1) {
-        for (i=0; i<nstmts; i++)    {
-            if (stmts[i]->trans == NULL)    {
-                stmts[i]->trans = pluto_matrix_alloc(max_nrows, 
-                        stmts[i]->dim+prog->npar+1);
-                stmts[i]->trans->nrows = 0;
-            }
-
-            int curr_rows = stmts[i]->trans->nrows;
-
-            /* Add all zero rows */
-            for (j=curr_rows; j<max_nrows; j++)    {
-                pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
-            }
-        }
-
-        int old_hyp_num = prog->num_hyperplanes;
-        for (i=old_hyp_num; i<max_nrows; i++) {
-            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
-        }
-    }
-}
-
-
-/* Create a statement and add it to the program
- * iterators: domain iterators
- * trans: schedule/transformation
- * domain: domain
- * text: statement text
- */
-void pluto_add_stmt(PlutoProg *prog, 
-        const PlutoConstraints *domain,
-        const PlutoMatrix *trans,
-        char ** iterators,
-        const char *text,
-        PlutoStmtType type)
-{
-    int i, j, nstmts, max_nrows;
-
-    assert(trans != NULL);
-    assert(trans->ncols == domain->ncols);
+    int max_nrows, i, j, nstmts;
 
     nstmts = prog->nstmts;
-
-    prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
-
     Stmt **stmts = prog->stmts;
-
-    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
-
-    stmt->id = nstmts;
-    stmt->type = type;
-
-    stmt->text = strdup(text);
-    prog->nvar = PLMAX(prog->nvar, stmt->dim);
-
-    for (i=0; i<stmt->dim; i++) {
-        stmt->iterators[i] = strdup(iterators[i]);
-    }
-
-    prog->stmts[nstmts] = stmt;
-    prog->nstmts++;
-    nstmts = prog->nstmts;
 
     /* Pad all trans if necessary with zeros */
     max_nrows = 0;
@@ -1700,10 +1856,68 @@ void pluto_add_stmt(PlutoProg *prog,
 
         int old_hyp_num = prog->num_hyperplanes;
         for (i=old_hyp_num; i<max_nrows; i++) {
-            /* Not clear if this should be H_SCALAR */
+            /* This is not really H_SCALAR, but this is the best we can do */
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
         }
     }
+}
+
+
+/* Add statement to program; can't reuse arg stmt pointer any more */
+void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
+{
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((prog->nstmts+1)*sizeof(Stmt *)));
+
+    stmt->id = prog->nstmts;
+
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
+    prog->stmts[prog->nstmts] = stmt;
+    prog->nstmts++;
+
+    pluto_pad_stmt_transformations(prog);
+
+}
+
+
+
+/* Create a statement and add it to the program
+ * iterators: domain iterators
+ * trans: schedule/transformation
+ * domain: domain
+ * text: statement text
+ */
+void pluto_add_stmt(PlutoProg *prog, 
+        const PlutoConstraints *domain,
+        const PlutoMatrix *trans,
+        char ** iterators,
+        const char *text,
+        PlutoStmtType type)
+{
+    int i, nstmts;
+
+    assert(trans != NULL);
+    assert(trans->ncols == domain->ncols);
+
+    nstmts = prog->nstmts;
+
+    prog->stmts = (Stmt **) realloc(prog->stmts, ((nstmts+1)*sizeof(Stmt *)));
+
+    Stmt *stmt = pluto_stmt_alloc(domain->ncols-prog->npar-1, domain, trans);
+
+    stmt->id = nstmts;
+    stmt->type = type;
+
+    stmt->text = strdup(text);
+    prog->nvar = PLMAX(prog->nvar, stmt->dim);
+
+    for (i=0; i<stmt->dim; i++) {
+        stmt->iterators[i] = strdup(iterators[i]);
+    }
+
+    prog->stmts[nstmts] = stmt;
+    prog->nstmts++;
+
+    pluto_pad_stmt_transformations(prog);
 }
 
 
@@ -1829,6 +2043,38 @@ void pluto_stmt_free(Stmt *stmt)
     }
 
     free(stmt);
+}
+
+
+
+char *get_data_extent(PlutoAccess *acc, char **params, int npars, int dim)
+{
+    return scoplib_symbol_table_get_bound(acc->symbol, dim, params, npars);
+}
+
+/* Get Alpha matrix (A matrix - INRIA transformation representation */
+PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog)
+{
+    int r, c, i;
+
+    PlutoMatrix *a;
+    a = pluto_matrix_alloc(stmt->dim, stmt->dim);
+
+    r=0;
+    for (i=0; i<stmt->trans->nrows; i++)    {
+        if (stmt->hyp_types[i] == H_LOOP || 
+                stmt->hyp_types[i] == H_TILE_SPACE_LOOP) {
+            for (c=0; c<stmt->dim; c++) {
+                a->val[r][c] = stmt->trans->val[i][c];
+            }
+            r++;
+            if (r==stmt->dim)   break;
+        }
+    }
+
+    assert(r==stmt->dim);
+
+    return a;
 }
 
 
@@ -2064,7 +2310,7 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
     prog->hProps[level].dep_prop = SEQ;
 }
 
-int pluto_stmt_is_member_of(Stmt *s, Stmt **slist, int len)
+int pluto_stmt_is_member_of(const Stmt *s, Stmt **slist, int len)
 {
     int i;
     for (i=0; i<len; i++) {

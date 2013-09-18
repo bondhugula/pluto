@@ -3,9 +3,11 @@
  * 
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
- * This program is free software; you can redistribute it and/or modify
+ * This file is part of Pluto.
+ *
+ * Pluto is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
 
  * This program is distributed in the hope that it will be useful,
@@ -332,19 +334,15 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
             }
         }
     }
-    /* matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
-    /* matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
+    /* pluto_matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
+    /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
-    /* Save it so that it can be put back and freed correctly */
-    int **save = newcst->val;
-    newcst->val = newcstmat->val;
+    PlutoConstraints *newcst_permuted;
+    newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
 
-    // IF_DEBUG(dump_poly(newcst));
-    sol = pluto_constraints_solve(newcst,DO_NOT_ALLOW_NEGATIVE_COEFF);
-    /* Put it back so that it can be freed correctly */
-    newcst->val = save;
+    sol = pluto_constraints_solve(newcst_permuted,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
-    pluto_matrix_free(newcstmat);
+    pluto_constraints_free(newcst_permuted);
 
     fsol = NULL;
     if (sol != NULL)    {
@@ -2027,6 +2025,7 @@ PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt)
     return schedcst;
 }
 
+
 /* Update a dependence with a new constraint added to the statement domain */
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
 {
@@ -2038,6 +2037,28 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
 
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
+        if (stmts[dep->src] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *tstmt = stmts[dep->dest];
+            for (c=0; c<tstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, stmt->dim);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+        if (stmts[dep->dest] == stmt) {
+            PlutoConstraints *cst_l = pluto_constraints_dup(cst);
+            Stmt *sstmt = stmts[dep->src];
+            for (c=0; c<sstmt->dim; c++) {
+                pluto_constraints_add_dim(cst_l, 0);
+            }
+            pluto_constraints_add(dep->dpolytope, cst_l);
+            pluto_constraints_free(cst_l);
+        }
+    }
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        Dep *dep = prog->transdeps[i];
         if (stmts[dep->src] == stmt) {
             PlutoConstraints *cst_l = pluto_constraints_dup(cst);
             Stmt *tstmt = stmts[dep->dest];
