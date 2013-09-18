@@ -48,6 +48,9 @@ $(SRC).tiled.c:  $(SRC).c
 $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
+$(SRC).lbpar.c:  $(SRC).c
+	$(PLC) $(SRC).c --tile --parallel --lbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
+
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
@@ -62,6 +65,9 @@ tiled: $(SRC).tiled.c
 
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
+
+lbpar: $(SRC).lbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
@@ -81,6 +87,15 @@ test: orig tiled par
 	diff -q out_orig out_par4
 	@echo Success!
 
+lbtest: par lbpar
+	touch .test
+	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
+	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
+	diff -q out_par4 out_lbpar4
+	rm -f .test
+	@echo Success!
+
+
 opt-test: orig opt
 	touch .test
 	./orig > out_orig
@@ -91,11 +106,11 @@ opt-test: orig opt
 	rm -f .test
 
 clean:
-	rm -f out_* *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
+	rm -f out_* *.lbpar.c *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
 		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog
 
 exec-clean:
-	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
+	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out lbpar
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d
