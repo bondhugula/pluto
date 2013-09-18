@@ -1,3 +1,3 @@
 VAR=`tr '\n' '-' <tile.sizes  | sed 's/-$//'`
 mv temp2.c tp-$VAR.c
-mv temp2 tp-ex-$VAR
+mv temp2 par
