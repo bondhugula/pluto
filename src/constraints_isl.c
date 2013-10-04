@@ -145,7 +145,7 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset, void *u
 
     PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
     isl_basic_set_free(bset);
-    pluto_constraints_unionize(cst, bcst);
+    pluto_constraints_unionize_simple(cst, bcst);
     return 0;
 }
 
