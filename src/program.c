@@ -52,6 +52,54 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
     prog->deps[prog->ndeps-1] = dep;
 }
 
+/*
+ * Computes the transitive dependence via dep1 and dep2 
+ * Note: dep1's target statement should be same as dep2's source
+ */
+Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog)
+{
+    int i;
+
+    assert(dep1->dest == dep2->src);
+
+    Stmt *s1 = prog->stmts[dep1->src];
+    Stmt *s2 = prog->stmts[dep2->src];
+    Stmt *s3 = prog->stmts[dep2->dest];
+
+    PlutoConstraints *d1 = pluto_constraints_dup(dep1->dpolytope);
+    PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
+
+    for (i=0; i<s3->dim ; i++) {
+        pluto_constraints_add_dim(d1, s1->dim+s2->dim);
+    }
+    for (i=0; i<s1->dim; i++) {
+        pluto_constraints_add_dim(d2, 0);
+    }
+
+    PlutoConstraints *d3poly = pluto_constraints_dup(d1);
+    pluto_constraints_add(d3poly, d2);
+
+    pluto_constraints_project_out(d3poly, s1->dim, s2->dim);
+    pluto_constraints_free(d1);
+    pluto_constraints_free(d2);
+
+    if (pluto_constraints_is_empty(d3poly)) {
+        pluto_constraints_free(d3poly);
+        return NULL;
+    }
+
+    Dep *dep = pluto_dep_alloc();
+
+    dep->src = dep1->src;
+    dep->dest = dep2->dest;
+    dep->src_acc = dep1->src_acc;
+    dep->dest_acc = dep2->dest_acc;
+
+    dep->dpolytope = d3poly;
+
+    return dep;
+}
+
 PlutoMatrix *scoplib_schedule_to_pluto_trans(scoplib_matrix_p smat)
 {
     int i, j;
@@ -1517,6 +1565,118 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 }
 
 /* 
+ * FIXME: should be called on identity schedules (in normal 2*d+1 form)
+ *
+ * For dependences on the original loop nest (with identity
+ * transformation), we expect a dependence to be completely satisfied at
+ * some level; they'll have a component of zero for all levels up to the level at
+ * which they are satisfied; so if a loop is forced parallel, removing all
+ * dependences satisfied at that level will lead to the loop being
+ * detected as parallel 
+ * depth: 0-indexed depth to be forced parallel
+ * */
+void pluto_force_parallelize(PlutoProg *prog, int depth) 
+{
+    int i, j;
+
+    pluto_detect_transformation_properties(prog);
+    if (options->lastwriter) {
+        /* Add transitive edges that weren't included */
+        int num_new_deps = prog->ndeps;
+        while (num_new_deps > 0) {
+            int first_new_dep = prog->ndeps - num_new_deps;
+            num_new_deps = 0;
+            for (i=first_new_dep; i<prog->ndeps; i++) {
+                if (prog->deps[i]->satisfaction_level < 2*depth-1) {
+                    for (j=0; j<prog->ndeps; j++) {
+                        if (prog->deps[j]->satisfaction_level == 2*depth-1
+                                && prog->deps[i]->dest_acc == prog->deps[j]->src_acc) {
+                            Dep *dep = pluto_dep_compose(prog->deps[i], prog->deps[j], prog);
+                            if (dep == NULL) continue;
+                            dep->satisfaction_level = prog->deps[i]->satisfaction_level;
+                            dep->satisfied = true;
+                            switch(prog->deps[i]->type) {
+                                case CANDL_WAR:
+                                    if (IS_RAW(prog->deps[j]->type)) {
+                                        dep->type = CANDL_RAR;
+                                    }else{ // IS_WAW(prog->deps[j]->type)
+                                        dep->type = CANDL_WAR;
+                                    }
+                                    break;
+                                case CANDL_RAW:
+                                    if (IS_RAR(prog->deps[j]->type)) {
+                                        dep->type = CANDL_RAW;
+                                    }else{ // IS_WAR(prog->deps[j]->type)
+                                        dep->type = CANDL_WAW;
+                                    }
+                                    break;
+                                case CANDL_WAW:
+                                case CANDL_RAR:
+                                    dep->type = prog->deps[j]->type;
+                                    break;
+                                default:
+                                    assert(0);
+                            }
+                            pluto_add_dep(prog, dep);
+                            /* printf("Adding transitive edge\n"); */
+                            num_new_deps++;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!options->rar) { // remove RAR dependences that were added
+            Dep **nonrardeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
+            int count = 0;
+            for (i=0; i<prog->ndeps; i++) {
+                if (!IS_RAR(prog->deps[i]->type)) {
+                    prog->deps[i]->id = count;
+                    nonrardeps[count++] = prog->deps[i];
+                }else{
+                    // printf("removing edge\n");
+                    pluto_dep_free(prog->deps[i]);
+                }
+            }
+            free(prog->deps);
+            prog->deps = nonrardeps;
+            prog->ndeps = count;
+        }
+    }
+
+    Dep **rdeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
+    int count = 0;
+    for (i=0; i<prog->ndeps; i++) {
+        if (prog->deps[i]->satisfaction_level != 2*depth-1) {
+            prog->deps[i]->id = count;
+            rdeps[count++] = prog->deps[i];
+        }else{
+            // printf("removing edge\n");
+            pluto_dep_free(prog->deps[i]);
+        }
+    }
+    free(prog->deps);
+    prog->deps = rdeps;
+    prog->ndeps = count;
+
+    Dep **rtransdeps = (Dep **) malloc(sizeof(Dep *)*prog->ntransdeps);
+    count = 0;
+    for (i=0; i<prog->ntransdeps; i++) {
+        if (prog->transdeps[i]->satisfaction_level != 2*depth-1) {
+            prog->transdeps[i]->id = count;
+            rtransdeps[count++] = prog->transdeps[i];
+        }else{
+            // printf("removing edge\n");
+            pluto_dep_free(prog->transdeps[i]);
+        }
+    }
+    free(prog->transdeps);
+    prog->transdeps = rtransdeps;
+    prog->ntransdeps = count;
+}
+
+
+/* 
  * Extract necessary information from clan_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto. 
  * PlutoProg also includes dependences; so candl is run here.
@@ -1632,6 +1792,10 @@ PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options)
         }
         fclose(lfp);
         fclose(nlfp);
+    }
+
+    if (options->forceparallel >= 1) {
+        pluto_force_parallelize(prog, options->forceparallel);
     }
 
     return prog;
@@ -2045,6 +2209,56 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType hyp_type)
 }
 
 
+/* Statement that has the same transformed domain up to 'level' */
+Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level,
+        const char *text, PlutoStmtType type)
+{
+    int i, npar;
+
+    assert(level >= 0);
+    assert(level <= anchor_stmt->trans->nrows);
+
+    PlutoConstraints *newdom = pluto_get_new_domain(anchor_stmt);
+
+    /* Lose everything but 0 to level-1 loops */
+
+    pluto_constraints_project_out(newdom, level, 
+            anchor_stmt->trans->nrows-level);
+
+    npar = anchor_stmt->domain->ncols - anchor_stmt->dim - 1;
+    PlutoMatrix *newtrans = pluto_matrix_alloc(level, newdom->ncols);
+
+    /* Create new stmt */
+    Stmt *newstmt = pluto_stmt_alloc(level, newdom, newtrans);
+
+    newstmt->type = type;
+    newstmt->parent_compute_stmt = (type == ORIG)? NULL: anchor_stmt;
+
+    pluto_matrix_initialize(newstmt->trans, 0);
+    for (i=0; i<newstmt->trans->nrows; i++)   {
+        newstmt->trans->val[i][i] = 1;
+    }
+    newstmt->text = strdup(text);
+
+    for (i=0; i<level; i++) {
+        char *tmpstr = malloc(4);
+        snprintf(tmpstr, 4, "t%d", i+1);
+        newstmt->iterators[i] = tmpstr;
+    }
+    for (i=level; i<newstmt->dim;  i++) {
+        char iter[5];
+        sprintf(iter, "d%d", i-level+1);
+        newstmt->iterators[i] = strdup(iter);
+    }
+
+    pluto_constraints_free(newdom);
+    pluto_matrix_free(newtrans);
+
+    assert(newstmt->dim+npar+1 == newstmt->domain->ncols);
+
+    return newstmt;
+}
+
 /* Pad statement transformations so that they all equal number
  * of rows */
 void pluto_pad_stmt_transformations(PlutoProg *prog)
@@ -2269,6 +2483,415 @@ void pluto_stmt_free(Stmt *stmt)
     free(stmt);
 }
 
+
+/* Get transformed domain */
+PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
+{
+    int i;
+    PlutoConstraints *sched;
+
+    PlutoConstraints *newdom = pluto_constraints_dup(stmt->domain);
+    for (i=0; i<stmt->trans->nrows; i++)  {
+        pluto_constraints_add_dim(newdom, 0);
+    }
+
+    sched = pluto_stmt_get_schedule(stmt);
+
+    pluto_constraints_intersect(newdom, sched);
+
+    // IF_DEBUG(printf("New pre-domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_project_out(newdom, 
+            stmt->trans->nrows, stmt->dim);
+
+    // IF_DEBUG(printf("New domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_free(sched);
+
+    return newdom;
+}
+
+
+/* 
+ * Checks if the range of the variable at depth 'depth' can be bound by a
+ * constant; returns the constant of -1 if it can't be
+ *
+ * WARNING: If cnst is a list, looks at just the first element
+ *
+ * TODO: Not general now: difference being constant can be implied through
+ * other inequalities 
+ *
+ * */
+int get_const_bound_difference(const PlutoConstraints *cnst, int depth)
+{
+    int constdiff, r, r1, c, _lcm;
+
+    assert(cnst != NULL);
+    PlutoConstraints *cst = pluto_constraints_dup(cnst);
+
+    pluto_constraints_project_out(cst, depth+1, cst->ncols-1-depth-1);
+    assert(depth >= 0 && depth <= cst->ncols-2);
+
+    // printf("Const bound diff at depth: %d\n", depth);
+    // pluto_constraints_print(stdout, cst);
+
+    constdiff = INT_MAX;
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0)  break;
+    }
+    /* Variable doesn't appear */
+    if (r==cst->nrows) return -1;
+
+    /* Scale rows so that the coefficient of depth var is the same */
+    _lcm = 1;
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) _lcm = lcm(_lcm, abs(cst->val[r][depth]));
+    }
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) {
+            for (c=0; c<cst->ncols; c++) {
+                cst->val[r][c] = cst->val[r][c]*(_lcm/abs(cst->val[r][depth]));
+            }
+        }
+    }
+
+    /* Equality to a function of parameters/constant implies single point */
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r] && cst->val[r][depth] != 0)  {
+            for (c=depth+1; c<cst->ncols-1; c++)  { 
+                if (cst->val[r][c] != 0)    {
+                    break;
+                }
+            }
+            if (c==cst->ncols-1) {
+                constdiff = 1;
+                //printf("constdiff is 1\n");
+            }
+        }
+    }
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r])  continue;
+        if (cst->val[r][depth] <= -1)  {
+            /* Find a lower bound with constant difference */
+            for (r1=0; r1<cst->nrows; r1++) {
+                if (cst->is_eq[r1])  continue;
+                if (cst->val[r1][depth] >= 1) {
+                    for (c=0; c<cst->ncols-1; c++)  { 
+                        if (cst->val[r1][c] + cst->val[r][c] != 0)    {
+                            break;
+                        }
+                    }
+                    if (c==cst->ncols-1) {
+                        constdiff = PLMIN(constdiff, 
+                                floorf(cst->val[r][c]/(float)-cst->val[r][depth]) 
+                                + ceilf(cst->val[r1][c]/(float)cst->val[r1][depth])
+                                +1);
+                    }
+                }
+            }
+        }
+    }
+    pluto_constraints_free(cst);
+
+    if (constdiff == INT_MAX)   {
+        return -1;
+    }
+
+    /* Sometimes empty sets imply negative difference */
+    /* It basically means zero points */
+    if (constdiff <= -1) constdiff = 0;
+    //printf("constdiff is %d\n", constdiff);
+
+    return constdiff;
+}
+
+#define MINF 0
+#define MAXF 1
+
+/* Get expression for pos^{th} constraint in cst;
+ * Returned string should be freed with 'free' */
+char *get_expr(PlutoConstraints *cst, int pos, const char **params,
+        int bound_type)
+{
+    int c, sum;
+
+    char *expr = malloc(512);
+    strcpy(expr, "");
+
+    // printf("Get expr\n");
+    // pluto_constraints_print(stdout, cst);
+
+    if (bound_type == MINF) assert(cst->val[pos][0] <= -1);
+    else assert(cst->val[pos][0] >= 1);
+
+    sum = 0;
+    for (c=1; c<cst->ncols-1; c++)    {
+        sum += abs(cst->val[pos][c]);
+    }
+
+    if (sum == 0)   {
+        /* constant */
+        if (bound_type == MINF) {
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)floorf(cst->val[pos][cst->ncols-1]/-(float)cst->val[pos][0]));
+        }else{
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)ceilf(-cst->val[pos][cst->ncols-1]/(float)cst->val[pos][0]));
+        }
+    }else{
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), "floorf((");
+            }else{
+                sprintf(expr+strlen(expr), "ceilf((");
+            }
+        }
+
+
+        for (c=1; c<cst->ncols-1; c++)    {
+            if (cst->val[pos][c] != 0) {
+                if (bound_type == MINF) {
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%d*%s": "%d*%s", 
+                            cst->val[pos][c], params[c-1]);
+                }else{
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%d*%s": "%d*%s", 
+                            -cst->val[pos][c], params[c-1]);
+                }
+            }
+        }
+
+        if (cst->val[pos][c] != 0) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%d": "%d", 
+                        cst->val[pos][c]);
+            }else{
+                sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%d": "%d", 
+                        -cst->val[pos][c]);
+            }
+        }
+
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            sprintf(expr+strlen(expr), ")/(float)%d)",
+                    (bound_type==MINF)? -cst->val[pos][0]: cst->val[pos][0]);
+        }
+    }
+
+    return expr;
+}
+
+/*
+ * Get min or max of all upper or lower bounds (resp).
+ * Returned string should be freed with free
+ */
+char *get_func_of_expr(PlutoConstraints *cst, int offset, int bound_type,
+        const char **params)
+{
+    char *fexpr;
+    char *expr, *expr1;
+
+    fexpr = malloc(512);
+
+    strcpy(fexpr, "");
+
+    char func[5];
+    if (bound_type == MINF)  strcpy(func, "min(");
+    else strcpy(func, "max(");
+
+    if (cst->nrows - offset == 1) {
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, expr);
+    }else{
+        /* cst->nrows >= 2 */
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, func);
+        strcat(fexpr, expr);
+        expr1 = get_func_of_expr(cst, offset+1,bound_type,params);
+        strcat(fexpr, ",");
+        strcat(fexpr, expr1);
+        strcat(fexpr, ")");
+        free(expr1);
+    }
+    free(expr);
+
+    return fexpr;
+}
+
+/* Return the size of the parametric bounding box for a (contiguous) 
+ * block of dimensions
+ * start: position of start of block
+ * num: number of dimensions in block
+ * npar: number of parameters in terms of which expression will be computed;
+ * these are assumed to be the last 'npar' variables of cst
+ * parmas: strings for 'npar' parameters
+ * Return: expression describing the maximum number of points 'block' 
+ * vars traverse for any value of '0..start-1' variables
+ *
+ * This function is constant-aware, i.e., if possible, it will exploit the
+ * fact that the range of a variable is bounded by a constant. The underlying
+ * call to get_parametric_extent_const for each of the 'num' dimensions
+ * achieves this.
+ */
+char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
+        int num, int npar, const char **params)
+{
+    int k;
+    char *buf_size;
+
+    buf_size = malloc(2048 * 8);
+    strcpy(buf_size, "(");
+
+    const PlutoConstraints *cst_tmp = cst;
+    while (cst_tmp != NULL) {
+        sprintf(buf_size+strlen(buf_size), "+1");
+        for (k=0; k<num; k++) {
+            char *extent;
+            get_parametric_extent_const(cst_tmp, start+k, npar,
+                    params, &extent);
+            sprintf(buf_size+strlen(buf_size), "*(%s)", extent);
+            free(extent);
+        }
+        cst_tmp = cst_tmp->next;
+    }
+    sprintf(buf_size+strlen(buf_size), ")");
+
+    return buf_size;
+}
+
+
+/*  Parametric extent of the pos^th variable in cst
+ *  Extent computation is constant-aware, i.e., look when it can be 
+ *  bounded by a constant; if not, just a difference of max and min 
+ *  expressions of parameters is returned;  last 'npar'  ones are 
+ *  treated as parameters; *extent should be freed by 'free' 
+ */
+void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent)
+{
+    int constdiff;
+
+    // printf("Parametric/const bounds at pos: %d\n", pos);
+    //pluto_constraints_print(stdout, cst);
+
+    constdiff = get_const_bound_difference(cst, pos);
+
+    if (constdiff != -1)    {
+        *extent = malloc(sizeof(int)*8);
+        sprintf(*extent, "%d", constdiff);
+    }else{
+        get_parametric_extent(cst, pos, npar, params, extent);
+    }
+}
+
+
+/* Get lower and upper bound expression as a function of parameters for pos^th
+ * variable; last npar in cst are treated as parameters 
+ * lbexpr and ubexpr should be freed with free
+ * */
+void get_lb_ub_expr(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **lbexpr, char **ubexpr)
+{
+    int i;
+    PlutoConstraints *lb, *ub, *lbs, *ubs;
+    char *lbe, *ube;
+
+    PlutoConstraints *dup = pluto_constraints_dup(cst);
+
+    pluto_constraints_project_out(dup, 0, pos);
+    pluto_constraints_project_out(dup, 1, dup->ncols-npar-1-1);
+
+    // printf("Parametric bounds at 0th pos\n");
+    // pluto_constraints_print(stdout, dup);
+
+    //pluto_constraints_simplify(dup);
+    //pluto_constraints_print(stdout, dup);
+
+    lbs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+    ubs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+
+    for (i=0; i<dup->nrows; i++)    {
+        if (dup->is_eq[i] && dup->val[i][0] != 0) {
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_negate_row(ub, 0);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+        if (dup->val[i][0] >= 1)    {
+            /* Lower bound */
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+        }else if (dup->val[i][0] <= -1) {
+            /* Upper bound */
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+    }
+
+    assert(lbs->nrows >= 1);
+    assert(ubs->nrows >= 1);
+    pluto_constraints_free(dup);
+
+    lbe = get_func_of_expr(lbs, 0, MAXF, params);
+    ube = get_func_of_expr(ubs, 0, MINF, params);
+
+    *lbexpr = lbe;
+    *ubexpr = ube;
+
+    // printf("lbexpr: %s\n", lbe);
+    // printf("ubexpr: %s\n", ube);
+
+    pluto_constraints_free(lbs);
+    pluto_constraints_free(ubs);
+}
+
+
+/* 
+ * Get expression for difference of upper and lower bound of pos^th variable
+ * in cst in terms of parameters;  last 'npar' dimensions of cst are treated 
+ * as parameters; *extent should be freed by 'free'
+ */
+void get_parametric_extent(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent)
+{
+    char *lbexpr, *ubexpr;
+
+    get_lb_ub_expr(cst, pos, npar, params, &lbexpr, &ubexpr);
+
+    if (!strcmp(lbexpr, ubexpr)) {
+        *extent = strdup("1");
+    }else{
+        *extent = malloc(strlen(lbexpr) + strlen(ubexpr) + strlen(" -  + 1")+1);
+        sprintf(*extent, "%s - %s + 1", ubexpr, lbexpr);
+    }
+
+#if 0
+    if (cst->next != NULL)  {
+        char *extent_next;
+        get_parametric_extent(cst->next, pos, npar, params, &extent_next);
+        *extent = realloc(*extent, strlen(*extent)+strlen(extent_next) + strlen(" + "));
+        sprintf(*extent+strlen(*extent), " + %s", extent_next);
+        free(extent_next);
+    }
+#endif
+
+    // printf("Extent: %s\n", *extent);
+
+    free(lbexpr);
+    free(ubexpr);
+}
 
 
 char *get_data_extent(PlutoAccess *acc, char **params, int npars, int dim)
