@@ -26,6 +26,7 @@ lbpar:tile.sizes $(SRC).c
 	$(PLC) --tile --parallel --lbtile $(SRC).c -o temp1.c
 	bash replace.sh
 	$(CC) $(OPT_FLAGS) $(PAR_FLAGS) $(OMP_FLAGS) $(CFLAGS) temp2.c -o temp2 $(LDFLAGS)
+	cp temp2 lbpar
 	bash filename.sh
 
 
@@ -33,6 +34,7 @@ par:tile.sizes $(SRC).c
 	$(PLC) --tile --parallel $(SRC).c -o temp1.c
 	bash replace1.sh
 	$(CC) $(OPT_FLAGS) $(PAR_FLAGS) $(OMP_FLAGS) $(CFLAGS) temp2.c -o temp2 $(LDFLAGS)
+	cp temp2 par
 	bash filename1.sh
 
 
@@ -46,3 +48,5 @@ lbtest: par lbpar
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
 	rm -f .test
+clean:
+	rm -f temp* lb-* tp-* original*
