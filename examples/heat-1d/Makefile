@@ -49,4 +49,4 @@ lbtest: par lbpar
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
 	rm -f .test
 clean:
-	rm -f temp* lb-* tp-* original*
+	rm -f temp* lb* tp* original* par* out* *.cloog *.lbpar.c *.par.c

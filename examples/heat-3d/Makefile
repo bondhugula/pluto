@@ -20,7 +20,7 @@ LDFLAGS = -lm
 
 PLC=../../polycc
 
-all: orig tiled lbpar
+all: orig par lbpar
 
 lbpar:tile.sizes $(SRC).c
 	$(PLC) --tile --parallel --lbtile $(SRC).c -o temp1.c
@@ -49,4 +49,4 @@ lbtest: par lbpar
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
 	rm -f .test
 clean:
-	rm -f temp* lb* tp* original* par* out*
+	rm -f temp* lb* tp* original* par* out* *.cloog *.lbpar.c *.par.c
