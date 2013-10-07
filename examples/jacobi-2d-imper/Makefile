@@ -1,6 +1,6 @@
 SRC=jacobi-2d-imper
 
-PLCFLAGS = 
+PLCFLAGS = --islsolve
 TILEFLAGS = 
 
 include ../common.mk
