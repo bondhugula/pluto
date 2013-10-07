@@ -22,6 +22,7 @@ float data[M + 1][N + 1];
 float mean[M + 1];
 float symmat[M + 1][M + 1];
 
+int n, m;
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -95,8 +96,8 @@ int main(int argc, char** argv)
 {
   double t_start, t_end;
   int i, j, j1, j2;
-  int n = N;
-  int m = M;
+  n = N;
+  m = M;
   // float *mean, *stddev;
 
   if (fopen(".test", "r"))  {

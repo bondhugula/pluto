@@ -9,6 +9,8 @@
 double a[NMAX][NMAX], b[NMAX][NMAX], c[NMAX][NMAX];
 #pragma enddeclarations
 
+long N;
+
 #define TIME 1
 
 #ifdef TIME
@@ -30,9 +32,10 @@ double rtclock()
 
 int main()
 {
-  long N=NMAX;
   int i,j, k;
   double t_start, t_end;
+
+  N=NMAX;
 
   if (fopen(".test", "r"))  {
     N = N/2;
