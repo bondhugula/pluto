@@ -15,7 +15,7 @@ DIRS = ssymm \
 	   mvt \
 	   lu
 
-all: orig orig_par tiled par
+all: orig orig_par tiled par distopt
 
 orig:
 	@-for d in $(DIRS); do \
@@ -38,6 +38,17 @@ tiled:
 	@-for d in $(DIRS); do \
 		make -C $$d tiled; \
 		done
+
+distomp:
+	@-for d in $(DIRS); do \
+		make -C $$d distomp; \
+		done
+
+distopt:
+	@-for d in $(DIRS); do \
+		make -C $$d distopt; \
+		done
+
 
 test:
 	@-for d in $(DIRS); do \
