@@ -39,10 +39,17 @@ int main()
 #pragma endscop
 
     IF_TIME(t_end = rtclock());
-    IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
+#ifdef MPI
+        if (my_rank == 0) {
+            print_array();
+        }
+#else
         print_array();
+#endif
     }
+
     return 0;
 }

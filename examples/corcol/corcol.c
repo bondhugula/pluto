@@ -17,12 +17,14 @@
 
 float float_n = (float) N;
 float eps = 0.005;
+
+#pragma declarations
 float stddev[M + 1];
 float data[M + 1][N + 1];
 float mean[M + 1];
 float symmat[M + 1][M + 1];
+#pragma enddeclarations
 
-int n, m;
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -36,7 +38,7 @@ void init_array()
 
   for (i=0; i<M; i++) {
     for (j=0; j<N; j++) {
-      data[i][j] = ((float) i*j)/N;
+      data[i][j] = ((float) i*j+1)/N;
     }
   }
 }
@@ -47,11 +49,11 @@ void print_array()
   int i, j;
   for (i=0; i<M; i++) {
     for (j=0; j<M; j++) {
-      fprintf(stdout, "%lf ", symmat[i][j]);
-      if (i%80 == 20) fprintf(stdout, "\n");
+      fprintf(stderr, "%lf ", symmat[i][j]);
     }
+    fprintf(stderr, "\n");
   }
-  fprintf(stdout, "\n");
+  fprintf(stderr, "\n");
 }
 
 /**  Error handler  **************************************************/
@@ -96,39 +98,30 @@ int main(int argc, char** argv)
 {
   double t_start, t_end;
   int i, j, j1, j2;
-  n = N;
-  m = M;
   // float *mean, *stddev;
-
-  if (fopen(".test", "r"))  {
-    n = N/2;
-    m = M/2;
-  }
 
   init_array();
 
   IF_TIME(t_start = rtclock());
-
-  float float_n = (float) n;
 
   /* Allocate storage for mean and std. dev. vectors */
   // mean = vector(m);
   // stddev = vector(m);
 
   /* Determine mean of column vectors of input data matrix */
-  for (j = 1; j <= m; j++)
+  for (j = 1; j <= M; j++)
   {
     mean[j] = 0.0;
-    for (i = 1; i <= n; i++)
+    for (i = 1; i <= N; i++)
       mean[j] += data[i][j];
     mean[j] /= float_n;
   }
 
   /* Determine standard deviations of column vectors of data matrix. */
-  for (j = 1; j <= m; j++)
+  for (j = 1; j <= M; j++)
   {
     stddev[j] = 0.0;
-    for (i = 1; i <= n; i++)
+    for (i = 1; i <= N; i++)
       stddev[j] += (data[i][j] - mean[j]) * (data[i][j] - mean[j]);
     stddev[j] /= float_n;
     stddev[j] = sqrt(stddev[j]);
@@ -138,35 +131,41 @@ int main(int argc, char** argv)
     stddev[j] = stddev[j] <= eps ? 1.0 : stddev[j];
   }
 
-#pragma scop
   /* Center and reduce the column vectors. */
-  for (i = 1; i <= n; i++)
-    for (j = 1; j <= m; j++)
+  for (i = 1; i <= N; i++)
+    for (j = 1; j <= M; j++)
     {
       data[i][j] -= mean[j];
       data[i][j] /= sqrt(float_n) * stddev[j];
     }
 
+#pragma scop
   /* Calculate the m * m correlation matrix. */
-  for (j1 = 1; j1 <= m-1; j1++)
+  for (j1 = 1; j1 <= M-1; j1++)
   {
     symmat[j1][j1] = 1.0;
-    for (j2 = j1+1; j2 <= m; j2++)
+    for (j2 = j1+1; j2 <= M; j2++)
     {
       symmat[j1][j2] = 0.0;
-      for (i = 1; i <= n; i++)
+      for (i = 1; i <= N; i++)
         symmat[j1][j2] += ( data[i][j1] * data[i][j2]);
       symmat[j2][j1] = symmat[j1][j2];
     }
   }
 #pragma endscop
-  symmat[m][m] = 1.0;
+  symmat[M][M] = 1.0;
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
   if (fopen(".test", "r")) {
-    print_array();
+#ifdef MPI
+      if (my_rank == 0) {
+          print_array();
+      }
+#else
+      print_array();
+#endif
   }
 
 
