@@ -32,7 +32,6 @@ double rtclock()
 int main()
 {
   double t_start, t_end;
-  long N=NMAX;
   int i,j, k;
 
   for (i = 0; i < NMAX; i++) {
@@ -45,8 +44,8 @@ int main()
   IF_TIME(t_start = rtclock());
 
 #pragma scop
-  for (i=1; i<N; i++) {
-    for (j=0; j<N; j++) {
+  for (i=1; i<NMAX; i++) {
+    for (j=0; j<NMAX; j++) {
       for (k=0; k<i; k++) {
         b[j][k] += a[i][k] * b[j][i];
       }
@@ -56,15 +55,21 @@ int main()
 
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
   if (fopen(".test", "r")) {
+#ifdef MPI
+      if (my_rank == 0) {
+#endif
     for (i = 0; i < NMAX; i++) {
       for (j = 0; j < NMAX; j++) {
-        fprintf(stdout, "%lf ",  b[i][j]);
+        fprintf(stderr, "%lf ",  b[i][j]);
       }
     }
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
+#ifdef MPI
+      }
+#endif
   }
 
   return 0;

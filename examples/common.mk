@@ -102,7 +102,7 @@ test: orig tiled par
 	./orig 2> out_orig
 	./tiled 2> out_tiled
 	diff -q out_orig out_tiled
-	export OMP_NUM_THREADS=4; ./par 2> out_par4
+	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	rm -f .test
 	diff -q out_orig out_par4
 	@echo Success!

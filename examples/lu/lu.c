@@ -45,12 +45,12 @@ void print_array()
 
     for (i=0; i<N; i++) {
         for (j=0; j<N; j++) {
-            fprintf(stdout, "%lf ", round(a[i][j]));
-            if (j%80 == 79) fprintf(stdout, "\n");
+            fprintf(stderr, "%lf ", round(a[i][j]));
+            if (j%80 == 79) fprintf(stderr, "\n");
         }
-        fprintf(stdout, "\n");
+        fprintf(stderr, "\n");
     }
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
 }
 
 double rtclock()
@@ -86,10 +86,16 @@ int main()
 #pragma endscop
 
 	IF_TIME(t_end = rtclock());
-	IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+	IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
+#ifdef MPI
+        if (my_rank == 0) {
+            print_array();
+        }
+#else
         print_array();
+#endif
     }
     return 0;
 }
