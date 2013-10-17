@@ -108,27 +108,38 @@ configureopts="--with-bits=64 --prefix=$prefix"
  )
 
 
-dnl Configuring Clan 0.6.0
+dnl Configuring Openscop
 echo -e "\n=========================="
-echo "Configuring Clan 0.6.0"
+echo "Configuring Openscop"
 echo "=========================="
-configureopts="--enable-llint-version --prefix=$prefix \
---enable-internal-scoplib"
-(cd clan-0.6.0/
+configureopts="--enable-llint-version --prefix=$prefix"
+(cd openscop/
  ./configure ${configureopts}
  )
 
 
-dnl Configuring Candl 0.4.0 (long long int)
+dnl Configuring Clan-osl
 echo -e "\n=========================="
-echo "Configuring Candl 0.4.0 "
+echo "Configuring Clan"
 echo "=========================="
 configureopts="--enable-llint-version --prefix=$prefix \
---with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
---with-piplib=$SOURCE_DIR/piplib"
-(cd candl-0.4.0/
+--with-osl=build --with-osl-builddir=$SOURCE_DIR/openscop"
+(cd clan/
  ./configure ${configureopts}
  )
+
+
+dnl Configuring Candl-osl
+echo -e "\n=========================="
+echo "Configuring Candl"
+echo "=========================="
+configureopts="--enable-llint-version --prefix=$prefix \
+--with-piplib=build --with-piplib-builddir=$SOURCE_DIR/piplib \
+--with-osl=build --with-osl-builddir=$SOURCE_DIR/openscop"
+(cd candl/
+ ./configure ${configureopts}
+ )
+
 
 dnl Configuring polylib
 echo -e "\n======================"

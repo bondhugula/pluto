@@ -25,6 +25,8 @@
 #include "clan/clan.h"
 #include "candl/candl.h"
 
+#include "osl/scop.h"
+
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
@@ -39,7 +41,7 @@ void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
-PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
+PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options);
 
 int get_coeff_upper_bound(PlutoProg *prog);
 
@@ -100,5 +102,8 @@ int pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
 int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
+
+void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
+                           PlutoOptions *options);
 
 #endif

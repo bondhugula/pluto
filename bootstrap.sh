@@ -2,17 +2,6 @@
 
 autoreconf -vi
 
-cd candl-0.4.0/
-./autogen.sh
-cd ..
-
-cd clan-0.6.0/
-./autogen.sh
-cd scoplib/scoplib-0.2.0
-autoreconf -vfi
-cd ../..
-cd ..
-
 (cd isl; ./autogen.sh)
 
 cd cloog-isl
@@ -24,5 +13,22 @@ cd piplib
 cd ..
 
 cd polylib
+autoreconf -vi
+cd ..
+
+cd openscop
+autoreconf -vi
+cd ..
+
+cd candl
+autoreconf -vi
+cd ..
+
+cd clan
+#./get_submodules
+#cd osl
+./autogen.sh
+cd ..
+
 autoreconf -vi
 cd ..

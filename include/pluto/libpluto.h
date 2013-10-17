@@ -113,8 +113,8 @@ struct plutoOptions{
     /* No output from Pluto if everything goes right */
     int silent;
 
-    /* Read input from a scoplib file */
-    int readscoplib;
+    /* Read input from a .scop file */
+    int readscop;
 
     /* Use isl as ilp solver. */
     int islsolve;

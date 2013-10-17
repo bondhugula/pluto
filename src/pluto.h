@@ -22,13 +22,22 @@
 
 #include <stdbool.h>
 
-#include "scoplib/symbol.h"
-#include "scoplib/scop.h"
+#include "osl/scop.h"
 
 #include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
 #include "pluto/libpluto.h"
+
+#include "osl/extensions/dependence.h"
+
+/* Check out which piplib we are linking with */
+/* Candl/piplib_wrapper converts relation to matrices */
+#ifdef SCOPLIB_INT_T_IS_LONGLONG // Defined in src/Makefile.am
+#define PLUTO_OSL_PRECISION 64
+#elif  SCOPLIB_INT_T_IS_MP
+#define PLUTO_OSL_PRECISION 0
+#endif
 
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
@@ -55,10 +64,10 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 
 /* Candl dependences are not marked uniform/non-uniform */
 #define IS_UNIFORM(type) (0)
-#define IS_RAR(type) (type == CANDL_RAR)
-#define IS_RAW(type) (type == CANDL_RAW)
-#define IS_WAR(type) (type == CANDL_WAR)
-#define IS_WAW(type) (type == CANDL_WAW)
+#define IS_RAR(type) (type == OSL_DEPENDENCE_RAR)
+#define IS_RAW(type) (type == OSL_DEPENDENCE_RAW)
+#define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
+#define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
     PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
@@ -70,8 +79,6 @@ typedef enum stmttype {ORIG=0, STMT_UNKNOWN} PlutoStmtType;
 typedef struct pluto_access{
     int sym_id;
     char *name;
-
-    scoplib_symbol_p symbol;
 
     PlutoMatrix *mat;
 } PlutoAccess;
@@ -271,7 +278,7 @@ struct plutoProg{
     PlutoConstraints **depcst;
 
     /* Pointer toScoplib structure */
-    scoplib_scop_p scop;
+    osl_scop_p scop;
 };
 typedef struct plutoProg PlutoProg;
 

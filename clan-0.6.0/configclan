@@ -1,8 +1,0 @@
-#! /bin/sh
-
-if ! [ -f configure ]; then
-   ./autogen.sh
-fi
-mkdir -p build && cd build && ../configure $@
-echo "Please make the project from the build/ directory"
-
