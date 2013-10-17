@@ -523,12 +523,10 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
     osl_scatnames_p scatt = osl_scatnames_malloc();
     scatt->names = newnames;
   
-    printf("populate_scop: search scattnames\n");
     //replace the old scatnames with new one
     osl_generic_remove(&scop->extension, OSL_URI_SCATNAMES);
     osl_generic_p gen = osl_generic_shell(scatt, osl_scatnames_interface());
     osl_generic_add(&scop->extension, gen);
-    printf("populate_scop: after search scattnames\n");
     
 
     //update loop information
