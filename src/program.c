@@ -2115,6 +2115,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     isl_union_map_free(schedule);
     isl_set_free(context);
 
+    if(names) osl_names_free(names);
+
     isl_ctx_free(ctx);
 }
 
