@@ -1894,7 +1894,11 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
             osl_relation_list_p rlist  = osl_access_list_filter_read(stmt->access);
             osl_relation_list_p wlist  = osl_access_list_filter_write(stmt->access);
 
-            //osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+            osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+            if(arrays){
+              osl_strings_free(names->arrays);
+              names->arrays = osl_arrays_to_strings(arrays);
+            }
 
             read_i = osl_access_list_to_isl_union_map(rlist, isl_set_copy(dom),
                      names->arrays->string);
@@ -1969,7 +1973,11 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
                 schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
 
-                //osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+                osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+                if(arrays){
+                  osl_strings_free(names->arrays);
+                  names->arrays = osl_arrays_to_strings(arrays);
+                }
 
                 if (access->elt->type == OSL_TYPE_READ) {
                     read_pos = osl_basic_access_to_isl_union_map(access->elt, 
