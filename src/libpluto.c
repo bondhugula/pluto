@@ -271,10 +271,6 @@ int pluto_schedule_osl(osl_scop_p scop,
 
   options = options_l;
 
-
-  /* Add more infos (depth, label, ...) */
-  candl_scop_usr_init(scop);  //TODO: Make it done outside ??
-
   /* Convert clan scop to Pluto program */
   PlutoProg *prog = scop_to_pluto_prog(scop, options);
 
