@@ -1573,9 +1573,6 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
 
     ctx = isl_set_get_ctx(dom);
 
-    dim = isl_set_get_dim(dom);
-    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
-
     n_col = access->nb_columns - (access->nb_rows==1?1:2);
     len   = access->nb_rows==1?1:access->nb_rows-1;
 
