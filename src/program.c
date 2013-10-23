@@ -492,7 +492,7 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                 //update accesses
                 osl_relation_list_p rll = stm->access;
                 while(rll){
-                  osl_relation_insert_blank_column(rll->elt, rll->elt->nb_output_dims);
+                  osl_relation_insert_blank_column(rll->elt, rll->elt->nb_output_dims+1);
                   rll->elt->nb_input_dims++;
                   rll = rll->next;
                 }
