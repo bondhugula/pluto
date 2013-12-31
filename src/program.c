@@ -691,6 +691,8 @@ static __isl_give isl_set *scoplib_matrix_list_to_isl_set(
     return set;
 }
 
+#if 0
+/* Unused */
 /* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
  */
@@ -725,6 +727,7 @@ static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
 
     return eq;
 }
+#endif
 
 /* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
@@ -900,6 +903,8 @@ static __isl_give isl_map *scoplib_basic_access_to_isl_union_map(
     return map;
 }
 
+#if 0
+/* Unused */
 /*
  * Like scoplib_access_to_isl_union_map, but just for a single pluto access
  * (read or write)
@@ -941,6 +946,7 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 
     return map;
 }
+#endif
 
 
 static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)

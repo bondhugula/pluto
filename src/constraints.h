@@ -99,7 +99,8 @@ PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
 PlutoConstraints *pluto_constraints_from_matrix(const PlutoMatrix *mat);
 PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func);
 void pluto_constraints_project_out(PlutoConstraints *cst, int start, int end);
-
+void pluto_constraints_project_out_single(PlutoConstraints *cst, int start, 
+        int end);
 
 int pluto_constraints_num_in_list(const PlutoConstraints *const cst);
 
