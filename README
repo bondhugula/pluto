@@ -34,9 +34,12 @@ Stable release
 
 $ tar zxvf pluto-0.10.0.tar.gz
 $ cd pluto-0.10.0/
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+$ ./configure
 $ make
 $ make test
+
+configure can be provided --with-isl-prefix=<isl install location> to 
+build with another isl, otherwise the bundled isl is used.
 
 Development version from Git
 

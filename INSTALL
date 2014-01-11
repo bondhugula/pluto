@@ -24,8 +24,11 @@ QUICK INSTALL
 
 $ tar zxvf pluto-0.10.0.tgz
 $ cd pluto-0.10.0/
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+$ ./configure 
 $ make
+
+configure can be provided --with-isl-prefix=<isl install location> to 
+build with another isl, otherwise the bundled isl is used.
 
 * polycc is the script wrapper around src/pluto and all other components, 
 and it is the one to run. libpluto.{so,a} can be found in src/.libs/ and can 
