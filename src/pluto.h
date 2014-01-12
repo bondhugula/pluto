@@ -273,6 +273,12 @@ struct plutoProg{
 
     /* Pointer toScoplib structure */
     scoplib_scop_p scop;
+
+    /* Hyperplane row that is replaced in case concurrent start is found*/
+    int replaced_hyperplane;
+
+    /* Face allowing concurrent start for the statements in the program */
+    int * face_con_start;
 };
 typedef struct plutoProg PlutoProg;
 

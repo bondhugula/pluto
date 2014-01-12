@@ -455,6 +455,15 @@ void pluto_reschedule_tile(PlutoProg *prog)
 {
     int i, j, temp;
     for(i=0;i<prog->nstmts;i++){
+        int fl = prog->stmts[i]->num_tiled_loops;
+        int replaced_hyperplane = prog->replaced_hyperplane;
+        if( replaced_hyperplane!= 0 && prog->stmts[i]->last!=NULL){
+            for(j=0;j<prog->stmts[i]->last->ncols;j++){
+                temp=prog->stmts[i]->last->val[0][j];
+                prog->stmts[i]->last->val[0][j]=prog->stmts[i]->trans->val[fl+replaced_hyperplane][fl+j];
+                prog->stmts[i]->trans->val[fl+replaced_hyperplane][fl+j]=temp;
+            }
+        }
         if(prog->stmts[i]->last!=NULL){
             int fl = prog->stmts[i]->num_tiled_loops;
             for(j=0;j<prog->stmts[i]->last->ncols;j++){

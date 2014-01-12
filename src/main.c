@@ -48,6 +48,7 @@ void usage_message(void)
     fprintf(stdout, "\nOptions:\n");
     fprintf(stdout, "       --tile               Tile for locality\n");
     fprintf(stdout, "       --lbtile             Tile for load-balance\n");
+    fprintf(stdout, "       --partlbtile             Tile for load-balance (one-dimensional)\n");
     fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
     fprintf(stdout, "       | --parallelize\n");
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
         {"lbtile", no_argument, &options->lbtile, 1},
+        {"partlbtile", no_argument, &options->partlbtile, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -279,6 +281,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
+    if (options->partlbtile == 1 && options->lbtile == 0)    {
+        options->lbtile = 1;
+    }
+
     if (options->lbtile == 1 && options->tile == 0)    {
         options->tile = 1;
     }

@@ -17,6 +17,9 @@ struct plutoOptions{
     /* Load-balanced tiling */
     int lbtile;
 
+    /* Load-balanced tiling (one dimensional)*/
+    int partlbtile;
+
     /* parallelization */
     int parallel;
 
