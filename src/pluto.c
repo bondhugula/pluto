@@ -1345,7 +1345,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
     /*At this point currcst contains only legality constraints
      *we don't add non_zero constraints as they are implicitly taken care of
      */
-    int i,j,k;
+    int i,j,k,lambda_k;
     lastcst= pluto_constraints_alloc(2*nvar*nstmts, CST_WIDTH+nvar*nstmts);
     // lastcst is the set of additional constraints
 
@@ -1370,12 +1370,15 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
             lastcst->val[lastcst->nrows][stmt_offset1+j] =1;
             lastcst->val[lastcst->nrows][stmt_offset2] = -(prog->face_con_start[j]);
             if (options->partlbtile)
-              lastcst->val[lastcst->nrows][stmt_offset2+1] = prog->stmts[i]->trans->val[cone_complement][j];
+                lastcst->val[lastcst->nrows][stmt_offset2+1] = prog->stmts[i]->trans->val[cone_complement][j];
             else{
-              for(k=0;k<prog->stmts[i]->trans->nrows;k++){
-                if(k!= replace && prog->stmts[i]->hyp_types[k]!= H_SCALAR)
-                  lastcst->val[lastcst->nrows][stmt_offset2+k] = prog->stmts[i]->trans->val[k][j];
-              }
+                lambda_k=0;
+                for(k=0;k<prog->stmts[i]->trans->nrows;k++){
+                    if(k!= replace && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
+                        lastcst->val[lastcst->nrows][stmt_offset2+lambda_k+1] = prog->stmts[i]->trans->val[k][j];
+                        lambda_k++;
+                    }
+                }
             }
             lastcst->val[lastcst->nrows][lastcst->ncols-1] = 0;
             lastcst->nrows++;
