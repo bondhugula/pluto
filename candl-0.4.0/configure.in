@@ -43,6 +43,7 @@ AC_CONFIG_AUX_DIR([autoconf])
 dnl Initialize automake. Here, a special tar version that enables
 dnl (very) long filenames.
 AM_INIT_AUTOMAKE([1.9 tar-ustar no-define foreign dist-bzip2])
+AM_SILENT_RULES([yes])
 
 
 dnl default version
