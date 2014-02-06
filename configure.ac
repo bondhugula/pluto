@@ -16,11 +16,12 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.9.0, [udayreddy@gmail.com])
+AC_INIT(pluto, 0.10.0, [udayreddy@gmail.com])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE()
+AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
 dnl clan, candl, cloog are all configured with 64-bit data type support

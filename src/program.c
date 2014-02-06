@@ -1368,6 +1368,8 @@ static __isl_give isl_set *osl_relation_list_to_isl_set(
     return set;
 }
 
+#if 0
+/* Unused */
 /* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
  */
@@ -1402,6 +1404,7 @@ static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
 
     return eq;
 }
+#endif
 
 /* Convert an m x (1 + m + n + 1) osl_relation_p [d -I A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
@@ -1597,7 +1600,8 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
     return map;
 }
 
-
+#if 0
+/* Unused */
 /*
  * Like osl_access_list_to_isl_union_map, but just for a single pluto access
  * (read or write)
@@ -1639,6 +1643,7 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 
     return map;
 }
+#endif
 
 
 static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)

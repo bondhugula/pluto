@@ -1745,12 +1745,10 @@ void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
     char *var[ndims];
     int j;
 
-    if (vars) {
-        for (j=0; j<ndims; j++)  {
+    for (j=0; j<ndims; j++)  {
+        if (vars && vars[j]) {
             var[j] = strdup(vars[j]);
-        }
-    }else{
-        for (j=0; j<ndims; j++)  {
+        }else{
             var[j] = malloc(5);
             sprintf(var[j], "x%d", j+1);
         }

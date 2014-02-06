@@ -1,3 +1,9 @@
+0.10.0
+
+Pluto algorithm update (extended), and bug fixes.
+
+See git history for all changes.
+
 0.9.0
 
 Making parallelization, tiling, and other transformations work with bands
