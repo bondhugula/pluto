@@ -426,5 +426,6 @@ int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog);
 PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *dest);
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
+int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 
 #endif

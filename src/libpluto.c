@@ -371,7 +371,7 @@ int pluto_schedule_osl(osl_scop_p scop,
           }
           fclose(paramsFP);
       }
-      detect_mark_unrollable_loops(prog);
+      pluto_detect_mark_unrollable_loops(prog);
   }
 
   if (options->polyunroll)    {

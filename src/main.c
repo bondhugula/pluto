@@ -258,8 +258,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (options->readscop){
         osl_interface_p registry = osl_interface_get_default_registry();
         scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-      }
-      else{
+      }else{
         scop = clan_scop_extract(src_fp, clanOptions);
       }
   
@@ -392,7 +391,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
             fclose(paramsFP);
         }
-        detect_mark_unrollable_loops(prog);
+        pluto_detect_mark_unrollable_loops(prog);
     }
 
     if (options->polyunroll)    {
@@ -409,8 +408,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if(!strcmp(srcFileName, "stdin")){  //input stdin == output stdout
       pluto_populate_scop(scop, prog, options);
       osl_scop_print(stdout, scop);
-    }
-    else{  // do the usual Pluto stuff
+    }else{  // do the usual Pluto stuff
   
       /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
       /* Since meta info about loops
