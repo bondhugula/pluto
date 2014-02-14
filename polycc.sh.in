@@ -73,16 +73,10 @@ fi
     #$plann $PLUTOOUT @SOURCE_DIR@/annotations
 #fi
 
-# pre vectorize (#pragma ivdep and scalar bound rep for the 
-# vectorizable innermost loop if it was detected)
-$vloog $PLUTOOUT
 
 # put the original skeleton around the transformed code
 @SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
-if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename
-fi
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
     indent -kr -br -ce -l125 $OUTFILE
@@ -125,6 +119,9 @@ cleanup()
 	then
 		mv $TEMPFILE $SOURCEFILE
 	fi
+if [ "$DEBUG" != 1 ]; then
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog *.sysloog .appendfilename
+fi
 }
 
 trap cleanup exit
