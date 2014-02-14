@@ -7,29 +7,54 @@
 
 MAXLINES=`wc -l $1 | awk '{print $1}'`
 
-grep -B $MAXLINES "#pragma[[:space:]]\+scop" $1 | grep -v "#pragma[[:space:]]\+scop" > .head
-grep -A $MAXLINES "#pragma[[:space:]]\+endscop" $1 | grep -v "#pragma[[:space:]]\+endscop" > .tail
+# Get the FIRST scop and return all the lines above it
+# Because we are returning the text preceding the first scop, it's ok to ignore that pragma
+# which is what the grep -v call does
+grep -B $MAXLINES -m 1 "#pragma[[:space:]]\+scop" $1 | grep -v "#pragma[[:space:]]\+scop" > .head
+# Get the FIRST endscop and return all the lines below it
+# We want to get all the text below the first endscop, but do not want that first endscop line to be returned
+# which is accomplished with the awk call at the end.
+sed -n '/\#pragma[[:space:]]endscop/,$p' $1 | awk '{if(NR>1)print}' > .tail
+#grep -A $MAXLINES "#pragma[[:space:]]\+endscop" $1 | grep -v "#pragma[[:space:]]\+endscop" > .tail
 
 cat .head > __tmp
 
 # The gcc preprocessor inserts some useless comments like "# 1 "<built-in>"
 # preprocessor doesn't like pragma's in #defines and so it was not put in from pluto
 # when '--bee' was used - instead we will add it here
+
+# Put all the include statements in a  file
 cat $2 | grep "^#include" > .includes
+
+# Put everything that isn't an include into another file
 cat $2 | grep -v "^#include" > .body.c
+
+# Put those includes we got above into another file
+cat .includes > .head
+
+# Check if we've already inserted the extra includes and defines
+# If we haven't, put them in the head
+if ! grep -q "#define ceild(n,d)" __tmp
+	then
+	echo "#include <math.h>" >> .head
+	echo "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))" >> .head
+	echo "#define floord(n,d) floor(((double)(n))/((double)(d)))" >> .head
+	echo "#define max(x,y)    ((x) > (y)? (x) : (y))" >> .head
+	echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
+fi
+
 gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
 sed -e 's/_NL_DELIMIT_/\n/' >> __tmp
 
 cat .tail >> __tmp
 
-cat .includes > .head
-echo "#include <math.h>" >> .head
-
-echo "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))" >> .head
-echo "#define floord(n,d) floor(((double)(n))/((double)(d)))" >> .head
-echo "#define max(x,y)    ((x) > (y)? (x) : (y))" >> .head
-echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
-
-cat .head __tmp > $3
+# Checks to see if the openmp header has already been inserted into the file
+# If not, it inserts it.
+if ! grep -q "#include <omp.h>" __tmp
+	then
+		cat .head __tmp > $3
+else
+	cat __tmp > $3
+fi
 
 rm -f .head .tail __tmp .includes .body.c
