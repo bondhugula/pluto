@@ -50,11 +50,12 @@ cat .tail >> __tmp
 
 # Checks to see if the openmp header has already been inserted into the file
 # If not, it inserts it.
-if ! grep -q "#include <omp.h>" __tmp
+if grep -q "#include <omp.h>" __tmp
 	then
-		cat .head __tmp > $3
-else
-	cat __tmp > $3
+	# Remove the existing omp.h include
+	sed -ie '\/\<omp\.h\>/d'  __tmp
 fi
+
+cat .head __tmp > $3
 
 rm -f .head .tail __tmp .includes .body.c
