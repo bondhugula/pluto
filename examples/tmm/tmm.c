@@ -43,17 +43,16 @@ void print_array()
 
     for (i = 0; i < NMAX; i++) {
       for (j = i; j < NMAX; j++) {
-        fprintf(stdout, "%lf ", C[i][j]);
+        fprintf(stderr, "%lf ", C[i][j]);
       }
-      fprintf(stdout, "\n");
+      fprintf(stderr, "\n");
     }
 }
 
 
 int main(int argc, char *argv)
 {
-  double t_start, t_end;
-	long N=NMAX;
+    double t_start, t_end;
 
 	int i, j, k;
 
@@ -68,9 +67,9 @@ int main(int argc, char *argv)
   IF_TIME(t_start = rtclock());
 
 #pragma scop
-	for(i = 0; i < N; i++) {
-		for(j=i; j < N; j++) { 
-			for(k=i;  k< N; k++) {
+	for(i = 0; i < NMAX; i++) {
+		for(j=i; j < NMAX; j++) { 
+			for(k=i;  k< NMAX; k++) {
 				C[i][j] += A[i][k] * B[k][j];
 			}
 		}
@@ -80,15 +79,16 @@ int main(int argc, char *argv)
 
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
   if (fopen(".test", "r")) {
-    for (i = 0; i < NMAX; i++) {
-      for (j = 0; j < NMAX; j++) {
-        fprintf(stdout, "%lf ", C[i][j]);
+#ifdef MPI
+      if (my_rank == 0) {
+          print_array();
       }
-    }
-
+#else
+          print_array();
+#endif
   }
 
   return 0;

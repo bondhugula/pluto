@@ -3,24 +3,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 
-#define alpha 1
-#define beta 1
-#define N 8000
-
-#pragma declarations
-double A[N][N];
-double B[N][N];
-
-double x[N];
-double u1[N];
-double u2[N];
-double v2[N];
-double v1[N];
-double w[N];
-double y[N];
-double z[N];
-#pragma enddeclarations
-
+#define N 6000
 
 #define alpha 1
 #define beta 1
@@ -69,10 +52,10 @@ void print_array()
     int i, j;
 
     for (i=0; i<N; i++) {
-        fprintf(stdout, "%0.2lf ", w[i]);
-        if (i%80 == 20) fprintf(stdout, "\n");
+        fprintf(stderr, "%0.2lf ", w[i]);
+        if (i%80 == 20) fprintf(stderr, "\n");
     }
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
 }
 
 
@@ -114,10 +97,16 @@ int main()
 #pragma endscop
 
     IF_TIME(t_end = rtclock());
-    IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
+#ifdef MPI
+        if (my_rank == 0) {
+            print_array();
+        }
+#else
         print_array();
+#endif
     }
 
     return 0;

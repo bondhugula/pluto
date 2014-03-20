@@ -10,14 +10,12 @@
 #define N 1500
 #define M 1500
 
-float float_n = (float) N;
-float eps = 0.005;
-float stddev[M + 1];
-float data[M + 1][N + 1];
-float mean[M + 1];
-float symmat[M + 1][M + 1];
-
-int n, m;
+double float_n = (float) N;
+double eps = 0.005;
+double stddev[M + 1];
+double data[M + 1][N + 1];
+double mean[M + 1];
+double symmat[M + 1][M + 1];
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -45,11 +43,11 @@ void print_array()
   int m = M;
   for (i=1; i<=m; i++) {
     for (j=1; j<=m; j++) {
-      fprintf(stdout, "%0.2lf ", symmat[i][j]);
-      if (i%80 == 20) fprintf(stdout, "\n");
+      fprintf(stderr, "%0.2lf ", symmat[i][j]);
     }
+    fprintf(stderr, "\n");
   }
-  fprintf(stdout, "\n");
+  fprintf(stderr, "\n");
 }
 
 double rtclock()
@@ -72,32 +70,35 @@ int main(int argc, char** argv)
 {
   double t_start, t_end;
   int i, j, j1, j2;
-  n = N;
-  m = M;
 
   init_array();
 
   IF_TIME(t_start = rtclock());
 
-#pragma scop
   /* Determine mean of column vectors of input data matrix */
-  for (j = 1; j <= m; j++) {
+  for (j = 1; j <= M; j++) {
     mean[j] = 0.0;
-    for (i = 1; i <= n; i++)
+    for (i = 1; i <= N; i++)
       mean[j] += data[i][j];
     mean[j] /= float_n;
   }
 
   /* Center the column vectors. */
-  for (i = 1; i <= n; i++)
-    for (j = 1; j <= m; j++)
+  for (i = 1; i <= N; i++)
+    for (j = 1; j <= M; j++)
       data[i][j] -= mean[j];
 
-  /* Calculate the m * m covariance matrix. */
-  for (j1 = 1; j1 <= m; j1++) {
-    for (j2 = j1; j2 <= m; j2++) {
+  for (j1 = 1; j1 <= M; j1++) {
+    for (j2 = j1; j2 <= M; j2++) {
       symmat[j1][j2] = 0.0;
-      for (i = 1; i <= n; i++) {
+    }
+  }
+
+#pragma scop
+  /* Calculate the m * m covariance matrix. */
+  for (j1 = 1; j1 <= M; j1++) {
+    for (j2 = j1; j2 <= M; j2++) {
+      for (i = 1; i <= N; i++) {
         symmat[j1][j2] += data[i][j1] * data[i][j2];
       }
       symmat[j2][j1] = symmat[j1][j2];
@@ -106,10 +107,16 @@ int main(int argc, char** argv)
 #pragma endscop
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
   if (fopen(".test", "r"))  {
-    print_array();
+#ifdef MPI
+      if (my_rank == 0) {
+          print_array();
+      }
+#else
+      print_array();
+#endif
   }
 
   return 0;

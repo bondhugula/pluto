@@ -183,7 +183,7 @@ int pluto_pre_vectorize(PlutoProg *prog)
 
 
 /* Detect upto two loops to register tile (unroll-jam) */
-int detect_mark_unrollable_loops(PlutoProg *prog)   
+int pluto_detect_mark_unrollable_loops(PlutoProg *prog)   
 {
     int bandStart, bandEnd;
     int numUnrollableLoops;

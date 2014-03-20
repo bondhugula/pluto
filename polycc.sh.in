@@ -17,6 +17,11 @@ vloog=@SOURCE_DIR@/vloog
 plann=@SOURCE_DIR@/plann
 plorc=@SOURCE_DIR@/plorc
 
+# Some additional setup here to ensure that variables are visible outside of the run function
+SOURCEFILE=""
+OUTFILE=""
+dirname=""
+PLUTOOUT=""
 
 # check for command-line options
 for arg in $*; do
@@ -45,6 +50,8 @@ done
 #grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
 #fi
 
+run()
+{
 $pluto $* || exit 1
 
 SOURCEFILE=`cat .srcfilename`
@@ -66,17 +73,55 @@ fi
     #$plann $PLUTOOUT @SOURCE_DIR@/annotations
 #fi
 
-# pre vectorize (#pragma ivdep and scalar bound rep for the 
-# vectorizable innermost loop if it was detected)
-$vloog $PLUTOOUT
 
 # put the original skeleton around the transformed code
 @SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
-if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename
-fi
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
     indent -kr -br -ce -l125 $OUTFILE
 fi
+}
+
+
+run "$*"
+WORK=1
+TEMPFILE=""
+while [ $WORK -eq 1 ]
+do
+	if grep -q "#pragma scop" "$PLUTOOUT"
+		then
+		# Move the original file into a temporary location
+		TEMPFILE="$SOURCEFILE""_temp"
+		mv $SOURCEFILE $TEMPFILE
+
+		# Move the file that still has scope in it into
+		# place of the original source file, so $* will pick the
+		# correct file
+		mv $PLUTOOUT $SOURCEFILE
+
+		# Run pluto again
+		run "$*"
+
+		# Move the original back in place
+		mv $TEMPFILE $SOURCEFILE
+	else
+		# No more scops
+		WORK=0
+	fi
+done
+
+cleanup()
+{
+	# An attempt to move the original file back in place
+	# in the event of an exception
+	if [ -f "$TEMPFILE" ]
+	then
+		mv $TEMPFILE $SOURCEFILE
+	fi
+if [ "$DEBUG" != 1 ]; then
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog *.sysloog .appendfilename
+fi
+}
+
+trap cleanup exit

@@ -342,7 +342,10 @@ PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
 }
 
 
-/* start: 0-indexed */
+/* 
+ * Project out from a single element list of constraints
+ * start: 0-indexed 
+ * */
 void pluto_constraints_project_out_single(
         PlutoConstraints *cst, 
         int start, 

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <string.h>
 
 #include "math_support.h"
 #include "constraints.h"
@@ -438,17 +439,19 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
 
 inline int lcm(int a, int b)
 {
+    if (a*b == 0) return 0;
     return (a*b)/gcd(a,b);
 }
 
 
+/* Assuming both args are not zero */
 inline int gcd(int a, int b)
 {
     a = abs(a);
     b = abs(b);
 
-    if (a==0)   return b;
-    if (b==0)   return a;
+    /* At least one of them is zero */
+    if (a*b ==0)   return a+b;
 
     if (a == b) return a;
 
@@ -476,6 +479,7 @@ char *concat(const char *prefix, const char *suffix)
     sprintf(concat, "%s%s", prefix, suffix);
     return concat;
 }
+
 
 PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1, 
         const PlutoMatrix *mat2)

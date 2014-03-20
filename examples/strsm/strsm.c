@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define NMAX 1000
+#define NMAX 2000
 
 static double a[NMAX][NMAX], b[NMAX][NMAX];
 
@@ -71,14 +71,14 @@ int main()
     strsm(N);
     IF_TIME(t_end = rtclock());
 
-    IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
         for (i = 0; i < N; i++) {
             for (j = 0; j < N; j++) {
-                fprintf(stdout, "%lf ",  b[i][j]);
+                fprintf(stderr, "%lf ",  b[i][j]);
             }
-            fprintf(stdout, "\n");
+            fprintf(stderr, "\n");
         }
     }
 

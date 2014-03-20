@@ -3,18 +3,21 @@
 #
 # Gets included after the local Makefile in an example sub-directory
 #
+BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
 CC=icc
 #CC=gcc
 
 NPROCS=4
+NTHREADS=4
+PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
 MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS=-O3 -fp-model precise
+	OPT_FLAGS :=-O3 -fp-model precise
 	PAR_FLAGS := -parallel
 	OMP_FLAGS := -openmp
 else
@@ -24,8 +27,8 @@ else
 	OMP_FLAGS := -fopenmp
 endif
 
-CFLAGS = -DTIME
-LDFLAGS = -lm
+CFLAGS += -DTIME
+LDFLAGS += -lm
 PLCFLAGS +=
 TILEFLAGS += 
 
@@ -79,10 +82,10 @@ perf: orig tiled par orig_par
 
 test: orig tiled par
 	touch .test
-	./orig > out_orig
-	./tiled > out_tiled
+	./orig 2> out_orig
+	./tiled 2> out_tiled
 	diff -q out_orig out_tiled
-	export OMP_NUM_THREADS=4; ./par > out_par4
+	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	rm -f .test
 	diff -q out_orig out_par4
 	@echo Success!
@@ -109,7 +112,7 @@ clean:
 	rm -f out_* *.lbpar.c *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
 		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
-	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog
+	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
 	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out lbpar
