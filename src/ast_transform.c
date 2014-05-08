@@ -53,8 +53,11 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         char iter[5];
         sprintf(iter, "t%d", ploops[i]->depth+1);
         int *stmtids = malloc(ploops[i]->nstmts*sizeof(int));
+        int max_depth = 0;
         for (j=0; j<ploops[i]->nstmts; j++) {
-            stmtids[j] = ploops[i]->stmts[j]->id+1;
+            Stmt *stmt = ploops[i]->stmts[j];
+            if (stmt->trans->nrows > max_depth) max_depth = stmt->trans->nrows;
+            stmtids[j] = stmt->id+1;
         }
 
         // IF_DEBUG(printf("Looking for loop\n"););
@@ -74,11 +77,19 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             continue;
         }else{
             for (j=0; j<nloops; j++) {
-                // printf("Marking %s parallel\n", loops[j]->iterator);
+                loops[j]->parallel = CLAST_PARALLEL_NOT;
+                char *private_vars = malloc(128);
+                strcpy(private_vars, "lbv,ubv");
                 if (options->parallel) {
+                    IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
                     loops[j]->parallel = CLAST_PARALLEL_OMP;
+                    int depth = ploops[i]->depth+1;
+                    for (depth++;depth<=max_depth;depth++) {
+                        sprintf(private_vars+strlen(private_vars), ",t%d", depth);
+                    }
                 }
-                loops[j]->private_vars = strdup("lbv,ubv");
+                loops[j]->private_vars = strdup(private_vars);
+                free(private_vars);
             }
         }
         free(stmtids);
