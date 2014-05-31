@@ -13,7 +13,6 @@
 # 
 
 pluto=@SOURCE_DIR@/src/pluto
-vloog=@SOURCE_DIR@/vloog
 plann=@SOURCE_DIR@/plann
 plorc=@SOURCE_DIR@/plorc
 
