@@ -1556,43 +1556,6 @@ static __isl_give isl_map *pluto_matrix_schedule_to_isl_map(
 }
 
 
-static __isl_give isl_map *isl_identity_map(int dim,
-		int npar,  __isl_take isl_dim *dim_isl){
-
-	int i, j;
-	isl_int v;
-	isl_mat *eq;
-	int n_col = 3*dim+1 + npar+ 1 ;
-	int n_row = 3*dim;
-    isl_basic_map *bmap;
-
-    isl_ctx *ctx = isl_dim_get_ctx(dim_isl);
-
-    isl_int_init(v);
-    eq = isl_mat_alloc(ctx, n_row, n_col);
-
-    for (i = 0; i < n_row; ++i) {
-        for (j = 0; j < n_col; ++j) {
-            isl_int_set_si(v, 0);
-            eq = isl_mat_set_element(eq, i, j, v);
-        }
-    }
-    for (i = 0; i < n_row; ++i) {
-        isl_int_set_si(v, 1);
-        eq = isl_mat_set_element(eq, i, i, v);
-    }
-
-    isl_int_clear(v);
-
-
-    isl_mat *ineq = isl_mat_alloc(ctx, 0, n_col);
-
-    bmap = isl_basic_map_from_constraint_matrices(dim_isl, eq, ineq,
-            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
-
-    return isl_map_from_basic_map(bmap);
-}
-
 /* Convert a osl_relation_p scattering [0 M A c] to
  * the isl_map { i -> A i + c } in the space prescribed by "dim".
  */
@@ -2333,11 +2296,9 @@ PlutoMatrix *get_identity_schedule_new(int dim, int npar){
     for(i =0; i<2*dim+1; i++)
         for(j=0; j<dim+1+npar; j++)
         	smat->val[i][j] = 0;
-//            smat->p[i][j] = 0;
 
     for(i=1; i<dim; i++)
-        	smat->val[2*i-1][j - 1] = 0;
-//        smat->p[2*i-1][i] = 1;
+        smat->p[2*i-1][i] = 1;
 
     return smat;
 
@@ -2367,9 +2328,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     isl_union_map *read;
     isl_union_map *schedule;
     isl_union_map *dep_raw;
-
-    isl_mat *t;
-
 
     //return NULL;
 
@@ -2584,117 +2542,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 
 
 /* 
- * FIXME: should be called on identity schedules (in normal 2*d+1 form)
- *
- * For dependences on the original loop nest (with identity
- * transformation), we expect a dependence to be completely satisfied at
- * some level; they'll have a component of zero for all levels up to the level at
- * which they are satisfied; so if a loop is forced parallel, removing all
- * dependences satisfied at that level will lead to the loop being
- * detected as parallel 
- * depth: 0-indexed depth to be forced parallel
- * */
-void pluto_force_parallelize(PlutoProg *prog, int depth) 
-{
-    int i, j;
-
-    pluto_detect_transformation_properties(prog);
-    if (options->lastwriter) {
-        /* Add transitive edges that weren't included */
-        int num_new_deps = prog->ndeps;
-        while (num_new_deps > 0) {
-            int first_new_dep = prog->ndeps - num_new_deps;
-            num_new_deps = 0;
-            for (i=first_new_dep; i<prog->ndeps; i++) {
-                if (prog->deps[i]->satisfaction_level < 2*depth-1) {
-                    for (j=0; j<prog->ndeps; j++) {
-                        if (prog->deps[j]->satisfaction_level == 2*depth-1
-                                && prog->deps[i]->dest_acc == prog->deps[j]->src_acc) {
-                            Dep *dep = pluto_dep_compose(prog->deps[i], prog->deps[j], prog);
-                            if (dep == NULL) continue;
-                            dep->satisfaction_level = prog->deps[i]->satisfaction_level;
-                            dep->satisfied = true;
-                            switch(prog->deps[i]->type) {
-                                case OSL_DEPENDENCE_WAR:
-                                    if (IS_RAW(prog->deps[j]->type)) {
-                                        dep->type = OSL_DEPENDENCE_RAR;
-                                    }else{ // IS_WAW(prog->deps[j]->type)
-                                        dep->type = OSL_DEPENDENCE_WAR;
-                                    }
-                                    break;
-                                case OSL_DEPENDENCE_RAW:
-                                    if (IS_RAR(prog->deps[j]->type)) {
-                                        dep->type = OSL_DEPENDENCE_RAW;
-                                    }else{ // IS_WAR(prog->deps[j]->type)
-                                        dep->type = OSL_DEPENDENCE_WAW;
-                                    }
-                                    break;
-                                case OSL_DEPENDENCE_WAW:
-                                case OSL_DEPENDENCE_RAR:
-                                    dep->type = prog->deps[j]->type;
-                                    break;
-                                default:
-                                    assert(0);
-                            }
-                            pluto_add_dep(prog, dep);
-                            /* printf("Adding transitive edge\n"); */
-                            num_new_deps++;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!options->rar) { // remove RAR dependences that were added
-            Dep **nonrardeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
-            int count = 0;
-            for (i=0; i<prog->ndeps; i++) {
-                if (!IS_RAR(prog->deps[i]->type)) {
-                    prog->deps[i]->id = count;
-                    nonrardeps[count++] = prog->deps[i];
-                }else{
-                    // printf("removing edge\n");
-                    pluto_dep_free(prog->deps[i]);
-                }
-            }
-            free(prog->deps);
-            prog->deps = nonrardeps;
-            prog->ndeps = count;
-        }
-    }
-
-    Dep **rdeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
-    int count = 0;
-    for (i=0; i<prog->ndeps; i++) {
-        if (prog->deps[i]->satisfaction_level != 2*depth-1) {
-            prog->deps[i]->id = count;
-            rdeps[count++] = prog->deps[i];
-        }else{
-            // printf("removing edge\n");
-            pluto_dep_free(prog->deps[i]);
-        }
-    }
-    free(prog->deps);
-    prog->deps = rdeps;
-    prog->ndeps = count;
-
-    Dep **rtransdeps = (Dep **) malloc(sizeof(Dep *)*prog->ntransdeps);
-    count = 0;
-    for (i=0; i<prog->ntransdeps; i++) {
-        if (prog->transdeps[i]->satisfaction_level != 2*depth-1) {
-            prog->transdeps[i]->id = count;
-            rtransdeps[count++] = prog->transdeps[i];
-        }else{
-            // printf("removing edge\n");
-            pluto_dep_free(prog->transdeps[i]);
-        }
-    }
-    free(prog->transdeps);
-    prog->transdeps = rtransdeps;
-    prog->ntransdeps = count;
-}
-
-/* 
  * Extract necessary information from clan_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto. 
  * PlutoProg also includes dependences; so candl is run here.
@@ -2818,29 +2665,6 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
         }
         fclose(lfp);
         fclose(nlfp);
-    }
-
-    if (options->forceparallel >= 1) {
-        // forceparallel support only for 6 dimensions
-        // force parallellize dimension-by-dimension, from innermost to outermost
-        if (options->forceparallel & 32) {
-            pluto_force_parallelize(prog, 6);
-        }
-        if (options->forceparallel & 16) {
-            pluto_force_parallelize(prog, 5);
-        }
-        if (options->forceparallel & 8) {
-            pluto_force_parallelize(prog, 4);
-        }
-        if (options->forceparallel & 4) {
-            pluto_force_parallelize(prog, 3);
-        }
-        if (options->forceparallel & 2) {
-            pluto_force_parallelize(prog, 2);
-        }
-        if (options->forceparallel & 1) {
-            pluto_force_parallelize(prog, 1);
-        }
     }
 
     return prog;
@@ -2999,8 +2823,6 @@ PlutoOptions *pluto_options_alloc()
 
     /* Default context is no context */
     options->context = -1;
-
-    options->forceparallel = 0;
 
     options->bee = 0;
 
@@ -4486,7 +4308,7 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
     isl_union_map *writes;
     isl_union_map *reads;
     isl_union_map *schedule;
-    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war;
+    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
     isl_space *space = isl_set_get_space(scop->context);
     empty = isl_union_map_empty(isl_space_copy(space));
@@ -5038,7 +4860,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
  */
 PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
 {
-    int i, j, max_sched_rows;
+    int i, max_sched_rows;
 
     if (pscop == NULL) return NULL;
 
@@ -5126,51 +4948,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
         }
         fclose(lfp);
         fclose(nlfp);
-    }
-
-    /* For dependences on the original loop nest (with identity
-     * transformation), we expect a dependence to be completely satisfied at
-     * some level; they'll have a component of zero for all levels up to the level at
-     * which they are satisfied; so if a loop is forced parallel, removing all
-     * dependences satisfied at that level will lead to the loop being
-     * detected as parallel */
-    if (options->forceparallel >= 1) {
-        pluto_detect_transformation_properties(prog);
-        if (options->lastwriter) {
-            /* Add transitive edges that weren't included */
-            for (i=0; i<prog->ndeps; i++) {
-                if (prog->deps[i]->satisfaction_level < 2*options->forceparallel-1) {
-                    for (j=0; j<prog->ndeps; j++) {
-                        if (prog->deps[j]->satisfaction_level == 2*options->forceparallel-1
-                                && IS_WAW(prog->deps[i]->type) && IS_RAW(prog->deps[j]->type)
-                                && prog->deps[i]->dest == prog->deps[j]->src) {
-                            Dep *dep = pluto_dep_compose(prog->deps[i], prog->deps[j], prog);
-                            if (dep == NULL) continue;
-                            dep->satisfaction_level = prog->deps[i]->satisfaction_level;
-                            dep->satisfied = true;
-                            dep->type = OSL_DEPENDENCE_RAW;
-                            pluto_add_dep(prog, dep);
-                            /* printf("Adding transitive edge\n"); */
-                        }
-                    }
-                }
-            }
-        }
-
-        Dep **rdeps = (Dep **) malloc(sizeof(Dep *)*prog->ndeps);
-        int count = 0;
-        for (i=0; i<prog->ndeps; i++) {
-            if (prog->deps[i]->satisfaction_level != 2*options->forceparallel-1) {
-                prog->deps[i]->id = count;
-                rdeps[count++] = prog->deps[i];
-            }else{
-                // printf("removing edge\n");
-                pluto_dep_free(prog->deps[i]);
-            }
-        }
-        free(prog->deps);
-        prog->deps = rdeps;
-        prog->ndeps = count;
     }
 
     return prog;

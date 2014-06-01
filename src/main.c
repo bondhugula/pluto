@@ -91,7 +91,6 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
     fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (disabled by default)\n");
     fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
     fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
@@ -175,7 +174,6 @@ int main(int argc, char *argv[])
         {"cloogsh", no_argument, &options->cloogsh, 1},
         {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
         {"cyclesize", required_argument, 0, 'S'},
-        {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
         {"multipipe", no_argument, &options->multipipe, 1},
@@ -241,9 +239,6 @@ int main(int argc, char *argv[])
                 break;
             case 'o':
                 options->out_file = strdup(optarg);
-                break;
-            case 'p':
-                options->forceparallel = atoi(optarg);
                 break;
             case 'q':
                 options->silent = 1;
@@ -515,7 +510,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   
       char *outFileName;
       char *cloogFileName;
-        char *dynschedFileName;
         char *bname, *basec;
       if (options->out_file == NULL)  {
           /* Get basename, remove .c extension and append a new one */
@@ -548,7 +542,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             strcpy(cloogFileName, bname);
         }
       strcat(cloogFileName, ".pluto.cloog");
-        strcat(dynschedFileName, ".pluto.append.c");
         free(basec);
   
       cloogfp = fopen(cloogFileName, "w+");
@@ -571,7 +564,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
           return 10;
       }
   
-        if (!options->pet) pluto_detect_scalar_dimensions(prog);
         if (options->moredebug) {
             printf("After scalar dimension detection (final transformations)\n");
             pluto_transformations_pretty_print(prog);
