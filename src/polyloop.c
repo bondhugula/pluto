@@ -23,6 +23,7 @@
  *
  */
 #include <assert.h>
+#include <string.h>
 
 #include "pluto.h"
 #include "program.h"
@@ -254,8 +255,8 @@ int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop)
         Dep *dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
         assert(dep->satvec != NULL);
-        if (pluto_stmt_is_member_of(prog->stmts[dep->src], loop->stmts, loop->nstmts)
-                && pluto_stmt_is_member_of(prog->stmts[dep->dest], loop->stmts, 
+        if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
+                && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 
                     loop->nstmts)) {
             if (dep->satvec[loop->depth]) {
                 parallel = 0;
@@ -268,7 +269,7 @@ int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop)
 }
 
 /* Is loop1 dominated by loop2 */
-static int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
+int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
 {
     int i;
     assert(loop1->nstmts >= 1);
@@ -507,8 +508,8 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
             if (dep->satisfaction_level < loop->depth) continue;
             if (dep->satisfaction_level < depth && 
                     pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
-            if (pluto_stmt_is_member_of(prog->stmts[dep->src], loop->stmts, loop->nstmts)
-                    && pluto_stmt_is_member_of(prog->stmts[dep->dest], loop->stmts, 
+            if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
+                    && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 
                         loop->nstmts)) {
                 if (dep->dirvec[depth] == DEP_STAR || dep->dirvec[depth] == DEP_MINUS) 
                     break;

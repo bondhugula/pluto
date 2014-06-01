@@ -92,6 +92,12 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
     int firstD = band->loop->depth;
     int lastD = band->loop->depth+band->width-1;
 
+    int num_domain_supernodes[band->loop->nstmts];
+
+    for (s=0; s<band->loop->nstmts; s++) {
+        num_domain_supernodes[s] = 0;
+    }
+
     for (depth=firstD; depth<=lastD; depth++)    {
         for (s=0; s<band->loop->nstmts; s++) {
             Stmt *stmt = band->loop->stmts[s];
@@ -107,23 +113,22 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
             /* 1.2 Specify tile shapes in the original domain */
             // pluto_constraints_print(stdout, stmt->domain);
-            int num_domain_supernodes = 0;
             if (hyp_type != H_SCALAR) {
                 assert(tile_sizes[depth-firstD] >= 1);
                 /* Domain supernodes aren't added for scalar dimensions */
                 // printf("S%d dim: %d %d\n", stmt->id+1, stmt->dim, depth-firstD);
-                pluto_stmt_add_dim(stmt, num_domain_supernodes, depth, iter, hyp_type, prog);
+                pluto_stmt_add_dim(stmt, num_domain_supernodes[s], depth, iter, hyp_type, prog);
                 /* Add relation b/w tile space variable and intra-tile variables like
                  * 32*xt <= 2t+i <= 32xt + 31 */
                 /* Lower bound */
                 pluto_constraints_add_inequality(stmt->domain);
 
-                for (j=num_domain_supernodes+1; j<stmt->dim+npar; j++) {
+                for (j=num_domain_supernodes[s]+1; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes] = 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]] = 
                     -tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
@@ -136,12 +141,12 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
                 /* Upper bound */
                 pluto_constraints_add_inequality(stmt->domain);
-                for (j=num_domain_supernodes+1; j<stmt->dim+npar; j++) {
+                for (j=num_domain_supernodes[s]+1; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         -stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes] 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]] 
                     = tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
@@ -153,7 +158,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
                 pluto_update_deps(stmt, ub, prog);
                 pluto_constraints_free(ub);
 
-                num_domain_supernodes++;
+                num_domain_supernodes[s]++;
 
                 // printf("after adding tile constraints\n");
                 // pluto_constraints_print(stdout, stmt->domain);
@@ -211,7 +216,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
  *  */
 void pluto_tile(PlutoProg *prog)
 {
-    int nbands, i, n_ibands;
+    int nbands, i, j, n_ibands;
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
@@ -220,6 +225,22 @@ void pluto_tile(PlutoProg *prog)
     IF_DEBUG(printf("Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
+    // create bands for innermost parallel loops to be 1-D tiled
+    // if they are not dominated by any band
+    int nloops;
+    Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
+    for (i=0; i<nloops; i++) {
+        if (pluto_is_loop_innermost(loops[i], prog)) {
+            for (j=0; j<nbands; j++) {
+                if (is_loop_dominated(loops[i], bands[j]->loop, prog)) break;
+            }
+            if (j==nbands) {
+                bands = realloc(bands, (nbands+1)*sizeof(Band *));
+                bands[nbands++] = pluto_band_alloc(loops[i], 1);
+            }
+        }
+    }
+    
     /* Now, we are ready to tile */
     if (options->lt >= 0 && options->ft >= 0)   {
         /* User option specified tiling */
@@ -248,7 +269,6 @@ void pluto_tile(PlutoProg *prog)
         for (i=0; i<nbands; i++) {
             retval |= pluto_intra_tile_optimize_band(bands[i], 1, prog); 
         }
-        if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {
             printf("After intra_tile_opt\n");
             pluto_transformations_pretty_print(prog);
@@ -271,8 +291,8 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
-    if (options->parallel) {
-        create_tile_schedule(prog, bands, nbands);
+    if (options->parallel || options->dynschedule_graph || options->dynschedule) {
+        pluto_create_tile_schedule(prog, bands, nbands);
     }
     pluto_bands_free(bands, nbands);
     pluto_bands_free(ibands, n_ibands);
@@ -342,53 +362,85 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
  *
  * Return: true if something was done, false otherwise
  */
-bool create_tile_schedule_band(PlutoProg *prog, Band *band)
+bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
 {
-    int i, j, depth;
+    int i, j, k, depth;
 
     Stmt **stmts = prog->stmts;
 
     /* No need to create tile schedule */
     if (pluto_loop_is_parallel(prog, band->loop))  return false;
 
-    for (depth=band->loop->depth+1; depth < band->loop->depth + band->width; depth++) {
+    /* A band can have scalar dimensions; it starts from a loop */
+    int loop_depths[band->width];
+    /* Number of dimensions which are loops for all statements in this 
+     * band */
+    int nloops;
+
+    loop_depths[0] = band->loop->depth;
+    nloops = 1;
+    for (depth=band->loop->depth+1; 
+            depth < band->loop->depth + band->width; depth++) {
         for (j=0; j<band->loop->nstmts; j++) {
-            if (pluto_is_hyperplane_scalar(band->loop->stmts[j], depth))  break;
+            if (pluto_is_hyperplane_scalar(band->loop->stmts[j], depth))  
+                break;
         }
         if (j==band->loop->nstmts) {
             /* All of them are loops */
-            break;
+            loop_depths[nloops++] = depth;
         }
     }
 
-    if (depth == band->loop->depth + band->width) return false;
+    if (nloops <= 1) {
+        /* Band doesn't have at least two dimensions for which all 
+         * statements have loops at those dimensions */
+        return false;
+    }
 
-    /* can use depth and band->loop->depth+1 for pipelined parallelism */
+    /* Number of inner parallel dims the wavefront will yield */
+    int nip_dims;
+
+    /* loop_depths[0...nloops-1] are the depths for which a tile schedule
+     * can be created */
+    if (prog->options->multipipe) {
+        /* Full multi-dimensional wavefront */
+        nip_dims = nloops-1;
+    }else{
+        /* just use the first two to create a tile schedule */
+        nip_dims = 1;
+    }
+
+    /* Wavefront satisfies all deps, all inner loops in the band will
+     * become parallel */
     int first = band->loop->depth;
-    int second = depth;
 
-    /* If the first one is PIPE_PARALLEL, we are guaranteed to
-     * have at least one more pipe_parallel, otherwise the first
-     * one would have been SEQ */
+    /* Create the wavefront */
     for (i=0; i<band->loop->nstmts; i++)    {
         Stmt *stmt = band->loop->stmts[i];
-        /* Create a wavefront */
-        /* TODO: multiple degrees of pipelined parallelism */
-        for (j=0; j<stmt->trans->ncols; j++)    {
-            stmt->trans->val[first][j] += stmt->trans->val[second][j];
+        for (k=1; k<=nip_dims; k++) {
+            for (j=0; j<stmt->trans->ncols; j++)    {
+                stmt->trans->val[first][j] += 
+                    stmt->trans->val[loop_depths[k]][j];
+            }
         }
     }
 
-    IF_DEBUG(printf("Created tile schedule "););
-    IF_DEBUG(printf("for t%d, t%d\n", first+1, second+1));
+    IF_DEBUG(printf("[pluto_create_tile_schedule] Created tile schedule for "););
+    IF_DEBUG(printf("t%d to t%d\n", first+1, loop_depths[nip_dims]+1));
 
     /* Update deps */
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
-        if (pluto_stmt_is_member_of(stmts[dep->src], band->loop->stmts, band->loop->nstmts) 
-                && pluto_stmt_is_member_of(stmts[dep->dest], band->loop->stmts, band->loop->nstmts)) {
-            dep->satvec[first] = dep->satvec[first] | dep->satvec[second];
-            dep->satvec[second] = 0;
+        /* satvec s should have been computed */
+        if (IS_RAR(dep->type)) continue;
+        if (pluto_stmt_is_member_of(stmts[dep->src]->id, 
+                    band->loop->stmts, band->loop->nstmts) 
+                && pluto_stmt_is_member_of(stmts[dep->dest]->id, 
+                    band->loop->stmts, band->loop->nstmts)) {
+            for (k=1; k<=nip_dims; k++) {
+                dep->satvec[first] |= dep->satvec[loop_depths[k]];
+                dep->satvec[loop_depths[k]] = 0;
+            }
         }
     }
     /* Recompute dep directions ? not needed */
@@ -397,7 +449,7 @@ bool create_tile_schedule_band(PlutoProg *prog, Band *band)
 }
 
 
-bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
+bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
 {
     int i;
     bool retval = 0;
@@ -406,7 +458,7 @@ bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
     IF_DEBUG(pluto_bands_print(bands, nbands););
 
     for (i=0; i<nbands; i++) {
-        retval |= create_tile_schedule_band(prog, bands[i]);
+        retval |= pluto_create_tile_schedule_band(prog, bands[i]);
     }
 
     return retval;
@@ -448,4 +500,25 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
         }
     }
     *bandStart = *bandEnd = lastloop;
+}
+
+
+void pluto_reschedule_tile(PlutoProg *prog)
+{
+    int i, j, temp;
+    for(i=0;i<prog->nstmts;i++){
+        if(prog->stmts[i]->last!=NULL){
+            int fl = prog->stmts[i]->num_tiled_loops;
+            for(j=0;j<prog->stmts[i]->last->ncols;j++){
+                temp=prog->stmts[i]->last->val[0][j];
+                prog->stmts[i]->last->val[0][j]=prog->stmts[i]->trans->val[fl][fl+j];
+                prog->stmts[i]->trans->val[fl][fl+j]=temp;
+            }
+        }
+    }
+
+    if (!options->silent) {
+        printf("After intra_tile reschedule\n");
+        pluto_transformations_pretty_print(prog);
+    }
 }

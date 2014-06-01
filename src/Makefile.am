@@ -23,6 +23,7 @@ pluto_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    $(ISL_INCLUDE) \
    -I../cloog-isl/include \
    -I../openscop/include \
@@ -35,6 +36,7 @@ pluto_LDADD =  \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
+   ../pet/libpet.la \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
@@ -49,6 +51,7 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    -I../openscop/include \
    -I../candl/include \
    -I../cloog-isl/include \
@@ -57,6 +60,7 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
    ../piplib/libpiplib64.la \
+   ../pet/libpet.la \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../candl/libcandl.la \

@@ -32,6 +32,7 @@
 #include <isl/constraint.h>
 #include <isl/mat.h>
 #include <isl/set.h>
+#include <isl/deprecated/int.h>
 #include "candl/candl.h"
 
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
@@ -42,7 +43,7 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
  */
 static int best_elim_candidate(const PlutoConstraints *cst, int max_elim)
 {
-    int **csm, i, j, ub, lb, cost;
+    int64 **csm, i, j, ub, lb, cost;
 
     int min_cost = cst->nrows*cst->nrows/4;
     int best_candidate = cst->ncols-2;
@@ -521,7 +522,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
         }
         pluto_constraints_simplify(globcst);
-        // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
+        /* pluto_constraints_pretty_print(stdout, globcst); */
     }
 
     pluto_constraints_simplify(globcst);
@@ -567,22 +568,18 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
 {
     int i, j;
     int rows, cols;
-    isl_int v;
     PlutoMatrix *pluto;
 
     rows = isl_mat_rows(mat);
     cols = isl_mat_cols(mat);
     pluto = pluto_matrix_alloc(rows, cols);
 
-    isl_int_init(v);
-
     for (i = 0; i < rows; ++i)
         for (j = 0; j < cols; ++j) {
-            isl_mat_get_element(mat, i, j, &v);
-            pluto->val[i][j] = isl_int_get_si(v);
+            isl_val *v = isl_mat_get_element_val(mat, i, j);
+            pluto->val[i][j] = isl_val_get_num_si(v);
+            isl_val_free(v);
         }
-
-    isl_int_clear(v);
 
     return pluto;
 }
@@ -617,7 +614,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int i, j, k, p, q;
     PlutoConstraints **orthcst;
     isl_ctx *ctx;
-    isl_int v;
     isl_mat *h;
     isl_basic_set *isl_currcst;
 
@@ -649,7 +645,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     ctx = isl_ctx_alloc();
     assert(ctx);
-    isl_int_init(v);
 
     h = isl_mat_alloc(ctx, q, p);
 
@@ -661,8 +656,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
             for (j=0; j<stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
                 if (hProps[j].type != H_SCALAR)   {
-                    isl_int_set_si(v, stmt->trans->val[j][i]);
-                    h = isl_mat_set_element(h, q, p, v);
+                    h = isl_mat_set_element_si(h, q, p, stmt->trans->val[j][i]);
                     q++;
                 }
             }
@@ -731,21 +725,13 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
         orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
-        // printf("currcst\n");
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
-        // pluto_constraints_pretty_print(stdout, currcst);
-        // printf("orthcst\n");
-        // pluto_constraints_pretty_print(stdout, orthcst[p]);
-        // isl_basic_set_dump(orthcst_i);
-        // isl_basic_set_dump(isl_currcst);
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(orthcst_i)));
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
 
         orthcst_i = isl_basic_set_intersect(orthcst_i,
                 isl_basic_set_copy(isl_currcst));
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(orthcst_i)));
-        if (isl_basic_set_fast_is_empty(orthcst_i))
+        if (isl_basic_set_fast_is_empty(orthcst_i) 
+                || isl_basic_set_is_empty(orthcst_i)) {
             pluto_constraints_negate_row(orthcst[p], 0);
+        }
         isl_basic_set_free(orthcst_i);
         p++;
         /* assert(p<=nvar-1); */
@@ -778,7 +764,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     }
 
     pluto_matrix_free(ortho);
-    isl_int_clear(v);
     isl_basic_set_free(isl_currcst);
     isl_ctx_free(ctx);
 
@@ -794,7 +779,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     PlutoConstraints *cst;
-    int j, src_dim, dest_dim, *sol, npar;
+    int j, src_dim, dest_dim, npar;
+    int64 *sol;
     bool retval;
 
     npar = prog->npar;
@@ -895,7 +881,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    int64 *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         for (j=0; j<src_dim; j++)    {

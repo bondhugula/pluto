@@ -19,3 +19,6 @@
 [submodule "openscop"]
 	path = openscop
 	url = https://github.com/periscop/openscop.git
+[submodule "pet"]
+	path = pet
+	url = git://repo.or.cz/pet.git
