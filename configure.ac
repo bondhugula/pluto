@@ -95,12 +95,12 @@ AC_ARG_WITH(gcc-arch,
 						   [ARCH Architecture to compile pluto for (march, mcpu etc.]),
 						   [ARCHGIVEN="true";
 						   ARCH="$withval";])
-	
+
 archopts=""
 if test $ARCHGIVEN = "true"; then
     archopts="--with-gcc-arch=$ARCH"
 fi
-						   
+
 if test "$poly_cv_gmpfatal" = "yes"; then
     AC_MSG_ERROR([GMP not found])
     else
@@ -153,7 +153,7 @@ configureopts="--prefix=$prefix \
 
 
 dnl Configuring Candl-osl
-dnl can't enable the gmp version without modifying 
+dnl can't enable the gmp version without modifying
 dnl the precision the is used elsewhere in pluto
 echo ""
 echo "=========================="
