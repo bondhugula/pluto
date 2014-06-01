@@ -2298,7 +2298,7 @@ PlutoMatrix *get_identity_schedule_new(int dim, int npar){
         	smat->val[i][j] = 0;
 
     for(i=1; i<dim; i++)
-        smat->p[2*i-1][i] = 1;
+        smat->val[2*i-1][i] = 1;
 
     return smat;
 
