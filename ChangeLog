@@ -1,3 +1,12 @@
+0.10.1
+
+- add all inner loop iterators in private vars of omp parallel pragma
+
+- migration to openscop (osl) from scoplib as frontend
+
+- see git history for remaining changes
+
+
 0.10.0
 
 Pluto algorithm update (extended), and bug fixes.
