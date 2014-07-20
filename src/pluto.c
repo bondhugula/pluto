@@ -1334,7 +1334,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
 
-    int *bestsol;
+    int64 *bestsol;
     PlutoConstraints *currcstnw;
 
     PlutoConstraints *basecst,*lastcst,*currcst;
