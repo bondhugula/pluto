@@ -18,11 +18,15 @@ endif
 bin_PROGRAMS = pluto
 
 pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c pluto_codegen_if.c polyloop.c ast_transform.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
+
+nodist_EXTRA_pluto_SOURCES = dummy.cc
+
 pluto_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    $(ISL_INCLUDE) \
    -I../cloog-isl/include \
    -I../openscop/include \
@@ -35,6 +39,7 @@ pluto_LDADD =  \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
+   ../pet/libpet.la \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
@@ -49,6 +54,7 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    -I../openscop/include \
    -I../candl/include \
    -I../cloog-isl/include \
@@ -57,6 +63,7 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
    ../piplib/libpiplib64.la \
+   ../pet/libpet.la \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../candl/libcandl.la \

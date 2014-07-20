@@ -6,6 +6,9 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+#define int64 long long int
+
 struct plutoOptions{
 
     /* To tile or not? */
@@ -17,8 +20,29 @@ struct plutoOptions{
     /* Load-balanced tiling */
     int lbtile;
 
-    /* Load-balanced tiling (one dimensional)*/
+    /* Load-balanced tiling (one dimensional concurrent start)*/
     int partlbtile;
+
+    /* Extract scop information from libpet*/
+    int pet;
+
+    /* dynamic scheduling 
+     * using Synthesized Runtime Interface */
+    int dynschedule;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using Intel TBB Flow Graph scheduler */
+    int dynschedule_graph;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using a custom DAG scheduler */
+    // no longer maintained
+    int dynschedule_graph_old;
+
+    /* consider transitive dependences between tasks */
+    int dyn_trans_deps_tasks;
 
     /* parallelization */
     int parallel;
@@ -103,12 +127,14 @@ struct plutoOptions{
 
     /* Use isl to compute dependences */
     int isldep;
+    int noisldep;
 
     /* Compact dependences with ISL */
     int isldepcompact;
 
     /* Compute lastwriter for dependences */
     int lastwriter;
+    int nolastwriter;
 
     /* DEV: Don't use cost function */
     int nobound;

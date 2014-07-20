@@ -26,10 +26,13 @@
 #define PLMIN(a,b) ((a<=b)?(a):(b))
 #define PLABS(a) ((a>=0)?(a):(-a))
 
+#define int64 long long int
+#define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
+
 /* A matrix */
 struct plutoMatrix{
     /* The values */
-    int **val;
+    int64 **val;
 
     int nrows;
     int ncols;
@@ -70,10 +73,13 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-inline int lcm(int a, int b);
-inline int gcd(int a, int b);
-int *min_lexical(int *a, int *b, int num);
+inline int64 lcm(int64 a, int64 b);
+inline int64 gcd(int64 a, int64 b);
+int64 *min_lexical(int64 *a, int64 *b, int64 num);
 
 char *concat(const char *prefix, const char *suffix);
+
+void pluto_matrix_reverse_rows(PlutoMatrix *mat);
+void pluto_matrix_negate(PlutoMatrix *mat);
 
 #endif

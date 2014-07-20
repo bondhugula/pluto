@@ -18,7 +18,7 @@ ISL_LIBADD += $(top_srcdir)/isl/libisl.la
 endif
 
 
-SUBDIRS = piplib openscop clan candl polylib $(MAY_ISL) cloog-isl src
+SUBDIRS = piplib polylib $(MAY_ISL) openscop cloog-isl clan candl pet src
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -55,7 +55,7 @@ pclean:
 	$(MAKE) -C src clean
 
 test_libpluto: src/test_libpluto.c
-	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -lpluto -o test_libpluto
+	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -lpluto -lgomp -o test_libpluto
 
 test: .PHO
 

@@ -243,7 +243,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation of the variables to get row-wise access
  */
-int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
+int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
     int nstmts, nvar, npar;
@@ -256,7 +256,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     /* Remove redundant variables - that don't appear in your outer loops */
     int redun[npar+1+nstmts*(nvar+1)+1];
     int i, j, k, q;
-    int *sol, *fsol;
+    int64 *sol, *fsol;
     PlutoConstraints *newcst;
 
     assert(cst->ncols-1 == npar+1+nstmts*(nvar+1));
@@ -309,7 +309,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
 
     for (i=0; i<newcst->ncols; i++) {
-        bzero(perm_mat->val[i], sizeof(int)*newcst->ncols);
+        bzero(perm_mat->val[i], sizeof(int64)*newcst->ncols);
     }
 
     for (i=0; i<npar+1; i++) {
@@ -356,7 +356,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
         }
         free(sol);
 
-        fsol = (int *)malloc(cst->ncols*sizeof(int));
+        fsol = (int64 *)malloc(cst->ncols*sizeof(int64));
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
         for (j=0; j<cst->ncols-1; j++) {
@@ -688,7 +688,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         bool loop_search_mode, int max_sols)
 {
     int num_sols_found, j, k;
-    int *bestsol;
+    int64 *bestsol;
     PlutoConstraints *basecst, *nzcst;
     PlutoConstraints *currcst;
 
@@ -886,7 +886,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
 
                     for (j=0; j<nvar; j++)    {
                         if (stmts[i]->is_orig_loop[j])  {
-                            fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][j]);
+                            fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][j]);
                         }else{
                             stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
                         }
@@ -896,7 +896,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                         stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar] = 0;
                     }
                     /* Constant part */
-                    fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
+                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
 
                     // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] = 
                     // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
@@ -1976,7 +1976,7 @@ void pluto_print_hyperplane_properties(const PlutoProg *prog)
  * func should have ndims+1 elements (affine function)
  * vars: names of the variables; if NULL, x0, x1, ... are used
  */
-void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
+void pretty_print_affine_function(FILE *fp, int64 *func, int ndims, char **vars)
 {
     char *var[ndims];
     int j;
@@ -2001,18 +2001,18 @@ void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
         }else if (func[j] != 0)  {
             if (sign_flag) fprintf(fp, "+");
             if (func[j] > 0) {
-                fprintf(fp, "%d%s", func[j], var[j]);
+                fprintf(fp, "%lld%s", func[j], var[j]);
             }else{
-                fprintf(fp, "(%d%s)", func[j], var[j]);
+                fprintf(fp, "(%lld%s)", func[j], var[j]);
             }
         }
         if (func[j] != 0) sign_flag = 1;
     }
     if (func[ndims] >= 1)  {
         if (sign_flag) fprintf(fp, "+");
-        fprintf(fp, "%d", func[ndims]);
+        fprintf(fp, "%lld", func[ndims]);
     }else{
-        if (!sign_flag) fprintf(fp, "%d", func[ndims]);
+        if (!sign_flag) fprintf(fp, "%lld", func[ndims]);
     }
 
     for (j=0; j<ndims; j++)  {

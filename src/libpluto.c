@@ -131,7 +131,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, OSL_DEPENDENCE_RAW);
 
-    IF_DEBUG(pluto_prog_print(prog););
+    IF_DEBUG(pluto_prog_print(stdout, prog););
 
     retval = pluto_auto_transform(prog);
 
@@ -164,25 +164,40 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     if (options->tile) {
         pluto_tile(prog);
-    }else{
-        int retval = pluto_intra_tile_optimize(prog, 0); 
-        if (retval) {
-            /* Detect properties again */
-            pluto_detect_transformation_properties(prog);
-            if (!options->silent) {
-                printf("[Pluto] after intra tile opt\n");
-                pluto_transformations_pretty_print(prog);
-            }
-        }
     }
 
-    if ((options->parallel) && !options->tile && !options->identity)   {
+    /* Detect properties again after tiling */
+    pluto_detect_transformation_properties(prog);
+
+    if (options->tile && !options->silent)  {
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
+    }
+
+    /* Intra-tile optimization */
+    if (options->intratileopt) {
+        int nbands;
+        Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+        int retval = 0;
+        for (i=0; i<nbands; i++) {
+            retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog); 
+        }
+        if (retval) pluto_detect_transformation_properties(prog);
+        if (retval & !options->silent) {
+            printf("[Pluto] after intra tile opt\n");
+            pluto_transformations_pretty_print(prog);
+        }
+        pluto_bands_free(bands, nbands);
+    }
+
+    if ((options->parallel) && !options->tile)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;
         Band **bands;
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-        bool retval = create_tile_schedule(prog, bands, nbands);
+        bool retval = pluto_create_tile_schedule(prog, bands, nbands);
         pluto_bands_free(bands, nbands);
 
         /* If the user hasn't supplied --tile and there is only pipelined
@@ -196,13 +211,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         }
 
     }
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
 
     if (options->parallel && !options->silent) {
         int nploops;
@@ -340,7 +348,7 @@ int pluto_schedule_osl(osl_scop_p scop,
       int nbands;
       Band **bands;
       bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-      bool retval = create_tile_schedule(prog, bands, nbands);
+      bool retval = pluto_create_tile_schedule(prog, bands, nbands);
       pluto_bands_free(bands, nbands);
 
       /* If the user hasn't supplied --tile and there is only pipelined
