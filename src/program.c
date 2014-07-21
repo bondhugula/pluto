@@ -1839,6 +1839,7 @@ struct pluto_access_meta_info {
     PlutoAccess ***accs;
     int index;
     int stmt_dim;
+    int npar;
 };
 
 /* Extract a Pluto access function from an isl_basic_map */
@@ -1861,7 +1862,7 @@ static int basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *u
     acc->mat = pluto_constraints_extract_equalities(cst);
     /* This extraction is a quick hack and not complete; it may lead to 
      * incorrect access functions, but the number of rows are expected 
-     * to be write
+     * to be correct
      */
 
     /* Reversing the rows since the extracted equalities will appear with the
@@ -1875,6 +1876,13 @@ static int basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *u
         pluto_matrix_remove_col(acc->mat, info->stmt_dim);
     }
     pluto_matrix_negate(acc->mat);
+
+    /* FIXME: constant and parametric part of the access function not
+     * extracted */
+    /* Add zero columns for the parameter and constant part */
+    for (i=0; i<info->npar+1; i++) {
+        pluto_matrix_add_col(acc->mat, acc->mat->ncols);
+    }
 
     info->index++;
 
@@ -2939,14 +2947,12 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     /* Write and Read matrices are not populated in case of pet, 
      * therefore, ignore updating the debugging structure
      */
-    if (!options->pet)
-        for (i=0; i<stmt->nwrites; i++)   {
-            pluto_matrix_add_col(stmt->writes[i]->mat, pos);
-        }
-    if (!options->pet)
-        for (i=0; i<stmt->nreads; i++)   {
-            pluto_matrix_add_col(stmt->reads[i]->mat, pos);
-        }
+    for (i=0; i<stmt->nwrites; i++)   {
+        pluto_matrix_add_col(stmt->writes[i]->mat, pos);
+    }
+    for (i=0; i<stmt->nreads; i++)   {
+        pluto_matrix_add_col(stmt->reads[i]->mat, pos);
+    }
 
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i]->src == stmt->id) {
@@ -3964,7 +3970,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
     remap = pluto_stmt_get_remapping(stmt, &remap_divs);
     // printf("Remapping matrix\n");
     // pluto_matrix_print(stdout, remap);
-    //
+    
 
     int _lcm = 1;
     for (r=0; r<remap->nrows; r++) {
@@ -3977,16 +3983,14 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
         }
     }
 
-    pluto_matrix_print(stdout, acc);
-    pluto_matrix_print(stdout, remap);
     newacc = pluto_matrix_product(acc, remap);
+
+    // printf("New access function is \n");
+    // pluto_matrix_print(stdout, newacc);
 
     for (r=0; r<newacc->nrows; r++) {
         (*divs)[r] = _lcm;
     }
-
-    // printf("New access function is \n");
-    // pluto_matrix_print(stdout, newacc);
 
     assert(newacc->ncols = stmt->trans->nrows+npar+1);
 
@@ -4438,9 +4442,9 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
 {
     int i, j;
     Stmt **stmts;
-    int nvar, nstmts, max_sched_rows;
+    int nvar, npar, nstmts, max_sched_rows;
 
-    // npar = isl_set_dim(pscop->context, isl_dim_all);
+    npar = isl_set_dim(pscop->context, isl_dim_all);
     nstmts = pscop->n_stmt;
 
     if (nstmts == 0)    return NULL;
@@ -4533,8 +4537,11 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
         isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
         isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
-        struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim};
-        struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim};
+        struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
+        struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, npar};
+
+        //printf("Num reads: %d\n", stmt->nreads);
+        //isl_union_map_dump(reads);
 
         if (stmt->nreads >= 1) {
             stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
@@ -4553,9 +4560,9 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
         isl_union_map_foreach_map(reads, &map_extract_access_func, &e_reads);
         isl_union_map_foreach_map(writes, &map_extract_access_func, &e_writes);
 
-        //for (i=0; i<stmt->nreads; i++) {
-            //pluto_access_print(stdout, stmt->reads[i]);
-        //}
+        // for (i=0; i<stmt->nreads; i++) {
+            // pluto_access_print(stdout, stmt->reads[i]);
+        // }
     }
 
     return stmts;
