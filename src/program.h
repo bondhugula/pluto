@@ -109,4 +109,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 
+void pluto_access_print(FILE *fp, const PlutoAccess *acc);
+
 #endif

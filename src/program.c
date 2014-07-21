@@ -1238,6 +1238,11 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
 
 void pluto_access_print(FILE *fp, const PlutoAccess *acc)
 {
+    if (!acc) {
+        fprintf(fp, "NULL access\n");
+        return;
+    }
+
     fprintf(fp, "Variable: %s\n", acc->name);
     pluto_matrix_print(fp, acc->mat);
 }
@@ -1836,25 +1841,29 @@ struct pluto_access_meta_info {
     int stmt_dim;
 };
 
-/* Extract a Pluto access function from isl_map */
-static int map_extract_access_func(__isl_take isl_map *map, void *user)
+/* Extract a Pluto access function from an isl_basic_map */
+static int basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
 {
     int r, i;
     struct pluto_access_meta_info *info;
 
     info = (struct pluto_access_meta_info *) user;
 
+    (*info->accs)[info->index] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
     PlutoAccess *acc = (*info->accs)[info->index];
-    acc = (PlutoAccess *) malloc(sizeof(PlutoAccess));
-    acc->name = strdup(isl_map_get_tuple_name(map, isl_dim_out));
+    acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
 
     PlutoConstraints *cst;
 
-    /* Extracts from the last basic map in this map */
-    r = isl_map_foreach_basic_map(map, &isl_basic_map_to_pet_pluto_constraints, &cst);
-    isl_map_free(map);
+    r = isl_basic_map_to_pluto_constraints_func_arg(bmap, &cst);
+    isl_basic_map_free(bmap);
 
     acc->mat = pluto_constraints_extract_equalities(cst);
+    /* This extraction is a quick hack and not complete; it may lead to 
+     * incorrect access functions, but the number of rows are expected 
+     * to be write
+     */
+
     /* Reversing the rows since the extracted equalities will appear with the
      * fastest varying dimensions at the top (simple FIXME: relying on the way
      * the affine constraints were extracted from isl_map and the way they
@@ -1867,9 +1876,20 @@ static int map_extract_access_func(__isl_take isl_map *map, void *user)
     }
     pluto_matrix_negate(acc->mat);
 
-    /* TODO: populate acc->modulos */
-
     info->index++;
+
+    return r;
+}
+
+
+/* Extract Pluto access functions from isl_map */
+static int map_extract_access_func(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    /* Extract a PlutoAcces from every isl_basic_map */
+    r = isl_map_foreach_basic_map(map, &basic_map_extract_access_func, user);
+    isl_map_free(map);
 
     return r;
 }
@@ -2295,10 +2315,10 @@ PlutoMatrix *get_identity_schedule_new(int dim, int npar){
     int i, j;
     for(i =0; i<2*dim+1; i++)
         for(j=0; j<dim+1+npar; j++)
-        	smat->val[i][j] = 0;
+	smat->val[i][j] = 0;
 
-    for(i=1; i<dim; i++)
-        smat->val[2*i-1][i] = 1;
+    for(i=0; i<dim; i++)
+	smat->val[i][i] = 1;
 
     return smat;
 
@@ -2380,7 +2400,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
             dim);
 
 
-//    dom = isl_set_from_pluto_constraints(source_iterators, dim);
     dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
 
@@ -2390,20 +2409,9 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = set_names(dim, isl_dim_in,iter );
     dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
 
-//    pluto_trans_to_osl_scattering(s->trans, prog->npar);
-//    osl_relation_p smat = get_identity_schedule(domain_dim, prog->npar);
 
     PlutoMatrix *i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
     schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
-
-
-//    schedule_i = osl_scattering_to_isl_map(pluto_trans_to_osl_scattering(i_schedule, prog->npar), dim);
-//    schedule_i = osl_scattering_to_isl_map(smat, dim);
-
-//    schedule_i = isl_identity_map(domain_dim, prog->npar, dim);
-
-//    t = isl_basic_map_equalities_matrix(schedule_i, isl_dim_cst, isl_dim_param, isl_dim_in, isl_dim_out);
-//    t = isl_basic_set_inequalities_matrix(dom, isl_dim_cst, isl_dim_param, isl_dim_in, isl_dim_out);
 
     if(access_matrix == NULL)
         read_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
@@ -2414,8 +2422,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     schedule = isl_union_map_union(schedule,
             isl_union_map_from_map(schedule_i));
 
-//    schedule = isl_union_map_union(schedule,
-//    		isl_union_map_empty(dim));
 
     for(i=0;i<domain_dim; i++){
         free(iter[i]);
@@ -2448,8 +2454,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
             pluto_constraints_list_to_osl_domain(source_iterators, prog->npar),
             dim);
 
-//    dom = isl_set_from_pluto_constraints(source_iterators, dim);
-    //dom = scoplib_matrix_list_to_isl_set(pluto_constraints_list_to_scoplib_matrix_list(source_iterators), dim);
     dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
     dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
@@ -2461,12 +2465,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     //osl_relation_free(smat);
    i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
     schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
-//    smat = get_identity_schedule(domain_dim, prog->npar);
-    //schedule_i = osl_scattering_to_isl_map(smat, dim);
-//    schedule_i = isl_identity_map(domain_dim, prog->npar, dim);
-//    schedule_i = osl_scattering_to_isl_map(pluto_trans_to_osl_scattering(s->trans, prog->npar), dim);
-//    i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
-//    schedule_i = osl_scattering_to_isl_map(pluto_trans_to_osl_scattering(i_schedule, prog->npar), dim);
 
     write_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
     //write_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
@@ -3307,9 +3305,11 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
 
 void pluto_access_free(PlutoAccess *acc)
 {
-    pluto_matrix_free(acc->mat);
-    free(acc->name);
-    free(acc);
+    if (acc) {
+        pluto_matrix_free(acc->mat);
+        free(acc->name);
+        free(acc);
+    }
 }
 
 void pluto_stmt_free(Stmt *stmt)
@@ -3977,6 +3977,8 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
         }
     }
 
+    pluto_matrix_print(stdout, acc);
+    pluto_matrix_print(stdout, remap);
     newacc = pluto_matrix_product(acc, remap);
 
     for (r=0; r<newacc->nrows; r++) {
@@ -4056,7 +4058,9 @@ int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2)
     return 1;
 }
 
-void add_if_new(PlutoAccess ***accs, int *num, PlutoAccess *new)
+/* Add new to accs if it's an access to a variable not already contained in
+ * accs */
+void add_if_new_var(PlutoAccess ***accs, int *num, PlutoAccess *new)
 {
     int i;
 
@@ -4074,25 +4078,27 @@ void add_if_new(PlutoAccess ***accs, int *num, PlutoAccess *new)
 }
 
 
-/* Get all write accesses in the program */
-PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num)
+/* Get all distinct write accesses in the program */
+PlutoAccess **pluto_get_all_distinct_write_vars(const PlutoProg *prog, int *num)
 {
-    int i;
+    int i, j;
 
     PlutoAccess **accs = NULL;
     *num = 0;
 
     for (i=0; i<prog->nstmts; i++) {
         if (prog->stmts[i]->type == ORIG) {
-            assert(prog->stmts[i]->nwrites == 1);
-            add_if_new(&accs, num, prog->stmts[i]->writes[0]);
+            for (j=0; j<prog->stmts[i]->nwrites; j++) {
+                add_if_new_var(&accs, num, prog->stmts[i]->writes[j]);
+            }
         }
     }
     return accs;
 }
 
-/* Get all accesses in the statements */
-PlutoAccess **pluto_get_accs(Stmt **stmts, int nstmts, int *num)
+/* Get all accesses in the statements such that there is only representative
+ * for all accesses to the same data variable */
+PlutoAccess **pluto_get_all_distinct_vars(Stmt **stmts, int nstmts, int *num)
 {
     int i, j;
 
@@ -4100,10 +4106,11 @@ PlutoAccess **pluto_get_accs(Stmt **stmts, int nstmts, int *num)
     *num = 0;
 
     for (i=0; i<nstmts; i++) {
-        assert(stmts[i]->nwrites == 1);
-        add_if_new(&accs, num, stmts[i]->writes[0]);
+        for (j=0; j<stmts[i]->nwrites; j++) {
+            add_if_new_var(&accs, num, stmts[i]->writes[j]);
+        }
         for (j=0; j<stmts[i]->nreads; j++) {
-            add_if_new(&accs, num, stmts[i]->reads[j]);
+            add_if_new_var(&accs, num, stmts[i]->reads[j]);
         }
     }
     return accs;
@@ -4461,7 +4468,7 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
         PlutoConstraints **user = malloc(sizeof(PlutoConstraints*));
         /* only picks the last basic map from pstmt->schedule */
         isl_map_foreach_basic_map(pstmt->schedule, 
-                &isl_basic_map_to_pet_pluto_constraints, user);
+                &isl_basic_map_to_pluto_constraints_func_arg, user);
         PlutoConstraints *transcst = *user ; 
         PlutoMatrix *trans = pluto_constraints_to_matrix(transcst);
 
@@ -4535,16 +4542,20 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
         if (stmt->nwrites >= 1) {
             stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
         }
+        for (i=0; i<stmt->nreads; i++) {
+            stmt->reads[i] = NULL;
+
+        }
+        for (i=0; i<stmt->nwrites; i++) {
+            stmt->writes[i] = NULL;
+        }
 
         isl_union_map_foreach_map(reads, &map_extract_access_func, &e_reads);
         isl_union_map_foreach_map(writes, &map_extract_access_func, &e_writes);
 
-#if 0
-        stmt->nreads = 0;
-        stmt->nwrites = 0;
-        stmt->writes =NULL; 
-        stmt->reads=NULL; 
-#endif
+        //for (i=0; i<stmt->nreads; i++) {
+            //pluto_access_print(stdout, stmt->reads[i]);
+        //}
     }
 
     return stmts;
