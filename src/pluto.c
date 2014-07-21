@@ -1380,7 +1380,6 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
         int stmt_offset2= npar+1+nstmts*(nvar+1)+i*nvar;
         for (j=0; j<nvar; j++)  {
             lastcst->is_eq[lastcst->nrows]= 1;
-            assert(stmt_offset2 <= CST_WIDTH+nvar*nstmts);
             lastcst->val[lastcst->nrows][stmt_offset1+j] =1;
 
             int *face = find_face_allowing_con_start(prog);
@@ -1580,7 +1579,7 @@ int pluto_auto_transform(PlutoProg *prog)
         stmt->last= NULL; //pluto_matrix_alloc(1,stmt->dim+npar+1);
     }
 
-    /* Definitition of cone_complement:
+    /* Definition of cone_complement:
      * If we are trying to find a hyperplane h1
      * so that the face f is in the cone of h1 and already found
      * hyperplane h2, then h2 is the cone_complement of h1
@@ -1713,11 +1712,11 @@ int pluto_auto_transform(PlutoProg *prog)
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog->deps, prog->ndeps));
 
-    /* Re-arrange the transformation matrix if the concurrent start
-     * is found and store which of the hyperplane was replaced,
-     * so that it can be put back after tiling for intra-tile scanning
+    /* Re-arrange the transformation matrix if concurrent start
+     * was found and store the replaced hyperplane
+     * so that it can be put back for the right intra-tile order
      */
-    if (con_start_found==1) {
+    if (con_start_found) {
         swap_prog_hyperplanes_with_last(prog,first);  
         prog->replaced_hyperplane=first;
         if(replace!=first){
