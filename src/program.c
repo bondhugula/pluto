@@ -1756,17 +1756,7 @@ struct pluto_extra_dep_info {
     int index;
 };
 
-/* Find the face that is allowing concurrent start
- * Used while lbtile option is set
- * Currently trivial face is being returned*/
-int * find_face_allowing_con_start(PlutoProg * prog)
-{
-    int i;
-    int * face =  (int *) malloc(sizeof(int) * prog->nvar);
-    for (i=0;i<prog->nvar;i++)
-      face[i] = (i==0)?1:0;
-    return face;
-}
+
 
 /* Convert an isl_basic_map describing part of a dependence to a Dep.
  * The names of the input and output spaces are of the form S_d or S_d_e
@@ -2623,9 +2613,6 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
 
     prog->stmts = osl_to_pluto_stmts(scop);
     prog->scop = scop;
-
-    /* Set the face allowing the concurrent start*/
-    prog->face_con_start = find_face_allowing_con_start(prog);
 
     /* Compute dependences */
     if (options->isldep) {

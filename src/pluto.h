@@ -296,9 +296,6 @@ struct plutoProg{
     /* Hyperplane row that is replaced in case concurrent start is found*/
     int replaced_hyperplane;
 
-    /* Face allowing concurrent start for the statements in the program */
-    int * face_con_start;
-
     osl_scop_p scop;
 
     /* number of outermost parallel dimensions to be parameterized */

@@ -1322,6 +1322,19 @@ void denormalize_domains(PlutoProg *prog)
     }
 }
 
+/* VB: Find the face that is allowing concurrent start
+ * Used while lbtile option is set
+ * Currently, the outermost loop is being assumed as the face with
+ * concurrent start */
+int *find_face_allowing_con_start(PlutoProg * prog)
+{
+    int i;
+    int *face =  (int *) malloc(sizeof(int) * prog->nvar);
+    for (i=0;i<prog->nvar;i++)
+      face[i] = (i==0)?1:0;
+    return face;
+}
+
 /*Function to find the hyperplane which is inside the cone
  *of already found hyperplanes and the face allowing concurrent start
  */
@@ -1367,8 +1380,13 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
         int stmt_offset2= npar+1+nstmts*(nvar+1)+i*nvar;
         for (j=0; j<nvar; j++)  {
             lastcst->is_eq[lastcst->nrows]= 1;
+            assert(stmt_offset2 <= CST_WIDTH+nvar*nstmts);
             lastcst->val[lastcst->nrows][stmt_offset1+j] =1;
-            lastcst->val[lastcst->nrows][stmt_offset2] = -(prog->face_con_start[j]);
+
+            int *face = find_face_allowing_con_start(prog);
+            lastcst->val[lastcst->nrows][stmt_offset2] = -(face[j]);
+            free(face);
+
             if (options->partlbtile)
                 lastcst->val[lastcst->nrows][stmt_offset2+1] = prog->stmts[i]->trans->val[cone_complement][j];
             else{
