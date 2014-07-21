@@ -262,50 +262,15 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
 PlutoConstraints *isl_basic_map_to_pluto_constraints(
         __isl_keep isl_basic_map *bmap)
 {
-    int i, j;
-    int eq_row;
-    int ineq_row;
-    int n_col;
-    isl_mat *eq, *ineq;
-    PlutoConstraints *cons;
+    PlutoConstraints *cst;
 
-    eq = isl_basic_map_equalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
-    ineq = isl_basic_map_inequalities_matrix(bmap,
-            isl_dim_in, isl_dim_out, isl_dim_div, isl_dim_param, isl_dim_cst);
+    isl_basic_map_to_pluto_constraints_func_arg(bmap, &cst);
 
-    eq_row = isl_mat_rows(eq);
-    ineq_row = isl_mat_rows(ineq);
-    n_col = isl_mat_cols(eq);
-
-    cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
-    cons->nrows = eq_row + ineq_row;
-
-    for (i = 0; i < eq_row; ++i) {
-        cons->is_eq[i] = 1;
-        for (j = 0; j < n_col; ++j) {
-            isl_val *v = isl_mat_get_element_val(eq, i, j);
-            cons->val[i][j] = isl_val_get_num_si(v);
-            isl_val_free(v);
-        }
-    }
-
-    for (i = 0; i < ineq_row; ++i) {
-        cons->is_eq[eq_row+i] = 0;
-        for (j = 0; j < n_col; ++j) {
-            isl_val *v = isl_mat_get_element_val(ineq, i, j);
-            cons->val[eq_row + i][j] = isl_val_get_num_si(v);
-            isl_val_free(v);
-        }
-    }
-
-    isl_mat_free(eq);
-    isl_mat_free(ineq);
-
-    return cons;
+    return cst;
 }
 
-int isl_basic_map_to_pet_pluto_constraints(
+/* Convert an isl_basic_map to a PlutoConstraints object */
+int isl_basic_map_to_pluto_constraints_func_arg(
         __isl_keep isl_basic_map *bmap, void *user)
 {
     int i, j;
