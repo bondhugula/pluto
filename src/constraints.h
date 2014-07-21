@@ -141,7 +141,7 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
         __isl_keep isl_basic_set *bset);
 PlutoConstraints *isl_basic_map_to_pluto_constraints(
         __isl_keep isl_basic_map *bmap);
-int isl_basic_map_to_pet_pluto_constraints(__isl_keep isl_basic_map *bmap, 
+int isl_basic_map_to_pluto_constraints_func_arg(__isl_keep isl_basic_map *bmap, 
         void *user);
 __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
        isl_ctx *ctx, const PlutoConstraints *cst, int n_par, int n_in, int n_out);
