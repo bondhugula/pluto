@@ -97,12 +97,14 @@ struct plutoOptions{
 
     /* Use isl to compute dependences */
     int isldep;
+    int noisldep;
 
     /* Compact dependences with ISL */
     int isldepcompact;
 
     /* Compute lastwriter for dependences */
     int lastwriter;
+    int nolastwriter;
 
     /* DEV: Don't use cost function */
     int nobound;

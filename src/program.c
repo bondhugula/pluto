@@ -2405,6 +2405,7 @@ PlutoOptions *pluto_options_alloc()
     options->bee = 0;
 
     options->isldep = 0;
+    options->noisldep = 0;
     options->isldepcompact = 0;
 
     options->islsolve = 0;
@@ -2412,6 +2413,7 @@ PlutoOptions *pluto_options_alloc()
     options->readscop = 0;
 
     options->lastwriter = 0;
+    options->nolastwriter = 0;
 
     options->nobound = 0;
 
