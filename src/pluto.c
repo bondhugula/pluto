@@ -1422,8 +1422,9 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
     pluto_constraints_free(lastcst);
     bestsol = pluto_constraints_solve(currcstnw,ALLOW_NEGATIVE_COEFF);
 
-    //pluto_constraints_solve is being called directly
-    if(bestsol==NULL) {
+    // TODO:pluto_constraints_solve is being called directly;
+    // pluto_prog_constraints_solve must be called instead.
+    if(bestsol == NULL) {
         printf("No concurrent start");
     }else{
         for (j=0; j<nstmts; j++)    {
@@ -1449,15 +1450,14 @@ int find_cone_complement_hyperplane(int cone_complement, int replace, PlutoProg 
 
     pluto_constraints_free(basecst);
     pluto_constraints_free(currcst);
-
     return ((prog->stmts[0]->last==NULL)?0:1); 
-
 }
 
 
 
 //check if k'th row for any statement is the face allowing the concurrent start itself
-int is_face(PlutoProg *prog, int k){
+int is_face_with_concurrent_start(PlutoProg *prog, int k)
+{
     int i,j;
     for(i=0;i<prog->nstmts;i++){
         if(prog->stmts[i]->trans->val[k][0]!=1) return 0;
@@ -1471,29 +1471,36 @@ int is_face(PlutoProg *prog, int k){
 /* Find the hyperplace which has face so that it can be replaced, else return
  * the last hyperplane number so that it's replaced
  */
-int find_hyperplane_to_be_replaced(PlutoProg *prog,int first,int sols_found){
+int find_hyperplane_to_be_replaced(PlutoProg *prog, int first, int sols_found)
+{
     int j;
     for(j=first;j<first+sols_found-1;j++){
-        if(is_face(prog,j)) return j;
+        if(is_face_with_concurrent_start(prog,j)) return j;
     }
-    return first+sols_found-1; //replace the last one for now thinking allowing concurrent start
+    //replace the last one for now thinking allowing concurrent start
+    return first+sols_found-1;
 }
 
-int first_non_scalar_hyperplane(PlutoProg *prog,int start,int end){
+
+int first_non_scalar_hyperplane(PlutoProg *prog,int start,int end)
+{
     int i;
     for(i=start;i<end;i++){
         if(prog->stmts[0]->hyp_types[i]==H_LOOP) return i;
     }
     return -1;
 }
-void swap_prog_hyperplanes_with_last(PlutoProg *prog,int first){
+
+
+void swap_prog_hyperplanes_with_last(PlutoProg *prog,int first)
+{
     int i,j,temp;
     for(i=0;i<prog->nstmts;i++){
         if(prog->stmts[i]->last!=NULL){
             for(j=0;j<prog->stmts[i]->trans->ncols;j++){
-                temp=prog->stmts[i]->trans->val[first][j];
-                prog->stmts[i]->trans->val[first][j]=prog->stmts[i]->last->val[0][j];
-                prog->stmts[i]->last->val[0][j]=temp;
+                temp = prog->stmts[i]->trans->val[first][j];
+                prog->stmts[i]->trans->val[first][j] = prog->stmts[i]->last->val[0][j];
+                prog->stmts[i]->last->val[0][j] = temp;
             }
         }
     }
@@ -1576,7 +1583,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
     for (j=0; j<nstmts; j++)    {
         Stmt *stmt = stmts[j];
-        stmt->last= NULL; //pluto_matrix_alloc(1,stmt->dim+npar+1);
+        stmt->last = NULL; //pluto_matrix_alloc(1,stmt->dim+npar+1);
     }
 
     /* Definition of cone_complement:
@@ -1607,7 +1614,7 @@ int pluto_auto_transform(PlutoProg *prog)
         if (options->lbtile && con_start_possible==1 && 
                 con_start_found==0 && sols_found!=0){
             if (num_ind_sols_non_scalar==1){
-                if(is_face(prog, first_non_scalar_hyperplane(prog, 0 ,prog->stmts[0]->trans->nrows))){
+                if(is_face_with_concurrent_start(prog, first_non_scalar_hyperplane(prog, 0 ,prog->stmts[0]->trans->nrows))){
                   /* At this stage, only one hyperplane is found and if this is
                    * the face, we cannot discard it unless we choose to give up
                    * fusing. So, we just report that concurrent start is not
@@ -1713,8 +1720,8 @@ int pluto_auto_transform(PlutoProg *prog)
             !deps_satisfaction_check(prog->deps, prog->ndeps));
 
     /* Re-arrange the transformation matrix if concurrent start
-     * was found and store the replaced hyperplane
-     * so that it can be put back for the right intra-tile order
+     * was found, store the replaced hyperplane so that it can be 
+     * put back for the right intra-tile order
      */
     if (con_start_found) {
         swap_prog_hyperplanes_with_last(prog,first);  

@@ -123,6 +123,8 @@ struct statement{
      *       stmt->dim + npar + 1 after auto_transform (after denormalize)
      */
     PlutoMatrix *trans;
+
+    /* The last hyperplane for the diamond tiling transformation */
     PlutoMatrix *last;
 
     /* H_LOOP, H_SCALAR, .. */
