@@ -141,9 +141,11 @@ int main(int argc, char *argv[])
         {"indent", no_argument, 0, 'i'},
         {"silent", no_argument, &options->silent, 1},
         {"lastwriter", no_argument, &options->lastwriter, 1},
+        {"nolastwriter", no_argument, &options->nolastwriter, 1},
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
+        {"noisldep", no_argument, &options->noisldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
@@ -302,6 +304,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
+    if (options->noisldep == 1) {
+        options->isldep = 0;
+    }
+
+    if (options->nolastwriter == 1) {
+        options->lastwriter = 0;
+    }
     if (options->multipipe == 1 && options->parallel == 0)    {
         fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
         options->parallel = 1;

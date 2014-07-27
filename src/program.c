@@ -1306,10 +1306,7 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
     int n_eq = 0, n_ineq = 0;
     isl_ctx *ctx;
     isl_mat *eq, *ineq;
-    isl_int v;
     isl_basic_set *bset;
-
-    isl_int_init(v);
 
     ctx = isl_dim_get_ctx(dim);
 
@@ -1337,12 +1334,9 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
 
         for (j = 0; j < relation->nb_columns - 1; ++j) {
             int t = osl_int_get_si(relation->precision, relation->m[i][1 + j]);
-            isl_int_set_si(v, t);
-            *m = isl_mat_set_element(*m, row, j, v);
+            *m = isl_mat_set_element_si(*m, row, j, t);
         }
     }
-
-    isl_int_clear(v);
 
     bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
             isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
@@ -1378,29 +1372,21 @@ static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
 {
     int i, j;
     int n_col, n;
-    isl_int v;
     isl_mat *eq;
 
     n_col = matrix->ncols;
     n = matrix->nrows;
 
-    isl_int_init(v);
     eq = isl_mat_alloc(ctx, n, n + n_col);
 
     for (i = 0; i < n; ++i) {
-        isl_int_set_si(v, 0);
         for (j = 0; j < n; ++j)
-            eq = isl_mat_set_element(eq, i, j, v);
-        isl_int_set_si(v, -1);
-        eq = isl_mat_set_element(eq, i, i, v);
+            eq = isl_mat_set_element_si(eq, i, j, 0);
+        eq = isl_mat_set_element_si(eq, i, i, -1);
         for (j = 0; j < n_col ; ++j) {
-            int t = SCOPVAL_get_si(matrix->val[i][j]);
-            isl_int_set_si(v, t);
-            eq = isl_mat_set_element(eq, i, n + j, v);
+            eq = isl_mat_set_element_si(eq, i, n + j, matrix->val[i][j]);
         }
     }
-
-    isl_int_clear(v);
 
     return eq;
 }
@@ -1796,6 +1782,7 @@ osl_names_p get_scop_names(osl_scop_p scop){
 
   return names;
 }
+
 
 /* Compute dependences based on the iteration domain and access
  * information in "scop" and put the result in "prog".
@@ -2418,6 +2405,7 @@ PlutoOptions *pluto_options_alloc()
     options->bee = 0;
 
     options->isldep = 0;
+    options->noisldep = 0;
     options->isldepcompact = 0;
 
     options->islsolve = 0;
@@ -2425,6 +2413,7 @@ PlutoOptions *pluto_options_alloc()
     options->readscop = 0;
 
     options->lastwriter = 0;
+    options->nolastwriter = 0;
 
     options->nobound = 0;
 
@@ -3144,11 +3133,11 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level)
     prog->hProps[level].dep_prop = SEQ;
 }
 
-int pluto_stmt_is_member_of(const Stmt *s, Stmt **slist, int len)
+int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len)
 {
     int i;
     for (i=0; i<len; i++) {
-        if (s->id == slist[i]->id) return 1;
+        if (stmt_id == slist[i]->id) return 1;
     }
     return 0;
 }
@@ -3159,7 +3148,7 @@ int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2)
     int i;
 
     for (i=0; i<n1; i++) {
-        if (!pluto_stmt_is_member_of(s1[i], s2, n2)) return 0;
+        if (!pluto_stmt_is_member_of(s1[i]->id, s2, n2)) return 0;
     }
 
     return 1;
