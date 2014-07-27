@@ -366,8 +366,6 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
 {
     int i, j, k, depth;
 
-    Stmt **stmts = prog->stmts;
-
     /* No need to create tile schedule */
     if (pluto_loop_is_parallel(prog, band->loop))  return false;
 

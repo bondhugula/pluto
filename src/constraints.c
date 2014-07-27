@@ -492,7 +492,8 @@ PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoCons
 }
 
 /* Copy constraints from the first element of src into the first element
- * of dest; if dest does not have enough space, resize it */
+ * of dest; if dest does not have enough space, resize it. The _single
+ * signifies only this src in the list is copied */
 PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const PlutoConstraints *src)
 {
     int i;
