@@ -1,14 +1,8 @@
 DISTRIBUTED-MEMORY SUPPORT (AKA AUTOMATIC MPI CODE GENERATION)
 
-When using the public git, you'll need to patch cloog-isl/
-
-cd cloog-isl/
-git am ../patches/0001-...  
-cd ..
-
-1) Edit polyrt/Makefile.am to point to the MPI you want to use; similarly, 
-   examples/common.mk flags to make sure mpicc is being used with the right 
-   flags (gcc or icc)
+1) Edit polyrt/Makefile.am to point to the MPI you want to use; 
+   similarly, examples/common.mk flags to make sure mpicc is being used 
+   with the right flags (gcc or icc)
 
 2) for the examples, to test correctness: make dist_test or dist_test2 
    depending on whether you are using mpirun or mpirun_rsh (typically 
