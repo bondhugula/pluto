@@ -380,7 +380,10 @@ bool create_tile_schedule_band(PlutoProg *prog, Band *band)
     IF_DEBUG(printf("Created tile schedule "););
     IF_DEBUG(printf("for t%d, t%d\n", first+1, second+1));
 
-    /* Update deps */
+    /* Update dependence satisfaction levels (better to do this instead of
+     * a complete complex dep satisfaction check since we know that the tile
+     * schedule will satisfy the dependence satisfied by all the dimensions
+     * that is a sum of) */
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
         if (pluto_stmt_is_member_of(dep->src, band->loop->stmts, band->loop->nstmts)
