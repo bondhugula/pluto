@@ -567,22 +567,18 @@ static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
 {
     int i, j;
     int rows, cols;
-    isl_int v;
     PlutoMatrix *pluto;
 
     rows = isl_mat_rows(mat);
     cols = isl_mat_cols(mat);
     pluto = pluto_matrix_alloc(rows, cols);
 
-    isl_int_init(v);
-
     for (i = 0; i < rows; ++i)
         for (j = 0; j < cols; ++j) {
-            isl_mat_get_element(mat, i, j, &v);
-            pluto->val[i][j] = isl_int_get_si(v);
+            isl_val *v = isl_mat_get_element_val(mat, i, j);
+            pluto->val[i][j] = isl_val_get_num_si(v);
+            isl_val_free(v);
         }
-
-    isl_int_clear(v);
 
     return pluto;
 }
@@ -617,7 +613,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int i, j, k, p, q;
     PlutoConstraints **orthcst;
     isl_ctx *ctx;
-    isl_int v;
     isl_mat *h;
     isl_basic_set *isl_currcst;
 
@@ -649,7 +644,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     ctx = isl_ctx_alloc();
     assert(ctx);
-    isl_int_init(v);
 
     h = isl_mat_alloc(ctx, q, p);
 
@@ -661,8 +655,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
             for (j=0; j<stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
                 if (hProps[j].type != H_SCALAR)   {
-                    isl_int_set_si(v, stmt->trans->val[j][i]);
-                    h = isl_mat_set_element(h, q, p, v);
+                    h = isl_mat_set_element_si(h, q, p, stmt->trans->val[j][i]);
                     q++;
                 }
             }
@@ -778,7 +771,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     }
 
     pluto_matrix_free(ortho);
-    isl_int_clear(v);
     isl_basic_set_free(isl_currcst);
     isl_ctx_free(ctx);
 

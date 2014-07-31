@@ -57,6 +57,10 @@
 #include <isl/set.h>
 #include <isl/flow.h>
 #include <isl/union_map.h>
+#include <isl/deprecated/int.h>
+#include <isl/deprecated/mat_int.h>
+
+osl_relation_p get_identity_schedule(int dim, int npar);
 
 void pluto_add_dep(PlutoProg *prog, Dep *dep)
 {
