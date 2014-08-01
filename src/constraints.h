@@ -131,7 +131,8 @@ PlutoConstraints *pluto_constraints_universe(int ncols);
 void print_polylib_visual_sets(char* name, PlutoConstraints *cst);
 void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst);
 
-__isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst);
+__isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst, 
+        isl_dim *dim);
 PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set);
 __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
         const PlutoConstraints *cst);
