@@ -195,7 +195,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             for (j=0; j<prog->nstmts; j++) {
                 if ((prog->stmts[j]->type == COPY_IN
                             || prog->stmts[j]->type == FOIFI_COPY_IN)
-                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt, 
+                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt->id,
                             ploops[i]->stmts, ploops[i]->nstmts)
                    ) {
                     stmtids[count++] = prog->stmts[j]->id+1;
