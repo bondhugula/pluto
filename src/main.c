@@ -30,6 +30,11 @@
 #include "config.h"
 #endif
 
+
+#include "osl/scop.h"
+#include "osl/generic.h"
+#include "osl/extensions/irregular.h"
+
 #include "pluto.h"
 #include "transforms.h"
 #include "math_support.h"
@@ -39,6 +44,7 @@
 
 #include "clan/clan.h"
 #include "candl/candl.h"
+#include "candl/scop.h"
 
 PlutoOptions *options;
 
@@ -127,9 +133,6 @@ int main(int argc, char *argv[])
         {"innerpar", no_argument, &options->innerpar, 1},
         {"dynschedule", no_argument, &options->dynschedule, 1},
         {"distmem", no_argument, &options->distmem, 1},
-#ifdef PLUTO_OPENCL
-        {"opencl", no_argument, &options->opencl, 1},
-#endif
         {"commopt", no_argument, &options->commopt, 1},
         {"commopt_fop", no_argument, &options->commopt_fop, 1},
         {"fop_unicast_runtime", no_argument, &options->fop_unicast_runtime, 1},
@@ -168,7 +171,7 @@ int main(int argc, char *argv[])
         {"isldep", no_argument, &options->isldep, 1},
         {"noisldep", no_argument, &options->noisldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
-        {"readscoplib", no_argument, &options->readscoplib, 1},
+        {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
         {"fusesends", no_argument, &options->fusesends, 1},
         {0, 0, 0, 0}
@@ -278,35 +281,62 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Extract polyhedral representation from input program */
-    scoplib_scop_p scop;
+    osl_scop_p scop = NULL;
 
-    clan_options_p clanOptions = clan_options_malloc();
+    if(!strcmp(srcFileName, "stdin")){  //read from stdin
+        src_fp = stdin;
+        osl_interface_p registry = osl_interface_get_default_registry();
+        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+    }else{  // read from regular file
 
-    if (options->readscoplib) scop = scoplib_scop_read(src_fp);
-    else scop = clan_scop_extract(src_fp, clanOptions);
+      src_fp  = fopen(srcFileName, "r");
+  
+      if (!src_fp)   {
+          fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
+          pluto_options_free(options);
+          return 6;
+      }
+  
+      /* Extract polyhedral representation from input program */
+  
+      clan_options_p clanOptions = clan_options_malloc();
+  
+      if (options->readscop){
+        osl_interface_p registry = osl_interface_get_default_registry();
+        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+      }else{
+        scop = clan_scop_extract(src_fp, clanOptions);
+      }
+  
+      if (!scop || !scop->statement)   {
+          fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+                  srcFileName);
+          pluto_options_free(options);
+          return 7;
+      }
+      FILE *srcfp = fopen(".srcfilename", "w");
+      if (srcfp)    {
+          fprintf(srcfp, "%s\n", srcFileName);
+          fclose(srcfp);
+      }
+  
+      clan_options_free(clanOptions);
 
-    if (!scop || !scop->statement)   {
-        fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
-                srcFileName);
-        pluto_options_free(options);
-        return 8;
+      /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+  
     }
-    FILE *srcfp = fopen(".srcfilename", "w");
-    if (srcfp)    {
-        fprintf(srcfp, "%s\n", srcFileName);
-        fclose(srcfp);
-    }
-
-    /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
 
     /* Convert clan scop to Pluto program */
     PlutoProg *prog = scop_to_pluto_prog(scop, options);
 
-    clan_options_free(clanOptions);
 
     /* Backup irregular program portion in .scop. */
-    char* irroption = scoplib_scop_tag_content(scop, "<irregular>",
-            "</irregular>");
+    char* irroption = NULL;
+    osl_irregular_p irreg_ext = NULL;
+    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+    if(irreg_ext!=NULL)
+      irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
+    osl_irregular_free(irreg_ext);
 
     IF_DEBUG2(pluto_deps_print(stdout, prog));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
@@ -456,7 +486,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
             fclose(paramsFP);
         }
-        detect_mark_unrollable_loops(prog);
+        pluto_detect_mark_unrollable_loops(prog);
     }
 
     if (options->polyunroll)    {
@@ -470,16 +500,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     int distretval = 1;
 
-#ifdef PLUTO_OPENCL
-    if (options->distmem || options->opencl)  {
-#else
-        if (options->distmem)  {
-#endif
-            distretval = pluto_distmem_parallelize(prog);
-            pluto_compute_dep_satisfaction_complex(prog);
-            IF_DEBUG(pluto_transformations_pretty_print(prog));
-            IF_DEBUG(pluto_print_hyperplane_properties(prog));
-        }
+    if (options->distmem)  {
+        distretval = pluto_distmem_parallelize(prog);
+        pluto_compute_dep_satisfaction_complex(prog);
+        IF_DEBUG(pluto_transformations_pretty_print(prog));
+        IF_DEBUG(pluto_print_hyperplane_properties(prog));
+    }
+
+    if(!strcmp(srcFileName, "stdin")){  //input stdin == output stdout
+        pluto_populate_scop(scop, prog, options);
+        osl_scop_print(stdout, scop);
+    }else{  // do the usual Pluto stuff
 
 
         /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
@@ -640,12 +671,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
         fclose(cloogfp);
         fclose(outfp);
-
-        pluto_options_free(options);
-
-        pluto_prog_free(prog);
-
-        scoplib_scop_free(scop);
-
-        return 0;
     }
+
+    pluto_options_free(options);
+    pluto_prog_free(prog);
+    osl_scop_free(scop);
+
+    return 0;
+}

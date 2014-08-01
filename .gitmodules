@@ -10,3 +10,12 @@
 [submodule "polylib"]
 	path = polylib
 	url = git://repo.or.cz/polylib.git
+[submodule "candl"]
+	path = candl
+	url = https://github.com/periscop/candl.git
+[submodule "clan"]
+	path = clan
+	url = https://github.com/periscop/clan.git
+[submodule "openscop"]
+	path = openscop
+	url = https://github.com/periscop/openscop.git

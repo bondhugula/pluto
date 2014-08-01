@@ -346,8 +346,6 @@ bool create_tile_schedule_band(PlutoProg *prog, Band *band)
 {
     int i, j, depth;
 
-    Stmt **stmts = prog->stmts;
-
     /* No need to create tile schedule */
     if (pluto_loop_is_parallel(prog, band->loop))  return false;
 
@@ -386,8 +384,8 @@ bool create_tile_schedule_band(PlutoProg *prog, Band *band)
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
-        if (pluto_stmt_is_member_of(stmts[dep->src], band->loop->stmts, band->loop->nstmts) 
-                && pluto_stmt_is_member_of(stmts[dep->dest], band->loop->stmts, band->loop->nstmts)) {
+        if (pluto_stmt_is_member_of(dep->src, band->loop->stmts, band->loop->nstmts)
+                && pluto_stmt_is_member_of(dep->dest, band->loop->stmts, band->loop->nstmts)) {
             dep->satvec[first] = dep->satvec[first] | dep->satvec[second];
             dep->satvec[second] = 0;
         }

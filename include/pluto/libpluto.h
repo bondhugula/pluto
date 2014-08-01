@@ -118,8 +118,8 @@ struct plutoOptions{
     /* No output from Pluto if everything goes right */
     int silent;
 
-    /* Read input from a scoplib file */
-    int readscoplib;
+    /* Read input from a .scop file */
+    int readscop;
 
     /* Use isl as ilp solver. */
     int islsolve;
@@ -176,6 +176,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences,
         PlutoOptions *options);
 
+int pluto_schedule_osl(osl_scop_p scop, 
+        PlutoOptions *options_l);
 #if defined(__cplusplus)
 }
 #endif

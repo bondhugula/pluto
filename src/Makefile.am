@@ -22,20 +22,22 @@ pluto_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
-   -I../clan-0.6.0/include \
-   -I../clan-0.6.0/scoplib/scoplib-0.2.0/include \
-   -I../candl-0.4.0/include \
+   -I../clan/include \
    $(ISL_INCLUDE) \
    -I../cloog-isl/include \
+   -I../openscop/include \
+   -I../candl/include \
    -I../polylib/include
 
 pluto_LDFLAGS = -static -fopenmp
-pluto_LDADD = ../candl-0.4.0/source/libcandl.la \
-   ../clan-0.6.0/source/libclan.la \
+pluto_LDADD =  \
    ../piplib/libpiplib64.la \
+   ../openscop/libosl.la \
+   ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
+   ../candl/libcandl.la \
    -lm
 
 lib_LTLIBRARIES = libpluto.la
@@ -46,14 +48,17 @@ libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
-   -I../clan-0.6.0/include \
-   -I../clan-0.6.0/scoplib/scoplib-0.2.0/include \
-   -I../candl-0.4.0/include \
+   -I../clan/include \
+   -I../openscop/include \
+   -I../candl/include \
+   -I../cloog-isl/include \
    $(ISL_INCLUDE)
 
 # libpluto doesn't use polylib
-libpluto_la_LIBADD = ../candl-0.4.0/source/libcandl.la \
-   ../clan-0.6.0/source/libclan.la \
+libpluto_la_LIBADD = \
    ../piplib/libpiplib64.la \
+   ../openscop/libosl.la \
+   ../clan/libclan.la \
+   ../candl/libcandl.la \
    $(ISL_LIBADD) \
    -lm -lgomp

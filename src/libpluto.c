@@ -24,6 +24,8 @@
 #include "pluto/libpluto.h"
 #include "isl/map.h"
 
+#include "candl/scop.h"
+
 PlutoOptions *options;
 
 /*
@@ -127,7 +129,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         prog->deps[i] = pluto_dep_alloc();
     }
     extract_deps(prog->deps, 0, prog->stmts,
-            dependences, CANDL_RAW);
+            dependences, OSL_DEPENDENCE_RAW);
 
     IF_DEBUG(pluto_prog_print(prog););
 
@@ -246,4 +248,150 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     isl_space_free(space);
 
     return schedules;
+}
+
+
+
+/*
+ * Performs pluto-scheduling on an osl_scop.
+ * If dependences are not found in Extensions, it'll recalculate them.
+ * The osl_scop's statements' domains and scattering are replaced
+ * by new ones.
+ */
+int pluto_schedule_osl(osl_scop_p scop, 
+        PlutoOptions *options_l)
+{
+  int i=0;
+
+  if (!scop || !scop->statement) {
+    fprintf(stderr, "Empty Scop passed\n");
+    return EXIT_FAILURE;
+  }
+
+
+  options = options_l;
+
+  /* Convert clan scop to Pluto program */
+  PlutoProg *prog = scop_to_pluto_prog(scop, options);
+
+  int dim_sum=0;
+  for (i=0; i<prog->nstmts; i++) {
+      dim_sum += prog->stmts[i]->dim;
+  }
+
+  /* Make options consistent */
+  if (options->multipipe == 1 && options->parallel == 0)    {
+      fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+      options->parallel = 1;
+  }
+
+  /* Disable pre-vectorization if tile is not on */
+  if (options->tile == 0 && options->prevector == 1) {
+      /* If code will not be tiled, pre-vectorization does not make
+       * sense */
+      if (!options->silent)   {
+          fprintf(stdout, "[Pluto] Warning: pre-vectorization does not fit (--tile is off)\n");
+      }
+      options->prevector = 0;
+  }
+
+  if (!options->silent)   {
+      fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
+      fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
+      fprintf(stdout, "[Pluto] Number of deps: %d\n", prog->ndeps);
+      fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
+      fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
+  }
+
+
+  /* Auto transformation */
+  if (!options->identity) {
+      pluto_auto_transform(prog);
+  }
+  pluto_detect_transformation_properties(prog);
+
+  if (!options->silent)   {
+      fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
+      /* Print out transformations */
+      pluto_transformations_pretty_print(prog);
+      pluto_print_hyperplane_properties(prog);
+  }
+
+  if (options->tile)   {
+      pluto_tile(prog);
+  }else{
+      if (options->intratileopt) {
+          int retval = pluto_intra_tile_optimize(prog, 0); 
+          if (retval) {
+              /* Detect properties again */
+              pluto_detect_transformation_properties(prog);
+              if (!options->silent) {
+                  printf("[Pluto] after intra tile opt\n");
+                  pluto_transformations_pretty_print(prog);
+              }
+          }
+      }
+  }
+
+
+  if (options->parallel && !options->tile && !options->identity)   {
+      /* Obtain wavefront/pipelined parallelization by skewing if
+       * necessary */
+      int nbands;
+      Band **bands;
+      bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+      bool retval = create_tile_schedule(prog, bands, nbands);
+      pluto_bands_free(bands, nbands);
+
+      /* If the user hasn't supplied --tile and there is only pipelined
+       * parallelism, we will warn the user */
+      if (retval)   {
+          printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+          printf("use --tile for better parallelization \n");
+          IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
+          IF_DEBUG(pluto_transformations_pretty_print(prog););
+          IF_DEBUG(pluto_print_hyperplane_properties(prog););
+      }
+  }
+
+  if (options->tile && !options->silent)  {
+      IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
+      IF_DEBUG(pluto_transformations_pretty_print(prog););
+      IF_DEBUG(pluto_print_hyperplane_properties(prog););
+  }
+
+  if (options->unroll || options->polyunroll)    {
+      /* Will generate a .unroll file */
+      /* plann/plorc needs a .params */
+      FILE *paramsFP = fopen(".params", "w");
+      if (paramsFP)   {
+          int i;
+          for (i=0; i<prog->npar; i++)  {
+              fprintf(paramsFP, "%s\n", prog->params[i]);
+          }
+          fclose(paramsFP);
+      }
+      pluto_detect_mark_unrollable_loops(prog);
+  }
+
+  if (options->polyunroll)    {
+      /* Experimental */
+      for (i=0; i<prog->num_hyperplanes; i++)   {
+          if (prog->hProps[i].unroll)  {
+              unroll_phis(prog, i, options->ufactor);
+          }
+      }
+  }
+
+  /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+  
+
+  /* Replace the osl_scop's original domains and scatterings
+   * by ones newly created by pluto
+   */
+  pluto_populate_scop (scop, prog, options);
+
+  pluto_prog_free(prog);
+
+  return EXIT_SUCCESS;
 }

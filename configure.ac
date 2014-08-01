@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.10.0, [udayreddy@gmail.com])
+AC_INIT(pluto, 0.11.0, [udayreddy@gmail.com])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -88,6 +88,19 @@ AC_CHECK_HEADER(gmp.h,
                  [poly_cv_gmpfatal="yes"])],
                  [poly_cv_gmpfatal="yes"])
 
+dnl Request arch flag
+ARCHGIVEN="false"
+AC_ARG_WITH(gcc-arch,
+			AC_HELP_STRING([--with-gcc-arch=ARCH],
+						   [ARCH Architecture to compile pluto for (march, mcpu etc.]),
+						   [ARCHGIVEN="true";
+						   ARCH="$withval";])
+
+archopts=""
+if test $ARCHGIVEN = "true"; then
+    archopts="--with-gcc-arch=$ARCH"
+fi
+
 if test "$poly_cv_gmpfatal" = "yes"; then
     AC_MSG_ERROR([GMP not found])
     else
@@ -98,44 +111,72 @@ if test "$poly_cv_gmpfatal" = "yes"; then
         fi
 
 
+
 dnl Configuring PipLib (long long int is 64 bits)
-echo -e "\n=========================="
+echo ""
+echo "=========================="
 echo "Configuring PipLib"
 echo "=========================="
-configureopts="--with-bits=64 --prefix=$prefix"
+configureopts="--with-gmp \
+--with-gmp-prefix=$GMP_PREFIX \
+--prefix=$prefix"
 (cd piplib/
  $RM config.cache;
- ./configure ${configureopts}
+ ./configure ${configureopts} ${archopts}
  )
 
 
-dnl Configuring Clan 0.6.0
-echo -e "\n=========================="
-echo "Configuring Clan 0.6.0"
+dnl Configuring Openscop
+echo ""
 echo "=========================="
-configureopts="--enable-llint-version --prefix=$prefix \
---enable-internal-scoplib"
-(cd clan-0.6.0/
- ./configure ${configureopts}
- )
-
-
-dnl Configuring Candl 0.4.0 (long long int)
-echo -e "\n=========================="
-echo "Configuring Candl 0.4.0 "
+echo "Configuring Openscop"
 echo "=========================="
-configureopts="--enable-llint-version --prefix=$prefix \
---with-scoplib=$SOURCE_DIR/clan-0.6.0/scoplib/scoplib-0.2.0 \
---with-piplib=$SOURCE_DIR/piplib"
-(cd candl-0.4.0/
- ./configure ${configureopts}
+configureopts="--with-gmp=system \
+--with-gmp-prefix=$GMP_PREFIX \
+--prefix=$prefix"
+(cd openscop/
+ ./configure ${configureopts} ${archopts}
  )
+
+
+dnl Configuring Clan-osl
+echo ""
+echo "=========================="
+echo "Configuring Clan"
+echo "=========================="
+configureopts="--prefix=$prefix \
+--with-osl=build \
+--with-osl-builddir=$SOURCE_DIR/openscop"
+(cd clan/
+ ./configure ${configureopts} ${archopts}
+ )
+
+
+dnl Configuring Candl-osl
+dnl can't enable the gmp version without modifying
+dnl the precision the is used elsewhere in pluto
+echo ""
+echo "=========================="
+echo "Configuring Candl"
+echo "=========================="
+configureopts="--enable-llint-version \
+--prefix=$prefix \
+--with-piplib=build \
+--with-piplib-builddir=$SOURCE_DIR/piplib \
+--with-osl=build \
+--with-osl-builddir=$SOURCE_DIR/openscop"
+(cd candl/
+ ./configure ${configureopts} ${archopts}
+ )
+
 
 dnl Configuring polylib
-echo -e "\n======================"
+echo ""
+echo "======================"
 echo "Configuring polylib"
 echo "======================"
-configureopts="--enable-longlongint-lib --prefix=$prefix"
+configureopts="--enable-longlongint-lib \
+--prefix=$prefix"
 (cd polylib/
  ./configure ${configureopts}
 )
@@ -160,29 +201,48 @@ AM_CONDITIONAL(EXTERNAL_ISL, test x$external_isl = xtrue)
 
 if test x$external_isl = xfalse; then
 dnl Configuring isl
-echo -e "\n======================"
+dnl the current isl submodule still supports the piplib
+dnl options, but the trunk of isl doesn't
+echo ""
+echo "======================"
 echo "Configuring isl"
 echo "======================"
-configureopts="--with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX --prefix=$prefix"
+configureopts="--with-gmp=system \
+--with-gmp-prefix=$GMP_PREFIX \
+--with-gmp-exec-prefix=$GMP_PREFIX \
+--with-piplib=build \
+--with-piplib-builddir=$SOURCE_DIR/piplib \
+--prefix=$prefix"
 (cd isl/
- ./configure ${configureopts}
+ ./configure ${configureopts} ${archopts}
 )
 fi
 
 
 dnl Configuring Cloog 0.14.1 (long long int)
-echo -e "\n=========================="
+echo ""
+echo "=========================="
 echo "Configuring Cloog-isl"
 echo "=========================="
 if test x$external_isl = xfalse; then
-configureopts="--with-isl-builddir=../isl --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX
+configureopts="--with-isl=build \
+--with-isl-builddir=$SOURCE_DIR/isl \
+--with-gmp=system \
+--with-gmp-prefix=$GMP_PREFIX \
+--with-osl=build \
+--with-osl-builddir=$SOURCE_DIR/openscop \
 --prefix=$prefix"
 else
-configureopts="--with-isl=system --with-isl-prefix=$isl_prefix --with-gmp-prefix=$GMP_PREFIX --with-gmp-exec-prefix=$GMP_PREFIX
+configureopts="--with-isl=system \
+--with-isl-prefix=$isl_prefix \
+--with-gmp=system \
+--with-gmp-prefix=$GMP_PREFIX \
+--with-osl=build \
+--with-osl-builddir=$SOURCE_DIR/openscop \
 --prefix=$prefix"
 fi
 (cd cloog-isl/
- ./configure ${configureopts}
+ ./configure ${configureopts} ${archopts}
  )
 
 AC_PATH_PROGS(BASH, bash)
@@ -203,4 +263,4 @@ echo "  *-----------------------------------------------*/"
 echo "Your system is ready to compile PLUTO"
 echo "Run 'make' next to compile"
 echo "Then, run 'make test' to check if everything is working correctly"
-echo -e "Use polycc (see README)\n"
+echo "Use polycc (see README)"

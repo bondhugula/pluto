@@ -60,8 +60,11 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         struct clast_for **loops;
         sprintf(iter, "t%d", ploops[i]->depth+1);
         int *stmtids = malloc(ploops[i]->nstmts*sizeof(int));
+        int max_depth = 0;
         for (j=0; j<ploops[i]->nstmts; j++) {
-            stmtids[j] = ploops[i]->stmts[j]->id+1;
+            Stmt *stmt = ploops[i]->stmts[j];
+            if (stmt->trans->nrows > max_depth) max_depth = stmt->trans->nrows;
+            stmtids[j] = stmt->id+1;
         }
 
         IF_DEBUG(printf("Looking for loop\n"););
@@ -86,19 +89,27 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             continue;
         }else{
             for (j=0; j<nloops; j++) {
-                IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
+                loops[j]->parallel = CLAST_PARALLEL_NOT;
+
                 if (options->commreport) {
                     loops[j]->time = 1;
                     loops[j]->time_name = strdup("t_comp");
                 }
+
                 if (options->distmem) {
+                    IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
                     loops[j]->parallel = CLAST_PARALLEL_MPI;
                     if (options->mpiomp) loops[j]->parallel += CLAST_PARALLEL_OMP;
                 }
+
                 if (options->parallel && !options->distmem) {
+                    IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
                     loops[j]->parallel = CLAST_PARALLEL_OMP;
+                    int depth = ploops[i]->depth+1;
+                    for (depth++;depth<=max_depth;depth++) {
+                        sprintf(private_vars+strlen(private_vars), ",t%d", depth);
+                    }
                 }
-                loops[j]->private_vars = strdup("lbv,ubv");
 
                 if (options->distmem) {
                     fprintf(pidefs, "#define _LB_REPLACE_ME_DISTLOOG%d ", i);
@@ -108,6 +119,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                     pprint_expr(cloogOptions, pidefs, loops[j]->UB);
                     fprintf(pidefs, "\n");
                 }
+                loops[j]->private_vars = strdup("lbv,ubv");
             }
         }
         free(stmtids);

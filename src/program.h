@@ -25,6 +25,8 @@
 #include "clan/clan.h"
 #include "candl/candl.h"
 
+#include "osl/scop.h"
+
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
@@ -39,7 +41,7 @@ void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
-PlutoProg *scop_to_pluto_prog(scoplib_scop_p scop, PlutoOptions *options);
+PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options);
 
 int get_coeff_upper_bound(PlutoProg *prog);
 
@@ -83,7 +85,7 @@ void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
 
 int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts);
 int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
-int pluto_stmt_is_member_of(const Stmt *s, Stmt **slist, int len);
+int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos);
@@ -100,5 +102,8 @@ int pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
 int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
+
+void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
+                           PlutoOptions *options);
 
 #endif
