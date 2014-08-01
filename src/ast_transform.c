@@ -90,10 +90,11 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         }else{
             for (j=0; j<nloops; j++) {
                 loops[j]->parallel = CLAST_PARALLEL_NOT;
+                char *private_vars = malloc(128);
+                strcpy(private_vars, "lbv,ubv");
 
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_comp");
+                    loops[j]->time_var_name = strdup("t_comp");
                 }
 
                 if (options->distmem) {
@@ -109,6 +110,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                     for (depth++;depth<=max_depth;depth++) {
                         sprintf(private_vars+strlen(private_vars), ",t%d", depth);
                     }
+                    loops[j]->private_vars = strdup(private_vars);
+                    free(private_vars);
                 }
 
                 if (options->distmem) {
@@ -134,7 +137,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             for (j=0; j<prog->nstmts; j++) {
                 if ((prog->stmts[j]->type == COPY_OUT
                             || prog->stmts[j]->type == FOIFI_COPY_OUT)
-                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt, 
+                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt->id,
                             ploops[i]->stmts, ploops[i]->nstmts)
                    ) {
                     stmtids[count++] = prog->stmts[j]->id+1;
@@ -149,8 +152,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 // printf("Timing and marking copy_out %s parallel\n", loops[j]->iterator);
                 // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_pack");
+                    loops[j]->time_var_name = strdup("t_pack");
                 }
                 loops[j]->parallel = CLAST_PARALLEL_MPI;
             }
@@ -164,7 +166,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             stmtids = malloc(prog->nstmts*sizeof(int));
             for (j=0; j<prog->nstmts; j++) {
                 if ((prog->stmts[j]->type == SIGMA)
-                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt, 
+                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt->id,
                             ploops[i]->stmts, ploops[i]->nstmts)
                    ) {
                     stmtids[count++] = prog->stmts[j]->id+1;
@@ -179,8 +181,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 // printf("Timing and marking sigma %s parallel\n", loops[j]->iterator);
                 // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_comm");
+                    loops[j]->time_var_name = strdup("t_comm");
                 }
                 loops[j]->parallel = CLAST_PARALLEL_MPI;
             }
@@ -209,8 +210,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 // printf("Timing copy_in %s\n", loops[j]->iterator);
                 // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_unpack");
+                    loops[j]->time_var_name = strdup("t_unpack");
                 }
             }
             free(stmtids);
@@ -223,7 +223,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             stmtids = malloc(prog->nstmts*sizeof(int));
             for (j=0; j<prog->nstmts; j++) {
                 if (prog->stmts[j]->type == LW_COPY_OUT
-                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt, 
+                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt->id,
                             ploops[i]->stmts, ploops[i]->nstmts)
                    ) {
                     stmtids[count++] = prog->stmts[j]->id+1;
@@ -238,8 +238,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 // printf("Timing write copy_out %s\n", loops[j]->iterator);
                 // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_writeout");
+                    loops[j]->time_var_name = strdup("t_writeout");
                 }
                 loops[j]->parallel = CLAST_PARALLEL_MPI;
             }
@@ -252,7 +251,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             stmtids = malloc(prog->nstmts*sizeof(int));
             for (j=0; j<prog->nstmts; j++) {
                 if (prog->stmts[j]->type == LW_COPY_IN
-                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt, 
+                        && pluto_stmt_is_member_of(prog->stmts[j]->parent_compute_stmt->id,
                             ploops[i]->stmts, ploops[i]->nstmts)
                    ) {
                     stmtids[count++] = prog->stmts[j]->id+1;
@@ -267,8 +266,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 // printf("Timing write copy_in %s\n", loops[j]->iterator);
                 // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
                 if (options->commreport) {
-                    loops[j]->time = 1;
-                    loops[j]->time_name = strdup("t_writeout");
+                    loops[j]->time_var_name = strdup("t_writeout");
                 }
             }
             free(stmtids);

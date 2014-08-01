@@ -681,7 +681,7 @@ void print_dynsched_file(char *srcFileName, FILE *cloogfp, FILE *outfp, PlutoPro
         // If they are considered, it leads to slower execution time sometimes (due to increase in size of the DAG?),
         // longer compilation time for generated code of some benchmarks like heat-3d
         // and incorrect results for some benchmarks like heat-2d
-        if(deps[i]->type == CANDL_RAW) {
+        if(deps[i]->type == OSL_DEPENDENCE_RAW) {
             strcpy(sysloogFileName, srcFileName);
             sysloogFileName[strlen(srcFileName)-2] = '\0';
             sprintf(sysloogFileName, "%s.dep%d.dynsched.sysloog",sysloogFileName,i);

@@ -165,7 +165,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
             Dep *dep = curr_dep->dep;
 
             /* Only RAW deps matter */
-            assert(dep->type == CANDL_RAW);
+            assert(dep->type == OSL_DEPENDENCE_RAW);
 
             Stmt *src = prog->stmts[dep->src];
             Stmt *dest = prog->stmts[dep->dest];
@@ -564,7 +564,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts,
         for (i=0; i<prog->ndeps; i++)   {
             Dep *dep = prog->deps[i];
             /* Only RAW deps matter */
-            if (dep->type != CANDL_RAW) continue;
+            if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
             Stmt *src = prog->stmts[dep->src];
             Stmt *dest = prog->stmts[dep->dest];
@@ -766,7 +766,7 @@ PlutoConstraints* get_receiver_tiles(struct stmt_access_pair **wacc_stmts,
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* Only RAW deps matter */
-        if (dep->type != CANDL_RAW) continue;
+        if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
         Stmt *dest = prog->stmts[dep->dest];
         
@@ -817,7 +817,7 @@ void generate_tau(struct stmt_access_pair *wacc_stmt,
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* Only RAW deps matter */
-        if (dep->type != CANDL_RAW) continue;
+        if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
         Stmt *src = prog->stmts[dep->src];
         Stmt *dest = prog->stmts[dep->dest];
@@ -1663,7 +1663,7 @@ PlutoConstraints *compute_flow_in(struct stmt_access_pair *racc_stmt,
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* Only RAW deps matter */
-        if (dep->type != CANDL_RAW) continue;
+        if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
         // if (dep->dirvec[copy_level+1] == DEP_ZERO) continue;
 
@@ -1811,7 +1811,7 @@ PlutoConstraints *compute_flow_out(struct stmt_access_pair *wacc_stmt,
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* Only RAW deps matter */
-        if (dep->type != CANDL_RAW) continue;
+        if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
         // if (dep->dirvec[src_copy_level+1] == DEP_ZERO) continue;
 
@@ -1964,7 +1964,7 @@ void compute_flow_out_partitions(struct stmt_access_pair *wacc_stmt,
     for (i=0; i<prog->ndeps; i++)   {
         Dep *dep = prog->deps[i];
         /* Only RAW deps matter */
-        if (dep->type != CANDL_RAW) continue;
+        if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
         // if (dep->dirvec[src_copy_level+1] == DEP_ZERO) continue;
 
@@ -2034,8 +2034,8 @@ PlutoConstraints *compute_write_out(struct stmt_access_pair *wacc_stmt,
     // requires transitive WAR dependences if they exist
     for (i=0; i<ndeps; i++)   {
         Dep *dep = deps[i];
-        // if (dep->type != CANDL_WAW && dep->type != CANDL_WAR) continue;
-        if (dep->type != CANDL_WAW) continue;
+        // if (dep->type != OSL_DEPENDENCE_WAW && dep->type != OSL_DEPENDENCE_WAR) continue;
+        if (dep->type != OSL_DEPENDENCE_WAW) continue;
 
         Stmt *src = prog->stmts[dep->src];
         Stmt *dest = prog->stmts[dep->dest];

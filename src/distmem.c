@@ -18,6 +18,7 @@
  *
  */
 #include <assert.h>
+#include <string.h>
 
 #include "pluto.h"
 #include "program.h"
@@ -1056,7 +1057,7 @@ Stmt **gen_comm_code_opt_foifi(struct stmt_access_pair **wacc_stmts, int num_acc
         for (i=0; i<prog->ndeps; i++)   {
             Dep *dep = prog->deps[i];
             /* Only RAW deps matter */
-            if (dep->type != CANDL_RAW) continue;
+            if (dep->type != OSL_DEPENDENCE_RAW) continue;
 
             // if (dep->dirvec[copy_level+1] == DEP_ZERO) continue;
 

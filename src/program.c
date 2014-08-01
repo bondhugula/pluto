@@ -70,54 +70,6 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
     prog->deps[prog->ndeps-1] = dep;
 }
 
-/*
- * Computes the transitive dependence via dep1 and dep2 
- * Note: dep1's target statement should be same as dep2's source
- */
-Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog)
-{
-    int i;
-
-    assert(dep1->dest == dep2->src);
-
-    Stmt *s1 = prog->stmts[dep1->src];
-    Stmt *s2 = prog->stmts[dep2->src];
-    Stmt *s3 = prog->stmts[dep2->dest];
-
-    PlutoConstraints *d1 = pluto_constraints_dup(dep1->dpolytope);
-    PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
-
-    for (i=0; i<s3->dim ; i++) {
-        pluto_constraints_add_dim(d1, s1->dim+s2->dim);
-    }
-    for (i=0; i<s1->dim; i++) {
-        pluto_constraints_add_dim(d2, 0);
-    }
-
-    PlutoConstraints *d3poly = pluto_constraints_dup(d1);
-    pluto_constraints_add(d3poly, d2);
-
-    pluto_constraints_project_out(d3poly, s1->dim, s2->dim);
-    pluto_constraints_free(d1);
-    pluto_constraints_free(d2);
-
-    if (pluto_constraints_is_empty(d3poly)) {
-        pluto_constraints_free(d3poly);
-        return NULL;
-    }
-
-    Dep *dep = pluto_dep_alloc();
-
-    dep->src = dep1->src;
-    dep->dest = dep2->dest;
-    dep->src_acc = dep1->src_acc;
-    dep->dest_acc = dep2->dest_acc;
-
-    dep->dpolytope = d3poly;
-
-    return dep;
-}
-
 
 /*
  * In an [eq -I A c] relation, rows can be ordered any way.
@@ -216,6 +168,24 @@ osl_relation_p pluto_constraints_to_osl_domain(PlutoConstraints *cst, int npar){
 
   return rln;
 }
+
+osl_relation_p pluto_constraints_list_to_osl_domain(PlutoConstraints *cst, 
+        int npar)
+{
+    if (cst==NULL) return NULL;
+
+    osl_relation_p list = osl_relation_pmalloc(PLUTO_OSL_PRECISION,
+            cst->nrows, cst->ncols+1);
+
+    list = pluto_constraints_to_osl_domain(cst, npar);
+
+    if(cst->next != NULL)
+        list->next = pluto_constraints_list_to_osl_domain(cst->next, 
+                npar);
+
+    return list;
+}
+
 
 
 /*
@@ -953,6 +923,55 @@ PlutoConstraints* osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep){
 
 
 
+/*
+ * Computes the transitive dependence via dep1 and dep2 
+ * Note: dep1's target statement should be same as dep2's source
+ */
+Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog)
+{
+    int i;
+
+    assert(dep1->dest == dep2->src);
+
+    Stmt *s1 = prog->stmts[dep1->src];
+    Stmt *s2 = prog->stmts[dep2->src];
+    Stmt *s3 = prog->stmts[dep2->dest];
+
+    PlutoConstraints *d1 = pluto_constraints_dup(dep1->dpolytope);
+    PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
+
+    for (i=0; i<s3->dim ; i++) {
+        pluto_constraints_add_dim(d1, s1->dim+s2->dim);
+    }
+    for (i=0; i<s1->dim; i++) {
+        pluto_constraints_add_dim(d2, 0);
+    }
+
+    PlutoConstraints *d3poly = pluto_constraints_dup(d1);
+    pluto_constraints_add(d3poly, d2);
+
+    pluto_constraints_project_out(d3poly, s1->dim, s2->dim);
+    pluto_constraints_free(d1);
+    pluto_constraints_free(d2);
+
+    if (pluto_constraints_is_empty(d3poly)) {
+        pluto_constraints_free(d3poly);
+        return NULL;
+    }
+
+    Dep *dep = pluto_dep_alloc();
+
+    dep->src = dep1->src;
+    dep->dest = dep2->dest;
+    dep->src_acc = dep1->src_acc;
+    dep->dest_acc = dep2->dest_acc;
+
+    dep->dpolytope = d3poly;
+
+    return dep;
+}
+
+
 /* Get the position of this access given a CandlStmt access matrix
  * (concatenated)
  * ref: starting row for a particular access in concatenated rows of
@@ -1124,7 +1143,6 @@ void pluto_deps_print(FILE *fp, PlutoProg *prog)
         pluto_dep_print(fp, prog->deps[i]);
     }
 }
-
 
 /* Read statement info from openscop structures (nvar: max domain dim) */
 static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
@@ -1516,6 +1534,103 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
     return eq;
 }
 
+/* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *extract_equalities(isl_ctx *ctx,
+        PlutoMatrix *matrix, int first, int n)
+{
+    int i, j;
+    int n_col;
+    isl_int v;
+    isl_mat *eq;
+
+    n_col = matrix->ncols;
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n, n + n_col);
+
+    for (i = 0; i < n; ++i) {
+        isl_int_set_si(v, 0);
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element(eq, i, j, v);
+        isl_int_set_si(v, -1);
+        eq = isl_mat_set_element(eq, i, i, v);
+        for (j = 0; j < n_col - 1; ++j) {
+            int t = matrix->val[first + i][j];
+            isl_int_set_si(v, t);
+            eq = isl_mat_set_element(eq, i, n + j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    return eq;
+}
+
+
+/* Convert a pluto matrix schedule [ A c] to
+ * the isl_map { i -> A i + c } in the space prescribed by "dim".
+ */
+static __isl_give isl_map *pluto_matrix_schedule_to_isl_map(
+        PlutoMatrix *schedule, __isl_take isl_dim *dim)
+{
+    int n_row, n_col;
+    isl_ctx *ctx;
+    isl_mat *eq, *ineq;
+    isl_basic_map *bmap;
+
+    ctx = isl_dim_get_ctx(dim);
+    n_row = schedule->nrows;
+    n_col = schedule->ncols;
+
+    ineq = isl_mat_alloc(ctx, 0, n_row + n_col);
+    eq = extract_equalities(ctx, schedule, 0, n_row);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    return isl_map_from_basic_map(bmap);
+}
+
+
+#if 0
+static __isl_give isl_map *isl_identity_map(int dim,
+		int npar,  __isl_take isl_dim *dim_isl){
+
+	int i, j;
+	isl_int v;
+	isl_mat *eq;
+	int n_col = 3*dim+1 + npar+ 1 ;
+	int n_row = 3*dim;
+    isl_basic_map *bmap;
+
+    isl_ctx *ctx = isl_dim_get_ctx(dim_isl);
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n_row, n_col);
+
+    for (i = 0; i < n_row; ++i) {
+        for (j = 0; j < n_col; ++j) {
+            isl_int_set_si(v, 0);
+            eq = isl_mat_set_element(eq, i, j, v);
+        }
+    }
+    for (i = 0; i < n_row; ++i) {
+        isl_int_set_si(v, 1);
+        eq = isl_mat_set_element(eq, i, i, v);
+    }
+
+    isl_int_clear(v);
+
+
+    isl_mat *ineq = isl_mat_alloc(ctx, 0, n_col);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim_isl, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+
+    return isl_map_from_basic_map(bmap);
+}
+#endif
 
 /* Convert a osl_relation_p scattering [0 M A c] to
  * the isl_map { i -> A i + c } in the space prescribed by "dim".
@@ -2182,6 +2297,33 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     return smat;
 
 }*/
+//
+//void print_isl_map( __isl_keep isl_basic_map *bmap, int ncols){
+//
+//	int i, j;
+//	for(i=0;i<bmap->n_eq;i++){
+//		for(j=0;j<ncols;j++){
+//			printf("%d\t", bmap->eq[i][j]);
+//		}
+//		printf("\n");
+//	}
+//
+//}
+
+PlutoMatrix *get_identity_schedule_new(int dim, int npar){
+    PlutoMatrix *smat = pluto_matrix_alloc(2*dim+1, dim+npar+1);
+
+    int i, j;
+    for(i =0; i<2*dim+1; i++)
+        for(j=0; j<dim+1+npar; j++)
+	smat->val[i][j] = 0;
+
+    for(i=0; i<dim; i++)
+	smat->val[i][i] = 1;
+
+    return smat;
+
+}
 
 /*
  * Computes the dependence polyhedron between the source iterators of dep1 and dep2
@@ -2213,7 +2355,10 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = isl_dim_set_alloc(ctx, prog->npar , 0);
     dim = set_names(dim, isl_dim_param,prog->params );
     param_space = isl_space_params(isl_space_copy(dim));
-    context = scoplib_matrix_to_isl_set(pluto_constraints_to_scoplib_matrix(prog->context), param_space);
+    context = osl_relation_list_to_isl_set(
+            pluto_constraints_to_osl_domain(prog->context, prog->npar), 
+            param_space);
+
 
     empty = isl_union_map_empty(isl_dim_copy(dim));
     write = isl_union_map_empty(isl_dim_copy(dim));
@@ -2243,12 +2388,16 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 
     snprintf(name, sizeof(name), "S_%d_r%d", 0, 0);
 
-
     dim = isl_dim_set_alloc(ctx,prog->npar ,domain_dim );
     dim = set_names(dim, isl_dim_param,prog->params);
     dim = set_names(dim, isl_dim_set,iter);
     dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
-    dom = scoplib_matrix_list_to_isl_set(pluto_constraints_list_to_scoplib_matrix_list(source_iterators), dim);
+
+    dom = osl_relation_list_to_isl_set(
+            pluto_constraints_list_to_osl_domain(source_iterators, prog->npar),
+            dim);
+
+
     dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
 
@@ -2258,13 +2407,14 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = set_names(dim, isl_dim_in,iter );
     dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
 
-    scoplib_matrix_p smat = get_identity_schedule(domain_dim, prog->npar);
-    smat->p[0][smat->NbColumns-1] = 1;
-    schedule_i = scoplib_schedule_to_isl_map(smat, dim);
+
+    PlutoMatrix *i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
+    schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
+
     if(access_matrix == NULL)
-		read_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs),access->name,  dom);
+        read_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs),access->name,  dom);
     else
-		read_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
+        read_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
     read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
 
     schedule = isl_union_map_union(schedule,
@@ -2297,7 +2447,11 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = set_names(dim, isl_dim_param,prog->params);
     dim = set_names(dim, isl_dim_set,iter);
     dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
-    dom = scoplib_matrix_list_to_isl_set(pluto_constraints_list_to_scoplib_matrix_list(source_iterators), dim);
+
+    dom = osl_relation_list_to_isl_set(
+            pluto_constraints_list_to_osl_domain(source_iterators, prog->npar),
+            dim);
+
     dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
     dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
@@ -2306,9 +2460,9 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = set_names(dim, isl_dim_in,iter);
     dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
 
-    scoplib_matrix_free(smat);
-    smat = get_identity_schedule(domain_dim, prog->npar);
-    schedule_i = scoplib_schedule_to_isl_map(smat, dim);
+    //osl_relation_free(smat);
+   i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
+    schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
 
     write_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
     //write_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
@@ -2316,6 +2470,8 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 
     schedule = isl_union_map_union(schedule,
             isl_union_map_from_map(schedule_i));
+
+
     isl_union_map_compute_flow(isl_union_map_copy(read),
             isl_union_map_copy(empty),
             isl_union_map_copy(write),
@@ -2346,7 +2502,7 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
         deps[i] = pluto_dep_alloc();
     }
     ndeps = 0;
-    ndeps += extract_deps(deps, ndeps, prog->stmts, dep_raw, CANDL_RAW);
+    ndeps += extract_deps(deps, ndeps, prog->stmts, dep_raw, OSL_DEPENDENCE_RAW);
 
     PlutoConstraints *tdpoly = NULL;
     for(i=0; i<ndeps; i++){
@@ -2411,22 +2567,22 @@ void pluto_force_parallelize(PlutoProg *prog, int depth)
                             dep->satisfaction_level = prog->deps[i]->satisfaction_level;
                             dep->satisfied = true;
                             switch(prog->deps[i]->type) {
-                                case CANDL_WAR:
+                                case OSL_DEPENDENCE_WAR:
                                     if (IS_RAW(prog->deps[j]->type)) {
-                                        dep->type = CANDL_RAR;
+                                        dep->type = OSL_DEPENDENCE_RAR;
                                     }else{ // IS_WAW(prog->deps[j]->type)
-                                        dep->type = CANDL_WAR;
+                                        dep->type = OSL_DEPENDENCE_WAR;
                                     }
                                     break;
-                                case CANDL_RAW:
+                                case OSL_DEPENDENCE_RAW:
                                     if (IS_RAR(prog->deps[j]->type)) {
-                                        dep->type = CANDL_RAW;
+                                        dep->type = OSL_DEPENDENCE_RAW;
                                     }else{ // IS_WAR(prog->deps[j]->type)
-                                        dep->type = CANDL_WAW;
+                                        dep->type = OSL_DEPENDENCE_WAW;
                                     }
                                     break;
-                                case CANDL_WAW:
-                                case CANDL_RAR:
+                                case OSL_DEPENDENCE_WAW:
+                                case OSL_DEPENDENCE_RAR:
                                     dep->type = prog->deps[j]->type;
                                     break;
                                 default:
