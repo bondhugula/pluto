@@ -8,13 +8,12 @@ DISTRIBUTED-MEMORY SUPPORT (AKA AUTOMATIC MPI CODE GENERATION)
    depending on whether you are using mpirun or mpirun_rsh (typically 
    mvapich2)
 
-3) There is no detailed explanation on the various command-line options for 
-   distmem (only comments in the code have it) - but typically one will have 
-   to use
+3) There is no detailed explanation on the various command-line options 
+   for distmem. Using
 
    --isldep --lastwriter --tile --parallel --distmem --commopt 
 
-   This will use the communication code generation scheme published in the 
+   will use the communication code generation scheme published in the 
    SC'13 paper. 
    
    Run polycc with --help to get a full list of options for 
@@ -22,3 +21,11 @@ DISTRIBUTED-MEMORY SUPPORT (AKA AUTOMATIC MPI CODE GENERATION)
 
    Other useful options: --blockcyclic
    [--commreport] to report communication time stats.
+
+   For communication schemes presented in the PACT'13 paper, use
+
+   --commopt_foifi (flow-out intersection flow-in scheme)
+   --commopt_fop (flow-out partitioning scheme)
+   --fop_unicast_runtime
+
+   ./polycc --help for all options
