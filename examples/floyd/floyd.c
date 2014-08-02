@@ -12,6 +12,7 @@
 #endif
 
 
+
 double rtclock()
 {
     struct timezone Tzp;
@@ -21,6 +22,12 @@ double rtclock()
     if (stat != 0) printf("Error return from gettimeofday: %d",stat);
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
+
+double cloog_util_rtclock()
+{
+    return rtclock();
+}
+
 
 double t_start, t_end;
 
