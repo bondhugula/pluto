@@ -277,7 +277,6 @@ int isl_basic_map_to_pluto_constraints_func_arg(
     int eq_row;
     int ineq_row;
     int n_col;
-    isl_val *v;
     isl_mat *eq, *ineq;
     PlutoConstraints *cons;
 
@@ -296,7 +295,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
     for (i = 0; i < eq_row; ++i) {
         cons->is_eq[i] = 1;
         for (j = 0; j < n_col; ++j) {
-            v = isl_mat_get_element_val(eq, i, j);
+            isl_val *v = isl_mat_get_element_val(eq, i, j);
             cons->val[i][j] = isl_val_get_num_si(v);
             isl_val_free(v);
         }
@@ -305,7 +304,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
     for (i = 0; i < ineq_row; ++i) {
         cons->is_eq[eq_row+i] = 0;
         for (j = 0; j < n_col; ++j) {
-            v = isl_mat_get_element_val(ineq, i, j);
+            isl_val *v = isl_mat_get_element_val(ineq, i, j);
             cons->val[eq_row + i][j] = isl_val_get_num_si(v);
             isl_val_free(v);
         }

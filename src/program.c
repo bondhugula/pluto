@@ -60,7 +60,6 @@
 #include <isl/deprecated/int.h>
 
 #include "pet.h"
-#include <isl/deprecated/mat_int.h>
 
 osl_relation_p get_identity_schedule(int dim, int npar);
 

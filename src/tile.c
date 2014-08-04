@@ -426,14 +426,17 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
     IF_DEBUG(printf("[pluto_create_tile_schedule] Created tile schedule for "););
     IF_DEBUG(printf("t%d to t%d\n", first+1, loop_depths[nip_dims]+1));
 
-    /* Update deps */
+    /* Update dependence satisfaction levels (better to do this instead of
+     * a complete complex dep satisfaction check since we know that the tile
+     * schedule will satisfy the dependence satisfied by all the dimensions
+     * that is a sum of) */
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
         /* satvec s should have been computed */
         if (IS_RAR(dep->type)) continue;
-        if (pluto_stmt_is_member_of(stmts[dep->src]->id, 
+        if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, 
                     band->loop->stmts, band->loop->nstmts) 
-                && pluto_stmt_is_member_of(stmts[dep->dest]->id, 
+                && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, 
                     band->loop->stmts, band->loop->nstmts)) {
             for (k=1; k<=nip_dims; k++) {
                 dep->satvec[first] |= dep->satvec[loop_depths[k]];
