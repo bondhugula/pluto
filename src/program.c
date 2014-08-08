@@ -42,6 +42,7 @@
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
+#include "osl/extensions/pluto_unroll.h"
 #include "osl/extensions/scatnames.h"
 
 #include "cloog/cloog.h"
@@ -564,6 +565,39 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
       osl_generic_add(&scop->extension, loopgen);
     }
 
+
+    // Add pluto_unroll extension
+    {
+        int i;
+        HyperplaneProperties *hProps = prog->hProps;
+        osl_pluto_unroll_p pluto_unroll = NULL;
+        osl_pluto_unroll_p pluto_unroll_base = NULL;
+
+        char buffer[sizeof(i) * CHAR_BIT + 1] = { 0 };
+
+        for (i=0; i<prog->num_hyperplanes; i++) {
+            if (hProps[i].unroll == UNROLL || hProps[i].unroll == UNROLLJAM) {
+                sprintf(buffer, "t%i", i + 1);
+                if (pluto_unroll == NULL) {
+                    pluto_unroll = osl_pluto_unroll_malloc();
+                    pluto_unroll_base = pluto_unroll;
+                } else {
+                    pluto_unroll->next = osl_pluto_unroll_malloc();
+                    pluto_unroll = pluto_unroll->next;
+                }
+                osl_pluto_unroll_fill(pluto_unroll,
+                                      buffer,
+                                      hProps[i].unroll == UNROLLJAM,
+                                      options->ufactor);
+            }
+        }
+
+        if (pluto_unroll_base) {
+            osl_generic_p pluto_unroll_generic =
+                osl_generic_shell(pluto_unroll_base, osl_pluto_unroll_interface());
+            osl_generic_add(&scop->extension, pluto_unroll_generic);
+        }
+    }
 }
 
 static int get_osl_write_access_position(osl_relation_list_p rl,
