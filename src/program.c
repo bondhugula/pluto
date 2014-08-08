@@ -42,7 +42,6 @@
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
-#include "osl/body.h"
 #include "osl/extensions/scatnames.h"
 
 #include "cloog/cloog.h"
@@ -481,8 +480,8 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
     {
       int niter = stm->domain->nb_columns - scop->context->nb_columns;
       int nb_orig_it = -1;
-      if(stm->body){
-        osl_body_p stmt_body = (osl_body_p)(stm->body->data);
+      osl_body_p stmt_body = osl_generic_lookup(stm->extension, OSL_URI_BODY);
+      if(stmt_body){
         nb_orig_it = osl_strings_size(stmt_body->iterators);
         if (nb_orig_it != niter)
           {//update iterators.
@@ -1138,7 +1137,7 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
-        osl_body_p stmt_body = (osl_body_p)(scop_stmt->body->data);
+        osl_body_p stmt_body = osl_generic_lookup(scop_stmt->extension, OSL_URI_BODY);
 
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
@@ -1867,7 +1866,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
@@ -1881,7 +1880,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
@@ -1945,7 +1944,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   names->parameters = osl_strings_clone(scop_params);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
 
                   osl_strings_free(names->iterators);
@@ -1962,7 +1961,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   dim = set_names(dim, isl_dim_param, scop_params->string);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
                 }
                 dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
