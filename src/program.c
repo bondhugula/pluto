@@ -42,7 +42,7 @@
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
-#include "osl/body.h"
+#include "osl/extensions/pluto_unroll.h"
 #include "osl/extensions/scatnames.h"
 
 #include "cloog/cloog.h"
@@ -426,7 +426,7 @@ osl_loop_p pluto_get_vector_loop_list( const PlutoProg *prog)
 /*
  * get a list of to-be-parallelized loops frop PlutoProg
  */
-osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog)
+osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog, int vloopsfound)
 {
     int i, j, nploops;
     osl_loop_p ret_loop = NULL;
@@ -447,12 +447,26 @@ osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog)
 
         newloop->nb_stmts = ploops[i]->nstmts;
         newloop->stmt_ids = malloc(ploops[i]->nstmts*sizeof(int));
+        int max_depth = 0;
         for (j=0; j<ploops[i]->nstmts; j++) {
-            newloop->stmt_ids[j] = ploops[i]->stmts[j]->id+1;
+          Stmt *stmt = ploops[i]->stmts[j];
+          newloop->stmt_ids[j] = stmt->id+1;
+
+          if (stmt->trans->nrows > max_depth) max_depth = stmt->trans->nrows;
         }
 
-        newloop->private_vars = strdup("lbv,ubv");
         newloop->directive   += CLAST_PARALLEL_OMP;
+        char *private_vars = malloc(128);
+        private_vars[0] = '\0';
+        if (vloopsfound) strcpy( private_vars, "lbv, ubv");
+        int depth = ploops[i]->depth+1;
+        for (depth++; depth<=max_depth; depth++) {
+          sprintf(private_vars+strlen(private_vars), "t%d,", depth);
+        }
+        if (strlen(private_vars))
+          private_vars[strlen(private_vars)-1] = '\0'; //remove last comma
+        newloop->private_vars = strdup(private_vars);
+        free(private_vars);
 
         //add new loop to looplist
         osl_loop_add(newloop, &ret_loop);
@@ -499,8 +513,8 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
     {
       int niter = stm->domain->nb_columns - scop->context->nb_columns;
       int nb_orig_it = -1;
-      if(stm->body){
-        osl_body_p stmt_body = (osl_body_p)(stm->body->data);
+      osl_body_p stmt_body = osl_generic_lookup(stm->extension, OSL_URI_BODY);
+      if(stmt_body){
         nb_orig_it = osl_strings_size(stmt_body->iterators);
         if (nb_orig_it != niter)
           {//update iterators.
@@ -553,13 +567,13 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
 
     //update loop information
     //get loops to be marked for parallization and vectorization
-    osl_loop_p pll = NULL;
-    if(options->parallel){
-      pll = pluto_get_parallel_loop_list(prog);
-    }
     osl_loop_p vll = NULL;
     if (options->prevector ){
       vll = pluto_get_vector_loop_list(prog);
+    }
+    osl_loop_p pll = NULL;
+    if(options->parallel){
+      pll = pluto_get_parallel_loop_list(prog, vll!=NULL);
     }
     //concatenate the two lists
     osl_loop_add(vll, &pll);
@@ -569,6 +583,39 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
       osl_generic_add(&scop->extension, loopgen);
     }
 
+
+    // Add pluto_unroll extension
+    {
+        int i;
+        HyperplaneProperties *hProps = prog->hProps;
+        osl_pluto_unroll_p pluto_unroll = NULL;
+        osl_pluto_unroll_p pluto_unroll_base = NULL;
+
+        char buffer[sizeof(i) * CHAR_BIT + 1] = { 0 };
+
+        for (i=0; i<prog->num_hyperplanes; i++) {
+            if (hProps[i].unroll == UNROLL || hProps[i].unroll == UNROLLJAM) {
+                sprintf(buffer, "t%i", i + 1);
+                if (pluto_unroll == NULL) {
+                    pluto_unroll = osl_pluto_unroll_malloc();
+                    pluto_unroll_base = pluto_unroll;
+                } else {
+                    pluto_unroll->next = osl_pluto_unroll_malloc();
+                    pluto_unroll = pluto_unroll->next;
+                }
+                osl_pluto_unroll_fill(pluto_unroll,
+                                      buffer,
+                                      hProps[i].unroll == UNROLLJAM,
+                                      options->ufactor);
+            }
+        }
+
+        if (pluto_unroll_base) {
+            osl_generic_p pluto_unroll_generic =
+                osl_generic_shell(pluto_unroll_base, osl_pluto_unroll_interface());
+            osl_generic_add(&scop->extension, pluto_unroll_generic);
+        }
+    }
 }
 
 static int get_osl_write_access_position(osl_relation_list_p rl,
@@ -1204,7 +1251,7 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
-        osl_body_p stmt_body = (osl_body_p)(scop_stmt->body->data);
+        osl_body_p stmt_body = osl_generic_lookup(scop_stmt->extension, OSL_URI_BODY);
 
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
@@ -2026,7 +2073,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
@@ -2040,7 +2087,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
@@ -2104,7 +2151,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   names->parameters = osl_strings_clone(scop_params);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
 
                   osl_strings_free(names->iterators);
@@ -2121,7 +2168,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   dim = set_names(dim, isl_dim_param, scop_params->string);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
                 }
                 dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
