@@ -116,10 +116,10 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 
                 if (options->distmem) {
                     fprintf(pidefs, "#define _LB_REPLACE_ME_DISTLOOG%d ", i);
-                    pprint_expr(cloogOptions, pidefs, loops[j]->LB);
+                    clast_pprint_expr(cloogOptions, pidefs, loops[j]->LB);
                     fprintf(pidefs, "\n");
                     fprintf(pidefs, "#define _UB_REPLACE_ME_DISTLOOG%d ", i);
-                    pprint_expr(cloogOptions, pidefs, loops[j]->UB);
+                    clast_pprint_expr(cloogOptions, pidefs, loops[j]->UB);
                     fprintf(pidefs, "\n");
                 }
                 loops[j]->private_vars = strdup("lbv,ubv");
