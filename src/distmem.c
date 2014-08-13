@@ -24,8 +24,6 @@
 #include "program.h"
 #include "transforms.h"
 
-#include "scoplib/access.h"
-
 /* Get list of <Stmt, read acc> lists - each list corresponds to 
  * statements with read accesses to the same data; *num_data gives the number of 
  * data elements; nstmts_per_acc[i] is the number of stmts in list[i] 

@@ -14,9 +14,6 @@
 #include "ddg.h"
 #include "version.h"
 
-#include "scoplib/statement.h"
-#include "scoplib/access.h"
-
 #include <isl/map.h>
 #include <isl/mat.h>
 #include <isl/set.h>
