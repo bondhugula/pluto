@@ -21,6 +21,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
 
@@ -149,7 +150,7 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
     src_stmt = dep->src;
 
     /* Convert everything to >= 0 form */
-    PlutoConstraints *dpoly = pluto_constraints_to_pure_inequalities(dep->dpolytope);
+    PlutoConstraints *dpoly = pluto_constraints_to_pure_inequalities_single(dep->dpolytope);
 
     /* Non-uniform dependence - farkas lemma comes in */
     /* Apply farkas lemma, eliminate farkas multipliers using
