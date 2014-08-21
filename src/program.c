@@ -1307,12 +1307,12 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 }
 
 
-void pluto_prog_print(PlutoProg *prog)
+void pluto_prog_print(FILE *fp, PlutoProg *prog)
 {
-    printf("nvar = %d, npar = %d\n", prog->nvar, prog->npar);
+    fprintf(fp, "nvar = %d, npar = %d\n", prog->nvar, prog->npar);
 
-    pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
-    pluto_deps_print(stdout, prog);
+    pluto_stmts_print(fp, prog->stmts, prog->nstmts);
+    pluto_deps_print(fp, prog);
     pluto_transformations_pretty_print(prog);
 }
 

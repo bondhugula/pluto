@@ -294,9 +294,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
     osl_irregular_free(irreg_ext);
 
-    IF_DEBUG2(pluto_deps_print(stdout, prog));
-    IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
-
+    IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
     int dim_sum=0;
     for (i=0; i<prog->nstmts; i++) {

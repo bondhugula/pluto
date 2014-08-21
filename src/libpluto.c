@@ -131,7 +131,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, OSL_DEPENDENCE_RAW);
 
-    IF_DEBUG(pluto_prog_print(prog););
+    IF_DEBUG(pluto_prog_print(stdout, prog););
 
     retval = pluto_auto_transform(prog);
 
