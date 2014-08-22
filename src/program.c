@@ -33,6 +33,7 @@
 
 #include "pluto.h"
 #include "math_support.h"
+#include "constraints.h"
 #include "program.h"
 
 #include "osl/macros.h"
@@ -1106,12 +1107,12 @@ void pluto_dep_print(FILE *fp, Dep *dep)
     }
 
     fprintf(fp, "\n");
-    if (dep->src_acc != NULL) {
-        fprintf(fp, "Var: %s\n", dep->src_acc->name);
+    if (dep->src_acc) {
+        fprintf(fp, "on variable: %s\n", dep->src_acc->name);
     }
 
     fprintf(fp, "Dependence polyhedron\n");
-    pluto_constraints_print(fp, dep->dpolytope);
+    pluto_constraints_compact_print(fp, dep->dpolytope);
     fprintf(fp, "\n");
 }
 
@@ -1119,11 +1120,13 @@ void pluto_dep_print(FILE *fp, Dep *dep)
 void pluto_deps_print(FILE *fp, PlutoProg *prog)
 {
     int i;
+
+    if (prog->ndeps == 0)  printf("** No dependences **\n\n");
+
     for (i=0; i<prog->ndeps; i++) {
         pluto_dep_print(fp, prog->deps[i]);
     }
 }
-
 
 /* Read statement info from openscop structures (nvar: max domain dim) */
 static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
@@ -1260,6 +1263,17 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
     return stmts;
 }
 
+void pluto_access_print(FILE *fp, const PlutoAccess *acc)
+{
+    if (!acc) {
+        fprintf(fp, "NULL access\n");
+        return;
+    }
+
+    fprintf(fp, "Variable: %s\n", acc->name);
+    pluto_matrix_print(fp, acc->mat);
+}
+
 void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
     int i;
@@ -1267,7 +1281,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     fprintf(fp, "S%d \"%s\"; ndims: %d; orig_depth: %d\n", 
             stmt->id+1, stmt->text, stmt->dim, stmt->dim_orig);
     fprintf(fp, "Domain\n");
-    pluto_constraints_print(fp, stmt->domain);
+    pluto_constraints_compact_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
     pluto_matrix_print(fp, stmt->trans);
 
@@ -1276,7 +1290,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }else{
         fprintf(fp, "Read accesses\n");
         for (i=0; i<stmt->nreads; i++)  {
-            pluto_matrix_print(fp, stmt->reads[i]->mat);
+            pluto_access_print(fp, stmt->reads[i]);
         }
     }
 
@@ -1285,7 +1299,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }else{
         fprintf(fp, "Write accesses\n");
         for (i=0; i<stmt->nwrites; i++)  {
-            pluto_matrix_print(fp, stmt->writes[i]->mat);
+            pluto_access_print(fp, stmt->writes[i]);
         }
     }
 
@@ -1724,7 +1738,7 @@ struct pluto_extra_dep_info {
  * accesses for the statement are available, source and target accesses 
  * are set for the dependence, otherwise not.
  */
-static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
+static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
 {
     Stmt **stmts;
     Dep *dep;
@@ -1748,7 +1762,7 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     // pluto_stmt_print(stdout, stmts[dep->dest]);
     // printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num);
 
-    if (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL) {
+    if (!options->isldepcompact && (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL)) {
         /* Extract access function information */
         int src_acc_num, dest_acc_num;
         const char *name;
@@ -1792,12 +1806,12 @@ static int basic_map_extract(__isl_take isl_basic_map *bmap, void *user)
     return 0;
 }
 
-
-static int map_extract(__isl_take isl_map *map, void *user)
+/* Extract Pluto dependences from an isl_map */
+static int map_extract_dep(__isl_take isl_map *map, void *user)
 {
     int r;
 
-    r = isl_map_foreach_basic_map(map, &basic_map_extract, user);
+    r = isl_map_foreach_basic_map(map, &basic_map_extract_dep, user);
     isl_map_free(map);
     return r;
 }
@@ -1806,9 +1820,9 @@ static int map_extract(__isl_take isl_map *map, void *user)
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type)
 {
-    struct pluto_extra_dep_info info = { deps, stmts, type, first };
+    struct pluto_extra_dep_info info = {deps, stmts, type, first};
 
-    isl_union_map_foreach_map(umap, &map_extract, &info);
+    isl_union_map_foreach_map(umap, &map_extract_dep, &info);
 
     return info.index - first;
 }
@@ -1874,7 +1888,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     assert(ctx);
 
     osl_names_p names = get_scop_names(scop);
-
 
     dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, 0);
     if(scop->context->nb_parameters){
@@ -2125,6 +2138,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, OSL_DEPENDENCE_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, OSL_DEPENDENCE_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, OSL_DEPENDENCE_RAR);
+
 
     if (options->lastwriter) {
         trans_dep_war = isl_union_map_coalesce(trans_dep_war);
