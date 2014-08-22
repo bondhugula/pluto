@@ -1961,7 +1961,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
             PlutoConstraints *cst_l = pluto_constraints_dup(cst);
             Stmt *tstmt = stmts[dep->dest];
             for (c=0; c<tstmt->dim; c++) {
-                pluto_constraints_add_dim(cst_l, stmt->dim);
+                pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
             }
             pluto_constraints_add(dep->dpolytope, cst_l);
             pluto_constraints_free(cst_l);
@@ -1970,7 +1970,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
             PlutoConstraints *cst_l = pluto_constraints_dup(cst);
             Stmt *sstmt = stmts[dep->src];
             for (c=0; c<sstmt->dim; c++) {
-                pluto_constraints_add_dim(cst_l, 0);
+                pluto_constraints_add_dim(cst_l, 0, NULL);
             }
             pluto_constraints_add(dep->dpolytope, cst_l);
             pluto_constraints_free(cst_l);
@@ -1983,7 +1983,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
             PlutoConstraints *cst_l = pluto_constraints_dup(cst);
             Stmt *tstmt = stmts[dep->dest];
             for (c=0; c<tstmt->dim; c++) {
-                pluto_constraints_add_dim(cst_l, stmt->dim);
+                pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
             }
             pluto_constraints_add(dep->dpolytope, cst_l);
             pluto_constraints_free(cst_l);
@@ -1992,7 +1992,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
             PlutoConstraints *cst_l = pluto_constraints_dup(cst);
             Stmt *sstmt = stmts[dep->src];
             for (c=0; c<sstmt->dim; c++) {
-                pluto_constraints_add_dim(cst_l, 0);
+                pluto_constraints_add_dim(cst_l, 0, NULL);
             }
             pluto_constraints_add(dep->dpolytope, cst_l);
             pluto_constraints_free(cst_l);

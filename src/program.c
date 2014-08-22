@@ -1373,12 +1373,12 @@ void pluto_stmts_print(FILE *fp, Stmt **stmts, int nstmts)
 }
 
 
-void pluto_prog_print(PlutoProg *prog)
+void pluto_prog_print(FILE *fp, PlutoProg *prog)
 {
-    printf("nvar = %d, npar = %d\n", prog->nvar, prog->npar);
+    fprintf(fp, "nvar = %d, npar = %d\n", prog->nvar, prog->npar);
 
-    pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
-    pluto_deps_print(stdout, prog);
+    pluto_stmts_print(fp, prog->stmts, prog->nstmts);
+    pluto_deps_print(fp, prog);
     pluto_transformations_pretty_print(prog);
 }
 
@@ -3045,7 +3045,7 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
 
     for (i=0; i<prog->nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
-        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1-prog->npar+pos);
+        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1-prog->npar+pos, NULL);
         pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1-prog->npar+pos);
 
         for (j=0; j<stmt->nwrites; j++)  {
@@ -3057,9 +3057,9 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
     }
     for (i=0; i<prog->ndeps; i++)   {
         pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
-                prog->deps[i]->dpolytope->ncols-1-prog->npar+pos);
+                prog->deps[i]->dpolytope->ncols-1-prog->npar+pos, NULL);
     }
-    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos);
+    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos, NULL);
 
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
 
@@ -3095,7 +3095,7 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     assert(time_pos <= stmt->trans->nrows);
     assert(stmt->dim + npar + 1 == stmt->domain->ncols);
 
-    pluto_constraints_add_dim(stmt->domain, pos);
+    pluto_constraints_add_dim(stmt->domain, pos, NULL);
     stmt->dim++;
     stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
     for (i=stmt->dim-2; i>=pos; i--) {
@@ -3137,22 +3137,22 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
 
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i]->src == stmt->id) {
-            pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos);
+            pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos, NULL);
         }
         if (prog->deps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
-                    prog->stmts[prog->deps[i]->src]->dim+pos);
+                    prog->stmts[prog->deps[i]->src]->dim+pos, NULL);
         }
     }
 
     for (i=0; i<prog->ntransdeps; i++) {
         assert(prog->transdeps[i] != NULL);
         if (prog->transdeps[i]->src == stmt->id) {
-            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos);
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos, NULL);
         }
         if (prog->transdeps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, 
-                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos, NULL);
         }
     }
 }
@@ -3176,7 +3176,8 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
         for (i=pos; i<=stmt->dim-1; i++) {
             stmt->iterators[i] = stmt->iterators[i+1];
         }
-        stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
+        stmt->iterators = (char **) realloc(stmt->iterators,
+                stmt->dim*sizeof(char *));
     }
 
     pluto_matrix_remove_col(stmt->trans, pos);
@@ -3363,8 +3364,6 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
 
 }
 
-
-
 /* Create a statement and add it to the program
  * iterators: domain iterators
  * trans: schedule/transformation
@@ -3479,9 +3478,11 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
 
 void pluto_access_free(PlutoAccess *acc)
 {
-    pluto_matrix_free(acc->mat);
-    free(acc->name);
-    free(acc);
+    if (acc) {
+        pluto_matrix_free(acc->mat);
+        free(acc->name);
+        free(acc);
+    }
 }
 
 void pluto_stmt_free(Stmt *stmt)
