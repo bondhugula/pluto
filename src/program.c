@@ -2034,7 +2034,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
     osl_names_p names = get_scop_names(scop);
 
-
     dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, 0);
     if(scop->context->nb_parameters){
       scop_params = (osl_strings_p)scop->parameters->data;
