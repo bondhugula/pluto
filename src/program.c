@@ -2216,7 +2216,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 &dep_waw, &dep_war, NULL, NULL);
-        if (options->distmem) {
             // compute WAR dependences which may contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(write),
                     isl_union_map_copy(empty),
@@ -2228,7 +2227,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                     isl_union_map_copy(write),
                     isl_union_map_copy(schedule),
                     NULL, &trans_dep_waw, NULL, NULL);
-        }
         if (options->rar) {
             // compute RAR dependences which do not contain transitive dependences
             isl_union_map_compute_flow(isl_union_map_copy(read),
