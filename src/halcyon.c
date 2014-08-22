@@ -341,7 +341,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
                 }else{
                     // move dest_copy_level loop iterators to the beginning/top
                     for (j=0; j<dest_copy_level; j++) {
-                        pluto_constraints_add_dim(tdpoly, 0);
+                        pluto_constraints_add_dim(tdpoly, 0, NULL);
                     }
                     for (j=0; j<dest_copy_level; j++) {
                         pluto_constraints_interchange_cols(tdpoly, j, j+total_copy_level);
@@ -623,7 +623,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts,
             }else{
                 // move dest_copy_level loop iterators to the beginning/top
                 for (j=0; j<dest_copy_level; j++) {
-                    pluto_constraints_add_dim(tdpoly, 0);
+                    pluto_constraints_add_dim(tdpoly, 0, NULL);
                 }
                 for (j=0; j<dest_copy_level; j++) {
                     pluto_constraints_interchange_cols(tdpoly, j, j+total_copy_level);
@@ -1100,7 +1100,7 @@ void intersect_deps_in_list(PlutoDepList *list, PlutoDepList *intersect_list , D
 		tdpoly2 = pluto_constraints_dup(intersect2);
 
 		for(i=0; i<td2_dest_ncols; i++)
-			pluto_constraints_add_dim(tdpoly2, 0);
+			pluto_constraints_add_dim(tdpoly2, 0, NULL);
 
 		pluto_constraints_intersect(tdpoly2,curr_dep->dpolytope);
 		dep2 = pluto_dependence_dup(curr_dep, tdpoly2, tdpoly2);
@@ -1111,7 +1111,7 @@ void intersect_deps_in_list(PlutoDepList *list, PlutoDepList *intersect_list , D
 		diff2 = pluto_constraints_difference(td2, intersect2);
 
 		for(i=0; i<td2_dest_ncols; i++)
-			pluto_constraints_add_dim(diff2, td2_src_ncols);
+			pluto_constraints_add_dim(diff2, td2_src_ncols, NULL);
 
 		pluto_constraints_intersect(curr_dep->dpolytope,diff2);
 
@@ -1339,7 +1339,7 @@ void split_dependences(PlutoDepListList *dep_list_list,
 			tdpoly1 = pluto_constraints_dup(intersect1);
 
 			for(i=0; i<td1_dest_ncols; i++)
-				pluto_constraints_add_dim(tdpoly1, td1_src_ncols);
+				pluto_constraints_add_dim(tdpoly1, td1_src_ncols, NULL);
 
 			pluto_constraints_intersect(tdpoly1,dep_to_split->dpolytope);
 			dep1 = pluto_dependence_dup(dep_to_split, tdpoly1, tdpoly1);
@@ -1347,7 +1347,7 @@ void split_dependences(PlutoDepListList *dep_list_list,
 			pluto_dep_list_add(curr->dep_list, dep1);
 
 			for(i=0; i<td2_src_ncols; i++)
-				pluto_constraints_add_dim(diff1, td1_src_ncols);
+				pluto_constraints_add_dim(diff1, td1_src_ncols, NULL);
 
 			//diff1 has the source iterators for next iteration
 			pluto_constraints_intersect(dep_to_split->dpolytope,diff1);
@@ -1363,14 +1363,14 @@ void split_dependences(PlutoDepListList *dep_list_list,
 			tdpoly1 = pluto_constraints_dup(intersect1);
 
 			for(i=0; i<td1_dest_ncols; i++)
-				pluto_constraints_add_dim(tdpoly1, td1_src_ncols);
+				pluto_constraints_add_dim(tdpoly1, td1_src_ncols, NULL);
 
 			pluto_constraints_intersect(tdpoly1,dep_to_split->dpolytope);
 			dep1 = pluto_dependence_dup(dep_to_split, tdpoly1, tdpoly1);
 
 			tdpoly2 = pluto_constraints_dup(intersect2);
 			for(i=0; i<td2_dest_ncols; i++)
-				pluto_constraints_add_dim(tdpoly2, td2_src_ncols);
+				pluto_constraints_add_dim(tdpoly2, td2_src_ncols, NULL);
 
 			pluto_constraints_intersect(tdpoly2,curr_dep->dpolytope);
 			dep2 = pluto_dependence_dup(curr_dep, tdpoly2, tdpoly2);
@@ -1384,7 +1384,7 @@ void split_dependences(PlutoDepListList *dep_list_list,
 
 
 			for(i=0; i<td2_dest_ncols; i++)
-				pluto_constraints_add_dim(diff2, td2_src_ncols);
+				pluto_constraints_add_dim(diff2, td2_src_ncols, NULL);
 
 			pluto_constraints_intersect(curr_dep->dpolytope,diff2);
 
@@ -1392,7 +1392,7 @@ void split_dependences(PlutoDepListList *dep_list_list,
 			intersect_deps_in_list(curr->dep_list->next, list, dep_to_split, prog);
 
 			for(i=0; i<td1_dest_ncols; i++)
-				pluto_constraints_add_dim(diff1, td1_src_ncols);
+				pluto_constraints_add_dim(diff1, td1_src_ncols, NULL);
 
 			//diff1 has the source iterators for next iteration
 			pluto_constraints_intersect(dep_to_split->dpolytope,diff1);
@@ -1467,7 +1467,7 @@ void split_flow_out_set(PlutoProg *prog, PlutoConstraintsList *atomic_flowouts,
         IF_DEBUG(pluto_constraints_print(stdout, intersect););
 
         for (i=0; i<prog->npar; i++) {
-            pluto_constraints_add_dim(cst_intersect, cst_intersect->ncols-1);
+            pluto_constraints_add_dim(cst_intersect, cst_intersect->ncols-1, NULL);
         }
 
         intersect = pluto_constraints_intersection(cst_intersect, curr->constraints);
@@ -1573,7 +1573,7 @@ PlutoConstraints *compute_flow_in_of_dep(Dep *dep,
         
         // move target copy_level loop iterators to the beginning/top
         for (j=0; j<copy_level; j++) {
-            pluto_constraints_add_dim(tile_src, 0);
+            pluto_constraints_add_dim(tile_src, 0, NULL);
         }
         for (j=0; j<copy_level; j++) {
             pluto_constraints_interchange_cols(tile_src, j, j+copy_level+src->trans->nrows);
@@ -1612,7 +1612,7 @@ PlutoConstraints *compute_flow_in_of_dep(Dep *dep,
         
         // move target copy_level loop iterators to the beginning/top
         for (j=0; j<copy_level; j++) {
-            pluto_constraints_add_dim(tile_src_outside, 0);
+            pluto_constraints_add_dim(tile_src_outside, 0, NULL);
         }
         for (j=0; j<copy_level; j++) {
             pluto_constraints_interchange_cols(tile_src_outside, j, j+src->trans->nrows);
@@ -1767,7 +1767,7 @@ PlutoConstraints *compute_flow_out_of_dep(Dep *dep,
 
         dep->src_unique_dpolytype = pluto_constraints_dup(tile_dest);
         for(j=0; j<src->trans->nrows; j++)
-            pluto_constraints_add_dim(dep->src_unique_dpolytype , src_copy_level);
+            pluto_constraints_add_dim(dep->src_unique_dpolytype , src_copy_level, NULL);
         pluto_constraints_intersect(dep->src_unique_dpolytype, tdpoly);
     }
 
@@ -1908,7 +1908,7 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
                 IF_DEBUG(print_polylib_visual_sets("intersect", tdpoly));
 
                 for(i=0; i<dest_ncols; i++)
-                    pluto_constraints_add_dim(tdpoly, src_ncols);
+                    pluto_constraints_add_dim(tdpoly, src_ncols, NULL);
 
                 pluto_constraints_intersect(dep->src_unique_dpolytype, tdpoly);
             }

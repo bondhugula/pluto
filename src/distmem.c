@@ -438,7 +438,7 @@ void generate_pack_or_unpack(FILE *packfp, PlutoProg *prog,
     tdpoly = pluto_constraints_dup(constraints);
     // move acc_nrows loop iterators to the beginning/top
     for (i=0; i<acc_nrows; i++) {
-        pluto_constraints_add_dim(tdpoly, 0);
+        pluto_constraints_add_dim(tdpoly, 0, NULL);
     }
     for (i=0; i<acc_nrows; i++) {
         pluto_constraints_interchange_cols(tdpoly, i, i+total_level);
@@ -786,12 +786,12 @@ Stmt **gen_comm_code_opt_fop(struct stmt_access_pair **wacc_stmts, int num_accs,
                     PlutoConstraints *fo = pluto_constraints_dup(curr->constraints);
                     // add target tile iterators for flow-out set
                     for (j=0; j<dest_copy_level; j++) {
-                        pluto_constraints_add_dim(fo,src_copy_level);
+                        pluto_constraints_add_dim(fo,src_copy_level, NULL);
                     }
 
                     // add source tile iterators for flow-in set
                     for (j=0; j<src_copy_level; j++) {
-                        pluto_constraints_add_dim(foifi,0);
+                        pluto_constraints_add_dim(foifi,0, NULL);
                     }
 
                     pluto_constraints_intersect(foifi, fo);
@@ -1077,13 +1077,13 @@ Stmt **gen_comm_code_opt_foifi(struct stmt_access_pair **wacc_stmts, int num_acc
             PlutoConstraints *fo = compute_flow_out_of_dep(dep, src_copy_level, copy_level, prog, 0, NULL, pi_mappings);
             // add target tile iterators for flow-out set
             for (j=0; j<dest_copy_level; j++) {
-                pluto_constraints_add_dim(fo,src_copy_level);
+                pluto_constraints_add_dim(fo,src_copy_level, NULL);
             }
 
             PlutoConstraints *fi = compute_flow_in_of_dep(dep, dest_copy_level, prog, 0);
             // add source tile iterators for flow-in set
             for (j=0; j<src_copy_level; j++) {
-                pluto_constraints_add_dim(fi,0);
+                pluto_constraints_add_dim(fi,0, NULL);
             }
 
             PlutoConstraints *foifi = pluto_constraints_intersection(fo, fi);

@@ -1842,21 +1842,21 @@ PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *d
     // IF_DEBUG(pluto_constraints_print(stdout, dpoly););
 
     for (i=0; i<src->trans->nrows; i++)  {
-        pluto_constraints_add_dim(dpoly, 0);
+        pluto_constraints_add_dim(dpoly, 0, NULL);
     }
     for (i=0; i<dest->trans->nrows; i++)  {
-        pluto_constraints_add_dim(dpoly, src->trans->nrows+src->dim);
+        pluto_constraints_add_dim(dpoly, src->trans->nrows+src->dim, NULL);
     }
 
     src_sched = pluto_stmt_get_schedule(src);
     dest_sched = pluto_stmt_get_schedule(dest);
 
     for (i=0; i<dest->trans->nrows+dest->dim; i++) {
-        pluto_constraints_add_dim(src_sched, src->trans->nrows+src->dim);
+        pluto_constraints_add_dim(src_sched, src->trans->nrows+src->dim, NULL);
     }
 
     for (i=0; i<src->trans->nrows+src->dim; i++) {
-        pluto_constraints_add_dim(dest_sched, 0);
+        pluto_constraints_add_dim(dest_sched, 0, NULL);
     }
 
     pluto_constraints_add(dpoly, src_sched);
@@ -1917,13 +1917,13 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
         pluto_matrix_add_col(newacc, stmt->trans->nrows);
         newacc->val[newacc->nrows-1-k][stmt->trans->nrows] = divs[k];
 
-        pluto_constraints_add_dim(datadom, domain->ncols-prog->npar-1);
+        pluto_constraints_add_dim(datadom, domain->ncols-prog->npar-1, NULL);
     }
 
     PlutoConstraints *acc_cst = pluto_constraints_from_equalities(newacc);
 
     for (i=0; i<domain->ncols-stmt->trans->nrows-npar-1; i++) {
-        pluto_constraints_add_dim(acc_cst, 0);
+        pluto_constraints_add_dim(acc_cst, 0, NULL);
     }
 
     pluto_constraints_add_to_each(datadom, acc_cst);

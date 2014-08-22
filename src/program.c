@@ -988,10 +988,10 @@ Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog)
     PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
 
     for (i=0; i<s3->dim ; i++) {
-        pluto_constraints_add_dim(d1, s1->dim+s2->dim);
+        pluto_constraints_add_dim(d1, s1->dim+s2->dim, NULL);
     }
     for (i=0; i<s1->dim; i++) {
-        pluto_constraints_add_dim(d2, 0);
+        pluto_constraints_add_dim(d2, 0, NULL);
     }
 
     PlutoConstraints *d3poly = pluto_constraints_dup(d1);
@@ -3539,7 +3539,7 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
 
     PlutoConstraints *newdom = pluto_constraints_dup(stmt->domain);
     for (i=0; i<stmt->trans->nrows; i++)  {
-        pluto_constraints_add_dim(newdom, 0);
+        pluto_constraints_add_dim(newdom, 0, NULL);
     }
 
     sched = pluto_stmt_get_schedule(stmt);
