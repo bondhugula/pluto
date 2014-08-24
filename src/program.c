@@ -976,7 +976,7 @@ PlutoConstraints* osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep){
 /* Read dependences from candl structures */
 static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
 {
-    int i, ndeps;
+    int i, j, ndeps;
     int spos, tpos;
     Dep **deps;
     int npar = prog->npar;
@@ -1006,6 +1006,32 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = osl_dep_domain_to_pluto_constraints(candl_dep);
+        pluto_constraints_set_names_range(dep->dpolytope,
+                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
+        pluto_constraints_set_names_range(dep->dpolytope,
+                stmts[dep->dest]->iterators, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
+        pluto_constraints_set_names_range(dep->dpolytope,
+                prog->params, stmts[dep->src]->dim + stmts[dep->dest]->dim, 0,
+                npar);
+
+        pluto_constraints_set_names_range(dep->dpolytope,
+               stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
+        /* suffix the destination iterators with a '*/
+        char **dnames = malloc(stmts[dep->dest]->dim*sizeof(char *));
+        for (j=0; j<stmts[dep->dest]->dim; j++) {
+            dnames[j] = malloc(strlen(stmts[dep->dest]->iterators[j])+2);
+            strcpy(dnames[j], stmts[dep->dest]->iterators[j]);
+            strcat(dnames[j], "'");
+        }
+        pluto_constraints_set_names_range(dep->dpolytope,
+                dnames, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
+        for (j=0; j<stmts[dep->dest]->dim; j++) {
+            free(dnames[j]);
+        }
+        free(dnames);
+
+        pluto_constraints_set_names_range(dep->dpolytope, prog->params,
+                stmts[dep->src]->dim + stmts[dep->dest]->dim, 0, npar);
 
         switch (dep->type) {
             case OSL_DEPENDENCE_RAW: 
@@ -1740,6 +1766,7 @@ struct pluto_extra_dep_info {
  */
 static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
 {
+    int j;
     Stmt **stmts;
     Dep *dep;
     struct pluto_extra_dep_info *info;
@@ -1757,6 +1784,35 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
+    pluto_constraints_set_names_range(dep->dpolytope,
+            stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
+    pluto_constraints_set_names_range(dep->dpolytope,
+            stmts[dep->dest]->domain->names, stmts[dep->src]->dim, 0,
+            stmts[dep->dest]->domain->ncols-1);
+
+    pluto_constraints_set_names_range(dep->dpolytope,
+            stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
+
+    /* suffix the destination iterators with a '*/
+    char **dnames = malloc(stmts[dep->dest]->dim*sizeof(char *));
+    for (j=0; j<stmts[dep->dest]->dim; j++) {
+        dnames[j] = malloc(strlen(stmts[dep->dest]->iterators[j])+2);
+        strcpy(dnames[j], stmts[dep->dest]->iterators[j]);
+        strcat(dnames[j], "'");
+    }
+    pluto_constraints_set_names_range(dep->dpolytope,
+            dnames, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
+    for (j=0; j<stmts[dep->dest]->dim; j++) {
+        free(dnames[j]);
+    }
+    free(dnames);
+
+    /* parameters */
+    pluto_constraints_set_names_range(dep->dpolytope,
+            stmts[dep->dest]->domain->names,
+            stmts[dep->src]->dim + stmts[dep->dest]->dim,
+            stmts[dep->dest]->dim,
+            stmts[dep->dest]->domain->ncols-stmts[dep->dest]->dim-1);
 
     // pluto_stmt_print(stdout, stmts[dep->src]);
     // pluto_stmt_print(stdout, stmts[dep->dest]);
@@ -2138,7 +2194,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, OSL_DEPENDENCE_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, OSL_DEPENDENCE_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, OSL_DEPENDENCE_RAR);
-
 
     if (options->lastwriter) {
         trans_dep_war = isl_union_map_coalesce(trans_dep_war);
