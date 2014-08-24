@@ -355,7 +355,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
 {
     int i, j, k, l, p, q;
-    int lb, ub, nb;
+    int64 lb, ub, nb;
     int *bound;
 
 	// At least one variable
@@ -368,6 +368,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
             PlutoConstraints *tmpcst = pluto_constraints_to_pure_inequalities_single(cst);
             pluto_constraints_copy_single(cst, tmpcst);
             pluto_constraints_free(tmpcst);
+            break;
         }
     }
 
@@ -689,6 +690,7 @@ PlutoConstraints *pluto_constraints_read(FILE *fp)
             fscanf(fp, "%s", cst->names[i]);
         }
     }
+
     return cst;
 }
 
@@ -775,7 +777,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
                     fprintf(fp, "+%lld%s ", cst->val[i][j], var);
                 }else if (cst->val[i][j] <= -2) {
                     fprintf(fp, "%lld%s ", cst->val[i][j], var);
-                }else fprintf(fp, "      ");
+                }else fprintf(fp, "     ");
             }
         }
         fprintf(fp, "%s 0\n", cst->is_eq[i]? "==": ">=");
@@ -806,8 +808,6 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
     return pmat;
 }
 
-
-
 /* Use PIP to solve these constraints (solves for the first element
  * if it's a list of constraints) */
 int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
@@ -834,10 +834,6 @@ int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
             pipmat->ncols);
 
     pipOptions = pip_options_init();
-    if(negvar==1){
-        pipOptions->Urs_parms=1;
-        pipOptions->Urs_unknowns=1;
-    }
 
     if(negvar == 1) {
         pipOptions->Urs_parms=1;
@@ -1413,8 +1409,8 @@ PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1,
 }
 
 
-/* Get lower bound for pos^th variable if it's a (single) constant: return 0 
- * if not constant, 1 otherwise */
+/* Get lower bound for pos^th variable if it's a (single) constant: return 1 
+ * if constant, 0 otherwise */
 int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int pos, 
         int64 *lb)
 {
@@ -1745,6 +1741,7 @@ PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst)
     return mat;
 }
 
+
 void pluto_constraints_set_names(PlutoConstraints *cst, char **names)
 {
     int i;
@@ -1781,4 +1778,38 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
     for (i=0; i<num; i++) {
         cst->names[dest_offset+i] = strdup(names[src_offset+i]);
     }
+}
+
+
+/*
+ * Returns the best candidate to eliminate (exact index in cst)
+ * max_elim: maximum number of variables to eliminate (from the right)
+ *
+ * FIXME: update it for constraints with equalities
+ */
+int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim)
+{
+    int64 **csm, i, j, ub, lb, cost;
+
+    int min_cost = cst->nrows*cst->nrows/4;
+    int best_candidate = cst->ncols-2;
+
+    csm = cst->val;
+
+    for (j=cst->ncols-2; j > cst->ncols-2-max_elim; j--)    {
+        ub=0;
+        lb=0;
+        for (i=0; i < cst->nrows; i++)    {
+            if (csm[i][j] > 0) ub++;
+            else if (csm[i][j] < 0) lb++;
+        }
+        /* cost = MIN(lb, ub); */
+        cost = lb*ub;
+        if (cost < min_cost)    {
+            min_cost = cost;
+            best_candidate = j;
+        }
+    }
+
+    return best_candidate;
 }

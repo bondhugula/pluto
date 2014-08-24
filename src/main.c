@@ -104,9 +104,11 @@ void usage_message(void)
     fprintf(stdout, "       --help    | -h         Print this help menu\n");
     fprintf(stdout, "       --version | -v         Display version number\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
-    fprintf(stdout, "       --nofuse               Do not fuse across SCCs of data dependence graph\n");
-    fprintf(stdout, "       --maxfuse              Maximal fusion\n");
-    fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
+    fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
+    fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "\n   Index Set Splitting        \n");
+    fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
@@ -162,6 +164,7 @@ int main(int argc, char *argv[])
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
+        {"iss", no_argument, &options->iss, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -409,6 +412,23 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[Pluto] Number of deps: %d\n", prog->ndeps);
         fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
         fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
+    }
+
+    if (options->iss) {
+        // PlutoConstraints *dom = pluto_constraints_read(stdin);
+        // printf("Input set\n");
+        // pluto_constraints_compact_print(stdout, dom);
+        // PlutoConstraints **doms = malloc(1*sizeof(PlutoConstraints *));
+        // doms[0] = dom;
+        // pluto_iss(doms, 1, 1, NULL);
+        // PlutoMatrix *mat = pluto_matrix_input(stdin);
+        // pluto_constraints_print(stdout, dom);
+        // pluto_matrix_print(stdout, mat);
+        // PlutoConstraints *farkas = farkas_affine(dom, mat);
+        //pluto_constraints_pretty_print(stdout, farkas);
+        // pluto_constraints_free(dom);
+        // pluto_options_free(options);
+        pluto_iss_dep(prog);
     }
 
     /* Auto transformation */

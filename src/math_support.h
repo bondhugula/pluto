@@ -22,6 +22,8 @@
 
 #include <stdio.h>
 
+#include "isl/mat.h"
+
 #define PLMAX(a,b) ((a>=b)?(a):(b))
 #define PLMIN(a,b) ((a<=b)?(a):(b))
 #define PLABS(a) ((a>=0)?(a):(-a))
@@ -81,5 +83,7 @@ char *concat(const char *prefix, const char *suffix);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
+
+PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
 
 #endif

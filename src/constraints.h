@@ -161,5 +161,6 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
         const PlutoConstraints *cst2);
 
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
+int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim);
 
 #endif

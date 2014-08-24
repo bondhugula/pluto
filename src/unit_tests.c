@@ -39,4 +39,3 @@ void test_rank()
         pluto_matrix_free(mat);
     }
 }
-

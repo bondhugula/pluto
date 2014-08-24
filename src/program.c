@@ -2843,9 +2843,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->pet= 0;
 
-#ifdef PLUTO_OPENCL
-    options->opencl = 0;
-#endif
+    options->iss = 0;
 
     options->unroll = 0;
 

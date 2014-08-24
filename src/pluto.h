@@ -294,6 +294,7 @@ struct plutoProg{
     /* Temp autotransform data */
     PlutoConstraints *globcst;
     PlutoConstraints **depcst;
+    PlutoConstraints **dep_bounding_cst;
 
     /* Hyperplane row that is replaced in case concurrent start is found*/
     int replaced_hyperplane;
@@ -380,7 +381,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
-PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
+PlutoConstraints *get_permutability_constraints(Dep **, int, PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
 PlutoConstraints *get_global_independence_cst(
@@ -514,5 +515,7 @@ PlutoDepList* pluto_dep_list_alloc(Dep *dep);
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
 void pluto_opencl_codegen();
+void pluto_iss_dep(PlutoProg *prog);
+PlutoConstraints *pluto_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 
 #endif
