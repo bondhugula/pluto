@@ -2421,6 +2421,7 @@ PlutoProg *pluto_prog_alloc()
 
     prog->globcst = NULL;
     prog->depcst = NULL;
+    prog->dep_bounding_cst = NULL;
 
     return prog;
 }
