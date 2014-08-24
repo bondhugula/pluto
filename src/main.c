@@ -295,57 +295,58 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             fclose(srcfp);
         }
     }else{
-    if(!strcmp(srcFileName, "stdin")){  //read from stdin
-        src_fp = stdin;
-        osl_interface_p registry = osl_interface_get_default_registry();
-        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+        if(!strcmp(srcFileName, "stdin")){  //read from stdin
+            src_fp = stdin;
+            osl_interface_p registry = osl_interface_get_default_registry();
+            scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
         }else{  // read from regular file
 
-      src_fp  = fopen(srcFileName, "r");
-  
-      if (!src_fp)   {
+            src_fp  = fopen(srcFileName, "r");
+
+            if (!src_fp)   {
                 fprintf(stderr, "pluto: error opening source file: '%s'\n", 
                         srcFileName);
-          pluto_options_free(options);
-          return 6;
-      }
-  
-      clan_options_p clanOptions = clan_options_malloc();
-  
-      if (options->readscop){
-        osl_interface_p registry = osl_interface_get_default_registry();
-        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-      }else{
-        scop = clan_scop_extract(src_fp, clanOptions);
-      }
-  
-      if (!scop || !scop->statement)   {
-          fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
-                  srcFileName);
-          pluto_options_free(options);
-              return 8;
-      }
-      FILE *srcfp = fopen(".srcfilename", "w");
-      if (srcfp)    {
-          fprintf(srcfp, "%s\n", srcFileName);
-          fclose(srcfp);
-      }
-  
-      clan_options_free(clanOptions);
+                pluto_options_free(options);
+                return 6;
+            }
 
-      /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
-    }
+            clan_options_p clanOptions = clan_options_malloc();
 
-    /* Convert clan scop to Pluto program */
+            if (options->readscop){
+                osl_interface_p registry = osl_interface_get_default_registry();
+                scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+            }else{
+                scop = clan_scop_extract(src_fp, clanOptions);
+            }
+
+            if (!scop || !scop->statement)   {
+                fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+                        srcFileName);
+                pluto_options_free(options);
+                return 8;
+            }
+            FILE *srcfp = fopen(".srcfilename", "w");
+            if (srcfp)    {
+                fprintf(srcfp, "%s\n", srcFileName);
+                fclose(srcfp);
+            }
+
+            clan_options_free(clanOptions);
+
+            /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+        }
+
+        /* Convert clan scop to Pluto program */
         prog = scop_to_pluto_prog(scop, options);
 
-    /* Backup irregular program portion in .scop. */
-    osl_irregular_p irreg_ext = NULL;
-    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
-    if(irreg_ext!=NULL)
-      irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
-    osl_irregular_free(irreg_ext);
+        /* Backup irregular program portion in .scop. */
+        osl_irregular_p irreg_ext = NULL;
+        irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+        if(irreg_ext!=NULL)
+            irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
+        osl_irregular_free(irreg_ext);
     }
+
     IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
     int dim_sum=0;
@@ -494,41 +495,41 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if(!options->pet && !strcmp(srcFileName, "stdin")){  
         //input stdin == output stdout
-      pluto_populate_scop(scop, prog, options);
-      osl_scop_print(stdout, scop);
+        pluto_populate_scop(scop, prog, options);
+        osl_scop_print(stdout, scop);
     }else{  // do the usual Pluto stuff
-  
-      /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-      /* Since meta info about loops
-       * is printed to be processed by scripts - if transformations are
-       * performed, changed loop order/iterator names will be missed  */
-      gen_unroll_file(prog);
-  
-      char *outFileName;
-      char *cloogFileName;
+
+        /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+        /* Since meta info about loops
+         * is printed to be processed by scripts - if transformations are
+         * performed, changed loop order/iterator names will be missed  */
+        gen_unroll_file(prog);
+
+        char *outFileName;
+        char *cloogFileName;
         char *bname, *basec;
-      if (options->out_file == NULL)  {
-          /* Get basename, remove .c extension and append a new one */
-          basec = strdup(srcFileName);
-          bname = basename(basec);
-  
-          if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+        if (options->out_file == NULL)  {
+            /* Get basename, remove .c extension and append a new one */
+            basec = strdup(srcFileName);
+            bname = basename(basec);
+
+            if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
                 outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
-              strncpy(outFileName, bname, strlen(bname)-2);
-              outFileName[strlen(bname)-2] = '\0';
-          }else{
+                strncpy(outFileName, bname, strlen(bname)-2);
+                outFileName[strlen(bname)-2] = '\0';
+            }else{
                 outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
-              strcpy(outFileName, bname);
-          }
-          strcat(outFileName, ".pluto.c");
-      }else{
+                strcpy(outFileName, bname);
+            }
+            strcat(outFileName, ".pluto.c");
+        }else{
             basec = strdup(options->out_file);
             bname = basename(basec);
 
             outFileName = malloc(strlen(options->out_file)+1);
             strcpy(outFileName, options->out_file);
-      }
-  
+        }
+
         if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
             cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
             strncpy(cloogFileName, bname, strlen(bname)-2);
@@ -537,62 +538,62 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
             strcpy(cloogFileName, bname);
         }
-      strcat(cloogFileName, ".pluto.cloog");
+        strcat(cloogFileName, ".pluto.cloog");
         free(basec);
-  
-      cloogfp = fopen(cloogFileName, "w+");
-      if (!cloogfp)   {
-          fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
+
+        cloogfp = fopen(cloogFileName, "w+");
+        if (!cloogfp)   {
+            fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
             free(cloogFileName);
-          pluto_options_free(options);
-          pluto_prog_free(prog);
-          return 9;
-      }
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            return 9;
+        }
         free(cloogFileName);
-  
-      outfp = fopen(outFileName, "w");
-      if (!outfp) {
-          fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+
+        outfp = fopen(outFileName, "w");
+        if (!outfp) {
+            fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
             free(outFileName);
-          pluto_options_free(options);
-          pluto_prog_free(prog);
-          fclose(cloogfp);
-          return 10;
-      }
-  
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            fclose(cloogfp);
+            return 10;
+        }
+
         if (options->moredebug) {
             printf("After scalar dimension detection (final transformations)\n");
             pluto_transformations_pretty_print(prog);
         }
 
-      /* Generate .cloog file */
-      pluto_gen_cloog_file(cloogfp, prog);
-      /* Add the <irregular> tag from clan, if any */
+        /* Generate .cloog file */
+        pluto_gen_cloog_file(cloogfp, prog);
+        /* Add the <irregular> tag from clan, if any */
         if(!options->pet) {
             if (irroption) {
-          fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-          free(irroption);
-      }
+                fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
+                free(irroption);
+            }
         }
         rewind(cloogfp);
-  
+
         /* Very important: Dont change the order of calls to print_dynsched_file
          * between pluto_gen_cloog_file() and pluto_*_codegen()
          */
-  
-      /* Generate code using Cloog and add necessary stuff before/after code */
+
+        /* Generate code using Cloog and add necessary stuff before/after code */
         pluto_multicore_codegen(cloogfp, outfp, prog);
-  
-      FILE *tmpfp = fopen(".outfilename", "w");
-      if (tmpfp)    {
-          fprintf(tmpfp, "%s\n", outFileName);
-          fclose(tmpfp);
-          printf( "[Pluto] Output written to %s\n", outFileName);
-      }
+
+        FILE *tmpfp = fopen(".outfilename", "w");
+        if (tmpfp)    {
+            fprintf(tmpfp, "%s\n", outFileName);
+            fclose(tmpfp);
+            printf( "[Pluto] Output written to %s\n", outFileName);
+        }
         free(outFileName);
- 
-      fclose(cloogfp);
-      fclose(outfp);
+
+        fclose(cloogfp);
+        fclose(outfp);
     }
 
     if (!options->pet) osl_scop_free(scop);

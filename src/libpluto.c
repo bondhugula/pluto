@@ -54,7 +54,7 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog)
             if (c < snodes) {
                 PlutoConstraints *cut = pluto_constraints_select_row(domain, r-del);
                 for (j=0; j<stmt->trans->nrows; j++) {
-                    pluto_constraints_add_dim(cut, 0);
+                    pluto_constraints_add_dim(cut, 0, NULL);
                 }
                 pluto_constraints_add(sched, cut);
                 pluto_constraints_remove_row(domain, r-del);

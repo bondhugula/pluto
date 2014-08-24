@@ -33,6 +33,7 @@
 
 #include "pluto.h"
 #include "math_support.h"
+#include "constraints.h"
 #include "program.h"
 
 #include "osl/macros.h"
@@ -42,7 +43,7 @@
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
-#include "osl/body.h"
+#include "osl/extensions/pluto_unroll.h"
 #include "osl/extensions/scatnames.h"
 
 #include "cloog/cloog.h"
@@ -427,7 +428,7 @@ osl_loop_p pluto_get_vector_loop_list( const PlutoProg *prog)
 /*
  * get a list of to-be-parallelized loops frop PlutoProg
  */
-osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog)
+osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog, int vloopsfound)
 {
     int i, j, nploops;
     osl_loop_p ret_loop = NULL;
@@ -448,12 +449,26 @@ osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog)
 
         newloop->nb_stmts = ploops[i]->nstmts;
         newloop->stmt_ids = malloc(ploops[i]->nstmts*sizeof(int));
+        int max_depth = 0;
         for (j=0; j<ploops[i]->nstmts; j++) {
-            newloop->stmt_ids[j] = ploops[i]->stmts[j]->id+1;
+          Stmt *stmt = ploops[i]->stmts[j];
+          newloop->stmt_ids[j] = stmt->id+1;
+
+          if (stmt->trans->nrows > max_depth) max_depth = stmt->trans->nrows;
         }
 
-        newloop->private_vars = strdup("lbv,ubv");
         newloop->directive   += CLAST_PARALLEL_OMP;
+        char *private_vars = malloc(128);
+        private_vars[0] = '\0';
+        if (vloopsfound) strcpy( private_vars, "lbv, ubv");
+        int depth = ploops[i]->depth+1;
+        for (depth++; depth<=max_depth; depth++) {
+          sprintf(private_vars+strlen(private_vars), "t%d,", depth);
+        }
+        if (strlen(private_vars))
+          private_vars[strlen(private_vars)-1] = '\0'; //remove last comma
+        newloop->private_vars = strdup(private_vars);
+        free(private_vars);
 
         //add new loop to looplist
         osl_loop_add(newloop, &ret_loop);
@@ -500,8 +515,8 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
     {
       int niter = stm->domain->nb_columns - scop->context->nb_columns;
       int nb_orig_it = -1;
-      if(stm->body){
-        osl_body_p stmt_body = (osl_body_p)(stm->body->data);
+      osl_body_p stmt_body = osl_generic_lookup(stm->extension, OSL_URI_BODY);
+      if(stmt_body){
         nb_orig_it = osl_strings_size(stmt_body->iterators);
         if (nb_orig_it != niter)
           {//update iterators.
@@ -554,13 +569,13 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
 
     //update loop information
     //get loops to be marked for parallization and vectorization
-    osl_loop_p pll = NULL;
-    if(options->parallel){
-      pll = pluto_get_parallel_loop_list(prog);
-    }
     osl_loop_p vll = NULL;
     if (options->prevector ){
       vll = pluto_get_vector_loop_list(prog);
+    }
+    osl_loop_p pll = NULL;
+    if(options->parallel){
+      pll = pluto_get_parallel_loop_list(prog, vll!=NULL);
     }
     //concatenate the two lists
     osl_loop_add(vll, &pll);
@@ -570,6 +585,39 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
       osl_generic_add(&scop->extension, loopgen);
     }
 
+
+    // Add pluto_unroll extension
+    {
+        int i;
+        HyperplaneProperties *hProps = prog->hProps;
+        osl_pluto_unroll_p pluto_unroll = NULL;
+        osl_pluto_unroll_p pluto_unroll_base = NULL;
+
+        char buffer[sizeof(i) * CHAR_BIT + 1] = { 0 };
+
+        for (i=0; i<prog->num_hyperplanes; i++) {
+            if (hProps[i].unroll == UNROLL || hProps[i].unroll == UNROLLJAM) {
+                sprintf(buffer, "t%i", i + 1);
+                if (pluto_unroll == NULL) {
+                    pluto_unroll = osl_pluto_unroll_malloc();
+                    pluto_unroll_base = pluto_unroll;
+                } else {
+                    pluto_unroll->next = osl_pluto_unroll_malloc();
+                    pluto_unroll = pluto_unroll->next;
+                }
+                osl_pluto_unroll_fill(pluto_unroll,
+                                      buffer,
+                                      hProps[i].unroll == UNROLLJAM,
+                                      options->ufactor);
+            }
+        }
+
+        if (pluto_unroll_base) {
+            osl_generic_p pluto_unroll_generic =
+                osl_generic_shell(pluto_unroll_base, osl_pluto_unroll_interface());
+            osl_generic_add(&scop->extension, pluto_unroll_generic);
+        }
+    }
 }
 
 static int get_osl_write_access_position(osl_relation_list_p rl,
@@ -1083,7 +1131,7 @@ void pluto_dep_print(FILE *fp, Dep *dep)
     }
 
     fprintf(fp, "Dependence polyhedron\n");
-    pluto_constraints_print(fp, dep->dpolytope);
+    pluto_constraints_compact_print(fp, dep->dpolytope);
     fprintf(fp, "\n");
 }
 
@@ -1098,7 +1146,6 @@ void pluto_deps_print(FILE *fp, PlutoProg *prog)
         pluto_dep_print(fp, prog->deps[i]);
     }
 }
-
 
 /* Read statement info from openscop structures (nvar: max domain dim) */
 static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
@@ -1160,7 +1207,7 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         /* Tile it if it's tilable unless turned off by .fst/.precut file */
         stmt->tile = 1;
 
-        osl_body_p stmt_body = (osl_body_p)(scop_stmt->body->data);
+        osl_body_p stmt_body = osl_generic_lookup(scop_stmt->extension, OSL_URI_BODY);
 
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
@@ -1253,7 +1300,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     fprintf(fp, "S%d \"%s\"; ndims: %d; orig_depth: %d\n", 
             stmt->id+1, stmt->text, stmt->dim, stmt->dim_orig);
     fprintf(fp, "Domain\n");
-    pluto_constraints_print(fp, stmt->domain);
+    pluto_constraints_compact_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
     pluto_matrix_print(fp, stmt->trans);
 
@@ -1833,7 +1880,6 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
 }
 
 
-
 struct pluto_access_meta_info {
     /* Pointer to an array of accesses */
     PlutoAccess ***accs;
@@ -2025,7 +2071,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
@@ -2039,7 +2085,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
               dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
               dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
@@ -2103,7 +2149,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   names->parameters = osl_strings_clone(scop_params);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
 
                   osl_strings_free(names->iterators);
@@ -2120,7 +2166,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                   dim = set_names(dim, isl_dim_param, scop_params->string);
                 }
                 if(niter){
-                  osl_body_p stmt_body = (osl_body_p)(stmt->body->data);
+                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                   dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
                 }
                 dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
@@ -2247,6 +2293,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, OSL_DEPENDENCE_WAR);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, OSL_DEPENDENCE_WAW);
     prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_rar, OSL_DEPENDENCE_RAR);
+
 
     if (options->lastwriter) {
         trans_dep_war = isl_union_map_coalesce(trans_dep_war);
@@ -2863,7 +2910,7 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
 
     for (i=0; i<prog->nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
-        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1-prog->npar+pos);
+        pluto_constraints_add_dim(stmt->domain, stmt->domain->ncols-1-prog->npar+pos, NULL);
         pluto_matrix_add_col(stmt->trans, stmt->trans->ncols-1-prog->npar+pos);
 
         for (j=0; j<stmt->nwrites; j++)  {
@@ -2875,9 +2922,9 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
     }
     for (i=0; i<prog->ndeps; i++)   {
         pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
-                prog->deps[i]->dpolytope->ncols-1-prog->npar+pos);
+                prog->deps[i]->dpolytope->ncols-1-prog->npar+pos, NULL);
     }
-    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos);
+    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos, NULL);
 
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
 
@@ -2913,7 +2960,7 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     assert(time_pos <= stmt->trans->nrows);
     assert(stmt->dim + npar + 1 == stmt->domain->ncols);
 
-    pluto_constraints_add_dim(stmt->domain, pos);
+    pluto_constraints_add_dim(stmt->domain, pos, NULL);
     stmt->dim++;
     stmt->iterators = (char **) realloc(stmt->iterators, stmt->dim*sizeof(char *));
     for (i=stmt->dim-2; i>=pos; i--) {
@@ -2957,22 +3004,22 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
 
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i]->src == stmt->id) {
-            pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos);
+            pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos, NULL);
         }
         if (prog->deps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
-                    prog->stmts[prog->deps[i]->src]->dim+pos);
+                    prog->stmts[prog->deps[i]->src]->dim+pos, NULL);
         }
     }
 
     for (i=0; i<prog->ntransdeps; i++) {
         assert(prog->transdeps[i] != NULL);
         if (prog->transdeps[i]->src == stmt->id) {
-            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos);
+            pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos, NULL);
         }
         if (prog->transdeps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, 
-                    prog->stmts[prog->transdeps[i]->src]->dim+pos);
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos, NULL);
         }
     }
 }
@@ -2996,7 +3043,7 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
         for (i=pos; i<=stmt->dim-1; i++) {
             stmt->iterators[i] = stmt->iterators[i+1];
         }
-        stmt->iterators = (char **) realloc(stmt->iterators, 
+        stmt->iterators = (char **) realloc(stmt->iterators,
                 stmt->dim*sizeof(char *));
     }
 
@@ -3204,8 +3251,6 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
 
 }
 
-
-
 /* Create a statement and add it to the program
  * iterators: domain iterators
  * trans: schedule/transformation
@@ -3373,7 +3418,7 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
 
     PlutoConstraints *newdom = pluto_constraints_dup(stmt->domain);
     for (i=0; i<stmt->trans->nrows; i++)  {
-        pluto_constraints_add_dim(newdom, 0);
+        pluto_constraints_add_dim(newdom, 0, NULL);
     }
 
     sched = pluto_stmt_get_schedule(stmt);
