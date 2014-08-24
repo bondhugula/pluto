@@ -38,37 +38,6 @@
 
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
 
-/*
- * Returns the best candidate to eliminate (exact index in cst)
- * max_elim: maximum number of variables to eliminate (from the right)
- */
-static int best_elim_candidate(const PlutoConstraints *cst, int max_elim)
-{
-    int64 **csm, i, j, ub, lb, cost;
-
-    int min_cost = cst->nrows*cst->nrows/4;
-    int best_candidate = cst->ncols-2;
-
-    csm = cst->val;
-
-    for (j=cst->ncols-2; j > cst->ncols-2-max_elim; j--)    {
-        ub=0;
-        lb=0;
-        for (i=0; i < cst->nrows; i++)    {
-            if (csm[i][j] > 0) ub++;
-            else if (csm[i][j] < 0) lb++;
-        }
-        /* cost = MIN(lb, ub); */
-        cost = lb*ub;
-        if (cost < min_cost)    {
-            min_cost = cost;
-            best_candidate = j;
-        }
-    }
-
-    return best_candidate;
-}
-
 
 
 /**
@@ -136,7 +105,8 @@ static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 
 
 /* Builds legality constraints for a non-uniform dependence */
-static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog)
+static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog,
+		PlutoConstraints **bounding_cst)
 {
     PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
@@ -437,25 +407,33 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
-        const PlutoProg *prog)
+        PlutoProg *prog)
 {
     int i, nstmts, nvar, npar;
-    PlutoConstraints **depcst, *globcst;
+    PlutoConstraints *globcst ;
 
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
-    depcst = prog->depcst;
     globcst = prog->globcst;
 
-    if (!depcst)   {
-        depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
+    if (!prog->depcst)   {
+        prog->depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
         for (i=0; i<ndeps; i++) {
-            depcst[i] = NULL;
+            prog->depcst[i] = NULL;
+        }
+    }
+
+    if (!prog->dep_bounding_cst)   {
+        prog->dep_bounding_cst= (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
+        for (i=0; i<ndeps; i++) {
+            prog->dep_bounding_cst[i] = NULL;
         }
     }
 
     int total_cst_rows = 0;
+    PlutoConstraints **depcst = prog->depcst;
+    PlutoConstraints **dep_bounding_cst = prog->dep_bounding_cst;
 
 #pragma omp parallel for reduction(+:total_cst_rows)
     for (i=0; i<ndeps; i++) {
@@ -469,7 +447,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             /* First time, get the constraints */
 
             /* All dependences treated as non-uniform dependences */
-            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog);
+            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog, &dep_bounding_cst[i]);
 
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
             total_cst_rows += depcst[i]->nrows;
@@ -484,6 +462,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
+
+		// print_polylib_visual_sets("BB_cst", dep_bounding_cst[i]);
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
@@ -550,7 +530,7 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
     }
 
     for (i=0; i<num_elim; i++)  {
-        best_elim = best_elim_candidate(farkas_cst, num_elim-i);
+        best_elim = pluto_constraints_best_elim_candidate(farkas_cst, num_elim-i);
         fourier_motzkin_eliminate(farkas_cst, best_elim);
         if (options->moredebug) {
             printf("After elimination of %d variable: %d constraints\n", 
@@ -562,28 +542,6 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
 }
 
 
-/*
- * Construct a PlutoMatrix with the same content as the given isl_mat.
- */
-static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
-{
-    int i, j;
-    int rows, cols;
-    PlutoMatrix *pluto;
-
-    rows = isl_mat_rows(mat);
-    cols = isl_mat_cols(mat);
-    pluto = pluto_matrix_alloc(rows, cols);
-
-    for (i = 0; i < rows; ++i)
-        for (j = 0; j < cols; ++j) {
-            isl_val *v = isl_mat_get_element_val(mat, i, j);
-            pluto->val[i][j] = isl_val_get_num_si(v);
-            isl_val_free(v);
-        }
-
-    return pluto;
-}
 
 
 /*

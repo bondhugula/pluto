@@ -105,7 +105,7 @@ int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
 
-PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options);
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *, PlutoOptions *);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 

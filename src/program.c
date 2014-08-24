@@ -1025,13 +1025,6 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = osl_dep_domain_to_pluto_constraints(candl_dep);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                stmts[dep->dest]->iterators, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                prog->params, stmts[dep->src]->dim + stmts[dep->dest]->dim, 0,
-                npar);
 
         pluto_constraints_set_names_range(dep->dpolytope,
                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
@@ -1857,11 +1850,6 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
-    pluto_constraints_set_names_range(dep->dpolytope,
-            stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
-    pluto_constraints_set_names_range(dep->dpolytope,
-            stmts[dep->dest]->domain->names, stmts[dep->src]->dim, 0,
-            stmts[dep->dest]->domain->ncols-1);
 
     pluto_constraints_set_names_range(dep->dpolytope,
             stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
@@ -4407,10 +4395,10 @@ static int set_tuple_name(__isl_take isl_map *map, void *usr)
     return 0;
 }
 
-/* Compute dependences based on the iteration domain and access
- * information in "scop" and put the result in "prog".
+/* Compute dependences based on the domain, scheduling, and access
+ * information in "pscop", and put the result in "prog".
  */
-static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
+static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
         PlutoOptions *options)
 {
     int i;
@@ -4420,30 +4408,29 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
     isl_union_map *schedule;
     isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
-    isl_space *space = isl_set_get_space(scop->context);
+    isl_space *space = isl_set_get_space(pscop->context);
     empty = isl_union_map_empty(isl_space_copy(space));
-    // writes = pet_scop_collect_may_writes(scop);
-    // schedule = pet_scop_collect_schedule(scop);
-    // reads = pet_scop_collect_may_reads(scop);
+    // writes = pet_scop_collect_may_writes(pscop);
+    // schedule = pet_scop_collect_schedule(pscop);
+    // reads = pet_scop_collect_may_reads(pscop);
 
     reads = isl_union_map_copy(empty);
     writes = isl_union_map_copy(empty);
     schedule = isl_union_map_copy(empty);
 
     for (i=0; i<prog->nstmts; i++) {
-    	struct pet_stmt *pstmt = scop->stmts[i];
+    	struct pet_stmt *pstmt = pscop->stmts[i];
         Stmt *stmt = prog->stmts[i];
 
         isl_union_map *lreads =	pet_stmt_collect_accesses(pstmt, 1, 0, 
                 0, 0, 0, isl_space_copy(space));
         isl_union_map *lwrites = pet_stmt_collect_accesses(pstmt, 0, 1, 
-                0, 0, 0, isl_space_copy(space));
+                0, 0, 0, space);
 
         char name[20];
         sprintf(name, "S_%d_r", stmt->id);
         struct acc_info rinfo = {name, 0, &reads, &schedule, pstmt->schedule};
         isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
-
         sprintf(name, "S_%d_w", stmt->id);
         struct acc_info winfo = {name, 0, &writes, &schedule, isl_map_copy(pstmt->schedule)};
         isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
@@ -4454,6 +4441,7 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
 
     // isl_union_map_dump(reads);
     // isl_union_map_dump(writes);
+    // isl_union_map_dump(schedule);
 
     if (options->lastwriter) {
         // compute RAW dependences which do not contain transitive dependences
@@ -4462,6 +4450,7 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
+        // isl_union_map_dump(dep_raw);
         // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(writes),
                 isl_union_map_copy(writes),
@@ -4542,11 +4531,20 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     int i, j;
     Stmt **stmts;
     int nvar, npar, nstmts, max_sched_rows;
+    char **params;
 
     npar = isl_set_dim(pscop->context, isl_dim_all);
     nstmts = pscop->n_stmt;
 
     if (nstmts == 0)    return NULL;
+
+    params = NULL;
+    if (npar >= 1)    {
+        params = (char **) malloc(sizeof(char *)*npar);
+    }
+    for (i=0; i<npar; i++)  {
+        params[i] = strdup(isl_space_get_dim_name(isl_set_get_space(pscop->context), isl_dim_param, i));
+    }
 
     /* Max dom dimensionality */
     nvar = -1;
@@ -4606,6 +4604,14 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
             // sprintf(stmt->iterators[j], "c%d", 2*j+1);
             stmt->iterators[j] = strdup(isl_space_get_dim_name(isl_set_get_space(pstmt->domain), isl_dim_set, j));
         }
+
+        pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
+        pluto_constraints_set_names_range(stmt->domain, params, stmt->dim, 0, npar);
+
+        for (j=0; j<npar; j++) {
+            free(params[j]);
+        }
+        free(params);
 
         /*
          * Copy the body of the statement found by print_user. Remove 
@@ -4941,19 +4947,17 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
 	__isl_take isl_printer *p)
 {
 	isl_ctx *ctx = isl_printer_get_ctx(p);
-	isl_set *context;
 	isl_union_set *domain_set;
 	isl_union_map *schedule_map;
 	isl_ast_build *build;
 	isl_ast_print_options *print_options;
 	isl_ast_node *tree;
 
-	context = isl_set_copy(scop->context);
-	domain_set = isl_union_set_copy(collect_non_kill_domains(scop));
-    schedule_map = isl_union_map_copy(pet_scop_collect_schedule(scop));
+    domain_set = collect_non_kill_domains(scop);
+    schedule_map = pet_scop_collect_schedule(scop);
 	schedule_map = isl_union_map_intersect_domain(schedule_map, domain_set);
 
-	build = isl_ast_build_from_context(context);
+	build = isl_ast_build_from_context(isl_set_copy(scop->context));
 	build = isl_ast_build_set_at_each_domain(build, &at_each_domain, scop);
 
 	tree = isl_ast_build_ast_from_schedule(build, schedule_map);
@@ -4975,11 +4979,13 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
  * representation of the program sufficient to be used throughout Pluto. 
  * PlutoProg also includes dependences; uses isl.
  */
-PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions *options)
 {
-    int i, max_sched_rows;
+    int i, j, max_sched_rows;
 
     if (pscop == NULL) return NULL;
+
+    pet_scop_align_params(pscop);
 
     PlutoProg *prog = pluto_prog_alloc();
 
@@ -4999,7 +5005,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
 
     pluto_constraints_free(prog->context);
     prog->context = isl_set_to_pluto_constraints(pscop->context);
-    isl_set_dump(pscop->context);
+    // isl_set_dump(pscop->context);
 
     if (options->context != -1)	{
       for (i=0; i<prog->npar; i++)  {
@@ -5024,10 +5030,9 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
 
     }
 
-    isl_ctx *pctx = isl_ctx_alloc();
     FILE *text_dump = fopen(".dumpstmttxt", "w");
-    isl_printer *p = isl_printer_to_file(pctx , text_dump);
-    p= construct_stmt_body(pscop,p);
+    isl_printer *p = isl_printer_to_file(ctx , text_dump);
+    p = construct_stmt_body(pscop,p);
     isl_printer_free(p);
     fclose(text_dump);
 

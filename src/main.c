@@ -125,7 +125,6 @@ int main(int argc, char *argv[])
     FILE *src_fp;
 
     struct pet_scop *pscop;
-    isl_ctx *pctx = isl_ctx_alloc();
 
     int option;
     int option_index = 0;
@@ -283,14 +282,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Extract polyhedral representation from input program */
     if (options->pet) {
+        isl_ctx *pctx = isl_ctx_alloc();
         pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
         if (!pscop) {
             fprintf(stdout, "[pluto] No SCoPs extracted or error extracting SCoPs  using pet\n");
             pluto_options_free(options);
+            isl_ctx_free(pctx);
             return 12;
         }
-        prog = pet_to_pluto_prog(pscop, options);
+        prog = pet_to_pluto_prog(pscop, pctx, options);
+        pet_scop_free(pscop);
+        isl_ctx_free(pctx);
 
         FILE *srcfp = fopen(".srcfilename", "w");
         if (srcfp)    {
@@ -323,10 +326,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
 
             if (!scop || !scop->statement)   {
-                fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+              fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                         srcFileName);
-                pluto_options_free(options);
-                return 8;
+              pluto_options_free(options);
+              return 8;
             }
             FILE *srcfp = fopen(".srcfilename", "w");
             if (srcfp)    {
@@ -336,7 +339,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
             clan_options_free(clanOptions);
 
-            /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+          /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
         }
 
         /* Convert clan scop to Pluto program */
