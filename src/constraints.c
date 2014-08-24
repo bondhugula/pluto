@@ -368,6 +368,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
             PlutoConstraints *tmpcst = pluto_constraints_to_pure_inequalities_single(cst);
             pluto_constraints_copy_single(cst, tmpcst);
             pluto_constraints_free(tmpcst);
+            break;
         }
     }
 
