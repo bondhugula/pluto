@@ -1006,13 +1006,6 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = osl_dep_domain_to_pluto_constraints(candl_dep);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                stmts[dep->dest]->iterators, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
-        pluto_constraints_set_names_range(dep->dpolytope,
-                prog->params, stmts[dep->src]->dim + stmts[dep->dest]->dim, 0,
-                npar);
 
         pluto_constraints_set_names_range(dep->dpolytope,
                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
@@ -1157,7 +1150,7 @@ void pluto_deps_print(FILE *fp, PlutoProg *prog)
 /* Read statement info from openscop structures (nvar: max domain dim) */
 static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
 {
-    int i, j;
+    int i, j, k;
     Stmt **stmts;
     int npar, nvar, nstmts, max_sched_rows;
     osl_statement_p scop_stmt;
@@ -1219,6 +1212,21 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
         }
+
+        /* Set names for domain dimensions */
+        char **names = malloc((stmt->domain->ncols-1)*sizeof(char *));
+        for (k=0; k<stmt->dim; k++) {
+            names[k] = stmt->iterators[k];
+        }
+        osl_strings_p osl_scop_params = NULL;
+        if(scop->context->nb_parameters){
+            osl_scop_params = (osl_strings_p)scop->parameters->data;
+            for (k=0; k<npar; k++) {
+                names[stmt->dim+k] = osl_scop_params->string[k];
+            }
+        }
+        pluto_constraints_set_names(stmt->domain, names);
+        free(names);
 
         /* Statement text */
         stmt->text = osl_strings_sprint(stmt_body->expression); //appends \n
@@ -1784,11 +1792,6 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
-    pluto_constraints_set_names_range(dep->dpolytope,
-            stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
-    pluto_constraints_set_names_range(dep->dpolytope,
-            stmts[dep->dest]->domain->names, stmts[dep->src]->dim, 0,
-            stmts[dep->dest]->domain->ncols-1);
 
     pluto_constraints_set_names_range(dep->dpolytope,
             stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
