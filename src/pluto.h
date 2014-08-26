@@ -125,7 +125,7 @@ struct statement{
     PlutoMatrix *trans;
 
     /* The last hyperplane for the diamond tiling transformation */
-    PlutoMatrix *last;
+    PlutoMatrix *last_con_start_enabling_hyperplane;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
@@ -295,8 +295,9 @@ struct plutoProg{
     PlutoConstraints *globcst;
     PlutoConstraints **depcst;
 
-    /* Hyperplane row that is replaced in case concurrent start is found*/
-    int replaced_hyperplane;
+    /* Hyperplane that was replaced in case concurrent start 
+     * had been found*/
+    int rep_hyp_pos;
 
     osl_scop_p scop;
 
