@@ -1309,7 +1309,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     fprintf(fp, "Domain\n");
     pluto_constraints_compact_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
-    pluto_matrix_print(fp, stmt->trans);
+    pluto_stmt_transformation_print(stmt);
 
     if (stmt->nreads==0) {
         fprintf(fp, "No Read accesses\n");
@@ -3307,6 +3307,107 @@ PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num)
         add_if_new(&accs, num, prog->stmts[i]->writes[0]);
     }
     return accs;
+}
+
+/* List properties of newly found hyperplanes */
+void pluto_print_hyperplane_properties(const PlutoProg *prog)
+{
+    int j, numH;
+    HyperplaneProperties *hProps;
+
+    hProps = prog->hProps;
+    numH = prog->num_hyperplanes;
+
+    if (numH == 0)  {
+        fprintf(stdout, "No hyperplanes\n");
+    }
+
+    /* Note that loop properties are calculated for each dimension in the
+     * transformed space (common for all statements) */
+    for (j=0; j<numH; j++)  {
+        fprintf(stdout, "t%d --> ", j+1);
+        switch (hProps[j].dep_prop)    {
+            case PARALLEL:
+                fprintf(stdout, "parallel ");
+                break;
+            case SEQ:
+                fprintf(stdout, "serial   ");
+                break;
+            case PIPE_PARALLEL:
+                fprintf(stdout, "fwd_dep  ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                break;
+        }
+        switch (hProps[j].type) {
+            case H_LOOP:
+                fprintf(stdout, "loop  ");
+                break;
+            case H_SCALAR:
+                fprintf(stdout, "scalar");
+                break;
+            case H_TILE_SPACE_LOOP:
+                fprintf(stdout, "tLoop ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                // assert(0);
+                break;
+        }
+        fprintf(stdout, " (band %d)", hProps[j].band_num);
+        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+}
+
+
+
+void pluto_transformations_print(const PlutoProg *prog)
+{
+    int i;
+
+    for (i=0; i<prog->nstmts; i++)    {
+        printf("T_(S%d) \n", prog->stmts[i]->id+1);
+        pluto_matrix_print(stdout, prog->stmts[i]->trans);
+    }
+}
+
+
+void pluto_stmt_transformation_print(const Stmt *stmt)
+{
+    int j;
+
+    int npar = stmt->domain->ncols-stmt->dim-1;
+
+    fprintf(stdout, "T(S%d): ", stmt->id+1);
+    int level;
+    printf("(");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        char **vars = malloc((stmt->dim+npar)*sizeof(char *));
+        for (j=0; j<stmt->dim; j++) {
+            vars[j] = stmt->iterators[j];
+        }
+        for (j=0; j<npar; j++) {
+            vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+        }
+        if (level > 0) printf(", ");
+        pretty_print_affine_function(stdout, stmt->trans->val[level], 
+                stmt->dim+npar, vars);
+        free(vars);
+    }
+    printf(")\n");
+
+    printf("loop types (");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        if (level > 0) printf(", ");
+        if (stmt->hyp_types[level] == H_SCALAR) printf("scalar");
+        else if (stmt->hyp_types[level] == H_LOOP) printf("loop");
+        else if (stmt->hyp_types[level] == H_TILE_SPACE_LOOP) printf("tloop");
+        else printf("unknown");
+    }
+    printf(")\n\n");
 }
 
 /* Temporary data structure used inside extra_stmt_domains

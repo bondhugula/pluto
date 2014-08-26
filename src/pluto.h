@@ -276,6 +276,7 @@ struct plutoProg{
     /* Temp autotransform data */
     PlutoConstraints *globcst;
     PlutoConstraints **depcst;
+    PlutoConstraints **dep_bounding_cst;
 
     /* Pointer toScoplib structure */
     osl_scop_p scop;
@@ -377,10 +378,6 @@ int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
-void pretty_print_affine_function(FILE *fp, int *, int, char **);
-void pluto_transformations_print(const PlutoProg *prog);
-void pluto_transformations_pretty_print(const PlutoProg *prog);
-void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);

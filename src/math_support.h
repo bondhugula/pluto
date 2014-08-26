@@ -75,5 +75,6 @@ inline int gcd(int a, int b);
 int *min_lexical(int *a, int *b, int num);
 
 char *concat(const char *prefix, const char *suffix);
+void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars);
 
 #endif

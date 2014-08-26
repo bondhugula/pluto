@@ -261,7 +261,6 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 
     assert(cst->ncols-1 == npar+1+nstmts*(nvar+1));
 
-
     newcst = pluto_constraints_alloc(cst->nrows, CST_WIDTH);
 
     for (i=0; i<npar+1; i++)    {
@@ -1679,121 +1678,6 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
     }
 }
 
-
-/* List properties of newly found hyperplanes */
-void pluto_print_hyperplane_properties(const PlutoProg *prog)
-{
-    int j, numH;
-    HyperplaneProperties *hProps;
-
-    hProps = prog->hProps;
-    numH = prog->num_hyperplanes;
-
-    if (numH == 0)  {
-        fprintf(stdout, "No hyperplanes\n");
-    }
-
-    /* Note that loop properties are calculated for each dimension in the
-     * transformed space (common for all statements) */
-    for (j=0; j<numH; j++)  {
-        fprintf(stdout, "t%d --> ", j+1);
-        switch (hProps[j].dep_prop)    {
-            case PARALLEL:
-                fprintf(stdout, "parallel ");
-                break;
-            case SEQ:
-                fprintf(stdout, "serial   ");
-                break;
-            case PIPE_PARALLEL:
-                fprintf(stdout, "fwd_dep  ");
-                break;
-            default:
-                fprintf(stdout, "unknown  ");
-                break;
-        }
-        switch (hProps[j].type) {
-            case H_LOOP:
-                fprintf(stdout, "loop  ");
-                break;
-            case H_SCALAR:
-                fprintf(stdout, "scalar");
-                break;
-            case H_TILE_SPACE_LOOP:
-                fprintf(stdout, "tLoop ");
-                break;
-            default:
-                fprintf(stdout, "unknown  ");
-                // assert(0);
-                break;
-        }
-        fprintf(stdout, " (band %d)", hProps[j].band_num);
-        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
-}
-
-
-/*
- * Pretty prints a one-dimensional affine function
- * ndims: number of variables
- * func should have ndims+1 elements (affine function)
- * vars: names of the variables; if NULL, x0, x1, ... are used
- */
-void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
-{
-    char *var[ndims];
-    int j;
-
-    for (j=0; j<ndims; j++)  {
-        if (vars && vars[j]) {
-            var[j] = strdup(vars[j]);
-        }else{
-            var[j] = malloc(5);
-            sprintf(var[j], "x%d", j+1);
-        }
-    }
-
-    int sign_flag = 0;
-    for (j=0; j<ndims; j++)   {
-        if (func[j] == 1)  {
-            if (sign_flag) fprintf(fp, "+");
-            fprintf(fp, "%s", var[j]);
-        }else if (func[j] == -1)  {
-            if (sign_flag) fprintf(fp, "-");
-            fprintf(fp, "%s", var[j]);
-        }else if (func[j] != 0)  {
-            if (sign_flag) fprintf(fp, "+");
-            if (func[j] > 0) {
-                fprintf(fp, "%d%s", func[j], var[j]);
-            }else{
-                fprintf(fp, "(%d%s)", func[j], var[j]);
-            }
-        }
-        if (func[j] != 0) sign_flag = 1;
-    }
-    if (func[ndims] >= 1)  {
-        if (sign_flag) fprintf(fp, "+");
-        fprintf(fp, "%d", func[ndims]);
-    }else{
-        if (!sign_flag) fprintf(fp, "%d", func[ndims]);
-    }
-
-    for (j=0; j<ndims; j++)  {
-        free(var[j]);
-    }
-}
-
-
-void pluto_transformations_print(const PlutoProg *prog)
-{
-    int i;
-
-    for (i=0; i<prog->nstmts; i++)    {
-        printf("T_(S%d) \n", prog->stmts[i]->id+1);
-        pluto_matrix_print(stdout, prog->stmts[i]->trans);
-    }
-}
 
 
 /* Get this statement's schedule
