@@ -1169,7 +1169,7 @@ void pluto_deps_print(FILE *fp, PlutoProg *prog)
 /* Read statement info from openscop structures (nvar: max domain dim) */
 static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
 {
-    int i, j;
+    int i, j, k;
     Stmt **stmts;
     int npar, nvar, nstmts, max_sched_rows;
     osl_statement_p scop_stmt;
@@ -1231,6 +1231,21 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
         }
+
+        /* Set names for domain dimensions */
+        char **names = malloc((stmt->domain->ncols-1)*sizeof(char *));
+        for (k=0; k<stmt->dim; k++) {
+            names[k] = stmt->iterators[k];
+        }
+        osl_strings_p osl_scop_params = NULL;
+        if(scop->context->nb_parameters){
+            osl_scop_params = (osl_strings_p)scop->parameters->data;
+            for (k=0; k<npar; k++) {
+                names[stmt->dim+k] = osl_scop_params->string[k];
+            }
+        }
+        pluto_constraints_set_names(stmt->domain, names);
+        free(names);
 
         /* Statement text */
         stmt->text = osl_strings_sprint(stmt_body->expression); //appends \n
@@ -1321,7 +1336,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     fprintf(fp, "Domain\n");
     pluto_constraints_compact_print(fp, stmt->domain);
     fprintf(fp, "Transformation\n");
-    pluto_matrix_print(fp, stmt->trans);
+    pluto_stmt_transformation_print(stmt);
 
     if (stmt->nreads==0) {
         fprintf(fp, "No Read accesses\n");
@@ -4206,6 +4221,107 @@ PlutoAccess **pluto_get_all_distinct_vars(Stmt **stmts, int nstmts, int *num)
         }
     }
     return accs;
+}
+
+/* List properties of newly found hyperplanes */
+void pluto_print_hyperplane_properties(const PlutoProg *prog)
+{
+    int j, numH;
+    HyperplaneProperties *hProps;
+
+    hProps = prog->hProps;
+    numH = prog->num_hyperplanes;
+
+    if (numH == 0)  {
+        fprintf(stdout, "No hyperplanes\n");
+    }
+
+    /* Note that loop properties are calculated for each dimension in the
+     * transformed space (common for all statements) */
+    for (j=0; j<numH; j++)  {
+        fprintf(stdout, "t%d --> ", j+1);
+        switch (hProps[j].dep_prop)    {
+            case PARALLEL:
+                fprintf(stdout, "parallel ");
+                break;
+            case SEQ:
+                fprintf(stdout, "serial   ");
+                break;
+            case PIPE_PARALLEL:
+                fprintf(stdout, "fwd_dep  ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                break;
+        }
+        switch (hProps[j].type) {
+            case H_LOOP:
+                fprintf(stdout, "loop  ");
+                break;
+            case H_SCALAR:
+                fprintf(stdout, "scalar");
+                break;
+            case H_TILE_SPACE_LOOP:
+                fprintf(stdout, "tLoop ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                // assert(0);
+                break;
+        }
+        fprintf(stdout, " (band %d)", hProps[j].band_num);
+        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+}
+
+
+
+void pluto_transformations_print(const PlutoProg *prog)
+{
+    int i;
+
+    for (i=0; i<prog->nstmts; i++)    {
+        printf("T_(S%d) \n", prog->stmts[i]->id+1);
+        pluto_matrix_print(stdout, prog->stmts[i]->trans);
+    }
+}
+
+
+void pluto_stmt_transformation_print(const Stmt *stmt)
+{
+    int j;
+
+    int npar = stmt->domain->ncols-stmt->dim-1;
+
+    fprintf(stdout, "T(S%d): ", stmt->id+1);
+    int level;
+    printf("(");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        char **vars = malloc((stmt->dim+npar)*sizeof(char *));
+        for (j=0; j<stmt->dim; j++) {
+            vars[j] = stmt->iterators[j];
+        }
+        for (j=0; j<npar; j++) {
+            vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+        }
+        if (level > 0) printf(", ");
+        pretty_print_affine_function(stdout, stmt->trans->val[level], 
+                stmt->dim+npar, vars);
+        free(vars);
+    }
+    printf(")\n");
+
+    printf("loop types (");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        if (level > 0) printf(", ");
+        if (stmt->hyp_types[level] == H_SCALAR) printf("scalar");
+        else if (stmt->hyp_types[level] == H_LOOP) printf("loop");
+        else if (stmt->hyp_types[level] == H_TILE_SPACE_LOOP) printf("tloop");
+        else printf("unknown");
+    }
+    printf(")\n\n");
 }
 
 /* Temporary data structure used inside extra_stmt_domains

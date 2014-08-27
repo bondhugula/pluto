@@ -80,6 +80,7 @@ inline int64 gcd(int64 a, int64 b);
 int64 *min_lexical(int64 *a, int64 *b, int64 num);
 
 char *concat(const char *prefix, const char *suffix);
+void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
