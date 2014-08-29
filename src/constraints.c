@@ -904,7 +904,7 @@ int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
 }
 
 /* Solve these constraints */
-int64 *pluto_constraints_solve(const PlutoConstraints *cst, int negvar) 
+int64 *pluto_constraints_solve(const PlutoConstraints *cst, int negvar)
 {
     if (options->islsolve) {
         return pluto_constraints_solve_isl(cst, negvar);
@@ -1735,6 +1735,7 @@ void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints
 
     return;
 }
+
 
 int pluto_constraints_get_num_equalities(const PlutoConstraints *cst)
 {

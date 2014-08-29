@@ -333,12 +333,13 @@ int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
     domain = isl_set_from_basic_set(bset);
 
     // Allow only positive values.
-    if(negvar==0) {
-    all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
-    all_positive_set = isl_set_from_basic_set(all_positive);
-    domain = isl_set_intersect(domain, all_positive_set);
+    if(negvar == 0) {
+        all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
+        all_positive_set = isl_set_from_basic_set(all_positive);
+        domain = isl_set_intersect(domain, all_positive_set);
     }
     // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
+    // isl_set_dump(domain);
     lexmin = isl_set_lexmin(domain);
 
     if (isl_set_is_empty(lexmin))
@@ -376,4 +377,70 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
     isl_set_free(set3);
 
     return ucst;
+}
+
+PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule, 
+        int stmt_dim, int npar)
+{
+    int count;
+    int i;
+
+    count = 0;
+    isl_map_dump(schedule);
+    isl_map_count(schedule, &count);
+
+    /* only picks the last basic map from pstmt->schedule */
+    assert(count == 1);
+
+    PlutoConstraints **user = malloc(sizeof(PlutoConstraints*));
+    isl_map_foreach_basic_map(schedule, 
+            &isl_basic_map_to_pluto_constraints_func_arg, user);
+    PlutoConstraints *transcst = *user; 
+
+    PlutoMatrix *mat = pluto_constraints_extract_equalities(transcst);
+    /* This extraction is a quick hack and not complete; it may lead to 
+     * incorrect access functions, but the number of rows are expected 
+     * to be correct
+     */
+
+    /* Reversing the rows since the extracted equalities will appear with the
+     * fastest varying dimensions at the top (simple FIXME: relying on the way
+     * the affine constraints were extracted from isl_map and the way they
+     * were ordered
+     */
+    pluto_matrix_reverse_rows(mat);
+    /* Remove all but the first stmt->dim cols and negate it */
+    for (i=0; i<transcst->ncols - stmt_dim; i++) {
+        pluto_matrix_remove_col(mat, stmt_dim);
+    }
+    pluto_matrix_negate(mat);
+
+    /* FIXME: constant and parametric part of the access function not
+     * extracted */
+    /* Add zero columns for the parameter and constant part */
+    for (i=0; i<npar+1; i++) {
+        pluto_matrix_add_col(mat, mat->ncols);
+    }
+
+    return mat;
+}
+
+
+static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
+{
+    int *count = user;
+
+    *count += 1;
+    isl_basic_map_free(bmap);
+    return 0;
+}
+
+
+int isl_map_count(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    r = isl_map_foreach_basic_map(map, &basic_map_count, user);
+    isl_map_free(map);
+    return r;
 }

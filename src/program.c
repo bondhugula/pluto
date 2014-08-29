@@ -1803,24 +1803,7 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 }
 
 
-static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
-{
-    int *count = user;
 
-    *count += 1;
-    isl_basic_map_free(bmap);
-    return 0;
-}
-
-
-int isl_map_count(__isl_take isl_map *map, void *user)
-{
-    int r;
-
-    r = isl_map_foreach_basic_map(map, &basic_map_count, user);
-    isl_map_free(map);
-    return r;
-}
 
 
 /* Temporary data structure used inside extract_deps.
@@ -1835,7 +1818,6 @@ struct pluto_extra_dep_info {
     int type;
     int index;
 };
-
 
 
 /* Convert an isl_basic_map describing part of a dependence to a Dep.
@@ -2094,8 +2076,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
     dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, 0);
     if(scop->context->nb_parameters){
-      scop_params = (osl_strings_p)scop->parameters->data;
-      dim = set_names(dim, isl_dim_param, scop_params->string);
+        scop_params = (osl_strings_p)scop->parameters->data;
+        dim = set_names(dim, isl_dim_param, scop_params->string);
     }
     param_space = isl_space_params(isl_space_copy(dim));
     context = osl_relation_to_isl_set(scop->context, param_space);
@@ -2126,12 +2108,12 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
             int niter = osl_statement_get_nb_iterators(stmt);
             dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, niter);
             if(scop->context->nb_parameters){
-              scop_params = (osl_strings_p)scop->parameters->data;
-              dim = set_names(dim, isl_dim_param, scop_params->string);
+                scop_params = (osl_strings_p)scop->parameters->data;
+                dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-              dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
+                osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+                dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
             dom = osl_relation_list_to_isl_set(stmt->domain, dim);
@@ -2140,12 +2122,12 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
             dim = isl_dim_alloc(ctx, scop->context->nb_parameters, niter,
                     2 * niter + 1);
             if(scop->context->nb_parameters){
-              scop_params = (osl_strings_p)scop->parameters->data;
-              dim = set_names(dim, isl_dim_param, scop_params->string);
+                scop_params = (osl_strings_p)scop->parameters->data;
+                dim = set_names(dim, isl_dim_param, scop_params->string);
             }
             if(niter){
-              osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-              dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
+                osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+                dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
             }
             dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
             schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
@@ -2155,14 +2137,14 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
             osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
             if(arrays){
-              osl_strings_free(names->arrays);
-              names->arrays = osl_arrays_to_strings(arrays);
+                osl_strings_free(names->arrays);
+                names->arrays = osl_arrays_to_strings(arrays);
             }
 
             read_i = osl_access_list_to_isl_union_map(rlist, isl_set_copy(dom),
-                     names->arrays->string);
+                    names->arrays->string);
             write_i = osl_access_list_to_isl_union_map(wlist, isl_set_copy(dom),
-                     names->arrays->string);
+                    names->arrays->string);
 
             read = isl_union_map_union(read, read_i);
             write = isl_union_map_union(write, write_i);
@@ -2201,18 +2183,18 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 int niter = osl_statement_get_nb_iterators(stmt);
                 dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, niter);
                 if(scop->context->nb_parameters){
-                  scop_params = (osl_strings_p)scop->parameters->data;
-                  dim = set_names(dim, isl_dim_param, scop_params->string);
+                    scop_params = (osl_strings_p)scop->parameters->data;
+                    dim = set_names(dim, isl_dim_param, scop_params->string);
 
-                  osl_strings_free(names->parameters);
-                  names->parameters = osl_strings_clone(scop_params);
+                    osl_strings_free(names->parameters);
+                    names->parameters = osl_strings_clone(scop_params);
                 }
                 if(niter){
-                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-                  dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
+                    osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+                    dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
 
-                  osl_strings_free(names->iterators);
-                  names->iterators = osl_strings_clone(stmt_body->iterators);
+                    osl_strings_free(names->iterators);
+                    names->iterators = osl_strings_clone(stmt_body->iterators);
                 }
                 dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
                 dom = osl_relation_list_to_isl_set(stmt->domain, dim);
@@ -2221,12 +2203,12 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 dim = isl_dim_alloc(ctx, scop->context->nb_parameters, niter,
                         2 * niter + 1);
                 if(scop->context->nb_parameters){
-                  scop_params = (osl_strings_p)scop->parameters->data;
-                  dim = set_names(dim, isl_dim_param, scop_params->string);
+                    scop_params = (osl_strings_p)scop->parameters->data;
+                    dim = set_names(dim, isl_dim_param, scop_params->string);
                 }
                 if(niter){
-                  osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-                  dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
+                    osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+                    dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
                 }
                 dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
 
@@ -2234,8 +2216,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
                 osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
                 if(arrays){
-                  osl_strings_free(names->arrays);
-                  names->arrays = osl_arrays_to_strings(arrays);
+                    osl_strings_free(names->arrays);
+                    names->arrays = osl_arrays_to_strings(arrays);
                 }
 
                 if (access->elt->type == OSL_TYPE_READ) {
@@ -2576,7 +2558,7 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
 
     //osl_relation_free(smat);
-   i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
+    i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
     schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
 
     write_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
@@ -2669,15 +2651,15 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
     /* Data variables in the program */
     osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
     if(arrays==NULL){
-      prog->num_data = 0;
-      fprintf(stderr, "warning: arrays extension not found\n");
+        prog->num_data = 0;
+        fprintf(stderr, "warning: arrays extension not found\n");
     }
     else{
-      prog->num_data = arrays->nb_names;
-      prog->data_names = (char **) malloc (prog->num_data * sizeof(char *));
-      for(i=0; i< prog->num_data; i++) {
-          prog->data_names[i] = strdup(arrays->names[i]);
-      }
+        prog->num_data = arrays->nb_names;
+        prog->data_names = (char **) malloc (prog->num_data * sizeof(char *));
+        for(i=0; i< prog->num_data; i++) {
+            prog->data_names[i] = strdup(arrays->names[i]);
+        }
     }
 
 
@@ -2870,6 +2852,7 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
+
     if (prog->depcst != NULL) {
         pluto_constraints_free(*prog->depcst);
     }
@@ -4544,13 +4527,12 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
         isl_union_map *lreads =	pet_stmt_collect_accesses(pstmt, 1, 0, 
                 0, 0, 0, isl_space_copy(space));
         isl_union_map *lwrites = pet_stmt_collect_accesses(pstmt, 0, 1, 
-                0, 0, 0, isl_space_copy(space));
+                0, 0, 0, space);
 
         char name[20];
         sprintf(name, "S_%d_r", stmt->id);
         struct acc_info rinfo = {name, 0, &reads, &schedule, pstmt->schedule};
         isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
-
         sprintf(name, "S_%d_w", stmt->id);
         struct acc_info winfo = {name, 0, &writes, &schedule, isl_map_copy(pstmt->schedule)};
         isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
@@ -4561,6 +4543,7 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
 
     // isl_union_map_dump(reads);
     // isl_union_map_dump(writes);
+    // isl_union_map_dump(schedule);
 
     if (options->lastwriter) {
         // compute RAW dependences which do not contain transitive dependences
@@ -4569,6 +4552,7 @@ static void compute_deps_pet(struct pet_scop *scop, PlutoProg *prog,
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
+        // isl_union_map_dump(dep_raw);
         // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(writes),
                 isl_union_map_copy(writes),
@@ -4649,11 +4633,20 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     int i, j;
     Stmt **stmts;
     int nvar, npar, nstmts, max_sched_rows;
+    char **params;
 
     npar = isl_set_dim(pscop->context, isl_dim_all);
     nstmts = pscop->n_stmt;
 
     if (nstmts == 0)    return NULL;
+
+    params = NULL;
+    if (npar >= 1)    {
+        params = (char **) malloc(sizeof(char *)*npar);
+    }
+    for (i=0; i<npar; i++)  {
+        params[i] = strdup(isl_space_get_dim_name(isl_set_get_space(pscop->context), isl_dim_param, i));
+    }
 
     /* Max dom dimensionality */
     nvar = -1;
@@ -4672,15 +4665,11 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     stmts = (Stmt **) malloc(nstmts*sizeof(Stmt *));
 
     for(i=0; i<nstmts; i++)  {
-    	struct pet_stmt * pstmt = pscop->stmts[i];
+        struct pet_stmt *pstmt = pscop->stmts[i];
         PlutoConstraints *domain = isl_set_to_pluto_constraints(pstmt->domain);
 
-        PlutoConstraints **user = malloc(sizeof(PlutoConstraints*));
-        /* only picks the last basic map from pstmt->schedule */
-        isl_map_foreach_basic_map(pstmt->schedule, 
-                &isl_basic_map_to_pluto_constraints_func_arg, user);
-        PlutoConstraints *transcst = *user ; 
-        PlutoMatrix *trans = pluto_constraints_to_matrix(transcst);
+        PlutoMatrix *trans = isl_schedule_to_pluto_trans(pstmt->schedule,
+                isl_set_dim(pstmt->domain, isl_dim_set), npar);
 
         stmts[i] = pluto_stmt_alloc(isl_set_dim(pstmt->domain, isl_dim_set), domain, trans);
 
@@ -4713,6 +4702,14 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
             // sprintf(stmt->iterators[j], "c%d", 2*j+1);
             stmt->iterators[j] = strdup(isl_space_get_dim_name(isl_set_get_space(pstmt->domain), isl_dim_set, j));
         }
+
+        pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
+        pluto_constraints_set_names_range(stmt->domain, params, stmt->dim, 0, npar);
+
+        for (j=0; j<npar; j++) {
+            free(params[j]);
+        }
+        free(params);
 
         /*
          * Copy the body of the statement found by print_user. Remove 
@@ -5048,19 +5045,17 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
 	__isl_take isl_printer *p)
 {
 	isl_ctx *ctx = isl_printer_get_ctx(p);
-	isl_set *context;
 	isl_union_set *domain_set;
 	isl_union_map *schedule_map;
 	isl_ast_build *build;
 	isl_ast_print_options *print_options;
 	isl_ast_node *tree;
 
-	context = isl_set_copy(scop->context);
-	domain_set = isl_union_set_copy(collect_non_kill_domains(scop));
-    schedule_map = isl_union_map_copy(pet_scop_collect_schedule(scop));
+    domain_set = collect_non_kill_domains(scop);
+    schedule_map = pet_scop_collect_schedule(scop);
 	schedule_map = isl_union_map_intersect_domain(schedule_map, domain_set);
 
-	build = isl_ast_build_from_context(context);
+	build = isl_ast_build_from_context(isl_set_copy(scop->context));
 	build = isl_ast_build_set_at_each_domain(build, &at_each_domain, scop);
 
 	tree = isl_ast_build_ast_from_schedule(build, schedule_map);
@@ -5082,11 +5077,13 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
  * representation of the program sufficient to be used throughout Pluto. 
  * PlutoProg also includes dependences; uses isl.
  */
-PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions *options)
 {
     int i, max_sched_rows;
 
     if (pscop == NULL) return NULL;
+
+    pet_scop_align_params(pscop);
 
     PlutoProg *prog = pluto_prog_alloc();
 
@@ -5106,7 +5103,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
 
     pluto_constraints_free(prog->context);
     prog->context = isl_set_to_pluto_constraints(pscop->context);
-    isl_set_dump(pscop->context);
+    // isl_set_dump(pscop->context);
 
     if (options->context != -1)	{
       for (i=0; i<prog->npar; i++)  {
@@ -5131,10 +5128,9 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, PlutoOptions *options)
 
     }
 
-    isl_ctx *pctx = isl_ctx_alloc();
     FILE *text_dump = fopen(".dumpstmttxt", "w");
-    isl_printer *p = isl_printer_to_file(pctx , text_dump);
-    p= construct_stmt_body(pscop,p);
+    isl_printer *p = isl_printer_to_file(ctx , text_dump);
+    p = construct_stmt_body(pscop,p);
     isl_printer_free(p);
     fclose(text_dump);
 
