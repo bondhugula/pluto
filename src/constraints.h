@@ -162,4 +162,5 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
 
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 
+void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 #endif
