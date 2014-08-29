@@ -619,7 +619,7 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
  * func should have ndims+1 elements (affine function)
  * vars: names of the variables; if NULL, x0, x1, ... are used
  */
-void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
+void pretty_print_affine_function(FILE *fp, int64 *func, int ndims, char **vars)
 {
     char *var[ndims];
     int j;
@@ -643,18 +643,18 @@ void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
         }else if (func[j] != 0)  {
             if (sign_flag) fprintf(fp, "+");
             if (func[j] > 0) {
-                fprintf(fp, "%d%s", func[j], var[j]);
+                fprintf(fp, "%lld%s", func[j], var[j]);
             }else{
-                fprintf(fp, "(%d%s)", func[j], var[j]);
+                fprintf(fp, "(%lld%s)", func[j], var[j]);
             }
         }
         if (func[j] != 0) sign_flag = 1;
     }
     if (func[ndims] >= 1)  {
         if (sign_flag) fprintf(fp, "+");
-        fprintf(fp, "%d", func[ndims]);
+        fprintf(fp, "%lld", func[ndims]);
     }else{
-        if (!sign_flag) fprintf(fp, "%d", func[ndims]);
+        if (!sign_flag) fprintf(fp, "%lld", func[ndims]);
     }
 
     for (j=0; j<ndims; j++)  {
