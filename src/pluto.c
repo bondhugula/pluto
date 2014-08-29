@@ -600,7 +600,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
     }
 }
 
-/* 
+/*
  * Determine constraints to ensure linear independence of hyperplanes
  *
  * lin_ind_mode = EAGER: all statement hyperplanes have to be linearly independent
@@ -1309,6 +1309,10 @@ void denormalize_domains(PlutoProg *prog)
             if (!stmt->is_orig_loop[j-del_count]) {
                 pluto_stmt_remove_dim(stmt, j-del_count, prog);
                 del_count++;
+
+                if (stmt->last_con_start_enabling_hyperplane) {
+                    pluto_matrix_remove_col(stmt->last_con_start_enabling_hyperplane, j-del_count);
+                }
             }
         }
 
@@ -1399,8 +1403,8 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
                     prog->stmts[i]->trans->val[cone_complement][j];
             }else{
                 lambda_k=0;
-                for(k=0;k<prog->stmts[i]->trans->nrows;k++){
-                    if(k != replace_num && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
+                for(k=0; k<prog->stmts[i]->trans->nrows; k++){
+                    if (k != replace_num && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
                         lastcst->val[lastcst->nrows-1][stmt_offset2+lambda_k+1] = prog->stmts[i]->trans->val[k][j];
                         lambda_k++;
                     }
