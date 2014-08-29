@@ -151,4 +151,6 @@ PlutoConstraints *isl_basic_map_to_pluto_constraints(
         __isl_keep isl_basic_map *bmap);
 __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
        isl_ctx *ctx, const PlutoConstraints *cst, int n_par, int n_in, int n_out);
+
+void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 #endif
