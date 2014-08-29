@@ -587,3 +587,52 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat)
         pluto_matrix_swap_rows(mat, i, mat->nrows-1-i);
     }
 }
+
+/*
+ * Pretty prints a one-dimensional affine function
+ * ndims: number of variables
+ * func should have ndims+1 elements (affine function)
+ * vars: names of the variables; if NULL, x0, x1, ... are used
+ */
+void pretty_print_affine_function(FILE *fp, int64 *func, int ndims, char **vars)
+{
+    char *var[ndims];
+    int j;
+
+    for (j=0; j<ndims; j++)  {
+        if (vars && vars[j]) {
+            var[j] = strdup(vars[j]);
+        }else{
+            var[j] = malloc(5);
+            sprintf(var[j], "x%d", j+1);
+        }
+    }
+
+    int sign_flag = 0;
+    for (j=0; j<ndims; j++)   {
+        if (func[j] == 1)  {
+            if (sign_flag) fprintf(fp, "+");
+            fprintf(fp, "%s", var[j]);
+        }else if (func[j] == -1)  {
+            fprintf(fp, "-%s", var[j]);
+        }else if (func[j] != 0)  {
+            if (sign_flag) fprintf(fp, "+");
+            if (func[j] > 0) {
+                fprintf(fp, "%lld%s", func[j], var[j]);
+            }else{
+                fprintf(fp, "(%lld%s)", func[j], var[j]);
+            }
+        }
+        if (func[j] != 0) sign_flag = 1;
+    }
+    if (func[ndims] >= 1)  {
+        if (sign_flag) fprintf(fp, "+");
+        fprintf(fp, "%lld", func[ndims]);
+    }else{
+        if (!sign_flag) fprintf(fp, "%lld", func[ndims]);
+    }
+
+    for (j=0; j<ndims; j++)  {
+        free(var[j]);
+    }
+}
