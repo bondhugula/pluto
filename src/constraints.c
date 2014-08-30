@@ -118,7 +118,11 @@ void pluto_constraints_resize(PlutoConstraints *cst, int nrows, int ncols)
 }
 
 
-/* Non-destructive resize (single element of constraint list) */
+/*
+ * Non-destructive resize (single element of constraint list)
+ * Not just change the allocated size, but also increase/reduce the number
+ * of constraints/dimensions to match nrows and ncols
+ */
 void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols)
 {
     int i, j;
@@ -143,11 +147,24 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols
     free(cst->buf);
     free(cst->is_eq);
 
+    if (cst->names) {
+        for (i=ncols-1; i<cst->ncols-1; i++) {
+            free(cst->names[i]);
+        }
+    }
+
+    if (cst->names) {
+        cst->names = realloc(cst->names, (ncols-1)*sizeof(char *));
+        for (i=cst->ncols-1; i<ncols-1; i++) {
+            cst->names[i] = NULL;
+        }
+    }
+
     cst->nrows = nrows;
     cst->ncols = ncols;
     cst->alloc_nrows = newCst->alloc_nrows;
     cst->alloc_ncols = newCst->alloc_ncols;
-    
+
     cst->val = newCst->val;
     cst->buf = newCst->buf;
     cst->is_eq = newCst->is_eq;
@@ -162,8 +179,8 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols
  */
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1, const PlutoConstraints *cst2)
 {
+    assert(cst2 != NULL);
     assert(cst1->ncols == cst2->ncols);
-
     assert(cst1->next == NULL);
     assert(cst2->next == NULL);
 
@@ -358,8 +375,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
     int64 lb, ub, nb;
     int *bound;
 
-	// At least one variable
-	assert(cst->ncols >= 2);
+    // At least one variable
+    assert(cst->ncols >= 2);
     assert(pos >= 0);
     assert(pos <= cst->ncols-2);
 
@@ -504,7 +521,11 @@ PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest, const Pl
     }
 
     memcpy(dest->is_eq, src->is_eq, dest->nrows*sizeof(int));
-    if (src->names) pluto_constraints_set_names(dest, src->names);
+    if (src->names) {
+        pluto_constraints_set_names(dest, src->names);
+    }else{
+        pluto_constraints_remove_names_single(dest);
+    }
 
     return dest;
 }
@@ -877,7 +898,8 @@ int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
 }
 
 /* Solve these constraints */
-int64 *pluto_constraints_solve(const PlutoConstraints *cst, int negvar) {
+int64 *pluto_constraints_solve(const PlutoConstraints *cst, int negvar)
+{
     if (options->islsolve) {
         return pluto_constraints_solve_isl(cst, negvar);
     }else{
@@ -981,12 +1003,11 @@ void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
     assert(pos >= 0 && pos <= cst->ncols-2);
 
     if (cst->names) free(cst->names[pos]);
-
     for (j=pos; j<cst->ncols-1; j++) {
         for (i=0; i<cst->nrows; i++) {
             cst->val[i][j] = cst->val[i][j+1];
         }
-        if (cst->names) {
+        if (j < cst->ncols-2 && cst->names[j+1]) {
             cst->names[j] = cst->names[j+1];
         }
     }
@@ -1055,7 +1076,6 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos, const char *name)
     }else{
         cst->ncols++;
     }
-
     if (cst->names) cst->names = realloc(cst->names, (cst->ncols-1)*sizeof(char *));
 
     for (j=cst->ncols-2; j>=pos; j--) {
@@ -1288,7 +1308,7 @@ void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
     }
 
     if(cst->next != NULL) {
-    	pluto_constraints_interchange_cols(cst->next, col1, col2);
+        pluto_constraints_interchange_cols(cst->next, col1, col2);
     }
 
 }
@@ -1486,9 +1506,9 @@ int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos,
 
 void print_polylib_visual_sets_internal(char* str, int k,  PlutoConstraints *cst){
     int i, j, first = 0;
-	char name[100];
+    char name[100];
 
-	if(!options->debug)
+	if(!options->moredebug)
 		return;
 
 	if(cst == NULL)
@@ -1614,7 +1634,8 @@ void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst){
 	return;
 }
 
-void print_polylib_visual_sets(char* name, PlutoConstraints *cst){
+void print_polylib_visual_sets(char* name, PlutoConstraints *cst)
+{
 	print_polylib_visual_sets_internal(name, 0, cst);
 	return;
 }
@@ -1709,6 +1730,7 @@ void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints
     return;
 }
 
+<<<<<<< HEAD
 int pluto_constraints_get_num_equalities(const PlutoConstraints *cst)
 {
     int r, count;
@@ -1742,6 +1764,28 @@ PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst)
 }
 
 
+=======
+
+void pluto_constraints_remove_names_single(PlutoConstraints *cst)
+{
+    int i;
+
+    if (cst->names) {
+        for (i=0; i<cst->ncols-1; i++) {
+            free(cst->names[i]);
+        }
+    }
+    free(cst->names);
+    cst->names = NULL;
+
+    // if (cst->next != NULL) pluto_constraints_remove_names(cst->next);
+}
+
+
+/*
+ * Existing names if any are free
+ */
+>>>>>>> origin/master
 void pluto_constraints_set_names(PlutoConstraints *cst, char **names)
 {
     int i;
@@ -1773,6 +1817,13 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
 
     if (!cst->names) {
         cst->names = malloc((cst->ncols-1)*sizeof(char *));
+        for (i=0; i<cst->ncols-1; i++) {
+            cst->names[i] = NULL;
+        }
+    }else{
+        for (i=0; i<num; i++) {
+            free(cst->names[dest_offset+i]);
+        }
     }
 
     for (i=0; i<num; i++) {
