@@ -10,6 +10,7 @@
 #include "pluto.h"
 #include "math_support.h"
 #include "constraints.h"
+#include "program.h"
 
 /*
  * The affine form of the Farkas lemma
@@ -239,7 +240,7 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum)
  * Refer to PACT'14 paper on tiling periodic domains for
  * the formulation
  */
-PlutoConstraints *pluto_iss(const PlutoConstraints **doms, int ndoms,
+PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
         int npar, PlutoConstraints *indcst)
 {
     int i, j, k, ndim;
@@ -346,7 +347,6 @@ PlutoConstraints *pluto_iss(const PlutoConstraints **doms, int ndoms,
         pluto_constraints_add(cst, indcst);
     }
 
-    // pluto_constraints_pretty_print(stdout, cst);
     int64 *sol = pluto_constraints_solve(cst, 0);
 
     pluto_constraints_free(cst);
@@ -373,47 +373,11 @@ PlutoConstraints *pluto_iss(const PlutoConstraints **doms, int ndoms,
         free(sol);
         return h;
     }else{
-        printf("[iss] No solution (close to mid-point cut)\n");
+        printf("[iss] No solution to close to mid-point cut)\n");
         return NULL;
     }
 }
 
-
-#if 0
-void pluto_iss(const PlutoConstraints **doms, int ndoms, int npar)
-{
-    int j;
-    int orthonum;
-    PlutoConstraints *h = NULL;
-    PlutoConstraints *indcst_i = NULL;
-
-    const PlutoConstraints *dom0 = doms[0];
-
-    PlutoMatrix *H = pluto_matrix_alloc(3, (dom0->ncols-1-npar)/2);
-    H->nrows = 0;
-
-    //do{
-        h = iss(doms, ndoms, npar, indcst_i);
-        if (h != NULL) {
-            pluto_matrix_add_row(H, H->nrows);
-
-            for (j=0; j<h->ncols-1-npar; j++) {
-                H->val[H->nrows-1][j] = h->val[0][j];
-            }
-
-            PlutoConstraints **indcst = get_lin_ind_constraints(H, &orthonum);
-            /* There will be at least two or zero */
-            assert(orthonum != 1);
-            if (orthonum >= 2) {
-                // pluto_constraints_set_names_range(indcst[orthonum-1], dom->names, 0, 0, h->ncols-1-npar);
-                // printf("Linear independence constraints\n");
-                // pluto_constraints_pretty_print(stdout, indcst[orthonum-1]);
-                indcst_i = pluto_constraints_dup(indcst[orthonum-1]);
-            }else indcst_i = NULL;
-        }
-    //}while (h != NULL && indcst_i != NULL);
-}
-#endif
 
 int is_long_bidirectional_dep(const Dep *dep, int dim, int npar)
 {
@@ -437,13 +401,173 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar)
     retval1 = pluto_constraints_get_const_lb(dpolyc, 0, &lb);
     retval2 = pluto_constraints_get_const_ub(dpolyc, 0, &ub);
 
-    // if (retval1)  printf("lb = %lld\n", lb);
-    // if (retval2)  printf("ub = %lld\n", ub);
+    pluto_constraints_free(dpolyc);
 
     return !(retval1 && retval2 && ub - lb <= 5);
 }
 
+/*
+ * Update dependences after ISS
+ */
+void pluto_update_deps_after_iss(PlutoProg *prog, 
+        PlutoConstraints **cuts, int num_cuts,
+        PlutoMatrix **shifts, int *pos,
+        int iss_stmt_id, int base_stmt_id)
+{
+    int i, k, s, t, num_iss_deps;
 
+    Dep **iss_deps = NULL;
+    num_iss_deps = 0;
+
+    for (i=0; i<prog->ndeps; i++) {
+        int num_s_cuts, num_d_cuts;
+
+        Dep *dep = prog->deps[i];
+
+        if (dep->src != iss_stmt_id && dep->dest != iss_stmt_id) {
+            num_iss_deps++;
+            iss_deps = realloc(iss_deps, num_iss_deps*sizeof(Dep *));
+            iss_deps[num_iss_deps-1] = dep;
+            continue;
+        }
+        if (dep->src == iss_stmt_id) num_s_cuts = num_cuts;
+        else num_s_cuts = 1;
+        if (dep->dest == iss_stmt_id) num_d_cuts = num_cuts;
+        else num_d_cuts = 1;
+        for (s=0; s<num_s_cuts; s++) {
+            for (t=0; t<num_d_cuts; t++) {
+                PlutoConstraints *dpolytope = pluto_constraints_dup(dep->dpolytope);
+
+                Stmt *dest_stmt = prog->stmts[dep->dest];
+                Stmt *src_stmt = prog->stmts[dep->src];
+                if (dep->src == iss_stmt_id) {
+                    PlutoConstraints *scut = pluto_constraints_dup(cuts[s]);
+                    PlutoMatrix *shift;
+                    if (shifts[s]) {
+                        shift = pluto_matrix_dup(shifts[s]);
+                    }else shift = NULL;
+                    for (k=0; k<dest_stmt->dim; k++) {
+                        pluto_constraints_add_dim(scut, src_stmt->dim, NULL);
+                        if (shift) pluto_matrix_add_col(shift, src_stmt->dim);
+                    }
+                    pluto_constraints_add(dpolytope, scut);
+                    if (shift) pluto_constraints_shift_dim(dpolytope, pos[s], shift);
+                    pluto_constraints_free(scut);
+                }
+
+                if (dep->dest == iss_stmt_id) {
+                    PlutoConstraints *dcut = pluto_constraints_dup(cuts[t]);
+                    PlutoMatrix *shift;
+                    if (shifts[t]) {
+                        shift = pluto_matrix_dup(shifts[t]);
+                    }else shift = NULL;
+                    for (k=0; k<src_stmt->dim; k++) {
+                        pluto_constraints_add_dim(dcut, 0, NULL);
+                        if (shift) pluto_matrix_add_col(shift, 0);
+                    }
+                    pluto_constraints_add(dpolytope, dcut);
+                    if (shift) pluto_constraints_shift_dim(dpolytope, pos[t], shift);
+                    pluto_constraints_free(dcut);
+                }
+
+                if (!pluto_constraints_is_empty(dpolytope)) {
+                    num_iss_deps++;
+                    iss_deps = realloc(iss_deps, num_iss_deps*sizeof(Dep *));
+                    iss_deps[num_iss_deps-1] = pluto_dep_dup(dep);
+
+                    Dep *iss_dep = iss_deps[num_iss_deps-1];
+                    iss_dep->dpolytope = dpolytope;
+
+                    /* Update the source and target of the dependence */
+                    if (dep->src == iss_stmt_id) {
+                        iss_dep->src = base_stmt_id + s;
+                        iss_dep->src_acc =  NULL;
+                    }
+                    if (dep->dest == iss_stmt_id) {
+                        iss_dep->dest = base_stmt_id + t;
+                        iss_dep->dest_acc = NULL;
+                    }
+                }else{
+                    pluto_constraints_free(dpolytope);
+                }
+            }
+        }
+        pluto_dep_free(dep);
+    }
+
+    if (num_iss_deps >= 1) {
+        free(prog->deps);
+
+        prog->deps = iss_deps;
+        prog->ndeps = num_iss_deps;
+    }
+}
+
+
+/*
+ * Perform Index Set Splitting
+ */
+void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, 
+        PlutoMatrix **shifts, int *pos, PlutoProg *prog)
+{
+    int i;
+
+    int prev_num_stmts = prog->nstmts;
+
+    printf("[iss] Splitting into %d statements\n", num_cuts);
+
+    for (i=0; i<num_cuts; i++) {
+        Stmt *nstmt = pluto_stmt_dup(stmt);
+        pluto_constraints_add(nstmt->domain, cuts[i]);
+        if (shifts[i]) {
+            pluto_matrix_print(stdout, shifts[i]);
+            pluto_constraints_shift_dim(nstmt->domain, pos[i], shifts[i]);
+        }
+        pluto_add_given_stmt(prog, nstmt);
+    }
+
+    pluto_update_deps_after_iss(prog, cuts, num_cuts, shifts, pos, stmt->id, prev_num_stmts);
+
+    pluto_remove_stmt(prog, stmt->id);
+
+}
+
+
+int get_shift_position(Hyperplane *h, int ndim, PlutoMatrix **mat)
+{
+    int i, count, pos;
+
+    int npar = h->ncols - ndim - 1;
+
+    count = 0;
+    pos = -1;
+
+    for (i=0; i<ndim; i++) {
+        if (h->val[0][i] != 0) {
+            pos = i;
+            count++;
+        }
+    }
+
+    if (count == 1) {
+        PlutoMatrix *shift = pluto_matrix_alloc(1, ndim+npar+1);
+        pluto_matrix_initialize(shift, 0);
+        for (i=ndim; i<h->ncols-1; i++) {
+            shift->val[0][i] = 2*h->val[0][i]/h->val[0][pos];
+        }
+        *mat = shift;
+        return pos;
+    }
+
+    *mat = NULL;
+    return -1;
+
+}
+
+
+/*
+ * Index set splitting based on near mid-point cutting of dependences
+ */
 void pluto_iss_dep(PlutoProg *prog)
 {
     int ndeps = prog->ndeps;
@@ -483,21 +607,58 @@ void pluto_iss_dep(PlutoProg *prog)
     }
 
     for (j=0; j<ndim; j++) {
-        // printf("Along dimension %d\n", j);
         int q = 0;
         for (i=0; i<ndeps; i++) {
             if (is_long[i][j]) {
                 assert(q <= num_long_deps[j]-1);
                 long_dep_doms[j][q++] = prog->deps[i]->dpolytope;
-                // pluto_constraints_compact_print(stdout, prog->deps[i]->dpolytope);
             }
         }
     }
 
+    int num_cuts;
+
+    PlutoConstraints **cuts = NULL;
+    PlutoMatrix **shifts = NULL;
+    int *pos = NULL;
+    num_cuts = 0;
+
     for (i=0; i<ndim; i++) {
         if (num_long_deps[i] >= 1) {
-            pluto_iss((const PlutoConstraints **) long_dep_doms[i], num_long_deps[i], npar, NULL);
+            printf("[iss] Dimension %d\n", i);
+            PlutoConstraints *h = 
+                pluto_find_iss((const PlutoConstraints **) long_dep_doms[i], num_long_deps[i], npar, NULL);
+            if (h && num_cuts == 0) {
+                PlutoConstraints *negh = pluto_hyperplane_get_negative_half_space(h);
+                PlutoConstraints *posh = pluto_hyperplane_get_non_negative_half_space(h);
+
+                cuts = (PlutoConstraints **) malloc(2*sizeof(PlutoConstraints *));
+                shifts = (PlutoMatrix **) malloc(2*sizeof(PlutoMatrix *));
+                pos = (int *) malloc(2*sizeof(sizeof(int)));
+                cuts[0] = negh;
+                cuts[1] = posh;
+                shifts[0] = NULL;
+                /* pos[1] = get_shift_position(h, ndim, &shifts[1]); */
+                shifts[1] = NULL;
+
+                num_cuts = 2;
+            }
+            pluto_constraints_free(h);
         }
     }
-}
 
+    pluto_iss(prog->stmts[0], cuts, num_cuts, shifts, pos, prog);
+
+    for (i=0; i<num_cuts; i++) {
+        pluto_constraints_free(cuts[i]);
+        pluto_matrix_free(shifts[i]);
+    }
+    free(cuts);
+    free(shifts);
+    free(pos);
+
+    for (i=0; i<ndim; i++) {
+        free(long_dep_doms[i]);
+    }
+    free(long_dep_doms);
+}

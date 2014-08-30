@@ -55,6 +55,9 @@ struct pluto_constraints {
 
 typedef struct pluto_constraints PlutoConstraints;
 
+typedef PlutoConstraints PlutoEquality;
+typedef PlutoConstraints Hyperplane;
+
 
 PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
@@ -133,6 +136,9 @@ int pluto_constraints_are_equal(const PlutoConstraints *cst1, const PlutoConstra
 
 PlutoConstraints *pluto_constraints_empty(int ncols);
 PlutoConstraints *pluto_constraints_universe(int ncols);
+void pluto_constraints_set_names(PlutoConstraints *cst, char **names);
+void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
+        int dest_offset, int src_offset, int num);
 
 void pluto_constraints_set_names(PlutoConstraints *cst, char **names);
 void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
@@ -164,5 +170,9 @@ PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim);
 int isl_map_count(__isl_take isl_map *map, void *user);
 PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule, int stmt_dim, int npar);
+PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h);
+PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h);
+void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos, PlutoMatrix *func);
+void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 #endif

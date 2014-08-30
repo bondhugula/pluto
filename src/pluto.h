@@ -513,6 +513,7 @@ PlutoDepList* pluto_dep_list_alloc(Dep *dep);
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
 void pluto_opencl_codegen();
 void pluto_iss_dep(PlutoProg *prog);
-PlutoConstraints *pluto_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
+PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
+void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoMatrix **shifts, int *pos, PlutoProg *prog);
 
 #endif

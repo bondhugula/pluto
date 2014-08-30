@@ -1860,3 +1860,45 @@ int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_e
 
     return best_candidate;
 }
+
+PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h)
+{
+    assert(h->nrows == 1);
+    assert(h->is_eq[0]);
+
+    PlutoConstraints *pos_h = pluto_constraints_dup(h);
+    pos_h->is_eq[0] = 0;
+    return pos_h;
+}
+
+PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h)
+{
+    assert(h->nrows == 1);
+    assert(h->is_eq[0]);
+
+    PlutoConstraints *neg_h = pluto_constraints_dup(h);
+    neg_h->is_eq[0] = 0;
+    pluto_constraints_negate_row(neg_h, 0);
+    neg_h->val[neg_h->nrows-1][neg_h->ncols-1] -= 1;
+    return neg_h;
+}
+
+
+
+/* Shift a particular dimension by an affine function of other dimensions */
+void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos, PlutoMatrix *func)
+{
+    int i, j;
+
+    assert(func->ncols == cst->ncols);
+    assert(func->nrows == 1);
+    assert(func->val[0][pos] == 0);
+
+    for (i=0; i<cst->nrows; i++) {
+        for (j=0; j<cst->ncols; j++) {
+            if (j != pos) {
+                cst->val[i][j] -= cst->val[i][pos]*func->val[0][j];
+            }
+        }
+    }
+}
