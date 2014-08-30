@@ -21,6 +21,7 @@
  */
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #include "pluto.h"
 #include "post_transform.h"
@@ -292,7 +293,10 @@ void pluto_tile(PlutoProg *prog)
     }
 
     if (options->parallel || options->dynschedule_graph || options->dynschedule) {
-        pluto_create_tile_schedule(prog, bands, nbands);
+        int retval = pluto_create_tile_schedule(prog, bands, nbands);
+        if (retval) {
+            pluto_transformations_pretty_print(prog);
+        }
     }
     pluto_bands_free(bands, nbands);
     pluto_bands_free(ibands, n_ibands);
@@ -417,7 +421,7 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
         Stmt *stmt = band->loop->stmts[i];
         for (k=1; k<=nip_dims; k++) {
             for (j=0; j<stmt->trans->ncols; j++)    {
-                stmt->trans->val[first][j] += 
+                stmt->trans->val[first][j] +=
                     stmt->trans->val[loop_depths[k]][j];
             }
         }
@@ -504,22 +508,24 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
 }
 
 
+/*
+ * Reschedule a concurrent start tile
+ */
 void pluto_reschedule_tile(PlutoProg *prog)
 {
-    int i, j, temp;
-    for(i=0;i<prog->nstmts;i++){
-        // UB: disabling this since this part is 
-        // not working as expected
-        // int replaced_hyperplane = prog->replaced_hyperplane;
-        // if (replaced_hyperplane != 0 && prog->stmts[i]->last != NULL){
-        if(prog->stmts[i]->last!=NULL){
+    int i, j, tmp;
+    for (i=0; i<prog->nstmts; i++){
+        if (prog->stmts[i]->last_con_start_enabling_hyperplane) {
+            int rep_hyp_pos = prog->rep_hyp_pos;
             int fl = prog->stmts[i]->num_tiled_loops;
-            for(j=0;j<prog->stmts[i]->last->ncols;j++){
-                temp=prog->stmts[i]->last->val[0][j];
-                //prog->stmts[i]->last->val[0][j]=prog->stmts[i]->trans->val[fl+replaced_hyperplane][fl+j];
-                // prog->stmts[i]->trans->val[fl+replaced_hyperplane][fl+j]=temp;
-                prog->stmts[i]->last->val[0][j]=prog->stmts[i]->trans->val[fl][fl+j];
-                prog->stmts[i]->trans->val[fl][fl+j]=temp;
+            /* The replaced hyperplane is stored in
+             * last_con_start_enabling_hyperplane (UGLY) */
+            PlutoMatrix *rep_hyp = prog->stmts[i]->last_con_start_enabling_hyperplane;
+            assert(prog->stmts[i]->num_tiled_loops + rep_hyp->ncols == prog->stmts[i]->trans->ncols);
+            for (j=0; j<rep_hyp->ncols;j++) {
+                tmp = rep_hyp->val[0][j];
+                rep_hyp->val[0][j] = prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j];
+                prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j] = tmp;
             }
         }
     }

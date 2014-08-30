@@ -162,6 +162,7 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
 
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim);
-
+int isl_map_count(__isl_take isl_map *map, void *user);
+PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule, int stmt_dim, int npar);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 #endif

@@ -542,8 +542,6 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
 }
 
 
-
-
 /*
  * Returns linear independence constraints for a single statement.
  *

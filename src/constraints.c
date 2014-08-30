@@ -1730,7 +1730,7 @@ void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints
     return;
 }
 
-<<<<<<< HEAD
+
 int pluto_constraints_get_num_equalities(const PlutoConstraints *cst)
 {
     int r, count;
@@ -1764,8 +1764,6 @@ PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst)
 }
 
 
-=======
-
 void pluto_constraints_remove_names_single(PlutoConstraints *cst)
 {
     int i;
@@ -1778,14 +1776,12 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst)
     free(cst->names);
     cst->names = NULL;
 
-    // if (cst->next != NULL) pluto_constraints_remove_names(cst->next);
 }
 
 
 /*
- * Existing names if any are free
+ * Existing names if any are freed
  */
->>>>>>> origin/master
 void pluto_constraints_set_names(PlutoConstraints *cst, char **names)
 {
     int i;
