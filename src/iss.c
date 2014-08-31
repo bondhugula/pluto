@@ -419,6 +419,8 @@ void pluto_update_deps_after_iss(PlutoProg *prog,
     Dep **iss_deps = NULL;
     num_iss_deps = 0;
 
+    if (num_cuts == 0) return;
+
     for (i=0; i<prog->ndeps; i++) {
         int num_s_cuts, num_d_cuts;
 
@@ -514,7 +516,8 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
 
     int prev_num_stmts = prog->nstmts;
 
-    printf("[iss] Splitting into %d statements\n", num_cuts);
+    printf("[iss] Splitting S%d into %d statements\n", 
+            stmt->id+1, num_cuts);
 
     for (i=0; i<num_cuts; i++) {
         Stmt *nstmt = pluto_stmt_dup(stmt);
@@ -602,7 +605,7 @@ void pluto_iss_dep(PlutoProg *prog)
     PlutoConstraints ***long_dep_doms = (PlutoConstraints ***) malloc(sizeof(PlutoConstraints **)*ndim);
     for (i=0; i<ndim; i++) {
         if (num_long_deps[i] >= 1) {
-        long_dep_doms[i] = malloc(num_long_deps[i]*sizeof(PlutoConstraints *));
+            long_dep_doms[i] = malloc(num_long_deps[i]*sizeof(PlutoConstraints *));
         }else long_dep_doms[i] = NULL;
     }
 
@@ -647,7 +650,9 @@ void pluto_iss_dep(PlutoProg *prog)
         }
     }
 
-    pluto_iss(prog->stmts[0], cuts, num_cuts, shifts, pos, prog);
+    if (num_cuts >= 2) {
+        pluto_iss(prog->stmts[0], cuts, num_cuts, shifts, pos, prog);
+    }
 
     for (i=0; i<num_cuts; i++) {
         pluto_constraints_free(cuts[i]);
