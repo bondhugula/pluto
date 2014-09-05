@@ -53,12 +53,13 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
 
     cst = (PlutoConstraints *)malloc(sizeof(PlutoConstraints));
 
-    int size = PLMAX(1,max_rows)*PLMAX(1,max_cols)*sizeof(int64);
+    size_t size = ((size_t) PLMAX(1,max_rows))*PLMAX(1,max_cols)*sizeof(int64);
 
     cst->buf = (int64 *) malloc(size);
 
     if (cst->buf == NULL) {
-        fprintf(stderr, "Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] %zd bytes needed\n", size);
         exit(1);
     }
 
