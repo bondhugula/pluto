@@ -24,6 +24,7 @@
 #include "math_support.h"
 
 #define int64 long long int
+#define uint64 unsigned long long int
 
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
