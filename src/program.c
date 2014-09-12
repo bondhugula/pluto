@@ -2874,6 +2874,10 @@ PlutoOptions *pluto_options_alloc()
     /* Initialize to default */
     options->tile = 0;
     options->intratileopt = 1;
+    options->dynschedule = 0;
+    options->dynschedule_graph = 0;
+    options->dynschedule_graph_old = 0;
+    options->dyn_trans_deps_tasks = 0;
     options->debug = 0;
     options->moredebug = 0;
     options->scancount = 0;
