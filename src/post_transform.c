@@ -47,12 +47,18 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
     int i, *divs;
     PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
     assert(depth <= newacc->ncols-1);
+
+    /* Scalars */
+    if (newacc->nrows == 0) return 0;
+
     for (i=0; i<newacc->nrows-1; i++) {
+        /* No spatial reuse when the func is varying at a non-innermost dim */
         if (newacc->val[i][depth] != 0) {
             pluto_matrix_free(newacc);
             return 0;
         }
     }
+
     if (newacc->val[newacc->nrows-1][depth] >= 1 &&
             newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) {
         pluto_matrix_free(newacc);
