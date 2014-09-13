@@ -1919,47 +1919,6 @@ void ddg_compute_scc(PlutoProg *prog)
     graph_print_sccs(g);
 }
 
-void pluto_transformations_pretty_print(const PlutoProg *prog)
-{
-    int nstmts, i, j;
-
-    nstmts = prog->nstmts;
-
-    for (i=0; i<nstmts; i++) {
-        Stmt *stmt = prog->stmts[i];
-        fprintf(stdout, "T(S%d): ", i+1);
-        int level;
-        printf("(");
-        for (level=0; level<stmt->trans->nrows; level++) {
-            char **vars = malloc((stmt->dim+prog->npar)*sizeof(char *));
-            for (j=0; j<stmt->dim; j++) {
-                vars[j] = stmt->iterators[j];
-            }
-            for (j=0; j<prog->npar; j++) {
-                vars[stmt->dim+j] = prog->params[j];
-            }
-            if (level > 0) printf(", ");
-            pretty_print_affine_function(stdout, stmt->trans->val[level], 
-                    stmt->dim+prog->npar, vars);
-            free(vars);
-        }
-        printf(")\n");
-
-        pluto_matrix_print(stdout, stmt->trans);
-
-        printf("loop types (");
-        for (level=0; level<stmt->trans->nrows; level++) {
-            if (level > 0) printf(", ");
-            if (stmt->hyp_types[level] == H_SCALAR) printf("scalar");
-            else if (stmt->hyp_types[level] == H_LOOP) printf("loop");
-            else if (stmt->hyp_types[level] == H_TILE_SPACE_LOOP) printf("tloop");
-            else printf("unknown");
-        }
-        printf(")\n\n");
-    }
-}
-
-
 /* Get this statement's schedule
  * Schedule format
  * [num sched functions | orig dim iters | params | const ]

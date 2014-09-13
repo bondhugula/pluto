@@ -38,8 +38,10 @@ AC_ARG_ENABLE(debug,
               [  --enable-debug  enable compilation with debugging info ],
               debug="true")
 
+AM_CONDITIONAL(PLUTO_DEBUG, test x$debug = xtrue)
+
 if test $debug = "true"; then
-    CFLAGS="$CFLAGS -g -DDEBUG"
+    CFLAGS="$CFLAGS -g"
 fi
 
 dnl check for programs

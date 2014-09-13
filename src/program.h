@@ -115,4 +115,10 @@ void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_stmt_transformation_print(const Stmt *stmt);
 
+Stmt *pluto_stmt_dup(const Stmt *stmt);
+PlutoAccess *pluto_access_dup(const PlutoAccess *acc);
+void pluto_dep_free(Dep *dep);
+Dep *pluto_dep_dup(Dep *d);
+void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
+
 #endif

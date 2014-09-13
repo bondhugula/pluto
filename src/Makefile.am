@@ -17,12 +17,19 @@ endif
 
 bin_PROGRAMS = pluto
 
-pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c pluto_codegen_if.c polyloop.c ast_transform.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
+pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c polyloop.c framework.c pluto_codegen_if.c iss.c ast_transform.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
 
 nodist_EXTRA_pluto_SOURCES = dummy.cc
 
-pluto_CPPFLAGS = -O3 -funroll-loops -fopenmp \
-   -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
+if PLUTO_DEBUG
+OPT_FLAGS = -O3 -funroll-loops -fopenmp
+else
+OPT_FLAGS = 
+DEBUG_FLAGS = -g
+endif
+
+pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
+   -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
@@ -48,8 +55,8 @@ pluto_LDADD =  \
 lib_LTLIBRARIES = libpluto.la
 
 # libpluto doesn't use polylib-based functions
-libpluto_la_SOURCES = constraints.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c polyloop.c libpluto.c constraints.h math_support.h pluto.h program.c program.h tile.c
-libpluto_la_CPPFLAGS = -O3 -funroll-loops -fopenmp \
+libpluto_la_SOURCES = constraints.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c polyloop.c iss.c libpluto.c constraints.h math_support.h pluto.h program.c program.h tile.c
+libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
