@@ -338,8 +338,10 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 
     PlutoConstraints *newcst_permuted;
     newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
+    pluto_matrix_free(newcstmat);
 
     sol = pluto_constraints_solve(newcst_permuted,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    /* print_polylib_visual_sets("csts", newcst); */
 
     pluto_constraints_free(newcst_permuted);
 
@@ -1740,6 +1742,7 @@ int pluto_auto_transform(PlutoProg *prog)
      * put back for the right intra-tile order
      */
     if (con_start_found) {
+        printf("[Pluto] Concurrent start hyperplanes found\n");
         swap_prog_hyperplanes_with_last(prog, first);  
         prog->rep_hyp_pos = first;
         if (replace_num != first){

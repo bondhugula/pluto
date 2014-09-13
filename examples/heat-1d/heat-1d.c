@@ -74,7 +74,7 @@ int main(int argc, char * argv[]) {
 #pragma scop
     for (t = 0; t < T; t++) {
         for (i = 1; i < N+1; i++) {
-            A[t+1][i] =   0.125 * (A[t][i+1] - 2.0 * A[t][i] + A[t][i-1]);
+            A[(t+1)%2][i] =   0.125 * (A[t%2][i+1] - 2.0 * A[t%2][i] + A[t%2][i-1]);
         }
     }
 #pragma endscop

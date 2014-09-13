@@ -271,7 +271,7 @@ void pluto_tile(PlutoProg *prog)
             retval |= pluto_intra_tile_optimize_band(bands[i], 1, prog); 
         }
         if (retval && !options->silent) {
-            printf("After intra_tile_opt\n");
+            printf("[pluto] After intra_tile_opt\n");
             pluto_transformations_pretty_print(prog);
         }
     }

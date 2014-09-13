@@ -93,9 +93,9 @@ int main(int argc, char *argv[])
           for (j = 1; j < N+1; j++) {
               for (k = 1; k < N+1; k++) {
 
-                  A[t+1][i][j][k] = alpha * (A[t][i][j][k])
-                      + beta * (A[t][i - 1][j][k] + A[t][i][j - 1][k] + A[t][i][j][k - 1] +
-                              A[t][i + 1][j][k] + A[t][i][j + 1][k] + A[t][i][j][k + 1]);
+                  A[(t+1)%2][i][j][k] = alpha * (A[t%2][i][j][k])
+                      + beta * (A[t%2][i - 1][j][k] + A[t%2][i][j - 1][k] + A[t%2][i][j][k - 1] +
+                              A[t%2][i + 1][j][k] + A[t%2][i][j + 1][k] + A[t%2][i][j][k + 1]);
 
               }
           }
