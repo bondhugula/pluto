@@ -714,8 +714,8 @@ osl_relation_list_p osl_access_list_filter_read(osl_relation_list_p list) {
 }
 
 /*
-* Converts an osl dependence domain to Pluto constraints
-* See osl/extensions/dependence.h for the osl dependence domain matrix format
+ * Converts an osl dependence domain to Pluto constraints
+ * See osl/extensions/dependence.h for the osl dependence domain matrix format
 */
 PlutoConstraints* osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep){
 
