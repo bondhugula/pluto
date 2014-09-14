@@ -77,26 +77,26 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
  * Returns the index for the row for the nth output dimension.
  */
 int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
-                                              int ndim){
-  int nb_ndims_found = 0;
-  int row_id = -1;
-  int i = 0;
+        int ndim){
+    int nb_ndims_found = 0;
+    int row_id = -1;
+    int i = 0;
 
-  if (relation == NULL)
-    return OSL_UNDEFINED;
-  
-  if ((relation->nb_rows < ndim) || (0 > ndim)) {
-    fprintf(stderr, "error: dimension out of bounds");
-    exit(1);
-  }
+    if (relation == NULL)
+        return OSL_UNDEFINED;
 
-  nb_ndims_found = 0;
-  for (i = 0; i < relation->nb_rows; i++) {
-    if (!osl_int_zero(relation->precision, relation->m[i][ndim])) {
-      nb_ndims_found ++;
-      row_id = i;
+    if ((relation->nb_rows < ndim) || (0 > ndim)) {
+        fprintf(stderr, "error: dimension out of bounds");
+        exit(1);
     }
-  }
+
+    nb_ndims_found = 0;
+    for (i = 0; i < relation->nb_rows; i++) {
+        if (!osl_int_zero(relation->precision, relation->m[i][ndim])) {
+            nb_ndims_found ++;
+            row_id = i;
+        }
+    }
   if (nb_ndims_found == 0) {
     fprintf(stderr, "error: specified dimension not found");
     exit(1);
@@ -566,7 +566,6 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
       osl_generic_add(&scop->extension, loopgen);
     }
 
-
     // Add pluto_unroll extension
     {
         int i;
@@ -716,7 +715,7 @@ osl_relation_list_p osl_access_list_filter_read(osl_relation_list_p list) {
 /*
  * Converts an osl dependence domain to Pluto constraints
  * See osl/extensions/dependence.h for the osl dependence domain matrix format
-*/
+ */
 PlutoConstraints* osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep){
 
  int s_dom_output_dims = in_dep->source_nb_output_dims_domain;
@@ -1029,43 +1028,43 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
         switch (dep->type) {
             case OSL_DEPENDENCE_RAW: 
                 spos = get_osl_write_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->writes[spos];
                 tpos = get_osl_read_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->reads[tpos];
-                    
+
                 break;
             case OSL_DEPENDENCE_WAW: 
                 spos = get_osl_write_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->writes[spos];
                 tpos = get_osl_write_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->writes[tpos];
                 break;
             case OSL_DEPENDENCE_WAR: 
                 spos = get_osl_read_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->reads[spos];
                 tpos = get_osl_write_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->writes[tpos];
                 break;
             case OSL_DEPENDENCE_RAR: 
                 spos = get_osl_read_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->reads[spos];
                 tpos = get_osl_read_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->reads[tpos];
                 break;
             default:
@@ -1101,9 +1100,9 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
         int target_dim = stmts[dep->dest]->dim;
 
         assert(candl_dep->source_nb_output_dims_domain + 
-               candl_dep->target_nb_output_dims_domain +
-               candl_dep->stmt_source_ptr->domain->nb_parameters + 1
-               == src_dim+target_dim+npar+1);
+                candl_dep->target_nb_output_dims_domain +
+                candl_dep->stmt_source_ptr->domain->nb_parameters + 1
+                == src_dim+target_dim+npar+1);
 
         candl_dep = candl_dep->next;
     }
@@ -1312,11 +1311,12 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
     int i;
 
-    fprintf(fp, "S%d \"%s\"; ndims: %d; orig_depth: %d\n", 
-            stmt->id+1, stmt->text, stmt->dim, stmt->dim_orig);
-    fprintf(fp, "Domain\n");
+    fprintf(fp, "S%d \"%s\"\n",
+            stmt->id+1, stmt->text);
+    fprintf(fp, "ndims: %d; orig_depth: %d\n",
+            stmt->dim, stmt->dim_orig);
+    fprintf(fp, "Index set\n");
     pluto_constraints_compact_print(fp, stmt->domain);
-    fprintf(fp, "Transformation\n");
     pluto_stmt_transformation_print(stmt);
 
     if (stmt->nreads==0) {
@@ -1338,7 +1338,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }
 
     for (i=0; i<stmt->dim; i++) {
-        printf("Original loop: %d -> %d\n", i, stmt->is_orig_loop[i]);
+        printf("Original loop: %d -> %s\n", i, stmt->is_orig_loop[i]?"yes":"no");
     }
 
     fprintf(fp, "\n");
@@ -3295,107 +3295,6 @@ PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num)
     return accs;
 }
 
-/* List properties of newly found hyperplanes */
-void pluto_print_hyperplane_properties(const PlutoProg *prog)
-{
-    int j, numH;
-    HyperplaneProperties *hProps;
-
-    hProps = prog->hProps;
-    numH = prog->num_hyperplanes;
-
-    if (numH == 0)  {
-        fprintf(stdout, "No hyperplanes\n");
-    }
-
-    /* Note that loop properties are calculated for each dimension in the
-     * transformed space (common for all statements) */
-    for (j=0; j<numH; j++)  {
-        fprintf(stdout, "t%d --> ", j+1);
-        switch (hProps[j].dep_prop)    {
-            case PARALLEL:
-                fprintf(stdout, "parallel ");
-                break;
-            case SEQ:
-                fprintf(stdout, "serial   ");
-                break;
-            case PIPE_PARALLEL:
-                fprintf(stdout, "fwd_dep  ");
-                break;
-            default:
-                fprintf(stdout, "unknown  ");
-                break;
-        }
-        switch (hProps[j].type) {
-            case H_LOOP:
-                fprintf(stdout, "loop  ");
-                break;
-            case H_SCALAR:
-                fprintf(stdout, "scalar");
-                break;
-            case H_TILE_SPACE_LOOP:
-                fprintf(stdout, "tLoop ");
-                break;
-            default:
-                fprintf(stdout, "unknown  ");
-                // assert(0);
-                break;
-        }
-        fprintf(stdout, " (band %d)", hProps[j].band_num);
-        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
-        fprintf(stdout, "\n");
-    }
-    fprintf(stdout, "\n");
-}
-
-
-
-void pluto_transformations_print(const PlutoProg *prog)
-{
-    int i;
-
-    for (i=0; i<prog->nstmts; i++)    {
-        printf("T_(S%d) \n", prog->stmts[i]->id+1);
-        pluto_matrix_print(stdout, prog->stmts[i]->trans);
-    }
-}
-
-
-void pluto_stmt_transformation_print(const Stmt *stmt)
-{
-    int j;
-
-    int npar = stmt->domain->ncols-stmt->dim-1;
-
-    fprintf(stdout, "T(S%d): ", stmt->id+1);
-    int level;
-    printf("(");
-    for (level=0; level<stmt->trans->nrows; level++) {
-        char **vars = malloc((stmt->dim+npar)*sizeof(char *));
-        for (j=0; j<stmt->dim; j++) {
-            vars[j] = stmt->iterators[j];
-        }
-        for (j=0; j<npar; j++) {
-            vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
-        }
-        if (level > 0) printf(", ");
-        pretty_print_affine_function(stdout, stmt->trans->val[level], 
-                stmt->dim+npar, vars);
-        free(vars);
-    }
-    printf(")\n");
-
-    printf("loop types (");
-    for (level=0; level<stmt->trans->nrows; level++) {
-        if (level > 0) printf(", ");
-        if (stmt->hyp_types[level] == H_SCALAR) printf("scalar");
-        else if (stmt->hyp_types[level] == H_LOOP) printf("loop");
-        else if (stmt->hyp_types[level] == H_TILE_SPACE_LOOP) printf("tloop");
-        else printf("unknown");
-    }
-    printf(")\n\n");
-}
-
 /* Temporary data structure used inside extra_stmt_domains
  *
  * stmts points to the array of Stmts being constructed
@@ -3441,7 +3340,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     int dim = isl_set_dim(set, isl_dim_all);
     int npar = isl_set_dim(set, isl_dim_param);
     PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, dim+1);
-    pluto_matrix_initialize(trans, 0);
+    pluto_matrix_set(trans, 0);
     trans->nrows = 0;
 
     id = atoi(isl_set_get_tuple_name(set)+2);
@@ -3540,6 +3439,9 @@ int pluto_stmt_get_num_ind_hyps(const Stmt *stmt)
     return isols;
 }
 
+/*
+ * Are all transformations full column-ranked?
+ */
 int pluto_transformations_full_ranked(PlutoProg *prog)
 {
     int i;
@@ -3551,4 +3453,122 @@ int pluto_transformations_full_ranked(PlutoProg *prog)
     }
 
     return 1;
+}
+
+
+void pluto_transformations_pretty_print(const PlutoProg *prog)
+{
+    int nstmts, i;
+
+    nstmts = prog->nstmts;
+
+    for (i=0; i<nstmts; i++) {
+        pluto_stmt_transformation_print(prog->stmts[i]);
+    }
+}
+
+
+/* List properties of newly found hyperplanes */
+void pluto_print_hyperplane_properties(const PlutoProg *prog)
+{
+    int j, numH;
+    HyperplaneProperties *hProps;
+
+    hProps = prog->hProps;
+    numH = prog->num_hyperplanes;
+
+    if (numH == 0)  {
+        fprintf(stdout, "No hyperplanes\n");
+    }
+
+    /* Note that loop properties are calculated for each dimension in the
+     * transformed space (common for all statements) */
+    for (j=0; j<numH; j++)  {
+        fprintf(stdout, "t%d --> ", j+1);
+        switch (hProps[j].dep_prop)    {
+            case PARALLEL:
+                fprintf(stdout, "parallel ");
+                break;
+            case SEQ:
+                fprintf(stdout, "serial   ");
+                break;
+            case PIPE_PARALLEL:
+                fprintf(stdout, "fwd_dep  ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                break;
+        }
+        switch (hProps[j].type) {
+            case H_LOOP:
+                fprintf(stdout, "loop  ");
+                break;
+            case H_SCALAR:
+                fprintf(stdout, "scalar");
+                break;
+            case H_TILE_SPACE_LOOP:
+                fprintf(stdout, "tLoop ");
+                break;
+            default:
+                fprintf(stdout, "unknown  ");
+                // assert(0);
+                break;
+        }
+        fprintf(stdout, " (band %d)", hProps[j].band_num);
+        fprintf(stdout, hProps[j].unroll? "ujam":"no-ujam"); 
+        fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+}
+
+
+
+void pluto_transformations_print(const PlutoProg *prog)
+{
+    int i;
+
+    for (i=0; i<prog->nstmts; i++)    {
+        printf("T_(S%d) \n", prog->stmts[i]->id+1);
+        pluto_matrix_print(stdout, prog->stmts[i]->trans);
+    }
+}
+
+
+void pluto_stmt_transformation_print(const Stmt *stmt)
+{
+    int j;
+
+    int npar = stmt->domain->ncols-stmt->dim-1;
+
+    fprintf(stdout, "T(S%d): ", stmt->id+1);
+    int level;
+    printf("(");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        char **vars = malloc((stmt->dim+npar)*sizeof(char *));
+        for (j=0; j<stmt->dim; j++) {
+            vars[j] = stmt->iterators[j];
+        }
+        for (j=0; j<npar; j++) {
+            if (stmt->domain->names && stmt->domain->names[stmt->dim+j]) {
+                vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+            }else{
+                vars[stmt->dim+j] = "p?";
+            }
+        }
+        if (level > 0) printf(", ");
+        pretty_print_affine_function(stdout, stmt->trans->val[level], 
+                stmt->dim+npar, vars);
+        free(vars);
+    }
+    printf(")\n");
+
+    printf("loop types (");
+    for (level=0; level<stmt->trans->nrows; level++) {
+        if (level > 0) printf(", ");
+        if (stmt->hyp_types[level] == H_SCALAR) printf("scalar");
+        else if (stmt->hyp_types[level] == H_LOOP) printf("loop");
+        else if (stmt->hyp_types[level] == H_TILE_SPACE_LOOP) printf("tloop");
+        else printf("unknown");
+    }
+    printf(")\n\n");
 }

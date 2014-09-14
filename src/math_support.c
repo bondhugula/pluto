@@ -271,7 +271,7 @@ PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src)
 }
 
 /* Initialize matrix with val */
-void pluto_matrix_initialize(PlutoMatrix *mat, int val)
+void pluto_matrix_set(PlutoMatrix *mat, int val)
 {
     int i, j;
 
@@ -288,7 +288,7 @@ PlutoMatrix *pluto_matrix_identity(int size)
     int i;
 
     PlutoMatrix *mat = pluto_matrix_alloc(size, size);
-    pluto_matrix_initialize(mat, 0);
+    pluto_matrix_set(mat, 0);
 
     for (i=0; i<size; i++)  {
         mat->val[i][i] = 1;

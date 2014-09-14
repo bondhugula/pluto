@@ -362,7 +362,7 @@ void pluto_constraints_project_out_single(
     assert(start >= 0 && end <= cst->ncols-2);
 
     PlutoMatrix *func = pluto_matrix_alloc(cst->ncols-num, cst->ncols);
-    pluto_matrix_initialize(func, 0);
+    pluto_matrix_set(func, 0);
     for (i=0; i<start; i++) {
         func->val[i][i] = 1;
     }

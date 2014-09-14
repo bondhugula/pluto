@@ -46,7 +46,7 @@ PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
 void pluto_matrix_free(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src);
 PlutoMatrix *pluto_matrix_identity(int size);
-void pluto_matrix_initialize(PlutoMatrix *mat, int val);
+void pluto_matrix_set(PlutoMatrix *mat, int val);
 PlutoMatrix *pluto_matrix_input(FILE *fp);
 
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
