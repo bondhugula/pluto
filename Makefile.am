@@ -61,6 +61,6 @@ test: .PHO
 
 .PHO: 
 	./test.sh
-	./test.sh --tile --parallel --unroll
+	./test.sh --tile --parallel
 	./test.sh --maxfuse
 	./test.sh --nofuse

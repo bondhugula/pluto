@@ -115,15 +115,11 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
  * Construct a non-parametric set from the constraints in cst
  */
 __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
-        isl_dim *dim)
+        isl_ctx *ctx)
 {
     isl_set *set; 
-    isl_ctx *ctx = NULL;
 
-    if (dim == NULL) {
-        ctx = isl_ctx_alloc();
-        dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
-    }
+    isl_space *dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
     set = isl_set_empty(dim);
 
     while (cst != NULL) {
@@ -131,8 +127,6 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
         set = isl_set_union(set, isl_set_from_basic_set(bset));
         cst = cst->next;
     }
-
-    isl_ctx_free(ctx);
 
     return set;
 }
@@ -145,7 +139,10 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset, void *u
     isl_basic_set_free(bset);
 
     if (*cst == NULL) *cst = bcst;
-    else pluto_constraints_unionize(*cst, bcst);
+    else{
+        pluto_constraints_unionize(*cst, bcst);
+        pluto_constraints_free(bcst);
+    }
 
     return 0;
 }
@@ -342,8 +339,11 @@ int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
     // isl_set_dump(domain);
     lexmin = isl_set_lexmin(domain);
 
-    if (isl_set_is_empty(lexmin))
+    if (isl_set_is_empty(lexmin)) {
+        isl_set_free(lexmin);
+        isl_ctx_free(ctx);
         return NULL;
+    }
 
     int num_dimensions = isl_set_n_dim(lexmin);
     sol = (int64 *) malloc((num_dimensions)*sizeof(int64));
@@ -364,6 +364,7 @@ int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
 
     return sol;
 }
+
 
 PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1, 
         const PlutoConstraints *cst2)
