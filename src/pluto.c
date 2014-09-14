@@ -241,7 +241,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 /*
  * This calls pluto_constraints_solve, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
- *   permutation/substitution of variables
+ *   permutation of variables
  */
 int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 {
@@ -992,6 +992,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
+
+    if (prog->nstmts == 0) return;
 
     HyperplaneProperties *hProps = prog->hProps;
 

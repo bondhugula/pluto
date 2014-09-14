@@ -470,23 +470,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
  * resize it */
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest, const PlutoConstraints *src)
 {
-    int i;
-
-    if (src->nrows > dest->alloc_nrows || src->ncols > dest->alloc_ncols) {
-        pluto_constraints_resize(dest, PLMAX(src->nrows,dest->alloc_nrows), 
-                PLMAX(src->ncols,dest->alloc_ncols));
-    }   
-
-    dest->nrows = src->nrows;
-    dest->ncols = src->ncols;
-
-    for (i=0; i<dest->nrows; i++) {
-        memcpy(dest->val[i], src->val[i], src->ncols*sizeof(int64));
-    }
-
-    memcpy(dest->is_eq, src->is_eq, dest->nrows*sizeof(int));
-    if (src->names) pluto_constraints_set_names(dest, src->names);
-
+    pluto_constraints_copy_single(dest, src);
 
     if (src->next != NULL && dest->next != NULL)  {
         pluto_constraints_copy(dest->next, src->next);
@@ -727,7 +711,7 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
     assert(cst->next == NULL);
 
     if (nrows == 0) {
-        printf("No constraints!\n");
+        printf("No constraints (%d dimensions)!\n", cst->ncols-1);
     }
 
     for (i=0; i<nrows; i++) {
@@ -1004,11 +988,12 @@ void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
     assert(pos >= 0 && pos <= cst->ncols-2);
 
     if (cst->names) free(cst->names[pos]);
+
     for (j=pos; j<cst->ncols-1; j++) {
         for (i=0; i<cst->nrows; i++) {
             cst->val[i][j] = cst->val[i][j+1];
         }
-        if (j < cst->ncols-2 && cst->names[j+1]) {
+        if (cst->names && j < cst->ncols-2 && cst->names[j+1]) {
             cst->names[j] = cst->names[j+1];
         }
     }
@@ -1054,7 +1039,7 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos)
             rowgcd = gcd(rowgcd,abs(cst->val[i][j]));
         }
         if (i == cst->nrows)   {
-            if (rowgcd > 1)    {
+            if (rowgcd >= 2)    {
                 for (k=0; k<cst->ncols; k++)    {
                     cst->val[i][k] /= rowgcd;
                 }
@@ -1266,7 +1251,7 @@ void pluto_constraints_project_out_single(
     assert(start >= 0 && end <= cst->ncols-2);
 
     PlutoMatrix *func = pluto_matrix_alloc(cst->ncols-num, cst->ncols);
-    pluto_matrix_initialize(func, 0);
+    pluto_matrix_set(func, 0);
     for (i=0; i<start; i++) {
         func->val[i][i] = 1;
     }
@@ -1405,10 +1390,17 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst)
     int64 *sol;
     bool is_empty;
 
-    sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
-
-    is_empty = (sol == NULL);
-    if (sol != NULL) free(sol);
+    if (options->islsolve) {
+        isl_ctx *ctx = isl_ctx_alloc();
+        isl_set *iset = isl_set_from_pluto_constraints(cst, ctx);
+        is_empty = isl_set_is_empty(iset);
+        isl_set_free(iset);
+        isl_ctx_free(ctx);
+    }else{
+        sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        is_empty = (sol == NULL);
+        free(sol);
+    }
 
     if (!is_empty) return 0;
 
@@ -1512,10 +1504,10 @@ void print_polylib_visual_sets_internal(char* str, int k,  PlutoConstraints *cst
 	if(!options->moredebug)
 		return;
 
-	if(cst == NULL)
-		return;
+    if(cst == NULL)
+        return;
 
-	sprintf(name, "%si%d", str, k);
+    sprintf(name, "%si%d", str, k);
 
     printf("%s := { ", name );
     for( i=0; i<cst->ncols-1; i++){
@@ -1798,7 +1790,7 @@ void pluto_constraints_set_names(PlutoConstraints *cst, char **names)
     }
 
     for (i=0; i<cst->ncols-1; i++) {
-        cst->names[i] = strdup(names[i]);
+        cst->names[i] = names[i]? strdup(names[i]): NULL;
     }
 }
 

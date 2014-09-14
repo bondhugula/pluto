@@ -79,26 +79,26 @@ void pluto_add_dep(PlutoProg *prog, Dep *dep)
  * Returns the index for the row for the nth output dimension.
  */
 int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
-                                              int ndim){
-  int nb_ndims_found = 0;
-  int row_id = -1;
-  int i = 0;
+        int ndim){
+    int nb_ndims_found = 0;
+    int row_id = -1;
+    int i = 0;
 
-  if (relation == NULL)
-    return OSL_UNDEFINED;
-  
-  if ((relation->nb_rows < ndim) || (0 > ndim)) {
-    fprintf(stderr, "error: dimension out of bounds");
-    exit(1);
-  }
+    if (relation == NULL)
+        return OSL_UNDEFINED;
 
-  nb_ndims_found = 0;
-  for (i = 0; i < relation->nb_rows; i++) {
-    if (!osl_int_zero(relation->precision, relation->m[i][ndim])) {
-      nb_ndims_found ++;
-      row_id = i;
+    if ((relation->nb_rows < ndim) || (0 > ndim)) {
+        fprintf(stderr, "error: dimension out of bounds");
+        exit(1);
     }
-  }
+
+    nb_ndims_found = 0;
+    for (i = 0; i < relation->nb_rows; i++) {
+        if (!osl_int_zero(relation->precision, relation->m[i][ndim])) {
+            nb_ndims_found ++;
+            row_id = i;
+        }
+    }
   if (nb_ndims_found == 0) {
     fprintf(stderr, "error: specified dimension not found");
     exit(1);
@@ -586,7 +586,6 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
       osl_generic_add(&scop->extension, loopgen);
     }
 
-
     // Add pluto_unroll extension
     {
         int i;
@@ -1049,43 +1048,43 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
         switch (dep->type) {
             case OSL_DEPENDENCE_RAW: 
                 spos = get_osl_write_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->writes[spos];
                 tpos = get_osl_read_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->reads[tpos];
-                    
+
                 break;
             case OSL_DEPENDENCE_WAW: 
                 spos = get_osl_write_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->writes[spos];
                 tpos = get_osl_write_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->writes[tpos];
                 break;
             case OSL_DEPENDENCE_WAR: 
                 spos = get_osl_read_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->reads[spos];
                 tpos = get_osl_write_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->writes[tpos];
                 break;
             case OSL_DEPENDENCE_RAR: 
                 spos = get_osl_read_access_position(
-                             candl_dep->stmt_source_ptr->access,
-                             candl_dep->ref_source_access_ptr);
+                        candl_dep->stmt_source_ptr->access,
+                        candl_dep->ref_source_access_ptr);
                 dep->src_acc = stmts[dep->src]->reads[spos];
                 tpos = get_osl_read_access_position(
-                             candl_dep->stmt_target_ptr->access,
-                             candl_dep->ref_target_access_ptr);
+                        candl_dep->stmt_target_ptr->access,
+                        candl_dep->ref_target_access_ptr);
                 dep->dest_acc = stmts[dep->dest]->reads[tpos];
                 break;
             default:
@@ -1121,9 +1120,9 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
         int target_dim = stmts[dep->dest]->dim;
 
         assert(candl_dep->source_nb_output_dims_domain + 
-               candl_dep->target_nb_output_dims_domain +
-               candl_dep->stmt_source_ptr->domain->nb_parameters + 1
-               == src_dim+target_dim+npar+1);
+                candl_dep->target_nb_output_dims_domain +
+                candl_dep->stmt_source_ptr->domain->nb_parameters + 1
+                == src_dim+target_dim+npar+1);
 
         candl_dep = candl_dep->next;
     }
@@ -1332,11 +1331,12 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
 {
     int i;
 
-    fprintf(fp, "S%d \"%s\"; ndims: %d; orig_depth: %d\n", 
-            stmt->id+1, stmt->text, stmt->dim, stmt->dim_orig);
-    fprintf(fp, "Domain\n");
+    fprintf(fp, "S%d \"%s\"\n",
+            stmt->id+1, stmt->text);
+    fprintf(fp, "ndims: %d; orig_depth: %d\n",
+            stmt->dim, stmt->dim_orig);
+    fprintf(fp, "Index set\n");
     pluto_constraints_compact_print(fp, stmt->domain);
-    fprintf(fp, "Transformation\n");
     pluto_stmt_transformation_print(stmt);
 
     if (stmt->nreads==0) {
@@ -1358,7 +1358,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }
 
     for (i=0; i<stmt->dim; i++) {
-        printf("Original loop: %d -> %d\n", i, stmt->is_orig_loop[i]);
+        printf("Original loop: %d -> %s\n", i, stmt->is_orig_loop[i]?"yes":"no");
     }
 
     fprintf(fp, "\n");
@@ -1802,9 +1802,6 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 
     return map;
 }
-
-
-
 
 
 /* Temporary data structure used inside extract_deps.
@@ -3016,7 +3013,7 @@ Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level,
 
     newstmt->ploop_id = ploop_num;
 
-    pluto_matrix_initialize(newstmt->trans, 0);
+    pluto_matrix_set(newstmt->trans, 0);
     for (i=0; i<newstmt->trans->nrows; i++)   {
         newstmt->trans->val[i][i] = 1;
     }
@@ -4083,7 +4080,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     int dim = isl_set_dim(set, isl_dim_all);
     int npar = isl_set_dim(set, isl_dim_param);
     PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, dim+1);
-    pluto_matrix_initialize(trans, 0);
+    pluto_matrix_set(trans, 0);
     trans->nrows = 0;
 
     id = atoi(isl_set_get_tuple_name(set)+2);
@@ -5034,7 +5031,6 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
     for (i=0; i<nstmts; i++) {
         pluto_stmt_transformation_print(prog->stmts[i]);
     }
-
 }
 
 
@@ -5119,7 +5115,11 @@ void pluto_stmt_transformation_print(const Stmt *stmt)
             vars[j] = stmt->iterators[j];
         }
         for (j=0; j<npar; j++) {
-            vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+            if (stmt->domain->names && stmt->domain->names[stmt->dim+j]) {
+                vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+            }else{
+                vars[stmt->dim+j] = "p?";
+            }
         }
         if (level > 0) printf(", ");
         pretty_print_affine_function(stdout, stmt->trans->val[level], 
