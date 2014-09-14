@@ -1285,6 +1285,28 @@ int pluto_constraints_num_in_list(const PlutoConstraints *const cst)
     return 1 + pluto_constraints_num_in_list(cst->next);
 }
 
+/* In-place union: first argument is modified */
+PlutoConstraints *pluto_constraints_unionize(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *ucst = pluto_constraints_union(cst1, cst2);
+    pluto_constraints_copy(cst1, ucst);
+    pluto_constraints_free(ucst);
+    return cst1;
+}
+
+
+/* In-place intersection: first argument is modified */
+PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *icst = pluto_constraints_intersection(cst1, cst2);
+    pluto_constraints_copy(cst1, icst);
+    pluto_constraints_free(icst);
+
+    return cst1;
+}
+
 
 PlutoConstraints *pluto_constraints_universe(int ncols)
 {
