@@ -241,7 +241,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 /*
  * This calls pluto_constraints_solve, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
- *   permutation of the variables to get row-wise access
+ *   permutation of variables
  */
 int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 {
@@ -338,8 +338,10 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 
     PlutoConstraints *newcst_permuted;
     newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
+    pluto_matrix_free(newcstmat);
 
     sol = pluto_constraints_solve(newcst_permuted,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    /* print_polylib_visual_sets("csts", newcst); */
 
     pluto_constraints_free(newcst_permuted);
 
@@ -990,6 +992,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
+
+    if (prog->nstmts == 0) return;
 
     HyperplaneProperties *hProps = prog->hProps;
 
