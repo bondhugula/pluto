@@ -1731,24 +1731,7 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 #endif
 
 
-static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
-{
-    int *count = user;
 
-    *count += 1;
-    isl_basic_map_free(bmap);
-    return 0;
-}
-
-
-int isl_map_count(__isl_take isl_map *map, void *user)
-{
-    int r;
-
-    r = isl_map_foreach_basic_map(map, &basic_map_count, user);
-    isl_map_free(map);
-    return r;
-}
 
 
 /* Temporary data structure used inside extract_deps.

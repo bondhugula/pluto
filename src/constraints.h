@@ -141,7 +141,7 @@ void print_polylib_visual_sets(char* name, PlutoConstraints *cst);
 void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst);
 
 __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst, 
-        isl_dim *dim);
+        isl_ctx *ctx);
 PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set);
 __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
         const PlutoConstraints *cst);
@@ -149,8 +149,11 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
         __isl_keep isl_basic_set *bset);
 PlutoConstraints *isl_basic_map_to_pluto_constraints(
         __isl_keep isl_basic_map *bmap);
+int isl_basic_map_to_pluto_constraints_func_arg(__isl_keep isl_basic_map *bmap, 
+        void *user);
 __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
        isl_ctx *ctx, const PlutoConstraints *cst, int n_par, int n_in, int n_out);
+void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 #endif
