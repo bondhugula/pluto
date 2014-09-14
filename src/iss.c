@@ -272,7 +272,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
 
         /* Linearize m + 2v(p) - h.s - h.t >= 0 */
         PlutoMatrix *mat = pluto_matrix_alloc(dom->ncols, iss_cst_width);
-        pluto_matrix_initialize(mat, 0);
+        pluto_matrix_set(mat, 0);
 
         for (i=0; i<ndim; i++) {
             mat->val[i][2+i] = -1;
@@ -294,7 +294,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
         PlutoConstraints *cst1 = farkas_affine(dom, mat);
 
         /* Linearize: m - 2v(p) + h.s + h.t >= 0 */
-        pluto_matrix_initialize(mat, 0);
+        pluto_matrix_set(mat, 0);
 
         for (i=0; i<ndim; i++) {
             mat->val[i][2+i] = 1;
@@ -554,7 +554,7 @@ int get_shift_position(Hyperplane *h, int ndim, PlutoMatrix **mat)
 
     if (count == 1) {
         PlutoMatrix *shift = pluto_matrix_alloc(1, ndim+npar+1);
-        pluto_matrix_initialize(shift, 0);
+        pluto_matrix_set(shift, 0);
         for (i=ndim; i<h->ncols-1; i++) {
             shift->val[0][i] = 2*h->val[0][i]/h->val[0][pos];
         }
