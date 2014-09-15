@@ -52,7 +52,7 @@ $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).lbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --lbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
+	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
