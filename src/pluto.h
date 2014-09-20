@@ -278,6 +278,8 @@ struct plutoProg{
     /* Param context */
     PlutoConstraints *context;
 
+    /* Codegen context */
+    PlutoConstraints *codegen_context;
     /* Temp autotransform data */
     PlutoConstraints *globcst;
     PlutoConstraints **depcst;
@@ -294,7 +296,8 @@ typedef struct plutoProg PlutoProg;
 /*
  * A Ploop is NOT an AST loop; this is a dimension in the scattering tree
  * which is not a scalar one. Ploop exists in the polyhedral representation
- * and corresponds to one or more loops in the final generated AST 
+ * and corresponds to one or more loops at the *same* depth (same t<num>) in
+ * the final generated AST
  */
 typedef struct pLoop{
     int depth;
@@ -375,7 +378,8 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
-bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
+bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
+int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 
 int pluto_omp_parallelize(PlutoProg *prog);
 

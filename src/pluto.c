@@ -1185,9 +1185,7 @@ void normalize_domains(PlutoProg *prog)
     if (npar >= 1)	{
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
         for (i=0; i<prog->nstmts; i++)    {
-            PlutoConstraints *copy = 
-                pluto_constraints_alloc(2*prog->stmts[i]->domain->nrows, prog->stmts[i]->domain->ncols);
-            pluto_constraints_copy(copy, prog->stmts[i]->domain);
+            PlutoConstraints *copy = pluto_constraints_dup(prog->stmts[i]->domain);
             for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
                 fourier_motzkin_eliminate(copy, 0);
             }
@@ -1196,11 +1194,11 @@ void normalize_domains(PlutoProg *prog)
 
             if (count <= prog->nstmts*npar)    {
                 pluto_constraints_add(context, copy);
+                pluto_constraints_free(copy);
             }else{
                 pluto_constraints_free(copy);
                 break;
             }
-            pluto_constraints_free(copy);
         }
         pluto_constraints_simplify(context);
         if (options->debug) {
@@ -1528,6 +1526,10 @@ int pluto_auto_transform(PlutoProg *prog)
     int first, replace_num;
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
+
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i]->satisfied = false;
+    }
 
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);

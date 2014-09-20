@@ -203,6 +203,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 }
 
 
+
 /* Updates the statement domains and transformations to represent the new
  * tiled code. A schedule of tiles is created for parallel execution if
  * --parallel is on 
@@ -251,7 +252,7 @@ void pluto_tile(PlutoProg *prog)
         }
         if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {
-            printf("After intra_tile_opt\n");
+            printf("[pluto] After intra_tile_opt\n");
             pluto_transformations_pretty_print(prog);
         }
     }
@@ -273,7 +274,10 @@ void pluto_tile(PlutoProg *prog)
     }
 
     if (options->parallel) {
-        create_tile_schedule(prog, bands, nbands);
+        int retval = pluto_create_tile_schedule(prog, bands, nbands);
+        if (retval) {
+            pluto_transformations_pretty_print(prog);
+        }
     }
     pluto_bands_free(bands, nbands);
     pluto_bands_free(ibands, n_ibands);
@@ -343,7 +347,7 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
  *
  * Return: true if something was done, false otherwise
  */
-bool create_tile_schedule_band(PlutoProg *prog, Band *band)
+bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
 {
     int i, j, depth;
 
@@ -399,7 +403,7 @@ bool create_tile_schedule_band(PlutoProg *prog, Band *band)
 }
 
 
-bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
+bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
 {
     int i;
     bool retval = 0;
@@ -408,7 +412,7 @@ bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands)
     IF_DEBUG(pluto_bands_print(bands, nbands););
 
     for (i=0; i<nbands; i++) {
-        retval |= create_tile_schedule_band(prog, bands[i]);
+        retval |= pluto_create_tile_schedule_band(prog, bands[i]);
     }
 
     return retval;

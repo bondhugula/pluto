@@ -26,6 +26,9 @@
 #include <getopt.h>
 #include <libgen.h>
 
+#include <unistd.h>
+#include <sys/time.h>
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -77,18 +80,38 @@ void usage_message(void)
     fprintf(stdout, "       --help    | -h         Print this help menu\n");
     fprintf(stdout, "       --version | -v         Display version number\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
-    fprintf(stdout, "       --nofuse               Do not fuse across SCCs of data dependence graph\n");
-    fprintf(stdout, "       --maxfuse              Maximal fusion\n");
-    fprintf(stdout, "       --smartfuse [default]  Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
+    fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
+    fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
+    fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
+    fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
+    fprintf(stdout, "       --codegen-context=<context>       Parameters are at least as much as <context>\n");
     fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "       --moredebug    More verbose output\n");
-    fprintf(stdout, "\nTo report bugs, please send an email to <pluto-development@googlegroups.com>\n\n");
+    fprintf(stdout, "       --debug                   Verbose output\n");
+    fprintf(stdout, "       --moredebug               More verbose output\n");
+    fprintf(stdout, "\nTo report bugs, please email <pluto-development@googlegroups.com>\n\n");
+}
+
+static double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
 int main(int argc, char *argv[])
 {
     int i;
+
+    double t_start, t_c, t_d, t_t, t_all, t_start_all;
+
+    t_c = 0.0;
+
+    t_start_all = rtclock();
 
     FILE *src_fp;
 
@@ -152,7 +175,6 @@ int main(int argc, char *argv[])
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
         {"candldep", no_argument, &options->candldep, 1},
-        {"noisldep", no_argument, &options->noisldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
@@ -182,7 +204,7 @@ int main(int argc, char *argv[])
                 options->bee = 1;
                 break;
             case 'c':
-                options->context = atoi(optarg);
+                options->codegen_context = atoi(optarg);
                 break;
             case 'd':
                 break;
@@ -248,29 +270,35 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if(!strcmp(srcFileName, "stdin")){  //read from stdin
         src_fp = stdin;
         osl_interface_p registry = osl_interface_get_default_registry();
+        t_start = rtclock();
         scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+        t_d = rtclock() - t_start;
     }
     else{  // read from regular file
 
       src_fp  = fopen(srcFileName, "r");
-  
+
       if (!src_fp)   {
           fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
           pluto_options_free(options);
           return 6;
       }
-  
+
       /* Extract polyhedral representation from input program */
-  
+
       clan_options_p clanOptions = clan_options_malloc();
-  
+
       if (options->readscop){
-        osl_interface_p registry = osl_interface_get_default_registry();
-        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+          osl_interface_p registry = osl_interface_get_default_registry();
+          t_start = rtclock();
+          scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+          t_d = rtclock() - t_start;
       }else{
-        scop = clan_scop_extract(src_fp, clanOptions);
+          t_start = rtclock();
+          scop = clan_scop_extract(src_fp, clanOptions);
+          t_d = rtclock() - t_start;
       }
-  
+
       if (!scop || !scop->statement)   {
           fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                   srcFileName);
@@ -282,7 +310,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
           fprintf(srcfp, "%s\n", srcFileName);
           fclose(srcfp);
       }
-  
+
       clan_options_free(clanOptions);
 
       /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
@@ -291,7 +319,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Convert clan scop to Pluto program */
     PlutoProg *prog = scop_to_pluto_prog(scop, options);
-
 
     /* Backup irregular program portion in .scop. */
     char* irroption = NULL;
@@ -309,8 +336,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
-    if (options->noisldep == 1) {
-        options->isldep = 0;
+    if (options->isldep && options->candldep) {
+        printf("[pluto] WARNING: using --isldep (only one of isldep and candldep should be specified)\n");
+        printf("[pluto]        : enabling --isldep\n");
+        options->candldep = 0;
+    }
+
+    /* isldep is the default */
+    if (!options->isldep && !options->candldep) {
+        options->isldep = 1;
     }
 
     if (options->nolastwriter == 1) {
@@ -352,11 +386,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
         fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
     }
-
+    t_start = rtclock();
     /* Auto transformation */
     if (!options->identity) {
         pluto_auto_transform(prog);
     }
+    t_t = rtclock() - t_start;
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
@@ -368,6 +403,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile)   {
         pluto_tile(prog);
+
+        if (options->lbtile) {
+            pluto_reschedule_tile(prog);
+        }
     }else{
         if (options->intratileopt) {
             int retval = pluto_intra_tile_optimize(prog, 0); 
@@ -388,7 +427,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         int nbands;
         Band **bands;
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-        bool retval = create_tile_schedule(prog, bands, nbands);
+        bool retval = pluto_create_tile_schedule(prog, bands, nbands);
         pluto_bands_free(bands, nbands);
 
         /* If the user hasn't supplied --tile and there is only pipelined
@@ -403,9 +442,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->tile && !options->silent)  {
-        IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
-        IF_DEBUG(pluto_transformations_pretty_print(prog););
-        IF_DEBUG(pluto_print_hyperplane_properties(prog););
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->unroll || options->polyunroll)    {
@@ -430,8 +469,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
         }
     }
-
-
 
     if(!strcmp(srcFileName, "stdin")){  //input stdin == output stdout
       pluto_populate_scop(scop, prog, options);
@@ -504,7 +541,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   
   
       /* Generate code using Cloog and add necessary stuff before/after code */
+      t_start = rtclock();
       pluto_multicore_codegen(cloogfp, outfp, prog);
+      t_c = rtclock() - t_start;
   
       FILE *tmpfp = fopen(".outfilename", "w");
       if (tmpfp)    {
@@ -518,9 +557,21 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     }
 
-    pluto_options_free(options);
+
+    t_all = rtclock() - t_start_all;
+
+    if (options->time) {
+        printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
+        printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+        printf("[pluto] Code generation time: %0.6lfs\n", t_c);
+        printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
+        printf("[pluto] Total time: %0.6lfs\n", t_all);
+        printf("[times] %0.6lf %0.6lf %.6lf %.6lf\n", t_d, t_t, t_c,
+             t_all-t_c-t_t-t_d);
+    }
 
     pluto_prog_free(prog);
+    pluto_options_free(options);
 
     osl_scop_free(scop);
 
