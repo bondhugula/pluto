@@ -178,6 +178,7 @@ int main(int argc, char *argv[])
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
+        {"time", no_argument, &options->time, 1},
         {0, 0, 0, 0}
     };
 

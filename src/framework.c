@@ -135,7 +135,8 @@ static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 
 
 /* Builds legality constraints for a non-uniform dependence */
-static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog)
+static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog,
+		PlutoConstraints **bounding_cst)
 {
     PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
@@ -436,27 +437,35 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
-        const PlutoProg *prog)
+        PlutoProg *prog)
 {
     int i, nstmts, nvar, npar;
-    PlutoConstraints **depcst, *globcst;
+    PlutoConstraints *globcst ;
 
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
-    depcst = prog->depcst;
     globcst = prog->globcst;
 
-    if (!depcst)   {
-        depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
+    if (!prog->depcst)   {
+        prog->depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
         for (i=0; i<ndeps; i++) {
-            depcst[i] = NULL;
+            prog->depcst[i] = NULL;
+        }
+    }
+
+    if (!prog->dep_bounding_cst)   {
+        prog->dep_bounding_cst= (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
+        for (i=0; i<ndeps; i++) {
+            prog->dep_bounding_cst[i] = NULL;
         }
     }
 
     int total_cst_rows = 0;
+    PlutoConstraints **depcst = prog->depcst;
+    PlutoConstraints **dep_bounding_cst = prog->dep_bounding_cst;
 
-#pragma omp parallel for reduction(+:total_cst_rows)
+// #pragma omp parallel for reduction(+:total_cst_rows)
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
@@ -468,7 +477,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             /* First time, get the constraints */
 
             /* All dependences treated as non-uniform dependences */
-            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog);
+            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog, &dep_bounding_cst[i]);
 
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
             total_cst_rows += depcst[i]->nrows;
@@ -487,12 +496,6 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
         }
-
-        /* Note that dependences would be marked satisfied (in
-         * pluto_auto_transform) only after all possible independent solutions 
-         * are found to the formulation
-         */ 
-        if (dep_is_satisfied(dep)) continue;
 
         FILE *fp = fopen("skipdeps.txt", "r");
 
@@ -514,6 +517,22 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             }
         }
 
+
+        /* Note that dependences would be marked satisfied (in
+         * pluto_auto_transform) only after all possible independent solutions
+         * are found to the formulation
+         */
+        if (dep_is_satisfied(dep)){
+			//Only add the bounding constraints when a dep
+				pluto_constraints_add(globcst, dep_bounding_cst[i]);
+                //if(options->data_dist){
+                //pluto_constraints_add(globcst, dep_bounding_cst[i]);
+                //pluto_constraints_add(globcst, depcst[i]);
+                //}
+			continue;
+        }
+
+
         /* Subsequent calls can just use the old ones */
         pluto_constraints_add(globcst, depcst[i]);
 
@@ -522,7 +541,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
         }
         pluto_constraints_simplify(globcst);
-        // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
+        /* pluto_constraints_pretty_print(stdout, globcst); */
     }
 
     pluto_constraints_simplify(globcst);
