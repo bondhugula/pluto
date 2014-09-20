@@ -84,6 +84,8 @@ typedef struct pluto_access{
 } PlutoAccess;
 
 
+
+
 struct statement{
     int id;
 
@@ -116,6 +118,9 @@ struct statement{
      *       stmt->dim + npar + 1 after auto_transform (after denormalize)
      */
     PlutoMatrix *trans;
+
+    /* The last hyperplane for the diamond tiling transformation */
+    PlutoMatrix *last_con_start_enabling_hyperplane;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
@@ -278,7 +283,10 @@ struct plutoProg{
     PlutoConstraints **depcst;
     PlutoConstraints **dep_bounding_cst;
 
-    /* Pointer toScoplib structure */
+    /* Hyperplane that was replaced in case concurrent start 
+     * had been found*/
+    int rep_hyp_pos;
+
     osl_scop_p scop;
 };
 typedef struct plutoProg PlutoProg;

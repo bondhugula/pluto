@@ -340,7 +340,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
     pluto_matrix_free(newcstmat);
 
-    sol = pluto_constraints_solve(newcst_permuted,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_solve(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
     pluto_constraints_free(newcst_permuted);
@@ -1205,7 +1205,7 @@ void normalize_domains(PlutoProg *prog)
         pluto_constraints_simplify(context);
         if (options->debug) {
             printf("Global constraint context\n");
-            pluto_constraints_print(stdout, context );
+            pluto_constraints_pretty_print(stdout, context );
         }
 
         /* Add context to every dep polyhedron */
@@ -1313,6 +1313,10 @@ void denormalize_domains(PlutoProg *prog)
             if (!stmt->is_orig_loop[j-del_count]) {
                 pluto_stmt_remove_dim(stmt, j-del_count, prog);
                 del_count++;
+
+                if (stmt->last_con_start_enabling_hyperplane) {
+                    pluto_matrix_remove_col(stmt->last_con_start_enabling_hyperplane, j-del_count);
+                }
             }
         }
 
@@ -1325,15 +1329,203 @@ void denormalize_domains(PlutoProg *prog)
     }
 }
 
+/* VB: Find the face that is allowing concurrent start
+ * Used while lbtile option is set
+ * Currently, the outermost loop is being assumed as the face with
+ * concurrent start */
+int *find_face_allowing_con_start(PlutoProg * prog)
+{
+    int i;
+    int *face =  (int *) malloc(sizeof(int) * prog->nvar);
+    for (i=0;i<prog->nvar;i++)
+      face[i] = (i==0)?1:0;
+    return face;
+}
+
+
+/*
+ * Find hyperplane inside the cone  of previously found hyperplanes 
+ * and the face allowing concurrent start
+ *
+ * cone_complement: in case of partial concurrent start, the hyperplane to be
+ * used
+ *
+ * replace_num: position of the hyperplane to be replaced with one enabling
+ * concurrent start
+ */
+int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoProg *prog)
+{
+    int nstmts= prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+    int ndeps = prog->ndeps;
+    Stmt **stmts = prog->stmts;
+    Dep **deps = prog->deps;
+
+    int *bestsol;
+    PlutoConstraints *con_start_cst;
+
+    PlutoConstraints *basecst,*lastcst,*currcst;
+    basecst = get_permutability_constraints(deps, ndeps, prog);
+    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
+    pluto_constraints_copy(currcst, basecst);
+
+    /*At this point currcst contains only validity constraints,
+     * we don't add non-zero constraints as they are implicitly 
+     * taken care of
+     */
+    int i, j, k, lambda_k;
+
+    /* lastcst is the set of additional constraints */
+    lastcst = pluto_constraints_alloc(2*nvar*nstmts, CST_WIDTH+nvar*nstmts);
+
+    /* we first add: all lambdas >=1 */
+    for (i=0; i<nstmts; i++) {
+        int stmt_offset = npar+1+nstmts*(nvar+1)+i*nvar;
+        for (j=0; j<nvar; j++)  {
+            pluto_constraints_add_inequality(lastcst);
+            lastcst->val[lastcst->nrows-1][stmt_offset+j] =1;
+            lastcst->val[lastcst->nrows-1][lastcst->ncols-1] = -1;
+        }
+    }
+
+    /* Now, add the constraints for the new hyperplane to be in the cone
+     * of the face and the negatives of the hyperplanes already found */
+    for (i=0; i<nstmts; i++) {
+        int stmt_offset1= npar+1+i*(nvar+1);
+        int stmt_offset2= npar+1+nstmts*(nvar+1)+i*nvar;
+        for (j=0; j<nvar; j++)  {
+            pluto_constraints_add_equality(lastcst);
+            lastcst->val[lastcst->nrows-1][stmt_offset1+j] =1;
+
+            int *face = find_face_allowing_con_start(prog);
+            lastcst->val[lastcst->nrows-1][stmt_offset2] = -(face[j]);
+            free(face);
+
+            if (options->partlbtile) {
+                lastcst->val[lastcst->nrows-1][stmt_offset2+1] = 
+                    prog->stmts[i]->trans->val[cone_complement][j];
+            }else{
+                lambda_k=0;
+                for(k=0;k<prog->stmts[i]->trans->nrows;k++){
+                    if(k != replace_num && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
+                        lastcst->val[lastcst->nrows-1][stmt_offset2+lambda_k+1] = prog->stmts[i]->trans->val[k][j];
+                        lambda_k++;
+                    }
+                }
+            }
+            lastcst->val[lastcst->nrows-1][lastcst->ncols-1] = 0;
+        }
+    }
+
+    /*
+     * con_start_cst serves the same purpose as currcst, but with expanded
+     * constraint-width to incorporate lambdas
+     */
+    con_start_cst = pluto_constraints_dup(basecst);
+    for (i=0; i<nvar*nstmts; i++) {
+        pluto_constraints_add_dim(con_start_cst, basecst->ncols-1, NULL);
+    }
+
+    pluto_constraints_add(con_start_cst, lastcst);
+    pluto_constraints_free(lastcst);
+    // pluto_constraints_pretty_print(stdout, con_start_cst);
+    bestsol = pluto_constraints_solve(con_start_cst, ALLOW_NEGATIVE_COEFF);
+
+    /* pluto_constraints_solve is being called directly */
+    if (bestsol == NULL) {
+        printf("[pluto] No concurrent start possible");
+    }else{
+        for (j=0; j<nstmts; j++)    {
+            Stmt *stmt = stmts[j];
+            stmt->last_con_start_enabling_hyperplane = pluto_matrix_alloc(1,stmt->dim+npar+1);
+        }
+        for (j=0; j<nstmts; j++)    {
+            Stmt *stmt = stmts[j];
+            for (k=0; k<nvar; k++)    {
+                stmt->last_con_start_enabling_hyperplane->val[0][k] =
+                    bestsol[npar+1+j*(nvar+1)+k];
+            }
+            /* No parameteric shifts */
+            for (k=nvar; k<nvar+npar; k++)    {
+                stmt->last_con_start_enabling_hyperplane->val[0][k] = 0;
+            }
+            stmt->last_con_start_enabling_hyperplane->val[0][nvar+npar] =
+                bestsol[npar+1+j*(nvar+1)+nvar];
+        }
+        pluto_constraints_free(con_start_cst);
+        free(bestsol);
+    }
+
+    pluto_constraints_free(basecst);
+    pluto_constraints_free(currcst);
+    return (prog->stmts[0]->last_con_start_enabling_hyperplane == NULL)? 0:1; 
+}
+
+
+
+//check if k'th row for any statement is the face allowing concurrent start
+int is_concurrent_start_face(PlutoProg *prog, int k)
+{
+    int i,j;
+    for(i=0;i<prog->nstmts;i++){
+        if(prog->stmts[i]->trans->val[k][0]!=1) return 0;
+        for(j=1;j<prog->nvar;j++){
+            if(prog->stmts[i]->trans->val[k][j]!=0) return 0;
+        }
+    }
+    return 1;
+}
+
+/* Find the hyperplace parallel to the concurrent start face 
+ * that will be replaced; if there is none, return
+ * the last hyperplane
+ */
+int find_hyperplane_to_be_replaced(PlutoProg *prog, int first, int sols_found)
+{
+    int j;
+    for(j=first; j<first+sols_found-1; j++){
+        if (is_concurrent_start_face(prog, j)) return j;
+    }
+    /* Return the last one */
+    return first + sols_found - 1; 
+}
+
+int get_first_non_scalar_hyperplane(PlutoProg *prog, int start, int end)
+{
+    int i;
+    for(i=start;i<end;i++){
+        if(prog->stmts[0]->hyp_types[i]==H_LOOP) return i;
+    }
+    return -1;
+}
+
+
+static void swap_prog_hyperplanes_with_last(PlutoProg *prog, int first)
+{
+    int i, j, temp;
+    for(i=0; i<prog->nstmts; i++){
+        assert(prog->stmts[i]->last_con_start_enabling_hyperplane != NULL);
+        for(j=0;j<prog->stmts[i]->trans->ncols;j++){
+            temp = prog->stmts[i]->trans->val[first][j];
+            prog->stmts[i]->trans->val[first][j] =
+                prog->stmts[i]->last_con_start_enabling_hyperplane->val[0][j];
+            prog->stmts[i]->last_con_start_enabling_hyperplane->val[0][j] = temp;
+        }
+    }
+}
+
+
 
 /* Top-level automatic transformation algoritm */
 int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j;
-    int num_ind_sols, depth;
+    int num_ind_sols, depth, num_ind_sols_non_scalar;
     bool lin_ind_mode;
     bool loop_search_mode;
 
+    int first, replace_num;
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
@@ -1391,6 +1583,22 @@ int pluto_auto_transform(PlutoProg *prog)
         }
     }
 
+    for (j=0; j<nstmts; j++)    {
+        Stmt *stmt = stmts[j];
+        stmt->last_con_start_enabling_hyperplane = NULL;
+    }
+
+    /* 
+     * For diamond tiling */
+    /* cone_complement:
+     * If we are trying to find a hyperplane h1 such that the face f 
+     * is in the cone of h1 and previously found hyperplane, then h2 
+     * is the cone_complement of h1
+     */
+    int cone_complement = -1;
+    int con_start_possible = 1;
+    int con_start_found = 0;
+
     do{
         int sols_found;
 
@@ -1402,10 +1610,59 @@ int pluto_auto_transform(PlutoProg *prog)
         sols_found = find_permutable_hyperplanes(prog, lin_ind_mode, 
                 loop_search_mode, PLMAX(1,nsols-num_ind_sols));
 
-        IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n", 
+        IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
                     depth, sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
+
         num_ind_sols = pluto_get_max_ind_hyps(prog);
+        num_ind_sols_non_scalar = pluto_get_max_ind_hyps_non_scalar(prog);
+        first = 0;
+        replace_num = 0;
+
+        if (options->lbtile && con_start_possible && 
+                con_start_found == 0 && sols_found != 0){
+            if (num_ind_sols_non_scalar == 1){
+                if (is_concurrent_start_face(prog, 
+                            get_first_non_scalar_hyperplane(prog, 0, 
+                                prog->num_hyperplanes))
+                   ){
+                    /* At this stage, only one hyperplane has been found and if this is
+                     * the face, we cannot discard it unless we choose to give up
+                     * fusion. So, we just report that concurrent start is not
+                     * possible
+                     */
+                    printf("\n[pluto] No concurrent start possible\n");
+                    con_start_possible = 0;
+                }else{
+                    /* At this stage, the only hyperplane found is not the face
+                     * allowing concurrent start, so we use it to find the hyperplane
+                     * allowing concurrent start in the next iteration
+                     */
+                    cone_complement = get_first_non_scalar_hyperplane(prog, 0 , 
+                            prog->num_hyperplanes);
+                }
+            }else if (num_ind_sols_non_scalar >= 2){
+                first = get_first_non_scalar_hyperplane(prog,
+                        prog->num_hyperplanes - sols_found,
+                        prog->num_hyperplanes);
+                /* 
+                 * Find hyperplane that will be replaced by the newly found
+                 * hyperplane
+                 */
+                replace_num = find_hyperplane_to_be_replaced(prog, first, sols_found);
+
+                /* If we haven't yet found the cone_complement, just choose the first
+                 * one as the cone_complement */
+                if (cone_complement == -1) cone_complement = first;
+
+                /* If first hyperplane itself is to be replaced, choose the next
+                 * one as cone_complement */
+                if (replace_num == first) cone_complement++ ;
+                con_start_possible = find_cone_complement_hyperplane(cone_complement, 
+                        replace_num, prog);
+                con_start_found = con_start_possible;
+            }
+        }
 
         if (sols_found > 0) {
             for (j=0; j<sols_found; j++)      {
@@ -1473,6 +1730,20 @@ int pluto_auto_transform(PlutoProg *prog)
 
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog->deps, prog->ndeps));
+
+    /* Re-arrange the transformation matrix if concurrent start
+     * was found, store the replaced hyperplane so that it can be 
+     * put back for the right intra-tile order
+     */
+    if (con_start_found) {
+        printf("[Pluto] Concurrent start hyperplanes found\n");
+        swap_prog_hyperplanes_with_last(prog, first);  
+        prog->rep_hyp_pos = first;
+        if (replace_num != first){
+            swap_prog_hyperplanes_with_last(prog, replace_num);
+            prog->rep_hyp_pos = replace_num;
+        }
+    }
 
     denormalize_domains(prog);
 

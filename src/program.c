@@ -2476,6 +2476,9 @@ PlutoOptions *pluto_options_alloc()
     options->parallel = 0;
     options->innerpar = 0;
     options->identity = 0;
+
+    options->lbtile = 0;
+    options->partlbtile = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */
@@ -2514,6 +2517,8 @@ PlutoOptions *pluto_options_alloc()
     options->isldep = 0;
     options->noisldep = 0;
     options->isldepcompact = 0;
+
+    options->candldep = 0;
 
     options->islsolve = 0;
 

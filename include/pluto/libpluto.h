@@ -14,6 +14,11 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
+    /* Load-balanced tiling */
+    int lbtile;
+
+    /* Load-balanced tiling (one dimensional concurrent start)*/
+    int partlbtile;
     /* parallelization */
     int parallel;
 
@@ -98,6 +103,9 @@ struct plutoOptions{
     /* Use isl to compute dependences */
     int isldep;
     int noisldep;
+
+    /* Use candl to compute dependences */
+    int candldep;
 
     /* Compact dependences with ISL */
     int isldepcompact;

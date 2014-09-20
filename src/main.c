@@ -52,12 +52,14 @@ void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
-    fprintf(stdout, "       --tile               Tile for locality\n");
-    fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
-    fprintf(stdout, "       --parallel             Automatically parallelize using OpenMP pragmas\n");
-    fprintf(stdout, "       | --parallelize\n");
-    fprintf(stdout, "       --l2tile               Tile a second time (typically for L2 cache) - disabled by default \n");
+    fprintf(stdout, "       --tile                    Tile for locality\n");
+    fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
+    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
+    fprintf(stdout, "       --parallel                Automatically parallelize using OpenMP pragmas\n");
+    fprintf(stdout, "     | --parallelize\n");
     fprintf(stdout, "       --multipipe            Extract two degrees of pipelined parallelism if possible;\n");
+    fprintf(stdout, "       --lbtile | --diamond-tile Enables full dimensional concurrent start\n");
+    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
     fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
     fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
     fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
@@ -109,6 +111,10 @@ int main(int argc, char *argv[])
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
+        {"nointratileopt", no_argument, &options->intratileopt, 0},
+        {"lbtile", no_argument, &options->lbtile, 1},
+        {"part-diamond-tile", no_argument, &options->partlbtile, 1},
+        {"partlbtile", no_argument, &options->partlbtile, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -145,6 +151,7 @@ int main(int argc, char *argv[])
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
+        {"candldep", no_argument, &options->candldep, 1},
         {"noisldep", no_argument, &options->noisldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
@@ -309,6 +316,20 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->nolastwriter == 1) {
         options->lastwriter = 0;
     }
+
+    if (options->identity == 1) {
+        options->partlbtile = 0;
+        options->lbtile = 0;
+    }
+
+    if (options->partlbtile == 1 && options->lbtile == 0)    {
+        options->lbtile = 1;
+    }
+
+    if (options->lbtile == 1 && options->tile == 0)    {
+        options->tile = 1;
+    }
+
     if (options->multipipe == 1 && options->parallel == 0)    {
         fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
         options->parallel = 1;

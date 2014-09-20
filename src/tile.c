@@ -21,6 +21,7 @@
  */
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #include "pluto.h"
 #include "post_transform.h"
@@ -449,4 +450,33 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
         }
     }
     *bandStart = *bandEnd = lastloop;
+}
+
+
+/*
+ * Reschedule a concurrent start tile
+ */
+void pluto_reschedule_tile(PlutoProg *prog)
+{
+    int i, j, tmp;
+    for (i=0; i<prog->nstmts; i++){
+        if (prog->stmts[i]->last_con_start_enabling_hyperplane) {
+            int rep_hyp_pos = prog->rep_hyp_pos;
+            int fl = prog->stmts[i]->num_tiled_loops;
+            /* The replaced hyperplane is stored in
+             * last_con_start_enabling_hyperplane (UGLY) */
+            PlutoMatrix *rep_hyp = prog->stmts[i]->last_con_start_enabling_hyperplane;
+            assert(prog->stmts[i]->num_tiled_loops + rep_hyp->ncols == prog->stmts[i]->trans->ncols);
+            for (j=0; j<rep_hyp->ncols;j++) {
+                tmp = rep_hyp->val[0][j];
+                rep_hyp->val[0][j] = prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j];
+                prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j] = tmp;
+            }
+        }
+    }
+
+    if (!options->silent) {
+        printf("After intra_tile reschedule\n");
+        pluto_transformations_pretty_print(prog);
+    }
 }
