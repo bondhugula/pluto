@@ -2405,8 +2405,6 @@ PlutoProg *pluto_prog_alloc()
     prog->num_hyperplanes = 0;
 
     prog->globcst = NULL;
-    prog->depcst = NULL;
-    prog->dep_bounding_cst = NULL;
 
     return prog;
 }
@@ -2454,18 +2452,7 @@ void pluto_prog_free(PlutoProg *prog)
 
     pluto_constraints_free(prog->context);
     pluto_constraints_free(prog->codegen_context);
-    if (prog->depcst) {
-        for (i=0; i<prog->ndeps; i++) {
-            pluto_constraints_free(prog->depcst[i]);
-        }
-    }
-    if (prog->dep_bounding_cst) {
-        for (i=0; i<prog->ndeps; i++) {
-            pluto_constraints_free(prog->dep_bounding_cst[i]);
-        }
-    }
-    free(prog->depcst);
-    free(prog->dep_bounding_cst);
+
     pluto_constraints_free(prog->globcst);
 
     free(prog);

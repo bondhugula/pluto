@@ -294,8 +294,6 @@ struct plutoProg{
     PlutoConstraints *codegen_context;
     /* Temp autotransform data */
     PlutoConstraints *globcst;
-    PlutoConstraints **depcst;
-    PlutoConstraints **dep_bounding_cst;
 
     /* Hyperplane that was replaced in case concurrent start 
      * had been found*/
