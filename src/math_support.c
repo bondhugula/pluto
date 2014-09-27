@@ -62,12 +62,14 @@ void pluto_matrix_free(PlutoMatrix *mat)
 {
     int i;
 
-    for (i=0; i<mat->alloc_nrows; i++) {
-        free(mat->val[i]);
-    }
+    if (mat) {
+        for (i=0; i<mat->alloc_nrows; i++) {
+            free(mat->val[i]);
+        }
 
-    free(mat->val);
-    free(mat);
+        free(mat->val);
+        free(mat);
+    }
 }
 
 
@@ -555,6 +557,52 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat)
     return rank;
 }
 
+
+void pluto_matrix_swap_rows(PlutoMatrix *mat, int r1, int r2)
+{
+    int tmp;
+    int j;
+
+    for (j=0; j<mat->ncols; j++) {
+        tmp = mat->val[r2][j];
+        mat->val[r2][j] = mat->val[r1][j];
+        mat->val[r1][j] = tmp;
+    }
+
+}
+
+/* Reverse the order of rows in the matrix */
+void pluto_matrix_reverse_rows(PlutoMatrix *mat)
+{
+    int i;
+
+    for (i=0; i<mat->nrows/2; i++) {
+        pluto_matrix_swap_rows(mat, i, mat->nrows-1-i);
+    }
+}
+
+/*
+ * Construct a PlutoMatrix with the same content as the given isl_mat.
+ */
+PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
+{
+    int i, j;
+    int rows, cols;
+    PlutoMatrix *pluto;
+
+    rows = isl_mat_rows(mat);
+    cols = isl_mat_cols(mat);
+    pluto = pluto_matrix_alloc(rows, cols);
+
+    for (i = 0; i < rows; ++i)
+        for (j = 0; j < cols; ++j) {
+            isl_val *v = isl_mat_get_element_val(mat, i, j);
+            pluto->val[i][j] = isl_val_get_num_si(v);
+            isl_val_free(v);
+        }
+
+    return pluto;
+}
 
 /*
  * Pretty prints a one-dimensional affine function

@@ -1269,18 +1269,18 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
 
         count = 0;
         while (rlist != NULL)   {
-           
+
             PlutoMatrix *rmat = osl_access_relation_to_pluto_matrix(rlist->elt);
             stmt->reads[count] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
             stmt->reads[count]->mat = rmat;
 
             //stmt->reads[count]->symbol = NULL;
             if(arrays){
-              int id = osl_relation_get_array_id(rlist->elt);
-              stmt->reads[count]->name = strdup(arrays->names[id-1]);
+                int id = osl_relation_get_array_id(rlist->elt);
+                stmt->reads[count]->name = strdup(arrays->names[id-1]);
             }
             else{
-              stmt->reads[count]->name = NULL;
+                stmt->reads[count]->name = NULL;
             }
 
             count++;
@@ -1375,6 +1375,8 @@ void pluto_dep_free(Dep *dep)
     if (dep->dirvec) {
         free(dep->satvec);
     }
+    pluto_constraints_free(dep->valid_cst);
+    pluto_constraints_free(dep->bounding_cst);
     free(dep);
 }
 
@@ -1542,7 +1544,7 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
     eq = isl_mat_alloc(ctx, n_row, n_col);
 
     if(relation->nb_rows==1){
-      isl_int_set_si(v, -1);
+        isl_int_set_si(v, -1);
       eq = isl_mat_set_element(eq, 0, 0, v);
       for (j = 1; j < n_col; ++j) {
         isl_int_set_si(v, 0);
@@ -2900,6 +2902,9 @@ Dep *pluto_dep_alloc()
     dep->dirvec = NULL;
     dep->src_acc = NULL;
     dep->dest_acc = NULL;
+    dep->valid_cst = NULL;
+    dep->bounding_cst = NULL;
+    dep->src_unique_dpolytope = NULL;
 
     return dep;
 }
@@ -2915,6 +2920,11 @@ Dep *pluto_dep_dup(Dep *d)
     dep->src_acc = d->src_acc;
     dep->dest_acc = d->dest_acc;
     dep->dpolytope = pluto_constraints_dup(d->dpolytope);
+
+    dep->src_unique_dpolytope = 
+        d->src_unique_dpolytope? pluto_constraints_dup(
+                d->src_unique_dpolytope):NULL;
+
     dep->depsat_poly =  d->depsat_poly? 
         pluto_constraints_dup(d->depsat_poly):NULL;
     dep->satvec = NULL; // TODO
@@ -2922,6 +2932,8 @@ Dep *pluto_dep_dup(Dep *d)
     dep->satisfied = d->satisfied;
     dep->satisfaction_level = d->satisfaction_level;
     dep->dirvec = NULL; // TODO
+    dep->valid_cst = d->valid_cst? pluto_constraints_dup(d->valid_cst): NULL;
+    dep->bounding_cst = d->bounding_cst? pluto_constraints_dup(d->bounding_cst): NULL;
 
     return dep;
 }

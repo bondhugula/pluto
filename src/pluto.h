@@ -181,6 +181,12 @@ struct dependence{
      */
     PlutoConstraints *dpolytope;
 
+    /*
+     * Polyhedra used to store source unique dependence polyhedra
+     * in FOP scheme
+     */
+    PlutoConstraints *src_unique_dpolytope;
+
     PlutoConstraints *depsat_poly;
 
     int *satvec;
@@ -193,6 +199,12 @@ struct dependence{
 
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
+
+    /* Constraints for validity of a transformation */
+    PlutoConstraints *valid_cst;
+
+    /* Constraints for bounding the dependence distance */
+    PlutoConstraints *bounding_cst;
 
     /* Dependence direction in transformed space */
     DepDir *dirvec;

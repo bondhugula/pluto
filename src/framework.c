@@ -134,9 +134,8 @@ static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 #endif
 
 
-/* Builds legality constraints for a non-uniform dependence */
-static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog,
-		PlutoConstraints **bounding_cst)
+/* Builds validity constraints for a non-uniform dependence */
+static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 {
     PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
@@ -427,11 +426,40 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         }
     }
 
+    PlutoConstraints *bounding_cst = NULL;
+
+    /* Copy only the bounding constraints */
+    if (!options->nobound) {
+
+		bounding_cst = pluto_constraints_alloc(comm_farkas_cst->nrows, CST_WIDTH);
+		bounding_cst->ncols = CST_WIDTH;
+		bounding_cst->nrows = comm_farkas_cst->nrows;
+
+		for (k=0; k<comm_farkas_cst->nrows; k++)   {
+			for (j=0; j<(bounding_cst)->ncols; j++)  {
+				(bounding_cst)->val[k][j] = 0;
+			}
+		}
+
+		assert(cst->ncols == bounding_cst->ncols);
+
+		for (k=0; k<comm_farkas_cst->nrows; k++)   {
+			for (j=0; j<bounding_cst->ncols; j++)  {
+				bounding_cst->val[k][j] = cst->val[farkas_cst->nrows+k][j];
+			}
+		}
+
+    }
+
     pluto_constraints_free(farkas_cst);
     pluto_constraints_free(comm_farkas_cst);
     pluto_constraints_free(dpoly);
 
-    return cst;
+    free(dep->valid_cst);
+    dep->valid_cst = cst;
+
+    free(dep->bounding_cst);
+    dep->bounding_cst = bounding_cst;
 }
 
 
@@ -447,25 +475,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     npar = prog->npar;
     globcst = prog->globcst;
 
-    if (!prog->depcst)   {
-        prog->depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
-        for (i=0; i<ndeps; i++) {
-            prog->depcst[i] = NULL;
-        }
-    }
-
-    if (!prog->dep_bounding_cst)   {
-        prog->dep_bounding_cst= (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
-        for (i=0; i<ndeps; i++) {
-            prog->dep_bounding_cst[i] = NULL;
-        }
-    }
-
     int total_cst_rows = 0;
-    PlutoConstraints **depcst = prog->depcst;
-    PlutoConstraints **dep_bounding_cst = prog->dep_bounding_cst;
 
-// #pragma omp parallel for reduction(+:total_cst_rows)
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
@@ -473,14 +484,13 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             continue;
         }
 
-        if (!depcst[i]) {
+        if (dep->valid_cst == NULL) {
             /* First time, get the constraints */
+            compute_permutability_constraints_dep(dep, prog);
 
-            /* All dependences treated as non-uniform dependences */
-            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog, &dep_bounding_cst[i]);
-
-            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
-            total_cst_rows += depcst[i]->nrows;
+            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", 
+                        i+1, dep->valid_cst->nrows));
+            total_cst_rows += dep->valid_cst->nrows;
             /* IF_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1)); */
             /* IF_DEBUG(pluto_constraints_pretty_print(stdout, depcst[i])); */
         }
@@ -492,6 +502,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
+
+		print_polylib_visual_sets("BB_cst", dep->bounding_cst);
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
@@ -517,24 +529,23 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
             }
         }
 
-
         /* Note that dependences would be marked satisfied (in
          * pluto_auto_transform) only after all possible independent solutions
          * are found to the formulation
          */
-        if (dep_is_satisfied(dep)){
-			//Only add the bounding constraints when a dep
-				pluto_constraints_add(globcst, dep_bounding_cst[i]);
-                //if(options->data_dist){
-                //pluto_constraints_add(globcst, dep_bounding_cst[i]);
-                //pluto_constraints_add(globcst, depcst[i]);
-                //}
+        if (dep_is_satisfied(dep) && dep->bounding_cst){
+			/* Add only the bounding constraints when a dep is satisfied */
+            pluto_constraints_add(globcst, dep->bounding_cst);
+            //if(options->data_dist){
+            //pluto_constraints_add(globcst, dep_bounding_cst[i]);
+            //pluto_constraints_add(globcst, depcst[i]);
+            //}
 			continue;
         }
 
-
         /* Subsequent calls can just use the old ones */
-        pluto_constraints_add(globcst, depcst[i]);
+        pluto_constraints_add(globcst, dep->valid_cst);
+        print_polylib_visual_sets("global", dep->valid_cst);
 
         IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, globcst->nrows));
         if (globcst->nrows >= 0.7*MAX_CONSTRAINTS)  {
@@ -583,27 +594,6 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
 /*
  * Construct a PlutoMatrix with the same content as the given isl_mat.
  */
-static PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
-{
-    int i, j;
-    int rows, cols;
-    PlutoMatrix *pluto;
-
-    rows = isl_mat_rows(mat);
-    cols = isl_mat_cols(mat);
-    pluto = pluto_matrix_alloc(rows, cols);
-
-    for (i = 0; i < rows; ++i)
-        for (j = 0; j < cols; ++j) {
-            isl_val *v = isl_mat_get_element_val(mat, i, j);
-            pluto->val[i][j] = isl_val_get_num_si(v);
-            isl_val_free(v);
-        }
-
-    return pluto;
-}
-
-
 /*
  * Returns linear independence constraints for a single statement.
  *
@@ -744,15 +734,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
         orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
-        // printf("currcst\n");
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
-        // pluto_constraints_pretty_print(stdout, currcst);
-        // printf("orthcst\n");
-        // pluto_constraints_pretty_print(stdout, orthcst[p]);
-        // isl_basic_set_dump(orthcst_i);
-        // isl_basic_set_dump(isl_currcst);
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(orthcst_i)));
-        // assert(!isl_basic_set_fast_is_empty(isl_basic_set_copy(isl_currcst)));
 
         orthcst_i = isl_basic_set_intersect(orthcst_i,
                 isl_basic_set_copy(isl_currcst));
