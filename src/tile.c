@@ -513,7 +513,10 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
  */
 void pluto_reschedule_tile(PlutoProg *prog)
 {
-    int i, j, tmp;
+    int i, j, tmp, retval;
+
+    retval = 0;
+
     for (i=0; i<prog->nstmts; i++){
         if (prog->stmts[i]->last_con_start_enabling_hyperplane) {
             int rep_hyp_pos = prog->rep_hyp_pos;
@@ -527,11 +530,17 @@ void pluto_reschedule_tile(PlutoProg *prog)
                 rep_hyp->val[0][j] = prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j];
                 prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j] = tmp;
             }
+            retval = 1;
         }
     }
 
-    if (!options->silent) {
-        printf("After intra_tile reschedule\n");
-        pluto_transformations_pretty_print(prog);
+
+    if (retval) {
+        pluto_detect_transformation_properties(prog);
+
+        if (!options->silent) {
+            printf("After intra_tile reschedule\n");
+            pluto_transformations_pretty_print(prog);
+        }
     }
 }
