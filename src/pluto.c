@@ -243,7 +243,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation of variables
  */
-int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
+int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
     int nstmts, nvar, npar;
@@ -256,7 +256,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     /* Remove redundant variables - that don't appear in your outer loops */
     int redun[npar+1+nstmts*(nvar+1)+1];
     int i, j, k, q;
-    int *sol, *fsol;
+    int64 *sol, *fsol;
     PlutoConstraints *newcst;
 
     assert(cst->ncols-1 == npar+1+nstmts*(nvar+1));
@@ -308,7 +308,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
 
     for (i=0; i<newcst->ncols; i++) {
-        bzero(perm_mat->val[i], sizeof(int)*newcst->ncols);
+        bzero(perm_mat->val[i], sizeof(int64)*newcst->ncols);
     }
 
     for (i=0; i<npar+1; i++) {
@@ -357,7 +357,7 @@ int *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
         }
         free(sol);
 
-        fsol = (int *)malloc(cst->ncols*sizeof(int));
+        fsol = (int64 *)malloc(cst->ncols*sizeof(int64));
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
         for (j=0; j<cst->ncols-1; j++) {
@@ -689,7 +689,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         bool loop_search_mode, int max_sols)
 {
     int num_sols_found, j, k;
-    int *bestsol;
+    int64 *bestsol;
     PlutoConstraints *basecst, *nzcst;
     PlutoConstraints *currcst;
 
@@ -887,7 +887,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
 
                     for (j=0; j<nvar; j++)    {
                         if (stmts[i]->is_orig_loop[j])  {
-                            fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][j]);
+                            fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][j]);
                         }else{
                             stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
                         }
@@ -897,7 +897,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                         stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar] = 0;
                     }
                     /* Constant part */
-                    fscanf(precut, "%d", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
+                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
 
                     // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] = 
                     // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
@@ -1360,7 +1360,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
 
-    int *bestsol;
+    int64 *bestsol;
     PlutoConstraints *con_start_cst;
 
     PlutoConstraints *basecst,*lastcst,*currcst;
@@ -1405,8 +1405,8 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
                     prog->stmts[i]->trans->val[cone_complement][j];
             }else{
                 lambda_k=0;
-                for(k=0;k<prog->stmts[i]->trans->nrows;k++){
-                    if(k != replace_num && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
+                for(k=0; k<prog->stmts[i]->trans->nrows; k++){
+                    if (k != replace_num && prog->stmts[i]->hyp_types[k]!= H_SCALAR){
                         lastcst->val[lastcst->nrows-1][stmt_offset2+lambda_k+1] = prog->stmts[i]->trans->val[k][j];
                         lambda_k++;
                     }
@@ -1432,7 +1432,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
 
     /* pluto_constraints_solve is being called directly */
     if (bestsol == NULL) {
-        printf("[pluto] No concurrent start possible");
+        printf("[pluto] No concurrent start possible\n");
     }else{
         for (j=0; j<nstmts; j++)    {
             Stmt *stmt = stmts[j];
@@ -1462,7 +1462,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
 
 
 
-//check if k'th row for any statement is the face allowing concurrent start
+//check if the k'th row for any statement is the face allowing concurrent start
 int is_concurrent_start_face(PlutoProg *prog, int k)
 {
     int i,j;
@@ -1488,6 +1488,8 @@ int find_hyperplane_to_be_replaced(PlutoProg *prog, int first, int sols_found)
     /* Return the last one */
     return first + sols_found - 1; 
 }
+
+
 
 int get_first_non_scalar_hyperplane(PlutoProg *prog, int start, int end)
 {

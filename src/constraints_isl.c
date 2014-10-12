@@ -317,9 +317,10 @@ int isl_basic_map_to_pluto_constraints_func_arg(
 
 /* Use isl to solve these constraints (solves just for the first element if
  * it's a list of constraints */
-int *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar) 
+int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar) 
 {
-    int i, *sol;
+    int i;
+    int64 *sol;
     isl_ctx *ctx;
     isl_basic_set *bset, *all_positive;
     isl_set *domain, *all_positive_set, *lexmin;
@@ -345,7 +346,7 @@ int *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
     }
 
     int num_dimensions = isl_set_n_dim(lexmin);
-    sol = (int *) malloc((num_dimensions)*sizeof(int));
+    sol = (int64 *) malloc((num_dimensions)*sizeof(int64));
 
     // As the set is non parametric, there is only a single point in the set.
     // This point is the lexicographic minimum of the set.
@@ -363,6 +364,21 @@ int *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
 
     return sol;
 }
+
+PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    isl_set *set1 = isl_set_from_pluto_constraints(cst1, NULL);
+    isl_set *set2 = isl_set_from_pluto_constraints(cst2, NULL);
+    isl_set *set3 = isl_set_union(set1, set2);
+
+    PlutoConstraints *ucst = isl_set_to_pluto_constraints(set3);
+
+    isl_set_free(set3);
+
+    return ucst;
+}
+
 
 static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
 {

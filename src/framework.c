@@ -37,37 +37,6 @@
 
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
 
-/*
- * Returns the best candidate to eliminate (exact index in cst)
- * max_elim: maximum number of variables to eliminate (from the right)
- */
-static int best_elim_candidate(const PlutoConstraints *cst, int max_elim)
-{
-    int **csm, i, j, ub, lb, cost;
-
-    int min_cost = cst->nrows*cst->nrows/4;
-    int best_candidate = cst->ncols-2;
-
-    csm = cst->val;
-
-    for (j=cst->ncols-2; j > cst->ncols-2-max_elim; j--)    {
-        ub=0;
-        lb=0;
-        for (i=0; i < cst->nrows; i++)    {
-            if (csm[i][j] > 0) ub++;
-            else if (csm[i][j] < 0) lb++;
-        }
-        /* cost = MIN(lb, ub); */
-        cost = lb*ub;
-        if (cost < min_cost)    {
-            min_cost = cost;
-            best_candidate = j;
-        }
-    }
-
-    return best_candidate;
-}
-
 
 
 /**
@@ -579,7 +548,7 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
     }
 
     for (i=0; i<num_elim; i++)  {
-        best_elim = best_elim_candidate(farkas_cst, num_elim-i);
+        best_elim = pluto_constraints_best_elim_candidate(farkas_cst, num_elim-i);
         fourier_motzkin_eliminate(farkas_cst, best_elim);
         if (options->moredebug) {
             printf("After elimination of %d variable: %d constraints\n", 
@@ -788,7 +757,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     PlutoConstraints *cst;
-    int j, src_dim, dest_dim, *sol, npar;
+    int j, src_dim, dest_dim, npar;
+    int64 *sol;
     bool retval;
 
     npar = prog->npar;
@@ -889,7 +859,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    int64 *sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     if (!sol)   {
         for (j=0; j<src_dim; j++)    {

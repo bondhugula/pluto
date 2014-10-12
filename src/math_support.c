@@ -43,13 +43,13 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
 
     mat = (PlutoMatrix *) malloc(sizeof(PlutoMatrix));
 
-    mat->val = (int **) malloc(PLMAX(alloc_nrows,1)*sizeof(int *));
+    mat->val = (int64 **) malloc(PLMAX(alloc_nrows,1)*sizeof(int64 *));
 
     mat->alloc_nrows = PLMAX(alloc_nrows,1);
     mat->alloc_ncols = PLMAX(alloc_ncols,1);
 
     for (i=0; i<mat->alloc_nrows; i++) {
-        mat->val[i] = (int *) malloc(mat->alloc_ncols*sizeof(int));
+        mat->val[i] = (int64 *) malloc(mat->alloc_ncols*sizeof(int64));
     }
 
     mat->nrows = alloc_nrows;
@@ -112,14 +112,14 @@ void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
     int alloc_nrows = PLMAX(nrows,mat->alloc_nrows);
     int alloc_ncols = PLMAX(ncols,mat->alloc_ncols);
 
-    mat->val = (int **) realloc(mat->val, alloc_nrows*sizeof(int *));
+    mat->val = (int64 **) realloc(mat->val, alloc_nrows*sizeof(int64 *));
 
     for (i=mat->alloc_nrows; i<alloc_nrows; i++)    {
         mat->val[i] = NULL;
     }
 
     for (i=0; i<alloc_nrows; i++) {
-        mat->val[i] = (int *) realloc(mat->val[i], alloc_ncols*sizeof(int));
+        mat->val[i] = (int64 *) realloc(mat->val[i], alloc_ncols*sizeof(int64));
     }
 
     mat->alloc_nrows = alloc_nrows;
@@ -163,6 +163,14 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos)
 
     for (j=0; j<mat->ncols; j++)    {
         mat->val[pos][j] = -mat->val[pos][j];
+    }
+}
+
+void pluto_matrix_negate(PlutoMatrix *mat)
+{
+    int r;
+    for (r=0; r<mat->nrows; r++)    {
+        pluto_matrix_negate_row(mat, r);
     }
 }
 
@@ -331,7 +339,7 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat)
 
     for (i=0; i<mat->nrows; i++)
         for (j=0; j<mat->ncols; j++)
-            fscanf(fp, "%d", &mat->val[i][j]);
+            fscanf(fp, "%lld", &mat->val[i][j]);
 }
 
 PlutoMatrix *pluto_matrix_input(FILE *fp)
@@ -343,7 +351,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp)
 
     for (i=0; i<mat->nrows; i++)
         for (j=0; j<mat->ncols; j++)
-            fscanf(fp, "%d", &mat->val[i][j]);
+            fscanf(fp, "%lld", &mat->val[i][j]);
 
     return mat;
 }
@@ -359,7 +367,7 @@ void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat)
 
     for (i=0; i<mat->nrows; i++) {
         for (j=0; j<mat->ncols; j++) {
-            fprintf(fp, "%s%d ", mat->val[i][j]>=0? " ":"", mat->val[i][j]);
+            fprintf(fp, "%s%lld ", mat->val[i][j]>=0? " ":"", mat->val[i][j]);
         }
         fprintf(fp, "\n");
     }
@@ -428,7 +436,7 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos)
 }
 
 /* Eliminate variables from start to end (inclusive); start is 0-indexed
- */
+*/
 void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
 {
     int i;
@@ -439,7 +447,7 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
 }
 
 
-inline int lcm(int a, int b)
+inline int64 lcm(int64 a, int64 b)
 {
     if (a*b == 0) return 0;
     return (a*b)/gcd(a,b);
@@ -447,7 +455,7 @@ inline int lcm(int a, int b)
 
 
 /* Assuming both args are not zero */
-inline int gcd(int a, int b)
+inline int64 gcd(int64 a, int64 b)
 {
     a = abs(a);
     b = abs(b);
@@ -461,7 +469,7 @@ inline int gcd(int a, int b)
 }
 
 
-int *min_lexical(int *a, int *b, int num)   
+int64 *min_lexical(int64 *a, int64 *b, int64 num)   
 {
     int i;
 
@@ -536,6 +544,7 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat)
     return mat;
 }
 
+/* Rank of the matrix */
 int pluto_matrix_get_rank(const PlutoMatrix *mat)
 {
     int i, j, null, rank;
@@ -560,7 +569,7 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat)
 
 void pluto_matrix_swap_rows(PlutoMatrix *mat, int r1, int r2)
 {
-    int tmp;
+    int64 tmp;
     int j;
 
     for (j=0; j<mat->ncols; j++) {
@@ -610,7 +619,7 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
  * func should have ndims+1 elements (affine function)
  * vars: names of the variables; if NULL, x0, x1, ... are used
  */
-void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
+void pretty_print_affine_function(FILE *fp, int64 *func, int ndims, char **vars)
 {
     char *var[ndims];
     int j;
@@ -634,18 +643,18 @@ void pretty_print_affine_function(FILE *fp, int *func, int ndims, char **vars)
         }else if (func[j] != 0)  {
             if (sign_flag) fprintf(fp, "+");
             if (func[j] > 0) {
-                fprintf(fp, "%d%s", func[j], var[j]);
+                fprintf(fp, "%lld%s", func[j], var[j]);
             }else{
-                fprintf(fp, "(%d%s)", func[j], var[j]);
+                fprintf(fp, "(%lld%s)", func[j], var[j]);
             }
         }
         if (func[j] != 0) sign_flag = 1;
     }
     if (func[ndims] >= 1)  {
         if (sign_flag) fprintf(fp, "+");
-        fprintf(fp, "%d", func[ndims]);
+        fprintf(fp, "%lld", func[ndims]);
     }else{
-        if (!sign_flag) fprintf(fp, "%d", func[ndims]);
+        if (!sign_flag) fprintf(fp, "%lld", func[ndims]);
     }
 
     for (j=0; j<ndims; j++)  {
