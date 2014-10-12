@@ -349,14 +349,24 @@ int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
 {
     int i, nbands, retval;
     Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+
     retval = 0;
     for (i=0; i<nbands; i++) {
         retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog); 
     }
     pluto_bands_free(bands, nbands);
+
+    if (retval) {
+        /* Detect properties again */
+        pluto_detect_transformation_properties(prog);
+        if (!options->silent) {
+            printf("[pluto] After intra-tile optimize\n");
+            pluto_transformations_pretty_print(prog);
+        }
+    }
+
     return retval;
 }
-
 
 
 

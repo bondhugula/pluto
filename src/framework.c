@@ -465,7 +465,9 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         }
     }
 
-    if (!globcst) globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    if (!globcst) {
+        globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    }
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
@@ -479,12 +481,10 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         }
 
         FILE *fp = fopen("skipdeps.txt", "r");
-
         if (fp) {
             int num;
             int found = 0;
-
-            while(!feof(fp)) {
+            while (!feof(fp)) {
                 fscanf(fp, "%d", &num);
                 if (i == num-1) {
                     found = 1;
@@ -492,7 +492,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
                 }
             }
             fclose(fp);
-            if (found)  {
+            if (found) {
                 printf("Skipping dep %d\n", num);
                 continue;
             }
@@ -516,9 +516,12 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         pluto_constraints_add(globcst, dep->valid_cst);
         print_polylib_visual_sets("global", dep->valid_cst);
 
-        IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, globcst->nrows));
-        if (globcst->nrows >= 0.7*MAX_CONSTRAINTS)  {
-            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
+        IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+ 1,
+                    globcst->nrows));
+        if (globcst->nrows >= 0.7 * MAX_CONSTRAINTS) {
+            IF_DEBUG(fprintf(stdout,
+                        "After dep: %d; num_constraints_simplified: %d\n", i + 1,
+                        globcst->nrows));
         }
         pluto_constraints_simplify(globcst);
         /* pluto_constraints_pretty_print(stdout, globcst); */
@@ -527,7 +530,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     pluto_constraints_simplify(globcst);
 
     IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, \
-num variables: %d\n", globcst->nrows, globcst->ncols-1));
+                num variables: %d\n", globcst->nrows, globcst->ncols-1));
 
     return globcst;
 }
