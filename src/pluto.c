@@ -94,7 +94,7 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog)
 
     for (i=0; i<prog->ndeps; i++) {
         prog->deps[i]->satisfied =  false;
-        prog->deps[i]->satisfaction_level =  prog->num_hyperplanes;
+        prog->deps[i]->satisfaction_level =  prog->num_hyperplanes-1;
     }
 
     for (i=0; i<prog->num_hyperplanes; i++) {
