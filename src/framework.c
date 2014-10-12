@@ -471,7 +471,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
-    for (i=0; i<ndeps; i++) {
+    /* Add constraints to globcst */
+    for (i = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
 		print_polylib_visual_sets("BB_cst", dep->bounding_cst);
@@ -530,11 +531,12 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     pluto_constraints_simplify(globcst);
 
     IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, \
-                num variables: %d\n", globcst->nrows, globcst->ncols-1));
+                num variables: %d\n",
+                globcst->nrows, globcst->ncols - 1));
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
     return globcst;
 }
-
 
 /*
  * Eliminates the last num_elim variables from farkas_cst -- these are the

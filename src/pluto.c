@@ -301,11 +301,12 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
             IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
             pluto_constraints_add_ub(newcst, npar+1+i, ub);
         }
-        for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        }
+    }
+    for (i=0; i<newcst->ncols-npar-1-1; i++)  {
+        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
         pluto_constraints_add_lb(newcst, npar+1+i, 0);
     }
+
 
     /* Reverse the variable order for stmts */
     PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);

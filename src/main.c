@@ -426,15 +426,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }else{
         if (options->intratileopt) {
-            int retval = pluto_intra_tile_optimize(prog, 0); 
-            if (retval) {
-                /* Detect properties again */
-                pluto_detect_transformation_properties(prog);
-                if (!options->silent) {
-                    printf("[Pluto] after intra tile opt\n");
-                    pluto_transformations_pretty_print(prog);
-                }
-            }
+            pluto_intra_tile_optimize(prog, 0);
         }
     }
 
@@ -456,12 +448,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             IF_DEBUG(pluto_print_hyperplane_properties(prog););
         }
-    }
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->unroll || options->polyunroll)    {
