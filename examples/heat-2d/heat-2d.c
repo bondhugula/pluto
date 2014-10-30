@@ -18,7 +18,7 @@
 #ifdef HAS_DECLS
 #include "decls.h"
 #else
-#define N 1600L
+#define N 4000L
 #define T 1000L
 #endif
 
