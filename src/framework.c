@@ -437,7 +437,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         PlutoProg *prog)
 {
-    int i, nstmts, nvar, npar;
+    int i, inc, nstmts, nvar, npar;
     PlutoConstraints *globcst;
 
     nstmts = prog->nstmts;
