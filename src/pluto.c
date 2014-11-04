@@ -302,6 +302,11 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
             pluto_constraints_add_ub(newcst, npar+1+i, ub);
         }
     }
+    /* Lower bound for bounding coefficients */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(newcst, i, 0);
+    }
+    /* Lower bound for transformation coefficients */
     for (i=0; i<newcst->ncols-npar-1-1; i++)  {
         IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
         pluto_constraints_add_lb(newcst, npar+1+i, 0);
