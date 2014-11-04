@@ -43,10 +43,6 @@
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
 #define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
 
-
-#define MAX_CONSTRAINTS 10000
-#define MAX_FARKAS_CST  2000
-
 #define MAX_TILING_LEVELS 2
 
 #define DEFAULT_L1_TILE_SIZE 32

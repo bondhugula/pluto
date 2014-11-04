@@ -35,9 +35,11 @@
 #include <isl/set.h>
 #include "candl/candl.h"
 
+
+#define CONSTRAINTS_SIMPLIFY_THRESHOLD 5000
+#define MAX_FARKAS_CST  2000
+
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
-
-
 
 /**
  *
@@ -431,21 +433,22 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     dep->bounding_cst = bounding_cst;
 }
 
-
 /* This function itself is NOT thread-safe for the same PlutoProg */
-PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
+PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         PlutoProg *prog)
 {
     int i, nstmts, nvar, npar;
-    PlutoConstraints *globcst ;
+    PlutoConstraints *globcst;
 
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+
     globcst = prog->globcst;
 
     int total_cst_rows = 0;
 
+    /* Compute the constraints and store them */
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
@@ -472,7 +475,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     globcst->nrows = 0;
 
     /* Add constraints to globcst */
-    for (i = 0; i < ndeps; i++) {
+    for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
 		print_polylib_visual_sets("BB_cst", dep->bounding_cst);
@@ -519,19 +522,29 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
         IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+ 1,
                     globcst->nrows));
-        if (globcst->nrows >= 0.7 * MAX_CONSTRAINTS) {
+        /* This is for optimization as opposed to for correctness. We will
+         * simplify constraints only if it crosses the threshold: at the time
+         * it crosses the threshold or at 1000 increments thereon. Simplifying
+         * each time slows down Pluto whenever there are few hundreds of
+         * dependences. Not simplifying at all also leads to a slow down
+         * because it leads to a large globcst and a number of constraits in
+         * it are redundant */
+        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+                globcst->nrows - dep->valid_cst->nrows < 
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+            pluto_constraints_simplify(globcst);
             IF_DEBUG(fprintf(stdout,
-                        "After dep: %d; num_constraints_simplified: %d\n", i + 1,
+                        "After dep: %d; num_constraints_simplified: %d\n", i+1,
                         globcst->nrows));
+            if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                inc++;
+            }
         }
-        pluto_constraints_simplify(globcst);
-        /* pluto_constraints_pretty_print(stdout, globcst); */
     }
 
     pluto_constraints_simplify(globcst);
 
-    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, \
-                num variables: %d\n",
+    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
     IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
@@ -806,7 +819,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     retval = (sol)? false:true;
