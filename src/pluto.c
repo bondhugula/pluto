@@ -1370,18 +1370,15 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
 
+    IF_DEBUG(printf("[pluto] finding cone complement hyperplane\n"););
+
     int64 *bestsol;
     PlutoConstraints *con_start_cst;
 
-    PlutoConstraints *basecst,*lastcst,*currcst;
+    PlutoConstraints *basecst, *lastcst;
+    /* Don't free basecst */
     basecst = get_permutability_constraints(deps, ndeps, prog);
-    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
-    pluto_constraints_copy(currcst, basecst);
 
-    /*At this point currcst contains only validity constraints,
-     * we don't add non-zero constraints as they are implicitly 
-     * taken care of
-     */
     int i, j, k, lambda_k;
 
     /* lastcst is the set of additional constraints */
@@ -1427,7 +1424,7 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
     }
 
     /*
-     * con_start_cst serves the same purpose as currcst, but with expanded
+     * con_start_cst serves the same purpose as Pluto ILP formulation, but with expanded
      * constraint-width to incorporate lambdas
      */
     con_start_cst = pluto_constraints_dup(basecst);
@@ -1437,18 +1434,24 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
 
     pluto_constraints_add(con_start_cst, lastcst);
     pluto_constraints_free(lastcst);
+    // printf("Cone complement constraints\n");
     // pluto_constraints_pretty_print(stdout, con_start_cst);
+
+    /* pluto_constraints_solve is being called directly */
     bestsol = pluto_constraints_solve(con_start_cst, ALLOW_NEGATIVE_COEFF);
+    pluto_constraints_free(con_start_cst);
 
     /* pluto_constraints_solve is being called directly */
     if (bestsol == NULL) {
         printf("[pluto] No concurrent start possible\n");
     }else{
-        for (j=0; j<nstmts; j++)    {
+        printf("[pluto] Concurrent start possible\n");
+        for (j=0; j<nstmts; j++) {
             Stmt *stmt = stmts[j];
-            stmt->last_con_start_enabling_hyperplane = pluto_matrix_alloc(1,stmt->dim+npar+1);
+            stmt->last_con_start_enabling_hyperplane =
+                pluto_matrix_alloc(1, stmt->dim+npar+1);
         }
-        for (j=0; j<nstmts; j++)    {
+        for (j=0; j<nstmts; j++) {
             Stmt *stmt = stmts[j];
             for (k=0; k<nvar; k++)    {
                 stmt->last_con_start_enabling_hyperplane->val[0][k] =
@@ -1461,16 +1464,11 @@ int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoP
             stmt->last_con_start_enabling_hyperplane->val[0][nvar+npar] =
                 bestsol[npar+1+j*(nvar+1)+nvar];
         }
-        pluto_constraints_free(con_start_cst);
         free(bestsol);
     }
 
-    pluto_constraints_free(basecst);
-    pluto_constraints_free(currcst);
     return (prog->stmts[0]->last_con_start_enabling_hyperplane == NULL)? 0:1; 
 }
-
-
 
 //check if the k'th row for any statement is the face allowing concurrent start
 int is_concurrent_start_face(PlutoProg *prog, int k)
