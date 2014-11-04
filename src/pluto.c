@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -56,7 +56,7 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
     int ndeps = prog->ndeps;
     Dep **deps = prog->deps;
 
-    num_new_carried=0;
+    num_new_carried = 0;
 
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
@@ -538,18 +538,23 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg)
     return num_new_carried;
 }
 
-
 /* Heuristic cut */
 void cut_smart(PlutoProg *prog, Graph *ddg)
 {
     if (ddg->num_sccs == 0) return;
+
+    if (pluto_transformations_full_ranked(prog)) {
+        /* Enough linearly independent solutions have been found */
+        cut_all_sccs(prog, ddg);
+        return;
+    }
 
     int i, j;
 
     int num_new_carried = 0;
 
     /* First time, cut between SCCs of different dimensionalities */
-    if (cut_scc_dim_based(prog,ddg))   {
+    if (cut_scc_dim_based(prog, ddg)) {
         return;
     }
 
@@ -1358,7 +1363,7 @@ int *find_face_allowing_con_start(PlutoProg * prog)
  */
 int find_cone_complement_hyperplane(int cone_complement, int replace_num, PlutoProg *prog)
 {
-    int nstmts= prog->nstmts;
+    int nstmts = prog->nstmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
     int ndeps = prog->ndeps;
