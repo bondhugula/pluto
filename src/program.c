@@ -2522,7 +2522,6 @@ PlutoOptions *pluto_options_alloc()
     options->readscop = 0;
 
     options->lastwriter = 0;
-    options->nolastwriter = 0;
 
     options->nobound = 0;
 
@@ -3340,7 +3339,9 @@ int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2)
     return 1;
 }
 
-void add_if_new(PlutoAccess ***accs, int *num, PlutoAccess *new)
+/* Add new to accs if it's an access to a variable not already contained in
+ * accs */
+void add_if_new_var(PlutoAccess ***accs, int *num, PlutoAccess *new)
 {
     int i;
 
@@ -3359,7 +3360,7 @@ void add_if_new(PlutoAccess ***accs, int *num, PlutoAccess *new)
 
 
 /* Get all write accesses in the program */
-PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num)
+PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num)
 {
     int i;
 
@@ -3368,7 +3369,7 @@ PlutoAccess **pluto_get_all_waccs(PlutoProg *prog, int *num)
 
     for (i=0; i<prog->nstmts; i++) {
         assert(prog->stmts[i]->nwrites == 1);
-        add_if_new(&accs, num, prog->stmts[i]->writes[0]);
+        add_if_new_var(&accs, num, prog->stmts[i]->writes[0]);
     }
     return accs;
 }

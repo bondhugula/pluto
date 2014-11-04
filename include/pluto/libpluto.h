@@ -111,7 +111,6 @@ struct plutoOptions{
 
     /* Compute lastwriter for dependences */
     int lastwriter;
-    int nolastwriter;
 
     /* DEV: Don't use cost function */
     int nobound;
