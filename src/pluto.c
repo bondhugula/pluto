@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdio.h>
@@ -1620,7 +1620,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         sols_found = find_permutable_hyperplanes(prog, lin_ind_mode, 
-                loop_search_mode, PLMAX(1,nsols-num_ind_sols));
+                loop_search_mode, nsols-num_ind_sols);
 
         IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
                     depth, sols_found));
@@ -1704,7 +1704,7 @@ int pluto_auto_transform(PlutoProg *prog)
             }else{
                 /* Only one SCC */
                 if (lin_ind_mode == EAGER)   {
-                    IF_DEBUG2(printf("Switching to incremental ortho constr mode\n"););
+                    IF_DEBUG(printf("Switching to LAZY mode\n"););
                     lin_ind_mode = LAZY;
                     /* loop_search_mode = LAZY; */
                 }else{
