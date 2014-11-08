@@ -4326,12 +4326,14 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     int nvar, npar, nstmts, max_sched_rows;
     char **params;
 
+    IF_DEBUG(printf("[pluto] Pet to Pluto stmts\n"););
+
     npar = isl_set_dim(pscop->context, isl_dim_all);
     nstmts = pscop->n_stmt;
 
     if (nstmts == 0)    return NULL;
 
-    IF_DEBUG(printf("Pet SCoP context\n"););
+    IF_DEBUG(printf("[pluto] Pet SCoP context\n"););
     IF_DEBUG(isl_set_dump(pscop->context););
 
     params = NULL;
@@ -4412,6 +4414,8 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
             stmt->text = (char *) malloc(len+1);
             strcpy(stmt->text, pstmt->stmt_text);
             stmt->text[len-1]='\0'; 
+            free(pstmt->stmt_text);
+            pstmt->stmt_text = NULL;
         }else stmt->text = strdup("/* unknown - failure constructing stmt body */");
 
         /*
@@ -4459,8 +4463,8 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
          //   pluto_access_print(stdout, stmt->reads[j]);
         //}
 
-        // isl_union_map_free(reads);
-        // isl_union_map_free(writes);
+        isl_union_map_free(reads);
+        isl_union_map_free(writes);
     }
 
     for (j=0; j<npar; j++) {
@@ -4579,9 +4583,10 @@ static __isl_give isl_id_list *generate_names(isl_ctx * ctx, struct pet_stmt * s
     names = isl_id_list_alloc(ctx, 20);
 
     k = isl_printer_to_str(ctx);
-    k=isl_printer_print_map(k, isl_map_copy(stmt->schedule));
-    char * map_text= isl_printer_get_str(k);
-    char * cur;
+    k = isl_printer_print_map(k, stmt->schedule);
+    char *map_text= isl_printer_get_str(k);
+    isl_printer_free(k);
+    char *cur;
 
     /* Read from the map text and populate the id list*/
 
@@ -4608,6 +4613,7 @@ static __isl_give isl_id_list *generate_names(isl_ctx * ctx, struct pet_stmt * s
     id = isl_id_alloc(ctx, buffer, NULL);
     names = isl_id_list_add(names, id);
     //printf("map_text: %s", map_text);
+    free(map_text);
 
     return names;
 }
@@ -4635,7 +4641,6 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
                 isl_die(ctx, isl_error_internal, "cannot find statement",
                         isl_ast_node_free(node); node = NULL);
 
-        map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
         map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
         map = isl_map_reverse(map);
         iterator_map = isl_pw_multi_aff_from_map(map);
@@ -4679,7 +4684,7 @@ static __isl_give isl_printer *print_user(__isl_take isl_printer *p,
     isl_id_free(id);
 
     k = pet_stmt_print_body(stmt, k, ref2expr);
-    stmt->stmt_text= isl_printer_get_str(k);
+    stmt->stmt_text = isl_printer_get_str(k);
     isl_printer_free(k);
 
     isl_ast_print_options_free(print_options);
@@ -4782,7 +4787,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
  */
 PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions *options)
 {
-    int i, max_sched_rows, npar;
+    int i, j, max_sched_rows, npar;
 
     if (pscop == NULL) return NULL;
 
@@ -4898,13 +4903,13 @@ osl_relation_p get_identity_schedule(int dim, int npar)
         osl_int_set_si(rln->precision, &rln->m[2*i-1][i], 1);
     }
 
-  rln->type = OSL_TYPE_SCATTERING;
-  rln->nb_parameters = npar;
-  rln->nb_output_dims = dim;
-  rln->nb_input_dims = 0;
-  rln->nb_local_dims  = 0;
+    rln->type = OSL_TYPE_SCATTERING;
+    rln->nb_parameters = npar;
+    rln->nb_output_dims = dim;
+    rln->nb_input_dims = 0;
+    rln->nb_local_dims  = 0;
 
-  return rln;
+    return rln;
 }
 
 
