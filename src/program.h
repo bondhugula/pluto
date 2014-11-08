@@ -81,7 +81,7 @@ char *get_parametric_bounding_box(const PlutoConstraints *cst, int start,
         int num, int npar, const char **params);
 
 void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
-void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level);
+void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level, int offset);
 
 int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts);
 int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
