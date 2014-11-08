@@ -208,6 +208,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 }
 
 
+
 /* Updates the statement domains and transformations to represent the new
  * tiled code. A schedule of tiles is created for parallel execution if
  * --parallel is on 
@@ -265,34 +266,45 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
+
+    /* Detect properties again after tiling */
+    pluto_detect_transformation_properties(prog);
+
+    if (!options->silent)  {
+        fprintf(stdout, "[Pluto] After tiling:\n");
+        pluto_transformations_pretty_print(prog);
+        pluto_print_hyperplane_properties(prog);
+    }
+
     if (options->intratileopt) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
             retval |= pluto_intra_tile_optimize_band(bands[i], 1, prog); 
         }
-        if (retval && !options->silent) {
-            printf("[pluto] After intra_tile_opt\n");
-            pluto_transformations_pretty_print(prog);
+        if (retval) {
+            pluto_detect_transformation_properties(prog);
+            if (!options->silent) {
+                printf("[pluto] After intra-tile optimize\n");
+                pluto_transformations_pretty_print(prog);
+            }
         }
     }
-
-    /* Detect properties again after tiling */
-    pluto_detect_transformation_properties(prog);
 
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
             int num_tiling_levels = options->tile + options->l2tile;
-            retval |= pluto_pre_vectorize_band(bands[i], num_tiling_levels, prog); 
+            retval |= pluto_pre_vectorize_band(bands[i], num_tiling_levels, prog);
         }
         if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {
-            printf("After pre_vectorize:\n");
+            printf("After pre-vectorize:\n");
             pluto_transformations_pretty_print(prog);
+            pluto_print_hyperplane_properties(prog);
         }
     }
 
-    if (options->parallel || options->dynschedule_graph || options->dynschedule) {
+    if (options->parallel) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
         if (retval) {
             pluto_transformations_pretty_print(prog);

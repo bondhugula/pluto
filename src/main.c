@@ -26,6 +26,9 @@
 #include <getopt.h>
 #include <libgen.h>
 
+#include <unistd.h>
+#include <sys/time.h>
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -56,42 +59,22 @@ void usage_message(void)
     fprintf(stdout, "\nOptions:\n");
     fprintf(stdout, "       --pet                     Use libpet for polyhedral extraction instead of clan [default - clan]\n");
     fprintf(stdout, "\n");
-    fprintf(stdout, "       --tile               Tile for locality\n");
-    fprintf(stdout, "       --lbtile             Tile for load-balance\n");
-    fprintf(stdout, "       --partlbtile             Tile for load-balance (one-dimensional)\n");
-    fprintf(stdout, "       --intratileopt       Optimize intra-tile execution order for locality\n");
+    fprintf(stdout, "       --tile                    Tile for locality\n");
+    fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
     fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP)\n");
-    fprintf(stdout, "       | --parallelize\n");
-    fprintf(stdout, "       --lbtile                  Enables full dimensional concurrent start\n");
+    fprintf(stdout, "     | --parallelize\n");
+    fprintf(stdout, "       --lbtile | --diamond-tile Enables full dimensional concurrent start\n");
     fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
     fprintf(stdout, "       --multipipe               Extract two or more degrees of pipelined parallelism if possible;\n");
-    fprintf(stdout, "                                 by default one degree is extracted (if it exists)\n");
-    fprintf(stdout, "       --variables_not_global    Variables not declared globally (if so, macros provide variable declarations)\n");
-    fprintf(stdout, "\n   Runtime               Options related to compilation for a runtime\n");
-    fprintf(stdout, "       --dynschedule             Dynamically schedule tasks on processors using Synthesized Runtime Interface\n");
-    fprintf(stdout, "                                     (for shared and distributed memory)\n");
-    fprintf(stdout, "       --dynschedule_graph       Dynamically schedule tasks on processors using Intel TBB Flow Graph\n");
-    fprintf(stdout, "                                     (only for shared-memory)\n");
-    fprintf(stdout, "       --dataflow                Alias to --dynschedule\n");
-    fprintf(stdout, "\n   Architecture          Options related to compilation for a specific architecture\n");
-#ifdef PLUTO_OPENCL
-    fprintf(stdout, "       --opencl                  Generate OpenCL code \n");
-#endif
-    fprintf(stdout, "\n   Analysis              Options related to analyzing generated code (for Runtime or Architecture)\n");
-    fprintf(stdout, "       --timereport              Generate code to report communication volume (for distributed-memory only)\n");
-    fprintf(stdout, "                                     and analysis of time (for distributed-memory or runtime)\n");
-    fprintf(stdout, "\n   Communication code    Options related to communication code generation for distributed-memory\n");
-    fprintf(stdout, "       --commopt                 Generate communication code using Flow-Out (FO) scheme (enabled by default)\n");
-    fprintf(stdout, "       --commopt_foifi           Generate communication code using Flow-Out Intersection Flow-In (FOIFI) scheme\n");
-    fprintf(stdout, "       --commopt_fop             Generate communication code using Flow-Out Partitioning (FOP) scheme (multicast pack by default)\n");
-    fprintf(stdout, "       --fop_unicast_runtime     FOP: generate code to choose between unicast and multicast pack at runtime\n\n");
+    fprintf(stdout, "                                     by default one degree is extracted (if it exists)\n");
     fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
     fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
+    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
     fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (disabled by default)\n");
     fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
@@ -112,26 +95,46 @@ void usage_message(void)
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
+    fprintf(stdout, "       --codegen-context=<context>       Parameters are at least as much as <context>\n");
     fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug        Verbose output\n");
-    fprintf(stdout, "       --moredebug    More verbose output\n");
+    fprintf(stdout, "       --debug                   Verbose output\n");
+    fprintf(stdout, "       --moredebug               More verbose output\n");
     fprintf(stdout, "\nTo report bugs, please email <pluto-development@googlegroups.com>\n\n");
+}
+
+static double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
 int main(int argc, char *argv[])
 {
     int i;
 
-    FILE *src_fp;
+    double t_start, t_c, t_d, t_t, t_all, t_start_all;
 
-    struct pet_scop *pscop;
+    t_c = 0.0;
+
+    t_start_all = rtclock();
+
+    FILE *src_fp;
 
     int option;
     int option_index = 0;
 
+    int nolastwriter = 0;
+
     char *srcFileName;
 
     FILE *cloogfp, *outfp;
+
+    struct pet_scop *pscop;
+
 
     if (argc <= 1)  {
         usage_message();
@@ -144,17 +147,15 @@ int main(int argc, char *argv[])
     {
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
+        {"intratileopt", no_argument, &options->intratileopt, 1},
         {"nointratileopt", no_argument, &options->intratileopt, 0},
-        {"pet", no_argument, &options->pet, 1},
         {"lbtile", no_argument, &options->lbtile, 1},
+        {"pet", no_argument, &options->pet, 1},
+        {"diamond-tile", no_argument, &options->lbtile, 1},
+        {"part-diamond-tile", no_argument, &options->partlbtile, 1},
         {"partlbtile", no_argument, &options->partlbtile, 1},
-        {"dynschedule", no_argument, &options->dynschedule, 1},
-        {"dataflow", no_argument, &options->dynschedule, 1},
-        {"dynschedule_graph", no_argument, &options->dynschedule_graph, 1},
-        {"dynschedule_graph_old", no_argument, &options->dynschedule_graph_old, 1},
-        {"dyn_trans_deps_tasks", no_argument, &options->dyn_trans_deps_tasks, 1},
-        {"debug", no_argument, &options->debug, 1},
-        {"moredebug", no_argument, &options->moredebug, 1},
+        {"debug", no_argument, &options->debug, true},
+        {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
         {"identity", no_argument, &options->identity, 1},
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
@@ -177,6 +178,7 @@ int main(int argc, char *argv[])
         {"cloogsh", no_argument, &options->cloogsh, 1},
         {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
         {"cyclesize", required_argument, 0, 'S'},
+        {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
         {"multipipe", no_argument, &options->multipipe, 1},
@@ -186,14 +188,15 @@ int main(int argc, char *argv[])
         {"indent", no_argument, 0, 'i'},
         {"silent", no_argument, &options->silent, 1},
         {"lastwriter", no_argument, &options->lastwriter, 1},
-        {"nolastwriter", no_argument, &options->nolastwriter, 1},
+        {"nolastwriter", no_argument, &nolastwriter, 1},
         {"nobound", no_argument, &options->nobound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
-        {"noisldep", no_argument, &options->noisldep, 1},
+        {"candldep", no_argument, &options->candldep, 1},
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
+        {"time", no_argument, &options->time, 1},
         {0, 0, 0, 0}
     };
 
@@ -220,7 +223,7 @@ int main(int argc, char *argv[])
                 options->bee = 1;
                 break;
             case 'c':
-                options->context = atoi(optarg);
+                options->codegen_context = atoi(optarg);
                 break;
             case 'f':
                 options->ft = atoi(optarg);
@@ -242,6 +245,9 @@ int main(int argc, char *argv[])
                 break;
             case 'o':
                 options->out_file = strdup(optarg);
+                break;
+            case 'p':
+                options->forceparallel = atoi(optarg);
                 break;
             case 'q':
                 options->silent = 1;
@@ -265,7 +271,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-
     if (optind <= argc-1)   {
         srcFileName = alloca(strlen(argv[optind])+1);
         strcpy(srcFileName, argv[optind]);
@@ -276,114 +281,29 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 5;
     }
 
-    PlutoProg *prog; 
-    char *irroption = NULL;
-    osl_scop_p scop = NULL;
-
-    /* Extract polyhedral representation from input program */
-    if (options->pet) {
-        isl_ctx *pctx = isl_ctx_alloc();
-        pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
-
-        if (!pscop) {
-            fprintf(stdout, "[pluto] No SCoPs extracted or error extracting SCoPs  using pet\n");
-            pluto_options_free(options);
-            isl_ctx_free(pctx);
-            return 12;
-        }
-        prog = pet_to_pluto_prog(pscop, pctx, options);
-        pet_scop_free(pscop);
-        isl_ctx_free(pctx);
-
-        FILE *srcfp = fopen(".srcfilename", "w");
-        if (srcfp)    {
-            fprintf(srcfp, "%s\n", srcFileName);
-            fclose(srcfp);
-        }
-    }else{
-        if(!strcmp(srcFileName, "stdin")){  //read from stdin
-            src_fp = stdin;
-            osl_interface_p registry = osl_interface_get_default_registry();
-            scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-        }else{  // read from regular file
-
-            src_fp  = fopen(srcFileName, "r");
-
-            if (!src_fp)   {
-                fprintf(stderr, "pluto: error opening source file: '%s'\n", 
-                        srcFileName);
-                pluto_options_free(options);
-                return 6;
-            }
-
-            clan_options_p clanOptions = clan_options_malloc();
-
-            if (options->readscop){
-                osl_interface_p registry = osl_interface_get_default_registry();
-                scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-            }else{
-                scop = clan_scop_extract(src_fp, clanOptions);
-            }
-
-            if (!scop || !scop->statement)   {
-              fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
-                        srcFileName);
-              pluto_options_free(options);
-              return 8;
-            }
-            FILE *srcfp = fopen(".srcfilename", "w");
-            if (srcfp)    {
-                fprintf(srcfp, "%s\n", srcFileName);
-                fclose(srcfp);
-            }
-
-            clan_options_free(clanOptions);
-
-          /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
-        }
-
-        /* Convert clan scop to Pluto program */
-        prog = scop_to_pluto_prog(scop, options);
-
-        /* Backup irregular program portion in .scop. */
-        osl_irregular_p irreg_ext = NULL;
-        irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
-        if(irreg_ext!=NULL)
-            irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
-        osl_irregular_free(irreg_ext);
-    }
-
-    IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
-
-    int dim_sum=0;
-    for (i=0; i<prog->nstmts; i++) {
-        dim_sum += prog->stmts[i]->dim;
-    }
-
     /* Make options consistent */
-    if (options->noisldep == 1) {
-        options->isldep = 0;
+    if (options->isldep && options->candldep) {
+        printf("[pluto] ERROR: only one of isldep and candldep should be specified)\n");
+        pluto_options_free(options);
+        usage_message();
+        return 1;
     }
 
-    if (options->nolastwriter == 1) {
-        options->lastwriter = 0;
+    /* isldep is the default */
+    if (!options->isldep && !options->candldep) {
+        options->isldep = 1;
+    }
+
+    if (options->lastwriter && options->candldep) {
+        printf("[pluto] ERROR: --lastwriter is only supported with --isldep\n");
+        pluto_options_free(options);
+        usage_message();
+        return 1;
     }
 
     if (options->identity == 1) {
         options->partlbtile = 0;
         options->lbtile = 0;
-    }
-
-    if (options->dynschedule && options->dynschedule_graph) {
-        options->dynschedule_graph = 0;
-    }
-
-    if (options->dynschedule && options->dynschedule_graph_old) {
-        options->dynschedule_graph_old = 0;
-    }
-
-    if (options->dynschedule_graph && options->dynschedule_graph_old) {
-        options->dynschedule_graph_old = 0;
     }
 
     if (options->partlbtile == 1 && options->lbtile == 0)    {
@@ -399,16 +319,119 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
+    if (options->multipipe == 1 && options->parallel == 0)    {
+        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+        options->parallel = 1;
+    }
+
     /* Disable pre-vectorization if tile is not on */
     if (options->tile == 0 && options->prevector == 1) {
         /* If code will not be tiled, pre-vectorization does not make
          * sense */
         if (!options->silent)   {
-            fprintf(stdout, "[Pluto] Warning: pre-vectorization does not fit (--tile is off)\n");
+            fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n");
         }
         options->prevector = 0;
     }
 
+
+    /* Extract polyhedral representation from osl scop */
+    PlutoProg *prog = NULL; 
+
+    osl_scop_p scop = NULL;
+    char *irroption = NULL;
+
+    /* Extract polyhedral representation from input program */
+    if (options->pet) {
+        isl_ctx *pctx = isl_ctx_alloc();
+        pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
+
+        if (!pscop) {
+            fprintf(stdout, "[pluto] No SCoPs extracted or error extracting SCoPs  using pet\n");
+            pluto_options_free(options);
+            isl_ctx_free(pctx);
+            return 12;
+        }
+        t_start = rtclock();
+        prog = pet_to_pluto_prog(pscop, pctx, options);
+        t_d = rtclock() - t_start;
+
+        pet_scop_free(pscop);
+        isl_ctx_free(pctx);
+
+        FILE *srcfp = fopen(".srcfilename", "w");
+        if (srcfp)    {
+            fprintf(srcfp, "%s\n", srcFileName);
+            fclose(srcfp);
+        }
+    }else{
+        /* Extract polyhedral representation from clan scop */
+        if(!strcmp(srcFileName, "stdin")){  //read from stdin
+            src_fp = stdin;
+            osl_interface_p registry = osl_interface_get_default_registry();
+            t_start = rtclock();
+            scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+            t_d = rtclock() - t_start;
+        }else{  // read from regular file
+
+            src_fp  = fopen(srcFileName, "r");
+
+            if (!src_fp)   {
+                fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
+                pluto_options_free(options);
+                return 6;
+            }
+
+            /* Extract polyhedral representation from input program */
+            clan_options_p clanOptions = clan_options_malloc();
+
+            if (options->readscop){
+                osl_interface_p registry = osl_interface_get_default_registry();
+                t_start = rtclock();
+                scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+                t_d = rtclock() - t_start;
+            }else{
+                t_start = rtclock();
+                scop = clan_scop_extract(src_fp, clanOptions);
+                t_d = rtclock() - t_start;
+            }
+
+            if (!scop || !scop->statement)   {
+                fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+                        srcFileName);
+                pluto_options_free(options);
+                return 8;
+            }
+            FILE *srcfp = fopen(".srcfilename", "w");
+            if (srcfp)    {
+                fprintf(srcfp, "%s\n", srcFileName);
+                fclose(srcfp);
+            }
+
+            clan_options_free(clanOptions);
+
+            /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+        }
+
+        /* Convert clan scop to Pluto program */
+        prog = scop_to_pluto_prog(scop, options);
+
+        /* Backup irregular program portion in .scop. */
+        osl_irregular_p irreg_ext = NULL;
+        irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+        if (irreg_ext!=NULL)
+            irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
+        osl_irregular_free(irreg_ext);
+    }
+    IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
+
+    int dim_sum=0;
+    for (i=0; i<prog->nstmts; i++) {
+        dim_sum += prog->stmts[i]->dim;
+    }
+
+    
+   
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
         fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
@@ -423,7 +446,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         // pluto_constraints_compact_print(stdout, dom);
         // PlutoConstraints **doms = malloc(1*sizeof(PlutoConstraints *));
         // doms[0] = dom;
-        // pluto_iss(doms, 1, 1, NULL);
+        // pluto_find_iss(doms, 1, 1, NULL);
         // PlutoMatrix *mat = pluto_matrix_input(stdin);
         // pluto_constraints_print(stdout, dom);
         // pluto_matrix_print(stdout, mat);
@@ -434,14 +457,16 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_iss_dep(prog);
     }
 
+    t_start = rtclock();
     /* Auto transformation */
     if (!options->identity) {
         pluto_auto_transform(prog);
     }
+    t_t = rtclock() - t_start;
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
-        fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
+        fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
@@ -455,15 +480,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }else{
         if (options->intratileopt) {
-            int retval = pluto_intra_tile_optimize(prog, 0); 
-            if (retval) {
-                /* Detect properties again */
-                pluto_detect_transformation_properties(prog);
-                if (!options->silent) {
-                    printf("[Pluto] after intra tile opt\n");
-                    pluto_transformations_pretty_print(prog);
-                }
-            }
+            pluto_intra_tile_optimize(prog, 0);
         }
     }
 
@@ -485,12 +502,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             IF_DEBUG(pluto_print_hyperplane_properties(prog););
         }
-    }
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
     }
 
     if (options->unroll || options->polyunroll)    {
@@ -516,7 +527,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    if(!options->pet && !strcmp(srcFileName, "stdin")){  
+    if(!options->pet && !strcmp(srcFileName, "stdin")){
         //input stdin == output stdout
         pluto_populate_scop(scop, prog, options);
         osl_scop_print(stdout, scop);
@@ -530,11 +541,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
         char *outFileName;
         char *cloogFileName;
-        char *bname, *basec;
+        char *basec, *bname;
         if (options->out_file == NULL)  {
             /* Get basename, remove .c extension and append a new one */
             basec = strdup(srcFileName);
             bname = basename(basec);
+
+            /* max size when tiled.* */
+            outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
+            cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
 
             if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
                 outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
@@ -619,11 +634,23 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fclose(outfp);
     }
 
-    if (!options->pet) osl_scop_free(scop);
 
-    pluto_options_free(options);
+    t_all = rtclock() - t_start_all;
+
+    if (options->time) {
+        printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
+        printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+        printf("[pluto] Code generation time: %0.6lfs\n", t_c);
+        printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
+        printf("[pluto] Total time: %0.6lfs\n", t_all);
+        printf("[times] %0.6lf %0.6lf %.6lf %.6lf\n", t_d, t_t, t_c,
+             t_all-t_c-t_t-t_d);
+    }
 
     pluto_prog_free(prog);
+    pluto_options_free(options);
+
+    osl_scop_free(scop);
 
     return 0;
 }

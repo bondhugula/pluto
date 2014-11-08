@@ -36,9 +36,11 @@
 #include <isl/deprecated/int.h>
 #include "candl/candl.h"
 
+
+#define CONSTRAINTS_SIMPLIFY_THRESHOLD 5000
+#define MAX_FARKAS_CST  2000
+
 static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim);
-
-
 
 /**
  *
@@ -104,9 +106,8 @@ static PlutoConstraints *get_permutability_constraints_uniform_dep (Dep *dep)
 #endif
 
 
-/* Builds legality constraints for a non-uniform dependence */
-static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, const PlutoProg *prog,
-		PlutoConstraints **bounding_cst)
+/* Builds validity constraints for a non-uniform dependence */
+static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 {
     PlutoConstraints *farkas_cst, *comm_farkas_cst, *cst;
     int src_stmt, dest_stmt, j, k;
@@ -397,91 +398,97 @@ static PlutoConstraints *get_permutability_constraints_nonuniform_dep(Dep *dep, 
         }
     }
 
+    PlutoConstraints *bounding_cst = NULL;
+
+    /* Copy only the bounding constraints */
+    if (!options->nobound) {
+
+		bounding_cst = pluto_constraints_alloc(comm_farkas_cst->nrows, CST_WIDTH);
+		bounding_cst->ncols = CST_WIDTH;
+		bounding_cst->nrows = comm_farkas_cst->nrows;
+
+		for (k=0; k<comm_farkas_cst->nrows; k++)   {
+			for (j=0; j<(bounding_cst)->ncols; j++)  {
+				(bounding_cst)->val[k][j] = 0;
+			}
+		}
+
+		assert(cst->ncols == bounding_cst->ncols);
+
+		for (k=0; k<comm_farkas_cst->nrows; k++)   {
+			for (j=0; j<bounding_cst->ncols; j++)  {
+				bounding_cst->val[k][j] = cst->val[farkas_cst->nrows+k][j];
+			}
+		}
+    }
+
     pluto_constraints_free(farkas_cst);
     pluto_constraints_free(comm_farkas_cst);
     pluto_constraints_free(dpoly);
 
-    return cst;
+    free(dep->valid_cst);
+    dep->valid_cst = cst;
+
+    free(dep->bounding_cst);
+    dep->bounding_cst = bounding_cst;
 }
 
-
 /* This function itself is NOT thread-safe for the same PlutoProg */
-PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps, 
+PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
         PlutoProg *prog)
 {
-    int i, nstmts, nvar, npar;
-    PlutoConstraints *globcst ;
+    int i, inc, nstmts, nvar, npar;
+    PlutoConstraints *globcst;
 
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+
     globcst = prog->globcst;
 
-    if (!prog->depcst)   {
-        prog->depcst = (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
-        for (i=0; i<ndeps; i++) {
-            prog->depcst[i] = NULL;
-        }
-    }
-
-    if (!prog->dep_bounding_cst)   {
-        prog->dep_bounding_cst= (PlutoConstraints **) malloc(ndeps*sizeof(PlutoConstraints *));
-        for (i=0; i<ndeps; i++) {
-            prog->dep_bounding_cst[i] = NULL;
-        }
-    }
-
     int total_cst_rows = 0;
-    PlutoConstraints **depcst = prog->depcst;
-    PlutoConstraints **dep_bounding_cst = prog->dep_bounding_cst;
 
-#pragma omp parallel for reduction(+:total_cst_rows)
+    /* Compute the constraints and store them */
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
-        if (options->rar == 0 && IS_RAR(dep->type))  {
+        if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
         }
 
-        if (!depcst[i]) {
+        if (dep->valid_cst == NULL) {
             /* First time, get the constraints */
+            compute_permutability_constraints_dep(dep, prog);
 
-            /* All dependences treated as non-uniform dependences */
-            depcst[i] = get_permutability_constraints_nonuniform_dep(dep, prog, &dep_bounding_cst[i]);
-
-            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, depcst[i]->nrows));
-            total_cst_rows += depcst[i]->nrows;
+            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", 
+                        i+1, dep->valid_cst->nrows));
+            total_cst_rows += dep->valid_cst->nrows;
             /* IF_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1)); */
             /* IF_DEBUG(pluto_constraints_pretty_print(stdout, depcst[i])); */
         }
     }
 
-    if (!globcst) globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    if (!globcst) {
+        globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    }
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
-    for (i=0; i<ndeps; i++) {
+    /* Add constraints to globcst */
+    for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
-		// print_polylib_visual_sets("BB_cst", dep_bounding_cst[i]);
+		print_polylib_visual_sets("BB_cst", dep->bounding_cst);
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
         }
 
-        /* Note that dependences would be marked satisfied (in
-         * pluto_auto_transform) only after all possible independent solutions 
-         * are found to the formulation
-         */ 
-        if (dep_is_satisfied(dep)) continue;
-
         FILE *fp = fopen("skipdeps.txt", "r");
-
         if (fp) {
             int num;
             int found = 0;
-
-            while(!feof(fp)) {
+            while (!feof(fp)) {
                 fscanf(fp, "%d", &num);
                 if (i == num-1) {
                     found = 1;
@@ -489,31 +496,60 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
                 }
             }
             fclose(fp);
-            if (found)  {
+            if (found) {
                 printf("Skipping dep %d\n", num);
                 continue;
             }
         }
 
-        /* Subsequent calls can just use the old ones */
-        pluto_constraints_add(globcst, depcst[i]);
-
-        IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+1, globcst->nrows));
-        if (globcst->nrows >= 0.7*MAX_CONSTRAINTS)  {
-            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints_simplified: %d\n", i+1, globcst->nrows));
+        /* Note that dependences would be marked satisfied (in
+         * pluto_auto_transform) only after all possible independent solutions
+         * are found to the formulation
+         */
+        if (dep_is_satisfied(dep) && dep->bounding_cst){
+			/* Add only the bounding constraints when a dep is satisfied */
+            pluto_constraints_add(globcst, dep->bounding_cst);
+            //if(options->data_dist){
+            //pluto_constraints_add(globcst, dep_bounding_cst[i]);
+            //pluto_constraints_add(globcst, depcst[i]);
+            //}
+			continue;
         }
-        pluto_constraints_simplify(globcst);
-        /* pluto_constraints_pretty_print(stdout, globcst); */
+
+        /* Subsequent calls can just use the old ones */
+        pluto_constraints_add(globcst, dep->valid_cst);
+        print_polylib_visual_sets("global", dep->valid_cst);
+
+        IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+ 1,
+                    globcst->nrows));
+        /* This is for optimization as opposed to for correctness. We will
+         * simplify constraints only if it crosses the threshold: at the time
+         * it crosses the threshold or at 1000 increments thereon. Simplifying
+         * each time slows down Pluto whenever there are few hundreds of
+         * dependences. Not simplifying at all also leads to a slow down
+         * because it leads to a large globcst and a number of constraits in
+         * it are redundant */
+        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+                globcst->nrows - dep->valid_cst->nrows < 
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+            pluto_constraints_simplify(globcst);
+            IF_DEBUG(fprintf(stdout,
+                        "After dep: %d; num_constraints_simplified: %d\n", i+1,
+                        globcst->nrows));
+            if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                inc++;
+            }
+        }
     }
 
     pluto_constraints_simplify(globcst);
 
-    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, \
-num variables: %d\n", globcst->nrows, globcst->ncols-1));
+    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, num variables: %d\n",
+                globcst->nrows, globcst->ncols - 1));
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
     return globcst;
 }
-
 
 /*
  * Eliminates the last num_elim variables from farkas_cst -- these are the
@@ -780,7 +816,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
      * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(cst);
 
     retval = (sol)? false:true;
