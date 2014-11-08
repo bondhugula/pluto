@@ -43,10 +43,6 @@
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
 #define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
 
-
-#define MAX_CONSTRAINTS 10000
-#define MAX_FARKAS_CST  2000
-
 #define MAX_TILING_LEVELS 2
 
 #define DEFAULT_L1_TILE_SIZE 32
@@ -89,6 +85,8 @@ typedef struct pluto_access{
 
     PlutoMatrix *mat;
 } PlutoAccess;
+
+
 
 
 struct statement{
@@ -205,6 +203,12 @@ struct dependence{
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
 
+    /* Constraints for validity of a transformation */
+    PlutoConstraints *valid_cst;
+
+    /* Constraints for bounding the dependence distance */
+    PlutoConstraints *bounding_cst;
+
     /* Dependence direction in transformed space */
     DepDir *dirvec;
 };
@@ -291,10 +295,10 @@ struct plutoProg{
 
     char *decls;
 
+    /* Codegen context */
+    PlutoConstraints *codegen_context;
     /* Temp autotransform data */
     PlutoConstraints *globcst;
-    PlutoConstraints **depcst;
-    PlutoConstraints **dep_bounding_cst;
 
     /* Hyperplane that was replaced in case concurrent start 
      * had been found*/
@@ -311,7 +315,8 @@ typedef struct plutoProg PlutoProg;
 /*
  * A Ploop is NOT an AST loop; this is a dimension in the scattering tree
  * which is not a scalar one. Ploop exists in the polyhedral representation
- * and corresponds to one or more loops in the final generated AST 
+ * and corresponds to one or more loops at the *same* depth (same t<num>) in
+ * the final generated AST
  */
 typedef struct pLoop{
     int depth;

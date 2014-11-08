@@ -365,7 +365,6 @@ int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar)
     return sol;
 }
 
-
 PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1, 
         const PlutoConstraints *cst2)
 {

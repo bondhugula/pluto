@@ -1289,18 +1289,18 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
 
         count = 0;
         while (rlist != NULL)   {
-           
+
             PlutoMatrix *rmat = osl_access_relation_to_pluto_matrix(rlist->elt);
             stmt->reads[count] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
             stmt->reads[count]->mat = rmat;
 
             //stmt->reads[count]->symbol = NULL;
             if(arrays){
-              int id = osl_relation_get_array_id(rlist->elt);
-              stmt->reads[count]->name = strdup(arrays->names[id-1]);
+                int id = osl_relation_get_array_id(rlist->elt);
+                stmt->reads[count]->name = strdup(arrays->names[id-1]);
             }
             else{
-              stmt->reads[count]->name = NULL;
+                stmt->reads[count]->name = NULL;
             }
 
             count++;
@@ -1395,6 +1395,8 @@ void pluto_dep_free(Dep *dep)
     if (dep->dirvec) {
         free(dep->satvec);
     }
+    pluto_constraints_free(dep->valid_cst);
+    pluto_constraints_free(dep->bounding_cst);
     free(dep);
 }
 
@@ -1560,7 +1562,7 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
     eq = isl_mat_alloc(ctx, n_row, n_col);
 
     if(relation->nb_rows==1){
-      isl_int_set_si(v, -1);
+        isl_int_set_si(v, -1);
       eq = isl_mat_set_element(eq, 0, 0, v);
       for (j = 1; j < n_col; ++j) {
         isl_int_set_si(v, 0);
@@ -2431,9 +2433,30 @@ PlutoMatrix *get_identity_schedule_new(int dim, int npar){
  */
 PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
 {
-    int i, max_sched_rows;
+    int i, max_sched_rows, npar;
 
     PlutoProg *prog = pluto_prog_alloc();
+
+    /* Program parameters */
+    npar = scop->context->nb_parameters;
+
+    osl_strings_p osl_scop_params = NULL;
+    if (npar >= 1)  osl_scop_params = (osl_strings_p)scop->parameters->data;
+
+    for (i=0; i<npar; i++)  {
+        pluto_prog_add_param(prog, osl_scop_params->string[i], prog->npar);
+    }
+
+    pluto_constraints_free(prog->context);
+    prog->context = osl_relation_to_pluto_constraints(scop->context);
+
+    if (options->codegen_context != -1)	{
+      for (i=0; i<prog->npar; i++)  {
+        pluto_constraints_add_inequality(prog->codegen_context);
+        prog->codegen_context->val[i][i] = 1;
+        prog->codegen_context->val[i][prog->codegen_context->ncols-1] = -options->codegen_context;
+      }
+    }
 
     prog->nstmts = osl_statement_number(scop->statement);
     prog->options = options;
@@ -2441,39 +2464,14 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
     /* Data variables in the program */
     osl_arrays_p arrays = osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
     if(arrays==NULL){
-        prog->num_data = 0;
-        fprintf(stderr, "warning: arrays extension not found\n");
-    }
-    else{
-        prog->num_data = arrays->nb_names;
-        prog->data_names = (char **) malloc (prog->num_data * sizeof(char *));
-        for(i=0; i< prog->num_data; i++) {
-            prog->data_names[i] = strdup(arrays->names[i]);
-        }
-    }
-
-
-    /* Program parameters */
-    prog->npar = scop->context->nb_parameters;
-
-    osl_strings_p osl_scop_params = NULL;
-    if (prog->npar >= 1)    {
-        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
-        osl_scop_params = (osl_strings_p)scop->parameters->data;
-    }
-    for (i=0; i<prog->npar; i++)  {
-        prog->params[i] = strdup(osl_scop_params->string[i]);
-    }
-
-    pluto_constraints_free(prog->context);
-    prog->context = osl_relation_to_pluto_constraints(scop->context);
-
-    if (options->context != -1)	{
-        for (i=0; i<prog->npar; i++)  {
-            pluto_constraints_add_inequality(prog->context);
-            prog->context->val[i][i] = 1;
-            prog->context->val[i][prog->context->ncols-1] = -options->context;
-        }
+      prog->num_data = 0;
+      fprintf(stderr, "warning: arrays extension not found\n");
+    }else{
+      prog->num_data = arrays->nb_names;
+      prog->data_names = (char **) malloc (prog->num_data * sizeof(char *));
+      for(i=0; i< prog->num_data; i++) {
+          prog->data_names[i] = strdup(arrays->names[i]);
+      }
     }
 
     osl_statement_p scop_stmt = scop->statement;
@@ -2583,6 +2581,7 @@ PlutoProg *pluto_prog_alloc()
     prog->nvar = 0;
     prog->params = NULL;
     prog->context = pluto_constraints_alloc(1, prog->npar+1);
+    prog->codegen_context = pluto_constraints_alloc(1, prog->npar+1);
     prog->deps = NULL;
     prog->ndeps = 0;
     prog->transdeps = NULL;
@@ -2595,8 +2594,6 @@ PlutoProg *pluto_prog_alloc()
     strcpy(prog->decls, "");
 
     prog->globcst = NULL;
-    prog->depcst = NULL;
-    prog->dep_bounding_cst = NULL;
 
     prog->num_parameterized_loops = -1;
 
@@ -2613,9 +2610,12 @@ void pluto_prog_free(PlutoProg *prog)
     for (i=0; i<prog->ndeps; i++) {
         pluto_dep_free(prog->deps[i]);
     }
-    if (prog->deps != NULL) {
-        free(prog->deps);
+    free(prog->deps);
+
+    for (i=0; i<prog->ntransdeps; i++) {
+        pluto_dep_free(prog->transdeps[i]);
     }
+    free(prog->transdeps);
 
     /* Free DDG */
     if (prog->ddg != NULL)  {
@@ -2642,11 +2642,8 @@ void pluto_prog_free(PlutoProg *prog)
     }
 
     pluto_constraints_free(prog->context);
+    pluto_constraints_free(prog->codegen_context);
 
-    if (prog->depcst != NULL) {
-        pluto_constraints_free(*prog->depcst);
-    }
-    free(prog->depcst);
     pluto_constraints_free(prog->globcst);
 
     free(prog->decls);
@@ -2674,13 +2671,9 @@ PlutoOptions *pluto_options_alloc()
     options->parallel = 0;
     options->innerpar = 0;
     options->identity = 0;
+
     options->lbtile = 0;
     options->partlbtile = 0;
-
-    options->pet= 0;
-
-    options->iss = 0;
-
     options->unroll = 0;
 
     /* Unroll/jam factor */
@@ -2710,20 +2703,22 @@ PlutoOptions *pluto_options_alloc()
     options->polyunroll = 0;
 
     /* Default context is no context */
-    options->context = -1;
+    options->codegen_context = -1;
+
+    options->forceparallel = 0;
 
     options->bee = 0;
 
     options->isldep = 0;
-    options->noisldep = 0;
     options->isldepcompact = 0;
+
+    options->candldep = 0;
 
     options->islsolve = 0;
 
     options->readscop = 0;
 
     options->lastwriter = 0;
-    options->nolastwriter = 0;
 
     options->nobound = 0;
 
@@ -2732,6 +2727,8 @@ PlutoOptions *pluto_options_alloc()
     options->silent = 0;
 
     options->out_file = NULL;
+
+    options->time = 0;
 
     return options;
 }
@@ -2758,7 +2755,9 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos)
         pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
                 prog->deps[i]->dpolytope->ncols-1-prog->npar+pos, NULL);
     }
-    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos, NULL);
+    pluto_constraints_add_dim(prog->context, prog->context->ncols-1-prog->npar+pos, param);
+    pluto_constraints_add_dim(prog->codegen_context, 
+            prog->codegen_context->ncols-1-prog->npar+pos, param);
 
     prog->params = (char **) realloc(prog->params, sizeof(char *)*(prog->npar+1));
 
@@ -2901,12 +2900,12 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
         }
     }
 
+    /* Update deps */
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i]->src == stmt->id) {
             pluto_constraints_remove_dim(prog->deps[i]->dpolytope, pos);
         }
         if (prog->deps[i]->dest == stmt->id) {
-            // if (i==0)  printf("removing dim\n");
             pluto_constraints_remove_dim(prog->deps[i]->dpolytope, 
                     prog->stmts[prog->deps[i]->src]->dim+pos);
         }
@@ -2918,7 +2917,6 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog)
             pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope, pos);
         }
         if (prog->transdeps[i]->dest == stmt->id) {
-            // if (i==0)  printf("removing dim\n");
             pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope,
                     prog->stmts[prog->transdeps[i]->src]->dim+pos);
         }
@@ -2964,8 +2962,11 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType hyp_type)
     prog->hProps[pos].type = hyp_type;
 }
 
+/*
+ * Create a new statement (see also pluto_stmt_dup)
+ */
 Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatrix *trans,
-        char ** iterators, const char *text, PlutoStmtType type)
+        char **iterators, const char *text, PlutoStmtType type)
 {
     int i;
 
@@ -2979,55 +2980,14 @@ Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatr
         stmt->iterators[i] = strdup(iterators[i]);
     }
 
+    pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
+
+    /* TODO: Set names for parameters */
+
     return stmt;
 }
 
-/* Statement that has the same transformed domain up to 'level' */
-Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level,
-        const char *text, PlutoStmtType type, int ploop_num)
-{
-    int i, npar;
-
-    assert(level >= 0);
-    assert(level <= anchor_stmt->trans->nrows);
-
-    PlutoConstraints *newdom = pluto_get_new_domain(anchor_stmt);
-
-    /* Lose everything but 0 to level-1 loops */
-
-    pluto_constraints_project_out(newdom, level, 
-            anchor_stmt->trans->nrows-level);
-
-    npar = anchor_stmt->domain->ncols - anchor_stmt->dim - 1;
-    PlutoMatrix *newtrans = pluto_matrix_alloc(level, newdom->ncols);
-
-    char **iterators = (char **) malloc(sizeof(char *)*level);
-    for (i=0; i<level; i++) {
-        char *tmpstr = malloc(5);
-        sprintf(tmpstr, "t%d", i+1);
-        iterators[i] = tmpstr;
-    }
-
-    /* Create new stmt */
-    Stmt *newstmt = pluto_create_stmt(level, newdom, newtrans, iterators, text, type);
-
-    newstmt->ploop_id = ploop_num;
-
-    pluto_matrix_set(newstmt->trans, 0);
-    for (i=0; i<newstmt->trans->nrows; i++)   {
-        newstmt->trans->val[i][i] = 1;
-    }
-
-    for (i=0; i<level; i++) free(iterators[i]);
-    free(iterators);
-    pluto_constraints_free(newdom);
-    pluto_matrix_free(newtrans);
-
-    assert(newstmt->dim+npar+1 == newstmt->domain->ncols);
-
-    return newstmt;
-}
-
+        
 /* Pad statement transformations so that they all equal number
  * of rows */
 void pluto_pad_stmt_transformations(PlutoProg *prog)
@@ -3082,8 +3042,8 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt)
     prog->nstmts++;
 
     pluto_pad_stmt_transformations(prog);
-
 }
+
 
 /* Create a statement and add it to the program
  * iterators: domain iterators
@@ -3111,6 +3071,7 @@ void pluto_add_stmt(PlutoProg *prog,
     stmt->id = nstmts;
 
     prog->nvar = PLMAX(prog->nvar, stmt->dim);
+
     prog->stmts[nstmts] = stmt;
     prog->nstmts++;
 
@@ -3124,10 +3085,16 @@ Dep *pluto_dep_alloc()
 
     dep->id = -1;
     dep->satvec = NULL;
+    dep->dpolytope = NULL;
     dep->depsat_poly = NULL;
     dep->satisfied = false;
     dep->satisfaction_level = -1;
     dep->dirvec = NULL;
+    dep->src_acc = NULL;
+    dep->dest_acc = NULL;
+    dep->valid_cst = NULL;
+    dep->bounding_cst = NULL;
+    dep->src_unique_dpolytope = NULL;
 
     return dep;
 }
@@ -3138,13 +3105,25 @@ Dep *pluto_dep_dup(Dep *d)
     Dep *dep = malloc(sizeof(Dep));
 
     dep->id = d->id;
-    dep->satvec = NULL;
-    dep->depsat_poly = NULL;
+    dep->src = d->src;
+    dep->dest = d->dest;
+    dep->src_acc = d->src_acc;
+    dep->dest_acc = d->dest_acc;
+    dep->dpolytope = pluto_constraints_dup(d->dpolytope);
+
+    dep->src_unique_dpolytope = 
+        d->src_unique_dpolytope? pluto_constraints_dup(
+                d->src_unique_dpolytope):NULL;
+
+    dep->depsat_poly =  d->depsat_poly? 
+        pluto_constraints_dup(d->depsat_poly):NULL;
+    dep->satvec = NULL; // TODO
+    dep->type = d->type;
     dep->satisfied = d->satisfied;
     dep->satisfaction_level = d->satisfaction_level;
-    dep->dirvec = NULL;
-    dep->dpolytope = pluto_constraints_dup(d->dpolytope);
-    dep->type = d->type;
+    dep->dirvec = NULL; // TODO
+    dep->valid_cst = d->valid_cst? pluto_constraints_dup(d->valid_cst): NULL;
+    dep->bounding_cst = d->bounding_cst? pluto_constraints_dup(d->bounding_cst): NULL;
 
     return dep;
 }
@@ -3997,40 +3976,17 @@ void add_if_new_var(PlutoAccess ***accs, int *num, PlutoAccess *new)
 }
 
 
-/* Get all distinct write accesses in the program */
-PlutoAccess **pluto_get_all_distinct_write_vars(const PlutoProg *prog, int *num)
+/* Get all write accesses in the program */
+PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num)
 {
-    int i, j;
+    int i;
 
     PlutoAccess **accs = NULL;
     *num = 0;
 
     for (i=0; i<prog->nstmts; i++) {
-        if (prog->stmts[i]->type == ORIG) {
-            for (j=0; j<prog->stmts[i]->nwrites; j++) {
-                add_if_new_var(&accs, num, prog->stmts[i]->writes[j]);
-            }
-        }
-    }
-    return accs;
-}
-
-/* Get all accesses in the statements such that there is only representative
- * for all accesses to the same data variable */
-PlutoAccess **pluto_get_all_distinct_vars(Stmt **stmts, int nstmts, int *num)
-{
-    int i, j;
-
-    PlutoAccess **accs = NULL;
-    *num = 0;
-
-    for (i=0; i<nstmts; i++) {
-        for (j=0; j<stmts[i]->nwrites; j++) {
-            add_if_new_var(&accs, num, stmts[i]->writes[j]);
-        }
-        for (j=0; j<stmts[i]->nreads; j++) {
-            add_if_new_var(&accs, num, stmts[i]->reads[j]);
-        }
+        assert(prog->stmts[i]->nwrites == 1);
+        add_if_new_var(&accs, num, prog->stmts[i]->writes[0]);
     }
     return accs;
 }
@@ -4845,11 +4801,11 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
 
     // isl_set_dump(pscop->context);
 
-    if (options->context != -1)	{
+    if (options->codegen_context != -1)	{
         for (i=0; i<prog->npar; i++)  {
-            pluto_constraints_add_inequality(prog->context);
-            prog->context->val[i][i] = 1;
-            prog->context->val[i][prog->context->ncols-1] = -options->context;
+            pluto_constraints_add_inequality(prog->codegen_context);
+            prog->codegen_context->val[i][i] = 1;
+            prog->codegen_context->val[i][prog->codegen_context->ncols-1] = -options->codegen_context;
         }
     }
 
