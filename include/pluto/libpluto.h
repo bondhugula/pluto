@@ -126,6 +126,10 @@ struct plutoOptions{
 
     /* Use isl as ilp solver. */
     int islsolve;
+
+    /* Index set splitting */
+    int iss;
+
     /* Output file name supplied from -o */
     char *out_file;
 

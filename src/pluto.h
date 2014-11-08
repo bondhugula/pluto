@@ -442,5 +442,11 @@ PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *d
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
+int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
+
+void pluto_iss_dep(PlutoProg *prog);
+PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
+void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
 
 #endif
