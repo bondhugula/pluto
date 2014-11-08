@@ -386,18 +386,18 @@ PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule,
     int i;
 
     count = 0;
-    isl_map_dump(schedule);
-    isl_map_count(schedule, &count);
+    isl_map_count(isl_map_copy(schedule), &count);
 
     /* only picks the last basic map from pstmt->schedule */
     assert(count == 1);
 
-    PlutoConstraints **user = malloc(sizeof(PlutoConstraints*));
+    PlutoConstraints *transcst;
+    assert(schedule != NULL);
     isl_map_foreach_basic_map(schedule, 
-            &isl_basic_map_to_pluto_constraints_func_arg, user);
-    PlutoConstraints *transcst = *user; 
+            &isl_basic_map_to_pluto_constraints_func_arg, &transcst);
 
     PlutoMatrix *mat = pluto_constraints_extract_equalities(transcst);
+
     /* This extraction is a quick hack and not complete; it may lead to 
      * incorrect access functions, but the number of rows are expected 
      * to be correct
@@ -421,6 +421,8 @@ PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule,
     for (i=0; i<npar+1; i++) {
         pluto_matrix_add_col(mat, mat->ncols);
     }
+
+    pluto_constraints_free(transcst);
 
     return mat;
 }

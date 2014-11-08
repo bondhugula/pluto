@@ -4787,7 +4787,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
  */
 PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions *options)
 {
-    int i, j, max_sched_rows, npar;
+    int i, max_sched_rows, npar;
 
     if (pscop == NULL) return NULL;
 
