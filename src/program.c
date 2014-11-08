@@ -4194,6 +4194,8 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
     isl_union_map *schedule;
     isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
+    IF_DEBUG(printf("[pluto] compute deps (isl)\n"););
+
     isl_space *space = isl_set_get_space(pscop->context);
     empty = isl_union_map_empty(isl_space_copy(space));
     // writes = pet_scop_collect_may_writes(pscop);
@@ -4210,12 +4212,12 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
 
         /* The schedule's parameters are not aligned by pet to its context and
          * domain (the latter two are consistent */
-        isl_map_align_params(pstmt->schedule, isl_set_get_space(pscop->context));
+        //pstmt->schedule = isl_map_align_params(pstmt->schedule, isl_set_get_space(pscop->context));
 
         isl_union_map *lreads =	pet_stmt_collect_accesses(pstmt, 1, 0, 
                 0, 0, 0, isl_space_copy(space));
         isl_union_map *lwrites = pet_stmt_collect_accesses(pstmt, 0, 1, 
-                0, 0, 0, space);
+                0, 0, 0, isl_space_copy(space));
 
         char name[20];
         sprintf(name, "S_%d_r", stmt->id);
@@ -4228,6 +4230,8 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
         isl_union_map_free(lreads);
         isl_union_map_free(lwrites);
     }
+
+    isl_space_free(space);
 
     // isl_union_map_dump(reads);
     // isl_union_map_dump(writes);
