@@ -2015,3 +2015,17 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
         }
     }
 }
+
+/* Are these statements completely fused until the innermost level */
+int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
+{
+    int num;
+
+    if (prog->num_hyperplanes <= 1) return 1;
+
+    Ploop **loops = pluto_get_loops_under(stmts, nstmts, prog->num_hyperplanes-2, prog, &num);
+    pluto_loops_print(loops, num);
+    pluto_loops_free(loops, num);
+
+    return num==1;
+}

@@ -516,9 +516,12 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 PlutoDepList* pluto_dep_list_alloc(Dep *dep);
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
-void pluto_opencl_codegen();
+int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
+int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
+
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
 
 #endif

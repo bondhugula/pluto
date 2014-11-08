@@ -154,6 +154,7 @@ struct plutoOptions{
 
     /* Index set splitting */
     int iss;
+
     /* Output file name supplied from -o */
     char *out_file;
 

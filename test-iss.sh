@@ -11,6 +11,8 @@ test/jacobi-2d-periodic.c \
 test/jacobi-2d-mod.c \
 test/multi-stmt-periodic.c \
 test/multi-stmt-2d-periodic.c \
+test/2d-bidirec.c \
+test/reverse-iss.c
 "
 
 OPTS="--pet --iss --islsolve"

@@ -386,6 +386,9 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar)
 {
     assert(dep->src == dep->dest);
 
+    // printf("Dep %d, dim; %d\n", dep->id+1, dim);
+    // pluto_constraints_compact_print(stdout, dep->dpolytope);
+
     int ndim = (dep->dpolytope->ncols-1-npar)/2;
 
     assert(dim >= 0);
@@ -501,7 +504,7 @@ void pluto_update_deps_after_iss(PlutoProg *prog,
 
 
 /*
- * Perform Index Set Splitting
+ * Perform Index Set Splitting: add new statements to the end
  */
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, 
         PlutoProg *prog)
@@ -520,9 +523,6 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
     }
 
     pluto_update_deps_after_iss(prog, cuts, num_cuts, stmt->id, prev_num_stmts);
-
-    pluto_remove_stmt(prog, stmt->id);
-
 }
 
 
@@ -533,8 +533,21 @@ void pluto_iss_dep(PlutoProg *prog)
 {
     int ndeps = prog->ndeps;
     int npar = prog->npar;
+    int i, j;
 
-    if (prog->nstmts == 0 || prog->nstmts >= 2) return;
+    if (prog->nstmts == 0) return;
+
+    /* TEMP restriction: all statements should have same dimensionality
+     * and should be fused till the innermost level
+     * TODO: change this to ISS for every statement with long self dependences
+     * (potentially transitive)
+     */
+    for (i=1; i<prog->nstmts; i++) {
+        if (prog->stmts[i]->dim != prog->stmts[0]->dim) {
+            return;
+        }
+    }
+    if (!pluto_are_stmts_fused(prog->stmts, prog->nstmts, prog)) return;
 
     if (ndeps == 0) return;
 
@@ -545,7 +558,6 @@ void pluto_iss_dep(PlutoProg *prog)
 
     bzero(num_long_deps, ndim*sizeof(int));
 
-    int i, j;
 
     for (i=0; i<ndeps; i++) {
         if (prog->deps[i]->src != prog->deps[i]->dest) continue;
@@ -570,6 +582,7 @@ void pluto_iss_dep(PlutoProg *prog)
     for (j=0; j<ndim; j++) {
         int q = 0;
         for (i=0; i<ndeps; i++) {
+            if (prog->deps[i]->src != prog->deps[i]->dest) continue;
             if (is_long[i][j]) {
                 assert(q <= num_long_deps[j]-1);
                 long_dep_doms[j][q++] = prog->deps[i]->dpolytope;
@@ -616,7 +629,16 @@ void pluto_iss_dep(PlutoProg *prog)
     }
 
     if (num_cuts >= 2) {
-        pluto_iss(prog->stmts[0], cuts, num_cuts, prog);
+        int nstmts = prog->nstmts;
+        /* Split the old statements */
+        for (i=0; i<nstmts; i++) {
+            pluto_iss(prog->stmts[i], cuts, num_cuts, prog);
+            // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
+        }
+        /* Remove old statements */
+        for (i=0; i<nstmts; i++) {
+            pluto_remove_stmt(prog, 0);
+        }
     }
 
     for (i=0; i<num_cuts; i++) {
