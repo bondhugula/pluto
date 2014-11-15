@@ -613,6 +613,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     isl_mat *h;
     isl_basic_set *isl_currcst;
 
+    IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
+
     int nvar = prog->nvar;
     int npar = prog->npar;
     int nstmts = prog->nstmts;

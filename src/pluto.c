@@ -248,7 +248,9 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     Stmt **stmts;
     int nstmts, nvar, npar;
 
-    stmts  = prog->stmts;
+    IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin\n"););
+
+    stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
@@ -634,6 +636,8 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     PlutoConstraints ***orthcst;
     Stmt **stmts;
 
+    IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
+
     npar = prog->npar;
     nvar = prog->nvar;
     nstmts = prog->nstmts;
@@ -1008,6 +1012,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
 
+    IF_DEBUG(printf("[pluto] pluto_detect_transformation_properties\n"););
+
     if (prog->nstmts == 0) return;
 
     HyperplaneProperties *hProps = prog->hProps;
@@ -1068,7 +1074,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    fprintf(stderr, "[Pluto] Unfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stderr, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
@@ -1217,8 +1223,8 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_simplify(context);
         if (options->debug) {
-            printf("Global constraint context\n");
-            pluto_constraints_pretty_print(stdout, context );
+            printf("[pluto] Global constraint context\n");
+            pluto_constraints_compact_print(stdout, context );
         }
 
         /* Add context to every dep polyhedron */
