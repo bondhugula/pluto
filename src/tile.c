@@ -359,41 +359,69 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
  */
 bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
 {
-    int i, j, depth;
+    int i, j, k, depth;
 
     /* No need to create tile schedule */
     if (pluto_loop_is_parallel(prog, band->loop))  return false;
 
-    for (depth=band->loop->depth+1; depth < band->loop->depth + band->width; depth++) {
+    /* A band can have scalar dimensions; it starts from a loop */
+    int loop_depths[band->width];
+    /* Number of dimensions which are loops for all statements in this 
+     * band */
+    int nloops;
+
+    loop_depths[0] = band->loop->depth;
+    nloops = 1;
+    for (depth=band->loop->depth+1; 
+            depth < band->loop->depth + band->width; depth++) {
         for (j=0; j<band->loop->nstmts; j++) {
-            if (pluto_is_hyperplane_scalar(band->loop->stmts[j], depth))  break;
+            if (pluto_is_hyperplane_scalar(band->loop->stmts[j], depth))  
+                break;
         }
         if (j==band->loop->nstmts) {
             /* All of them are loops */
-            break;
+            loop_depths[nloops++] = depth;
         }
     }
 
-    if (depth == band->loop->depth + band->width) return false;
+    if (nloops <= 1) {
+        /* Band doesn't have at least two dimensions for which all 
+         * statements have loops at those dimensions */
+        return false;
+    }
 
-    /* can use depth and band->loop->depth+1 for pipelined parallelism */
+    /* Number of inner parallel dims the wavefront will yield */
+    int nip_dims;
+
+    /* loop_depths[0...nloops-1] are the depths for which a tile schedule
+     * can be created */
+    if (prog->options->multipipe) {
+        /* Full multi-dimensional wavefront */
+        nip_dims = nloops-1;
+    }else{
+        /* just use the first two to create a tile schedule */
+        nip_dims = 1;
+    }
+
+    /* Wavefront satisfies all deps, all inner loops in the band will
+     * become parallel */
     int first = band->loop->depth;
-    int second = depth;
 
-    /* If the first one is PIPE_PARALLEL, we are guaranteed to
-     * have at least one more pipe_parallel, otherwise the first
-     * one would have been SEQ */
-    for (i=0; i<band->loop->nstmts; i++)    {
-        Stmt *stmt = band->loop->stmts[i];
-        /* Create a wavefront */
-        /* TODO: multiple degrees of pipelined parallelism */
-        for (j=0; j<stmt->trans->ncols; j++)    {
-            stmt->trans->val[first][j] += stmt->trans->val[second][j];
-        }
-    }
+	if (!options->innerpar) {
+		/* Create the wavefront */
+		for (i=0; i<band->loop->nstmts; i++)    {
+			Stmt *stmt = band->loop->stmts[i];
+			for (k=1; k<=nip_dims; k++) {
+				for (j=0; j<stmt->trans->ncols; j++)    {
+					stmt->trans->val[first][j] +=
+						stmt->trans->val[loop_depths[k]][j];
+				}
+			}
+		}
+	}
 
-    IF_DEBUG(printf("Created tile schedule "););
-    IF_DEBUG(printf("for t%d, t%d\n", first+1, second+1));
+    IF_DEBUG(printf("[pluto_create_tile_schedule] Created tile schedule for "););
+    IF_DEBUG(printf("t%d to t%d\n", first+1, loop_depths[nip_dims]+1));
 
     /* Update dependence satisfaction levels (better to do this instead of
      * a complete complex dep satisfaction check since we know that the tile
@@ -401,10 +429,16 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
      * that is a sum of) */
     for (i=0; i<prog->ndeps; i++) {
         Dep *dep = prog->deps[i];
-        if (pluto_stmt_is_member_of(dep->src, band->loop->stmts, band->loop->nstmts)
-                && pluto_stmt_is_member_of(dep->dest, band->loop->stmts, band->loop->nstmts)) {
-            dep->satvec[first] = dep->satvec[first] | dep->satvec[second];
-            dep->satvec[second] = 0;
+        /* satvec s should have been computed */
+        if (IS_RAR(dep->type)) continue;
+        if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, 
+                    band->loop->stmts, band->loop->nstmts) 
+                && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, 
+                    band->loop->stmts, band->loop->nstmts)) {
+            for (k=1; k<=nip_dims; k++) {
+                dep->satvec[first] |= dep->satvec[loop_depths[k]];
+                dep->satvec[loop_depths[k]] = 0;
+            }
         }
     }
     /* Recompute dep directions ? not needed */
