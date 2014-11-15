@@ -428,16 +428,18 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
      * become parallel */
     int first = band->loop->depth;
 
-    /* Create the wavefront */
-    for (i=0; i<band->loop->nstmts; i++)    {
-        Stmt *stmt = band->loop->stmts[i];
-        for (k=1; k<=nip_dims; k++) {
-            for (j=0; j<stmt->trans->ncols; j++)    {
-                stmt->trans->val[first][j] +=
-                    stmt->trans->val[loop_depths[k]][j];
-            }
-        }
-    }
+	if (!options->innerpar) {
+		/* Create the wavefront */
+		for (i=0; i<band->loop->nstmts; i++)    {
+			Stmt *stmt = band->loop->stmts[i];
+			for (k=1; k<=nip_dims; k++) {
+				for (j=0; j<stmt->trans->ncols; j++)    {
+					stmt->trans->val[first][j] +=
+						stmt->trans->val[loop_depths[k]][j];
+				}
+			}
+		}
+	}
 
     IF_DEBUG(printf("[pluto_create_tile_schedule] Created tile schedule for "););
     IF_DEBUG(printf("t%d to t%d\n", first+1, loop_depths[nip_dims]+1));
