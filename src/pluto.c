@@ -116,9 +116,9 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog)
 
         for (level=0; level<prog->num_hyperplanes; level++) {
             if (dep->dirvec[level] != DEP_ZERO && dep->satisfaction_level >= level) {
-                dep->satvec[level] =  1;
+                dep->satvec[level] = 1;
             }else{
-                dep->satvec[level] =  0;
+                dep->satvec[level] = 0;
             }
         }
 
@@ -289,19 +289,27 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst->nrows = cst->nrows;
     newcst->ncols = q;
 
-    /* Add upper bounds for transformation coefficients */
-    int ub = get_coeff_upper_bound(prog);
 
-    /* Putting too small an upper bound can prevent useful transformations;
-     * also, note that an upper bound is added for all statements globally due
-     * to the lack of an easy way to determine bounds for each coefficient to
-     * prevent spurious transformations that involve shifts proportional to
-     * loop bounds
-     */
-    if (ub >= 10)   {
+    if (options->coeff_bound != -1) {
         for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-            pluto_constraints_add_ub(newcst, npar+1+i, ub);
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
+            pluto_constraints_add_ub(newcst, npar+1+i, options->coeff_bound);
+        }
+    }else{
+        /* Add upper bounds for transformation coefficients */
+        int ub = get_coeff_upper_bound(prog);
+
+        /* Putting too small an upper bound can prevent useful transformations;
+         * also, note that an upper bound is added for all statements globally due
+         * to the lack of an easy way to determine bounds for each coefficient to
+         * prevent spurious transformations that involve shifts proportional to
+         * loop bounds
+         */
+        if (ub >= 10)   {
+            for (i=0; i<newcst->ncols-npar-1-1; i++)  {
+                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+                pluto_constraints_add_ub(newcst, npar+1+i, ub);
+            }
         }
     }
     /* Lower bound for bounding coefficients */
