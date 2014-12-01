@@ -22,8 +22,8 @@ with, for eg., 'sudo yum -y install gmp gmp-devel' on a Fedora, or
 
 QUICK INSTALL
 
-$ tar zxvf pluto-0.11.0.tgz
-$ cd pluto-0.11.0/
+$ tar zxvf pluto-0.11.1.tgz
+$ cd pluto-0.11.1/
 $ ./configure 
 $ make
 
