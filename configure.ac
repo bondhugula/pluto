@@ -212,8 +212,6 @@ echo "======================"
 configureopts="--with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --with-gmp-exec-prefix=$GMP_PREFIX \
---with-piplib=build \
---with-piplib-builddir=$SOURCE_DIR/piplib \
 --prefix=$prefix"
 (cd isl/
  ./configure ${configureopts} ${archopts}
