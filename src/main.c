@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
         {"prevector", no_argument, &options->prevector, 1},
         {"noprevector", no_argument, &options->prevector, 0},
         {"context", required_argument, 0, 'c'},
+        {"coeff-bound", required_argument, 0, 'C'},
         {"cloogf", required_argument, 0, 'F'},
         {"cloogl", required_argument, 0, 'L'},
         {"cloogsh", no_argument, &options->cloogsh, 1},
@@ -189,7 +190,7 @@ int main(int argc, char *argv[])
         {"silent", no_argument, &options->silent, 1},
         {"lastwriter", no_argument, &options->lastwriter, 1},
         {"nolastwriter", no_argument, &nolastwriter, 1},
-        {"nobound", no_argument, &options->nobound, 1},
+        {"nodepbound", no_argument, &options->nodepbound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
         {"candldep", no_argument, &options->candldep, 1},
@@ -224,6 +225,15 @@ int main(int argc, char *argv[])
                 break;
             case 'c':
                 options->codegen_context = atoi(optarg);
+                break;
+            case 'C':
+                options->coeff_bound = atoi(optarg);
+                if (options->coeff_bound <= 0) {
+                    printf("ERROR: coeff-bound should be at least 1\n");
+                    return 2;
+                }
+                break;
+            case 'd':
                 break;
             case 'f':
                 options->ft = atoi(optarg);

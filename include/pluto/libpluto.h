@@ -138,7 +138,10 @@ struct plutoOptions{
     int lastwriter;
 
     /* DEV: Don't use cost function */
-    int nobound;
+    int nodepbound;
+
+    /* hard upper bound for transformation coefficients */
+    int coeff_bound;
 
     /* Ask candl to privatize */
     int scalpriv;

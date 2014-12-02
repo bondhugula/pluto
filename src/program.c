@@ -2541,7 +2541,7 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
  * transformations that represent shifts or skews proportional to trip counts:
  * this happens when loop bounds are constants
  */
-int get_coeff_upper_bound(PlutoProg *prog)
+int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog)
 {
     int max, i, r;
 
@@ -2691,6 +2691,8 @@ PlutoOptions *pluto_options_alloc()
     /* Default context is no context */
     options->codegen_context = -1;
 
+    options->coeff_bound = -1;
+
     options->forceparallel = 0;
 
     options->bee = 0;
@@ -2706,7 +2708,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->lastwriter = 0;
 
-    options->nobound = 0;
+    options->nodepbound = 0;
 
     options->scalpriv = 0;
 
