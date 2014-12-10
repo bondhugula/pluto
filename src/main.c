@@ -630,7 +630,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
          */
 
         /* Generate code using Cloog and add necessary stuff before/after code */
+        t_start = rtclock();
         pluto_multicore_codegen(cloogfp, outfp, prog);
+        t_c = rtclock() - t_start;
 
         FILE *tmpfp = fopen(".outfilename", "w");
         if (tmpfp)    {
