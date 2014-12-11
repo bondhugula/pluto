@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
         {"ufactor", required_argument, 0, 'u'},
         {"prevector", no_argument, &options->prevector, 1},
         {"noprevector", no_argument, &options->prevector, 0},
-        {"context", required_argument, 0, 'c'},
+        {"codegen-context", required_argument, 0, 'c'},
         {"coeff-bound", required_argument, 0, 'C'},
         {"cloogf", required_argument, 0, 'F'},
         {"cloogl", required_argument, 0, 'L'},
