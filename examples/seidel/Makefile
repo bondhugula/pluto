@@ -1,6 +1,6 @@
 SRC= seidel
 
-PLCFLAGS =  #--context=100
+PLCFLAGS =  #--codegen-context=100
 TILEFLAGS = #--l2tile
 
 include ../common.mk
