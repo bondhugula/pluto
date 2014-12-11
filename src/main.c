@@ -299,6 +299,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 1;
     }
 
+    if (options->lastwriter && nolastwriter) {
+        printf("[pluto] WARNING: both --lastwriter, --nolastwriter are on\n");
+        printf("[pluto] disabling --lastwriter\n");
+        options->lastwriter = 0;
+    }
+
     if (options->identity == 1) {
         options->partlbtile = 0;
         options->lbtile = 0;
