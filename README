@@ -32,8 +32,8 @@ BUILDING PLUTO
 
 Stable release
 
-$ tar zxvf pluto-0.11.1.tar.gz
-$ cd pluto-0.11.1/
+$ tar zxvf pluto-0.11.2.tar.gz
+$ cd pluto-0.11.2/
 $ ./configure
 $ make
 $ make test
