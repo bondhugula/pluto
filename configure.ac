@@ -153,6 +153,9 @@ configureopts="--prefix=$prefix \
  ./configure ${configureopts} ${archopts}
  )
 
+dnl check if clan configure failed
+AC_CHECK_FILE([clan/Makefile], [], [AC_MSG_ERROR([configure in clan/ failed])])
+
 
 dnl Configuring Candl-osl
 dnl can't enable the gmp version without modifying
