@@ -1,6 +1,6 @@
 SRC=dct
 
-PLCFLAGS = --context=32
+PLCFLAGS = --codegen-context=32
 TILEFLAGS = --l2tile
 
 include ../common.mk

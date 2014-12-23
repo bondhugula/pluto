@@ -1,6 +1,6 @@
 SRC=matmul-init
 
-PLCFLAGS = --context=1000
+PLCFLAGS = --codegen-context=1000
 TILEFLAGS = --l2tile #--unroll
 
 include ../common.mk
