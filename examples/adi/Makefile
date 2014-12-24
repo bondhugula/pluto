@@ -1,6 +1,6 @@
 SRC=adi
 
-PLCFLAGS = --context=50
+PLCFLAGS = --codegen-context=50
 TILEFLAGS =  #--l2tile
 
 include ../common.mk

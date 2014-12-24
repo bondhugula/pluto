@@ -360,7 +360,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         cst->nrows = farkas_cst->nrows;
     }
 
-    if (!options->nobound)   {
+    if (!options->nodepbound)   {
         /* Add bounding constraints */
         src_offset = npar+1+src_stmt*(nvar+1);
         dest_offset = npar+1+dest_stmt*(nvar+1);
@@ -402,7 +402,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     PlutoConstraints *bounding_cst = NULL;
 
     /* Copy only the bounding constraints */
-    if (!options->nobound) {
+    if (!options->nodepbound) {
 
 		bounding_cst = pluto_constraints_alloc(comm_farkas_cst->nrows, CST_WIDTH);
 		bounding_cst->ncols = CST_WIDTH;
@@ -781,8 +781,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 {
     PlutoConstraints *cst;
     int j, src_dim, dest_dim, npar;
-    int64 *sol;
-    bool retval;
+    bool is_empty;
 
     npar = prog->npar;
 
@@ -801,7 +800,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
             src_dim+dest_dim+npar+1);
 
     /*
-     * constraint format 
+     * constraint format
      * \phi(src) - \phi (dest) >= 0
      * (reverse of satisfaction)
      */
@@ -823,18 +822,12 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     pluto_constraints_add(cst, dep->dpolytope);
 
     /* if no solution exists, the dependence is satisfied, i.e., no points
-     * satisfy \phi(src) - \phi(dest) <= 0 */ 
-    sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+     * satisfy \phi(src) - \phi(dest) <= 0 */
+    is_empty = pluto_constraints_is_empty(cst);
     pluto_constraints_free(cst);
 
-    retval = (sol)? false:true;
-    free(sol);
-
-    return retval;
+    return is_empty;
 }
-
-
-
 
 /* Direction vector component at level 'level'
  * TODO: assumes no parametric shifts 

@@ -1,6 +1,6 @@
 SRC= gemver
 
-PLCFLAGS = --context=1 
+PLCFLAGS = --codegen-context=1 
 TILEFLAGS = --tile --l2tile
 
 include ../common.mk

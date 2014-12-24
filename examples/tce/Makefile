@@ -1,6 +1,6 @@
 SRC=tce-4index-transform
 
-PLCFLAGS=--context=32
+PLCFLAGS=--codegen-context=32
 TILEFLAGS = 
 
 include ../common.mk

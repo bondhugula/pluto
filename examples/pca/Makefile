@@ -1,6 +1,6 @@
 SRC= pca
 
-PLCFLAGS = #--context=100 --unroll
+PLCFLAGS = #--codegen-context=100 --unroll
 TILEFLAGS = #--l2tile
 
 include ../common.mk

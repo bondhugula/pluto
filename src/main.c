@@ -161,7 +161,8 @@ int main(int argc, char *argv[])
         {"ufactor", required_argument, 0, 'u'},
         {"prevector", no_argument, &options->prevector, 1},
         {"noprevector", no_argument, &options->prevector, 0},
-        {"context", required_argument, 0, 'c'},
+        {"codegen-context", required_argument, 0, 'c'},
+        {"coeff-bound", required_argument, 0, 'C'},
         {"cloogf", required_argument, 0, 'F'},
         {"cloogl", required_argument, 0, 'L'},
         {"cloogsh", no_argument, &options->cloogsh, 1},
@@ -177,7 +178,7 @@ int main(int argc, char *argv[])
         {"silent", no_argument, &options->silent, 1},
         {"lastwriter", no_argument, &options->lastwriter, 1},
         {"nolastwriter", no_argument, &nolastwriter, 1},
-        {"nobound", no_argument, &options->nobound, 1},
+        {"nodepbound", no_argument, &options->nodepbound, 1},
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
         {"candldep", no_argument, &options->candldep, 1},
@@ -212,6 +213,13 @@ int main(int argc, char *argv[])
                 break;
             case 'c':
                 options->codegen_context = atoi(optarg);
+                break;
+            case 'C':
+                options->coeff_bound = atoi(optarg);
+                if (options->coeff_bound <= 0) {
+                    printf("ERROR: coeff-bound should be at least 1\n");
+                    return 2;
+                }
                 break;
             case 'd':
                 break;
@@ -289,6 +297,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_options_free(options);
         usage_message();
         return 1;
+    }
+
+    if (options->lastwriter && nolastwriter) {
+        printf("[pluto] WARNING: both --lastwriter, --nolastwriter are on\n");
+        printf("[pluto] disabling --lastwriter\n");
+        options->lastwriter = 0;
     }
 
     if (options->identity == 1) {
@@ -589,7 +603,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
-        printf("[times] %0.6lf %0.6lf %.6lf %.6lf\n", t_d, t_t, t_c,
+        printf("[pluto] All times: %0.6lf %0.6lf %.6lf %.6lf\n", t_d, t_t, t_c,
              t_all-t_c-t_t-t_d);
     }
 

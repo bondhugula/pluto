@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.11.0, [udayreddy@gmail.com])
+AC_INIT(pluto, 0.11.2, [uday@csa.iisc.ernet.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -153,6 +153,9 @@ configureopts="--prefix=$prefix \
  ./configure ${configureopts} ${archopts}
  )
 
+dnl check if clan configure failed
+AC_CHECK_FILE([clan/Makefile], [], [AC_MSG_ERROR([configure in clan/ failed])])
+
 
 dnl Configuring Candl-osl
 dnl can't enable the gmp version without modifying
@@ -212,8 +215,6 @@ echo "======================"
 configureopts="--with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --with-gmp-exec-prefix=$GMP_PREFIX \
---with-piplib=build \
---with-piplib-builddir=$SOURCE_DIR/piplib \
 --prefix=$prefix"
 (cd isl/
  ./configure ${configureopts} ${archopts}
