@@ -106,7 +106,7 @@ void pluto_pad_stmt_transformations(PlutoProg *prog);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 
-void pluto_access_print(FILE *fp, const PlutoAccess *acc);
+void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
@@ -117,5 +117,7 @@ PlutoAccess *pluto_access_dup(const PlutoAccess *acc);
 void pluto_dep_free(Dep *dep);
 Dep *pluto_dep_dup(Dep *d);
 void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
+
+int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
 
 #endif

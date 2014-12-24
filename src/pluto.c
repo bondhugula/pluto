@@ -288,7 +288,7 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst->ncols = q;
 
     /* Add upper bounds for transformation coefficients */
-    int ub = get_coeff_upper_bound(prog);
+    int ub = pluto_prog_get_largest_const_in_domains(prog);
 
     /* Putting too small an upper bound can prevent useful transformations;
      * also, note that an upper bound is added for all statements globally due
