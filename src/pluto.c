@@ -1627,18 +1627,31 @@ int pluto_auto_transform(PlutoProg *prog)
     int con_start_found = 0;
 
     do{
-        int sols_found;
+        int num_sols_found, num_sols_left, s;
 
         if (options->fuse == NO_FUSE)   {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
 
-        sols_found = find_permutable_hyperplanes(prog, lin_ind_mode, 
-                loop_search_mode, nsols-num_ind_sols);
+        /*
+         * nsols - num_ind_sols is not the number of remaining hyperplanes
+         * to be found in the LAZY mode (it is for the EAGER
+         * mode). In LAZY mode, there may be more to be found for *some*
+         * statements
+         */
+        num_sols_left = 0;
+        for (s=0; s<nstmts; s++) {
+            num_sols_left = PLMAX(num_sols_left, stmts[s]->dim_orig
+                    - pluto_stmt_get_num_ind_hyps(stmts[s]));
+        }
+        assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
+
+        num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
+                loop_search_mode, num_sols_left);
 
         IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
-                    depth, sols_found));
+                    depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
         num_ind_sols = pluto_get_max_ind_hyps(prog);
@@ -1647,7 +1660,7 @@ int pluto_auto_transform(PlutoProg *prog)
         replace_num = 0;
 
         if (options->lbtile && con_start_possible && 
-                con_start_found == 0 && sols_found != 0){
+                con_start_found == 0 && num_sols_found != 0){
             if (num_ind_sols_non_scalar == 1){
                 if (is_concurrent_start_face(prog, 
                             get_first_non_scalar_hyperplane(prog, 0, 
@@ -1670,13 +1683,13 @@ int pluto_auto_transform(PlutoProg *prog)
                 }
             }else if (num_ind_sols_non_scalar >= 2){
                 first = get_first_non_scalar_hyperplane(prog,
-                        prog->num_hyperplanes - sols_found,
+                        prog->num_hyperplanes - num_sols_found,
                         prog->num_hyperplanes);
                 /* 
                  * Find hyperplane that will be replaced by the newly found
                  * hyperplane
                  */
-                replace_num = find_hyperplane_to_be_replaced(prog, first, sols_found);
+                replace_num = find_hyperplane_to_be_replaced(prog, first, num_sols_found);
 
                 /* If we haven't yet found the cone_complement, just choose the first
                  * one as the cone_complement */
@@ -1691,11 +1704,11 @@ int pluto_auto_transform(PlutoProg *prog)
             }
         }
 
-        if (sols_found > 0) {
-            for (j=0; j<sols_found; j++)      {
+        if (num_sols_found > 0) {
+            for (j=0; j<num_sols_found; j++)      {
                 /* Mark dependences satisfied by this solution */
                 dep_satisfaction_update(prog,
-                        stmts[0]->trans->nrows-sols_found+j);
+                        stmts[0]->trans->nrows-num_sols_found+j);
                 ddg_update(ddg, prog);
             }
         }else{
