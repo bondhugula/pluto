@@ -412,17 +412,24 @@ Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtTyp
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
+Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
+Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_placement_levels);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
 int pluto_loop_compar(const void *_l1, const void *_l2);
+Band *pluto_band_alloc(Ploop *loop, int width);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
+int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
+        const Stmt *stmt);
+int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
+        const Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
@@ -430,6 +437,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, int *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
