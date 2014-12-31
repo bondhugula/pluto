@@ -1755,7 +1755,7 @@ int pluto_auto_transform(PlutoProg *prog)
                         pluto_print_dep_directions(prog);
                     }
                     denormalize_domains(prog);
-                    fprintf(stdout, "[Pluto] working with original (identity) transformation (if they exist)\n");
+                    PLUTO_MESSAGE(printf("[Pluto] working with original (identity) transformation (if they exist)\n"););
                     /* Restore original ones */
                     for (i=0; i<nstmts; i++) {
                         stmts[i]->trans = orig_trans[i];
@@ -2044,7 +2044,6 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
     if (prog->num_hyperplanes <= 1) return 1;
 
     Ploop **loops = pluto_get_loops_under(stmts, nstmts, prog->num_hyperplanes-2, prog, &num);
-    pluto_loops_print(loops, num);
     pluto_loops_free(loops, num);
 
     return num==1;

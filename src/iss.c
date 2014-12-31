@@ -370,13 +370,13 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
         pluto_constraints_set_names_range(h, dom0->names, 0, 0, ndim);
         pluto_constraints_set_names_range(h, dom0->names, ndim, 2*ndim, npar);
 
-        printf("[iss] m = %lld\n", sol[0]);
-        printf("[iss] h (cut) is ");
-        pluto_constraints_compact_print(stdout, h);
+        PLUTO_MESSAGE(printf("[iss] m = %lld\n", sol[0]););
+        PLUTO_MESSAGE(printf("[iss] h (cut) is "););
+        PLUTO_MESSAGE(pluto_constraints_compact_print(stdout, h););
         free(sol);
         return h;
     }else{
-        printf("[iss] No solution to close to mid-point cut)\n");
+        PLUTO_MESSAGE(printf("[iss] No solution to close to mid-point cut)\n"););
         return NULL;
     }
 }
@@ -513,8 +513,8 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
 
     int prev_num_stmts = prog->nstmts;
 
-    printf("[iss] Splitting S%d into %d statements\n", 
-            stmt->id+1, num_cuts);
+    PLUTO_MESSAGE(printf("[iss] Splitting S%d into %d statements\n", 
+            stmt->id+1, num_cuts););
 
     for (i=0; i<num_cuts; i++) {
         Stmt *nstmt = pluto_stmt_dup(stmt);
@@ -569,7 +569,7 @@ void pluto_iss_dep(PlutoProg *prog)
     }
 
     for (j=0; j<ndim; j++) {
-        printf("[iss] Dimension %d has %d long deps\n", j, num_long_deps[j]);
+        PLUTO_MESSAGE(printf("[iss] Dimension %d has %d long deps\n", j, num_long_deps[j]););
     }
 
     PlutoConstraints ***long_dep_doms = (PlutoConstraints ***) malloc(sizeof(PlutoConstraints **)*ndim);
@@ -598,7 +598,7 @@ void pluto_iss_dep(PlutoProg *prog)
 
     for (i=0; i<ndim; i++) {
         if (num_long_deps[i] == 0) continue;
-        printf("[iss] Dimension %d\n", i);
+        PLUTO_MESSAGE(printf("[iss] Dimension %d\n", i););
         PlutoConstraints *h = pluto_find_iss(
                 (const PlutoConstraints **) long_dep_doms[i], 
                 num_long_deps[i], npar, NULL);

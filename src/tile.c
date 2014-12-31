@@ -246,7 +246,7 @@ void pluto_tile(PlutoProg *prog)
     }
 
 
-    /* Detect properties again after tiling */
+    /* Detect properties after tiling */
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)  {
@@ -263,7 +263,7 @@ void pluto_tile(PlutoProg *prog)
         if (retval) {
             pluto_detect_transformation_properties(prog);
             if (!options->silent) {
-                printf("[pluto] After intra-tile optimize\n");
+                printf("[Pluto] After intra-tile optimize\n");
                 pluto_transformations_pretty_print(prog);
             }
         }
@@ -277,7 +277,7 @@ void pluto_tile(PlutoProg *prog)
         }
         if (retval) pluto_detect_transformation_properties(prog);
         if (retval && !options->silent) {
-            printf("After pre-vectorize:\n");
+            printf("[Pluto] After pre-vectorize:\n");
             pluto_transformations_pretty_print(prog);
             pluto_print_hyperplane_properties(prog);
         }
@@ -285,7 +285,8 @@ void pluto_tile(PlutoProg *prog)
 
     if (options->parallel) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
-        if (retval) {
+        if (retval && !options->silent) {
+            printf("[Pluto] After tile scheduling:\n");
             pluto_transformations_pretty_print(prog);
         }
     }

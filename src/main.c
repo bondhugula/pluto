@@ -333,7 +333,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If code will not be tiled, pre-vectorization does not make
          * sense */
         if (!options->silent)   {
-            fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n");
+            IF_DEBUG(fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n"););
         }
         options->prevector = 0;
     }
@@ -586,7 +586,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (tmpfp)    {
           fprintf(tmpfp, "%s\n", outFileName);
           fclose(tmpfp);
-          printf( "[Pluto] Output written to %s\n", outFileName);
+          PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
       }
   
       fclose(cloogfp);

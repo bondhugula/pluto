@@ -42,6 +42,7 @@
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
 #define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
+#define PLUTO_MESSAGE(foo) {if (!options->silent) { foo; }}
 
 #define MAX_TILING_LEVELS 2
 
