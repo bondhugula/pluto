@@ -80,6 +80,35 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
     return 1;
 }
 
+/*
+ * Reschedule a diamond tile
+ */
+int pluto_diamond_tile_reschedule(PlutoProg *prog)
+{
+    int i, j, tmp, retval;
+
+    retval = 0;
+
+    for (i=0; i<prog->nstmts; i++){
+        if (prog->stmts[i]->evicted_hyp) {
+            int evicted_hyp_pos = prog->evicted_hyp_pos;
+            int fl = prog->stmts[i]->dim - prog->stmts[i]->dim_orig;
+            PlutoMatrix *evicted_hyp = prog->stmts[i]->evicted_hyp;
+            assert(fl + evicted_hyp->ncols == prog->stmts[i]->trans->ncols);
+            for (j=0; j<evicted_hyp->ncols;j++) {
+                tmp = evicted_hyp->val[0][j];
+                evicted_hyp->val[0][j] = prog->stmts[i]->trans->val[fl+evicted_hyp_pos][fl+j];
+                prog->stmts[i]->trans->val[fl+evicted_hyp_pos][fl+j] = tmp;
+            }
+            retval = 1;
+        }
+    }
+
+    return retval;
+
+}
+
+
 /* Manipulates statement domain and transformation to tile scattering 
  * dimensions from firstD to lastD */
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
@@ -253,6 +282,19 @@ void pluto_tile(PlutoProg *prog)
         fprintf(stdout, "[Pluto] After tiling:\n");
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
+    }
+
+    if (options->lbtile) {
+        int retval;
+        retval = pluto_diamond_tile_reschedule(prog);
+
+        if (retval) {
+            pluto_detect_transformation_properties(prog);
+            if (!options->silent) {
+                printf("[Pluto] After intra_tile reschedule\n");
+                pluto_transformations_pretty_print(prog);
+            }
+        }
     }
 
     if (options->intratileopt) {
@@ -502,39 +544,4 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
 }
 
 
-/*
- * Reschedule a concurrent start tile
- */
-void pluto_reschedule_tile(PlutoProg *prog)
-{
-    int i, j, tmp, retval;
 
-    retval = 0;
-
-    for (i=0; i<prog->nstmts; i++){
-        if (prog->stmts[i]->last_con_start_enabling_hyperplane) {
-            int rep_hyp_pos = prog->rep_hyp_pos;
-            int fl = prog->stmts[i]->num_tiled_loops;
-            /* The replaced hyperplane is stored in
-             * last_con_start_enabling_hyperplane (UGLY) */
-            PlutoMatrix *rep_hyp = prog->stmts[i]->last_con_start_enabling_hyperplane;
-            assert(prog->stmts[i]->num_tiled_loops + rep_hyp->ncols == prog->stmts[i]->trans->ncols);
-            for (j=0; j<rep_hyp->ncols;j++) {
-                tmp = rep_hyp->val[0][j];
-                rep_hyp->val[0][j] = prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j];
-                prog->stmts[i]->trans->val[fl+rep_hyp_pos][fl+j] = tmp;
-            }
-            retval = 1;
-        }
-    }
-
-
-    if (retval) {
-        pluto_detect_transformation_properties(prog);
-
-        if (!options->silent) {
-            printf("After intra_tile reschedule\n");
-            pluto_transformations_pretty_print(prog);
-        }
-    }
-}

@@ -390,7 +390,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       clan_options_free(clanOptions);
 
       /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
-  
     }
 
     /* Convert clan scop to Pluto program */
@@ -453,10 +452,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile)   {
         pluto_tile(prog);
-
-        if (options->lbtile) {
-            pluto_reschedule_tile(prog);
-        }
     }else{
         if (options->intratileopt) {
             pluto_intra_tile_optimize(prog, 0);
