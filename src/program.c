@@ -1313,15 +1313,37 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
     return stmts;
 }
 
-void pluto_access_print(FILE *fp, const PlutoAccess *acc)
+void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt)
 {
+    int i, j, npar;
+
     if (!acc) {
-        fprintf(fp, "NULL access\n");
+        fprintf(fp, "access is NULL\n");
         return;
     }
 
-    fprintf(fp, "Variable: %s\n", acc->name);
-    pluto_matrix_print(fp, acc->mat);
+    npar = acc->mat->ncols - stmt->dim - 1;
+
+    fprintf(fp, "%s", acc->name);
+    for (i=0; i<acc->mat->nrows; i++) {
+        fprintf(fp, "[");
+        char **vars = malloc((stmt->dim+npar)*sizeof(char *));
+        for (j=0; j<stmt->dim; j++) {
+            vars[j] = stmt->iterators[j];
+        }
+        for (j=0; j<npar; j++) {
+            if (stmt->domain->names && stmt->domain->names[stmt->dim+j]) {
+                vars[stmt->dim+j] = stmt->domain->names[stmt->dim+j];
+            }else{
+                vars[stmt->dim+j] = "p?";
+            }
+        }
+        pluto_affine_function_print(stdout, acc->mat->val[i], 
+                stmt->dim+npar, vars);
+        fprintf(fp, "]");
+        free(vars);
+    }
+    fprintf(fp, "\n");
 }
 
 void pluto_stmt_print(FILE *fp, const Stmt *stmt)
@@ -1341,7 +1363,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }else{
         fprintf(fp, "Read accesses\n");
         for (i=0; i<stmt->nreads; i++)  {
-            pluto_access_print(fp, stmt->reads[i]);
+            pluto_access_print(fp, stmt->reads[i], stmt);
         }
     }
 
@@ -1350,7 +1372,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     }else{
         fprintf(fp, "Write accesses\n");
         for (i=0; i<stmt->nwrites; i++)  {
-            pluto_access_print(fp, stmt->writes[i]);
+            pluto_access_print(fp, stmt->writes[i], stmt);
         }
     }
 
@@ -5076,7 +5098,7 @@ void pluto_stmt_transformation_print(const Stmt *stmt)
             }
         }
         if (level > 0) printf(", ");
-        pretty_print_affine_function(stdout, stmt->trans->val[level], 
+        pluto_affine_function_print(stdout, stmt->trans->val[level], 
                 stmt->dim+npar, vars);
         free(vars);
     }

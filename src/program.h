@@ -108,7 +108,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *, PlutoOptions *);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 
-void pluto_access_print(FILE *fp, const PlutoAccess *acc);
+void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);

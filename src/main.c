@@ -345,7 +345,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If code will not be tiled, pre-vectorization does not make
          * sense */
         if (!options->silent)   {
-            fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n");
+            IF_DEBUG(fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n"););
         }
         options->prevector = 0;
     }
@@ -490,10 +490,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if (options->tile)   {
         pluto_tile(prog);
-
-        if (options->lbtile) {
-            pluto_reschedule_tile(prog);
-        }
     }else{
         if (options->intratileopt) {
             pluto_intra_tile_optimize(prog, 0);

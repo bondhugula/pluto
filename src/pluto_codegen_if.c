@@ -158,7 +158,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
         fprintf(outfp, " __bee_schedule");
         for (j=0; j<stmt->trans->nrows; j++)    {
             fprintf(outfp, "[");
-            pretty_print_affine_function(outfp, stmt->trans->val[j], 
+            pluto_affine_function_print(outfp, stmt->trans->val[j], 
                     stmt->dim, stmt->iterators);
             fprintf(outfp, "]");
         }

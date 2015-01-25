@@ -42,6 +42,7 @@
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
 #define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
+#define PLUTO_MESSAGE(foo) {if (!options->silent) { foo; }}
 
 #define MAX_TILING_LEVELS 2
 
@@ -122,8 +123,9 @@ struct statement{
      */
     PlutoMatrix *trans;
 
-    /* The last hyperplane for the diamond tiling transformation */
-    PlutoMatrix *last_con_start_enabling_hyperplane;
+    /* The hyperplane evicted by the hyperplane enabling
+     * concurrent start (diamond tiling) */
+    PlutoMatrix *evicted_hyp;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
@@ -302,7 +304,7 @@ struct plutoProg{
 
     /* Hyperplane that was replaced in case concurrent start 
      * had been found*/
-    int rep_hyp_pos;
+    int evicted_hyp_pos;
 
     osl_scop_p scop;
 
@@ -481,7 +483,9 @@ int get_outermost_parallel_loop(const PlutoProg *prog);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
+Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
+Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_placement_levels);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
@@ -493,6 +497,10 @@ void pluto_band_print(const Band *band);
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
+int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
+        const Stmt *stmt);
+int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
+        const Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
@@ -500,6 +508,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, int *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 

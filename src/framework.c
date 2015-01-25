@@ -113,6 +113,8 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     int src_stmt, dest_stmt, j, k;
     int src_offset, dest_offset;
 
+    IF_MORE_DEBUG(printf("[pluto] compute permutability constraints: Dep %d\n", dep->id+1););
+
     int nvar = prog->nvar;
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
@@ -478,7 +480,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
     for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
-		print_polylib_visual_sets("BB_cst", dep->bounding_cst);
+		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
@@ -518,7 +520,7 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 
         /* Subsequent calls can just use the old ones */
         pluto_constraints_add(globcst, dep->valid_cst);
-        print_polylib_visual_sets("global", dep->valid_cst);
+        /* print_polylib_visual_sets("global", dep->valid_cst); */
 
         IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+ 1,
                     globcst->nrows));
@@ -750,7 +752,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     IF_DEBUG2(printf("Ortho constraints for S%d; %d sets\n", stmt->id+1, *orthonum));
     for (i=0; i<*orthonum; i++) {
-        IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+        // print_polylib_visual_sets("li", orthcst[i]);
+        // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
     }
 
     /* Free the unnecessary ones */

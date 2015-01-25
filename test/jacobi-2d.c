@@ -1,4 +1,3 @@
-
 int u[100][1000][1000];
 
 int main() 
@@ -16,5 +15,5 @@ int main()
     }
 #pragma endscop
 
-    return (int) u[T-1][1];
+    return (int) u[T-1][1][1];
 }
