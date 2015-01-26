@@ -53,12 +53,13 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
 
     cst = (PlutoConstraints *)malloc(sizeof(PlutoConstraints));
 
-    int size = PLMAX(1,max_rows)*PLMAX(1,max_cols)*sizeof(int64);
+    size_t size = ((size_t) PLMAX(1,max_rows))*PLMAX(1,max_cols)*sizeof(int64);
 
     cst->buf = (int64 *) malloc(size);
 
     if (cst->buf == NULL) {
-        fprintf(stderr, "Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] %zd bytes needed\n", size);
         exit(1);
     }
 
@@ -898,7 +899,7 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoM
 
 /* Use PIP to solve these constraints (solves for the first element
  * if it's a list of constraints) */
-int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
+int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar)
 {
     int bignum, i;
     PipMatrix  *domain, *context;
@@ -907,6 +908,9 @@ int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
     PipList *listPtr;
     int64 *sol;
     PlutoMatrix *pipmat;
+
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables)\n",
+                cst->ncols-1););
 
     pipmat = pluto_matrix_alloc(cst->nrows, cst->ncols+1);
 
@@ -964,13 +968,13 @@ int64 *pluto_constraints_solve_pip(const PlutoConstraints *cst, int negvar)
     return sol;
 }
 
-/* Solve these constraints */
-int64 *pluto_constraints_solve(const PlutoConstraints *cst, int negvar)
+/* Solve these constraints for lexmin solution */
+int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar)
 {
     if (options->islsolve) {
-        return pluto_constraints_solve_isl(cst, negvar);
+        return pluto_constraints_lexmin_isl(cst, negvar);
     }else{
-        return pluto_constraints_solve_pip(cst, negvar);
+        return pluto_constraints_lexmin_pip(cst, negvar);
     }
 }
 
@@ -1398,7 +1402,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_remove_row(check, i); 
         pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
-        if (!pluto_constraints_solve(check, DO_NOT_ALLOW_NEGATIVE_COEFF))  {
+        if (!pluto_constraints_lexmin(check, DO_NOT_ALLOW_NEGATIVE_COEFF))  {
             // printf("%dth constraint is redundant\n", i);
             count++;
         }else{
@@ -1467,7 +1471,7 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst)
         isl_set_free(iset);
         isl_ctx_free(ctx);
     }else{
-        sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         is_empty = (sol == NULL);
         free(sol);
     }
@@ -1636,9 +1640,9 @@ void print_polylib_visual_sets_internal(char* str, int k,  PlutoConstraints *cst
 void print_polylib_visual_sets_internal_new(char* str, int k,  PlutoConstraints *cst) {
 
     int i, j, first = 0;
-	char name[100];
+    char name[100];
 
-	sprintf(name, "%s%d", str, k);
+    sprintf(name, "%s%d", str, k);
 
     printf("%s := { ", name );
     for( i=0; i<cst->ncols-1; i++){
@@ -1693,8 +1697,8 @@ void print_polylib_visual_sets_internal_new(char* str, int k,  PlutoConstraints 
 }
 
 void print_polylib_visual_sets_new(char* name, PlutoConstraints *cst){
-	print_polylib_visual_sets_internal_new(name, 0, cst);
-	return;
+    print_polylib_visual_sets_internal_new(name, 0, cst);
+    return;
 }
 
 void print_polylib_visual_sets(char* name, PlutoConstraints *cst)

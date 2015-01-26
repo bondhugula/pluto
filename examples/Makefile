@@ -27,6 +27,11 @@ par:
 		make -C $$d par; \
 		done
 
+lbpar:
+	@-for d in $(DIRS); do \
+		make -C $$d lbpar; \
+		done
+
 orig_par:
 	@-for d in $(DIRS); do \
 		make -C $$d $@; \

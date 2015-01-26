@@ -350,7 +350,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
         pluto_constraints_add(cst, indcst);
     }
 
-    int64 *sol = pluto_constraints_solve(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    int64 *sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
 
     pluto_constraints_free(cst);
     pluto_constraints_free(nz);

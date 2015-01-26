@@ -317,13 +317,16 @@ int isl_basic_map_to_pluto_constraints_func_arg(
 
 /* Use isl to solve these constraints (solves just for the first element if
  * it's a list of constraints */
-int64 *pluto_constraints_solve_isl(const PlutoConstraints *cst, int negvar) 
+int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) 
 {
     int i;
     int64 *sol;
     isl_ctx *ctx;
     isl_basic_set *bset, *all_positive;
     isl_set *domain, *all_positive_set, *lexmin;
+
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables)\n",
+                cst->ncols-1););
 
     ctx = isl_ctx_alloc();
     bset = isl_basic_set_from_pluto_constraints(ctx, cst);

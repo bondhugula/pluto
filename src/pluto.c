@@ -241,16 +241,14 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 
 
 /*
- * This calls pluto_constraints_solve, but before doing that does some preprocessing
+ * This calls pluto_constraints_lexmin, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
- *   permutation of variables
+ *   permutation/substitution of variables
  */
-int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
+int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
     int nstmts, nvar, npar;
-
-    IF_DEBUG(printf("[pluto] pluto_prog_constraints_solve\n"););
 
     stmts = prog->stmts;
     nstmts = prog->nstmts;
@@ -287,6 +285,7 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     }
     IF_DEBUG2(printf("Constraints after reductions\n"));
     IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst));
+
 
     if (options->coeff_bound != -1) {
         for (i=0; i<newcst->ncols-npar-1-1; i++)  {
@@ -358,7 +357,9 @@ int64 *pluto_prog_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
     newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
     pluto_matrix_free(newcstmat);
 
-    sol = pluto_constraints_solve(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables)\n",
+                cst->ncols-1););
+    sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
     pluto_constraints_free(newcst_permuted);
@@ -431,7 +432,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
         return 0;
     }
 
-    IF_DEBUG(printf("Cutting between SCC id %d and id %d\n", scc1, scc2));
+    IF_DEBUG(printf("[pluto] Cutting between SCC id %d and id %d\n", scc1, scc2));
 
     pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
 
@@ -472,7 +473,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(printf("Cutting between all SCCs\n"));
+    IF_DEBUG(printf("[pluto] Cutting between all SCCs\n"));
 
     if (ddg->num_sccs == 1) {
         IF_DEBUG(printf("\t only one SCC\n"));
@@ -642,7 +643,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     PlutoConstraints ***orthcst;
     Stmt **stmts;
 
-    IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
+    IF_DEBUG(printf("[Pluto] get_linear_ind_constraints\n"););
 
     npar = prog->npar;
     nvar = prog->nvar;
@@ -718,10 +719,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
     PlutoConstraints *basecst, *nzcst;
     PlutoConstraints *currcst;
 
-    int ndeps = prog->ndeps;
     int nstmts = prog->nstmts;
     Stmt **stmts = prog->stmts;
-    Dep **deps = prog->deps;
     int nvar = prog->nvar;
     int npar = prog->npar;
 
@@ -731,12 +730,16 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
     if (max_sols == 0) return 0;
 
-    basecst = get_permutability_constraints(deps, ndeps, prog);
+    /* Don't free basecst */
+    basecst = get_permutability_constraints(prog);
+    // print_polylib_visual_sets("pluto", basecst);
 
     num_sols_found = 0;
     /* We don't expect to add a lot to basecst - just ortho constraints
-     * and trivial soln avoidance constraints */
-    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, CST_WIDTH);
+     * and trivial soln avoidance constraints; instead of duplicating basecst,
+     * we will just allocate once and copy each time */
+    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, 
+            CST_WIDTH);
 
     do{
         pluto_constraints_copy(currcst, basecst);
@@ -755,7 +758,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
             pluto_constraints_add(currcst, indcst);
             IF_DEBUG2(printf("Solving for %d solution\n", num_sols_found+1));
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
-            bestsol = pluto_prog_constraints_solve(currcst, prog);
+            bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
         pluto_constraints_free(indcst);
 
@@ -788,8 +791,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         }
     }while (num_sols_found < max_sols && bestsol != NULL);
 
-
-    pluto_constraints_free(basecst);
     pluto_constraints_free(currcst);
 
     /* Same number of solutions are found for each stmt */
@@ -1453,10 +1454,10 @@ int find_cone_complement_hyperplane(int evict_pos,
     // pluto_constraints_pretty_print(stdout, con_start_cst);
 
     /* pluto_constraints_lexmin is being called directly */
-    bestsol = pluto_constraints_solve(con_start_cst, ALLOW_NEGATIVE_COEFF);
+    bestsol = pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
     pluto_constraints_free(con_start_cst);
 
-    /* pluto_constraints_solve is being called directly */
+    /* pluto_constraints_lexmin is being called directly */
     if (bestsol == NULL) {
         printf("[Pluto] No concurrent start possible\n");
     }else{
@@ -2012,7 +2013,7 @@ int pluto_diamond_tile(PlutoProg *prog)
      * and we won't get the constraints we want */
 
     /* Don't free basecst */
-    PlutoConstraints *basecst = get_permutability_constraints(prog->deps, prog->ndeps, prog);
+    PlutoConstraints *basecst = get_permutability_constraints(prog);
 
     /* 
      * For partial concurrent, if we are trying to find a hyperplane c 
