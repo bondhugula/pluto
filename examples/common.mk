@@ -54,6 +54,7 @@ $(SRC).par.c:  $(SRC).c
 $(SRC).lbpar.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
+
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
@@ -65,6 +66,9 @@ opt: $(SRC).opt.c
 
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
+
+lbpar: $(SRC).lbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
@@ -94,11 +98,18 @@ lbtest: par lbpar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
+<<<<<<< HEAD
 	diff -q out_par4 out_lbpar4
 	rm -f .test
 	@echo Success!
 
 
+=======
+	rm -f .test
+	diff -q out_par4 out_lbpar4
+	@echo Success!
+
+>>>>>>> origin/master
 opt-test: orig opt
 	touch .test
 	./orig > out_orig
@@ -115,5 +126,9 @@ clean:
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
+<<<<<<< HEAD
 	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out lbpar
+=======
+	rm -f out_* opt orig tiled lbtile lbpar  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
+>>>>>>> origin/master
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d

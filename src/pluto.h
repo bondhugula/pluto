@@ -389,7 +389,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
-PlutoConstraints *get_permutability_constraints(Dep **, int, PlutoProg *);
+PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
 PlutoConstraints *get_global_independence_cst(
