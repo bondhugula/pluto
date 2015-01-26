@@ -261,14 +261,15 @@ PlutoConstraints *isl_basic_map_to_pluto_constraints(
 {
     PlutoConstraints *cst;
 
-    isl_basic_map_to_pluto_constraints_func_arg(bmap, &cst);
+    isl_basic_map_to_pluto_constraints_func_arg(
+            isl_basic_map_copy(bmap), &cst);
 
     return cst;
 }
 
 /* Convert an isl_basic_map to a PlutoConstraints object */
 int isl_basic_map_to_pluto_constraints_func_arg(
-        __isl_keep isl_basic_map *bmap, void *user)
+        __isl_take isl_basic_map *bmap, void *user)
 {
     int i, j;
     int eq_row;
@@ -309,6 +310,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
 
     isl_mat_free(eq);
     isl_mat_free(ineq);
+    isl_basic_map_free(bmap);
 
     *(PlutoConstraints **)user = cons; 
     return 0;
@@ -382,52 +384,39 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
     return ucst;
 }
 
-PlutoMatrix *isl_schedule_to_pluto_trans(isl_map *schedule, 
+/*
+ * Extract a pluto function from an isl map under certain 
+ * circumstances
+ */
+PlutoMatrix *isl_map_to_pluto_func(isl_map *map,
         int stmt_dim, int npar)
 {
-    int count;
-    int i;
+    int i, dim, ncols;
 
-    count = 0;
-    isl_map_count(isl_map_copy(schedule), &count);
+    dim = isl_map_dim(map, isl_dim_out);
+    ncols = isl_map_dim(map, isl_dim_in)
+        + isl_map_dim(map, isl_dim_param) + 1;
 
-    /* only picks the last basic map from pstmt->schedule */
-    assert(count == 1);
+    assert(ncols == stmt_dim + npar + 1);
 
-    PlutoConstraints *transcst;
-    assert(schedule != NULL);
-    isl_map_foreach_basic_map(schedule, 
-            &isl_basic_map_to_pluto_constraints_func_arg, &transcst);
+    PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
 
-    PlutoMatrix *mat = pluto_constraints_extract_equalities(transcst);
-
-    /* This extraction is a quick hack and not complete; it may lead to 
-     * incorrect access functions, but the number of rows are expected 
-     * to be correct
-     */
-
-    /* Reversing the rows since the extracted equalities will appear with the
-     * fastest varying dimensions at the top (simple FIXME: relying on the way
-     * the affine constraints were extracted from isl_map and the way they
-     * were ordered
-     */
-    pluto_matrix_reverse_rows(mat);
-    /* Remove all but the first stmt->dim cols and negate it */
-    for (i=0; i<transcst->ncols - stmt_dim; i++) {
-        pluto_matrix_remove_col(mat, stmt_dim);
-    }
-    pluto_matrix_negate(mat);
-
-    /* FIXME: constant and parametric part of the access function not
-     * extracted */
-    /* Add zero columns for the parameter and constant part */
-    for (i=0; i<npar+1; i++) {
-        pluto_matrix_add_col(mat, mat->ncols);
+    for (i=0; i<dim; i++) {
+        PlutoMatrix *func_onedim = NULL;
+        /* Schedule should be single valued */
+        assert(isl_map_dim_is_single_valued(map, i));
+        isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+        // isl_pw_aff_dump(pw_aff);
+        /* TODO: check to make sure there is only one piece; or else
+         * an incorrect schedule will be extracted */
+        /* Best effort: Gets it from the last piece */
+        isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+        pluto_matrix_add(func, func_onedim);
+        pluto_matrix_free(func_onedim);
+        isl_pw_aff_free(pw_aff);
     }
 
-    pluto_constraints_free(transcst);
-
-    return mat;
+    return func;
 }
 
 

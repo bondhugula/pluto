@@ -1824,6 +1824,9 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 }
 
 
+
+
+
 /* Temporary data structure used inside extract_deps.
  *
  * deps points to the array of Deps being constructed
@@ -1957,64 +1960,60 @@ struct pluto_access_meta_info {
     int npar;
 };
 
-/* Extract a Pluto access function from an isl_basic_map */
-static int basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
+/* Extract Pluto access functions from isl_map */
+static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
 {
-    int r, i;
-    struct pluto_access_meta_info *info;
+    int i;
 
-    info = (struct pluto_access_meta_info *) user;
+    isl_map *map;
+
+    // isl_basic_map_dump(bmap);
+
+    map = isl_map_from_basic_map(bmap);
+
+    int dim = isl_map_dim(map, isl_dim_out);
+    int ncols = isl_map_dim(map, isl_dim_in)
+        + isl_map_dim(map, isl_dim_param) + 1;
+
+    PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
+
+    for (i=0; i<dim; i++) {
+        PlutoMatrix *func_onedim = NULL;
+        if (isl_map_dim_is_single_valued(map, i)) {
+            isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+            // isl_pw_aff_dump(pw_aff);
+            /* Best effort: Gets it from the last piece */
+            isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+            pluto_matrix_add(func, func_onedim);
+            pluto_matrix_free(func_onedim);
+            isl_pw_aff_free(pw_aff);
+        }else{
+            pluto_matrix_add_row(func, 0);
+            pluto_matrix_zero_row(func, 0);
+        }
+    }
+    struct pluto_access_meta_info *info = (struct pluto_access_meta_info *) user;
 
     (*info->accs)[info->index] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
     PlutoAccess *acc = (*info->accs)[info->index];
     acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
-
-    PlutoConstraints *cst;
-
-    r = isl_basic_map_to_pluto_constraints_func_arg(bmap, &cst);
-    isl_basic_map_free(bmap);
-
-    acc->mat = pluto_constraints_extract_equalities(cst);
-
-    /* This extraction is a quick hack and not complete; it may lead to 
-     * incorrect access functions, but the number of rows are expected 
-     * to be correct
-     */
-
-    /* Reversing the rows since the extracted equalities will appear with the
-     * fastest varying dimensions at the top (simple FIXME: relying on the way
-     * the affine constraints were extracted from isl_map and the way they
-     * were ordered
-     */
-    pluto_matrix_reverse_rows(acc->mat);
-    /* Remove all but the first stmt->dim cols and negate it */
-    for (i=0; i<cst->ncols - info->stmt_dim; i++) {
-        pluto_matrix_remove_col(acc->mat, info->stmt_dim);
-    }
-    pluto_matrix_negate(acc->mat);
-
-    /* FIXME: constant and parametric part of the access function not
-     * extracted */
-    /* Add zero columns for the parameter and constant part */
-    for (i=0; i<info->npar+1; i++) {
-        pluto_matrix_add_col(acc->mat, acc->mat->ncols);
-    }
-
-    pluto_constraints_free(cst);
+    acc->mat = func;
 
     info->index++;
 
-    return r;
+    isl_map_free(map);
+
+    return 0;
 }
 
-
 /* Extract Pluto access functions from isl_map */
-static int map_extract_access_func(__isl_take isl_map *map, void *user)
+static int isl_map_extract_access_func(__isl_take isl_map *map, void *user)
 {
     int r;
 
-    /* Extract a PlutoAcces from every isl_basic_map */
-    r = isl_map_foreach_basic_map(map, &basic_map_extract_access_func, user);
+    /* Extract a PlutoAccess from every isl_basic_map */
+    r = isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
+
     isl_map_free(map);
 
     return r;
@@ -3892,9 +3891,6 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
     // printf("New access function is \n");
     // pluto_matrix_print(stdout, newacc);
 
-    // printf("New access function is \n");
-    // pluto_matrix_print(stdout, newacc);
-
     for (r=0; r<newacc->nrows; r++) {
         (*divs)[r] = _lcm;
     }
@@ -4191,7 +4187,7 @@ static int set_tuple_name(__isl_take isl_map *map, void *usr)
     isl_map *schedule_i = isl_map_copy(info->base_schedule);
     schedule_i = isl_map_set_tuple_name(schedule_i, isl_dim_in, name);
     *info->schedule = isl_union_map_union(*info->schedule,
-        isl_union_map_from_map(schedule_i));
+            isl_union_map_from_map(schedule_i));
     free(name);
 
     return 0;
@@ -4240,7 +4236,7 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
         struct acc_info rinfo = {name, 0, &reads, &schedule, pstmt->schedule};
         isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
         sprintf(name, "S_%d_w", stmt->id);
-        struct acc_info winfo = {name, 0, &writes, &schedule, isl_map_copy(pstmt->schedule)};
+        struct acc_info winfo = {name, 0, &writes, &schedule, pstmt->schedule};
         isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
 
         isl_union_map_free(lreads);
@@ -4356,10 +4352,11 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     if (npar >= 1)    {
         params = (char **) malloc(sizeof(char *)*npar);
     }
+    isl_space *cspace = isl_set_get_space(pscop->context);
     for (i=0; i<npar; i++)  {
-        params[i] = strdup(isl_space_get_dim_name(isl_set_get_space(pscop->context),
-                    isl_dim_param, i));
+        params[i] = strdup(isl_space_get_dim_name(cspace, isl_dim_param, i));
     }
+    isl_space_free(cspace);
 
     /* Max dom dimensionality */
     nvar = -1;
@@ -4381,7 +4378,7 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     	struct pet_stmt *pstmt = pscop->stmts[s];
         PlutoConstraints *domain = isl_set_to_pluto_constraints(pstmt->domain);
 
-        PlutoMatrix *trans = isl_schedule_to_pluto_trans(pstmt->schedule,
+        PlutoMatrix *trans = isl_map_to_pluto_func(pstmt->schedule,
                 isl_set_dim(pstmt->domain, isl_dim_set), npar);
 
         stmts[s] = pluto_stmt_alloc(isl_set_dim(pstmt->domain, isl_dim_set), 
@@ -4411,14 +4408,16 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
         stmt->tile = 1;
 
         /* Store the iterator names*/
+        isl_space *dspace = isl_set_get_space(pstmt->domain);
         for (j=0; j<stmt->dim; j++)    {
             stmt->iterators[j] = strdup(
-                    isl_space_get_dim_name(isl_set_get_space(pstmt->domain), 
-                        isl_dim_set, j));
+                    isl_space_get_dim_name(dspace, isl_dim_set, j));
         }
+        isl_space_free(dspace);
 
         pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
         pluto_constraints_set_names_range(stmt->domain, params, stmt->dim, 0, npar);
+
 
         /*
          * Copy the body of the statement found by print_user. Remove 
@@ -4433,15 +4432,6 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
             free(pstmt->stmt_text);
             pstmt->stmt_text = NULL;
         }else stmt->text = strdup("/* unknown - failure constructing stmt body */");
-
-        /*
-         * TODO: Debugging structures accesses are not populated, as 
-         * PlutoConstraints
-         * and matrices cannot support modulos.
-         * One can directly use the pet output.
-         * However, number of accesses are populated here.
-         * UB: setting nreads, nwrites to zero
-         */
 
         isl_space *space = isl_set_get_space(pscop->context);
         isl_union_map *reads =	pet_stmt_collect_accesses(pstmt, 
@@ -4472,12 +4462,8 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
             stmt->writes[j] = NULL;
         }
 
-        isl_union_map_foreach_map(reads, &map_extract_access_func, &e_reads);
-        isl_union_map_foreach_map(writes, &map_extract_access_func, &e_writes);
-
-        //for (j=0; j<stmt->nreads; j++) {
-         //   pluto_access_print(stdout, stmt->reads[j]);
-        //}
+        isl_union_map_foreach_map(reads, &isl_map_extract_access_func, &e_reads);
+        isl_union_map_foreach_map(writes, &isl_map_extract_access_func, &e_writes);
 
         isl_union_map_free(reads);
         isl_union_map_free(writes);
@@ -4814,15 +4800,16 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
     /* Program parameters */
     npar = isl_set_dim(pscop->context, isl_dim_all);
 
+    isl_space *cspace = isl_set_get_space(pscop->context);
     for (i=0; i<npar; i++) {
         pluto_prog_add_param(prog, 
-                isl_space_get_dim_name(isl_set_get_space(pscop->context), isl_dim_param, i),
+                isl_space_get_dim_name(cspace, isl_dim_param, i),
                 prog->npar);
     }
+    isl_space_free(cspace);
 
     pluto_constraints_free(prog->context);
     prog->context = isl_set_to_pluto_constraints(pscop->context);
-
 
     // isl_set_dump(pscop->context);
 
@@ -4841,7 +4828,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
     max_sched_rows = 0;
 
     for (i=0; i<prog->nstmts; i++) {
-
     	struct pet_stmt * pstmt = pscop->stmts[i];
 
     	int stmt_dim = isl_set_dim(pstmt->domain, isl_dim_set);
@@ -4849,7 +4835,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
 
         int nrows = isl_map_dim(pstmt->schedule, isl_dim_out);
         max_sched_rows = PLMAX(max_sched_rows, nrows);
-
     }
 
     FILE *text_dump = fopen(".dumpstmttxt", "w");
@@ -4862,7 +4847,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
 
     /* Compute dependences */
     compute_deps_pet(pscop, prog, options);
-
 
     /* Add hyperplanes */
     if (prog->nstmts >= 1) {

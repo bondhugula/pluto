@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "isl/mat.h"
+#include "isl/aff.h"
 
 #define PLMAX(a,b) ((a>=b)?(a):(b))
 #define PLMIN(a,b) ((a<=b)?(a):(b))
@@ -86,5 +87,6 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
 
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
+int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff, void *user);
 
 #endif
