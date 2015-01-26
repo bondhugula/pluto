@@ -1956,7 +1956,6 @@ PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h)
 void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos, PlutoMatrix *func)
 {
     int i, j;
-
     assert(func->ncols == cst->ncols);
     assert(func->nrows == 1);
     assert(func->val[0][pos] == 0);

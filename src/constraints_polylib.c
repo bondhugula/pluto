@@ -181,6 +181,20 @@ PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1,
 }
 
 
+/* In-place intersection: first argument is modified */
+PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *icst = pluto_constraints_intersection(cst1, cst2);
+    pluto_constraints_copy(cst1, icst);
+    pluto_constraints_free(icst);
+
+    return cst1;
+}
+
+
+
+
 /* Converts polylib matrix to pluto constraints */
 PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat)
 {
