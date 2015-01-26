@@ -98,18 +98,10 @@ lbtest: par lbpar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
-<<<<<<< HEAD
-	diff -q out_par4 out_lbpar4
-	rm -f .test
-	@echo Success!
-
-
-=======
 	rm -f .test
 	diff -q out_par4 out_lbpar4
 	@echo Success!
 
->>>>>>> origin/master
 opt-test: orig opt
 	touch .test
 	./orig > out_orig
@@ -126,9 +118,5 @@ clean:
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
-<<<<<<< HEAD
-	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out lbpar
-=======
 	rm -f out_* opt orig tiled lbtile lbpar  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
->>>>>>> origin/master
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d
