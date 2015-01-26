@@ -256,9 +256,12 @@ void pluto_tile(PlutoProg *prog)
     IF_DEBUG(printf("Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
-    // create bands for innermost parallel loops to be 1-D tiled
-    // if they are not dominated by any band
+    /*
+     * Create bands for innermost parallel loops to be 1-D tiled
+     * if they are not dominated by any band
+     */
     int nloops;
+
     Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
     for (i=0; i<nloops; i++) {
         if (pluto_is_loop_innermost(loops[i], prog)) {
@@ -271,6 +274,7 @@ void pluto_tile(PlutoProg *prog)
             }
         }
     }
+    pluto_loops_free(loops, nloops);
     
     /* Now, we are ready to tile */
     if (options->lt >= 0 && options->ft >= 0)   {

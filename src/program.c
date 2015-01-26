@@ -2682,6 +2682,8 @@ PlutoOptions *pluto_options_alloc()
 
     options->lbtile = 0;
     options->partlbtile = 0;
+
+    options->iss = 0;
     options->unroll = 0;
 
     /* Unroll/jam factor */
