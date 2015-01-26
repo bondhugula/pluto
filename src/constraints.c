@@ -1402,7 +1402,7 @@ void check_redundancy(PlutoConstraints *cst)
         pluto_constraints_remove_row(check, i); 
         pluto_constraints_negate_constraint(row, 0);
         pluto_constraints_add(check, row);
-        if (!pluto_constraints_lexmin(check, DO_NOT_ALLOW_NEGATIVE_COEFF))  {
+        if (pluto_constraints_is_empty(check))  {
             // printf("%dth constraint is redundant\n", i);
             count++;
         }else{
