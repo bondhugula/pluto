@@ -1,4 +1,4 @@
-From 07801567790134519cdccd74be6da60e8fc8fa0f Mon Sep 17 00:00:00 2001
+From 89de9371b11ddd749fb89bb81e77985019f001b4 Mon Sep 17 00:00:00 2001
 From: Uday Bondhugula <udayreddy@gmail.com>
 Date: Mon, 22 Dec 2014 17:18:19 +0530
 Subject: [PATCH] isl dim-wise single_valued and isl_pw_aff_map functions
@@ -13,7 +13,7 @@ Signed-off-by: Uday Bondhugula <udayreddy@gmail.com>
  5 files changed, 61 insertions(+), 1 deletion(-)
 
 diff --git a/doc/user.pod b/doc/user.pod
-index 0438f7d..8129f4f 100644
+index 0438f7d..5eab654 100644
 --- a/doc/user.pod
 +++ b/doc/user.pod
 @@ -1981,6 +1981,7 @@ is already known to be empty.
@@ -29,7 +29,7 @@ index 0438f7d..8129f4f 100644
  A piecewise multiple quasi affine expression can also be initialized
  from an C<isl_set> or C<isl_map>, provided the C<isl_set> is a singleton
 -and the C<isl_map> is single-valued.
-+and the C<isl_map> is single-valued. Similarly, a piecewise quasi affine 
++and the C<isl_map> is single-valued. Similarly, a piecewise quasi affine
 +expression can be extracted from a single-valued C<isl_map> dimension.
  In case of a conversion from an C<isl_union_set> or an C<isl_union_map>
  to an C<isl_union_pw_multi_aff>, these properties need to hold in each space.
@@ -109,7 +109,7 @@ index 97008b0..2fed6ab 100644
  {
  	return isl_pw_multi_aff_from_map(set);
 diff --git a/isl_map.c b/isl_map.c
-index d383553..ee1b1f7 100644
+index d383553..8b8658c 100644
 --- a/isl_map.c
 +++ b/isl_map.c
 @@ -10124,6 +10124,30 @@ int isl_map_is_single_valued(__isl_keep isl_map *map)
@@ -129,8 +129,8 @@ index d383553..ee1b1f7 100644
 +        isl_die(isl_map_get_ctx(map), isl_error_invalid,
 +			"dim position out of bounds", return 0);
 +    }
-+   
-+    tmap = isl_map_project_out(isl_map_copy(map), isl_dim_out, 
++
++    tmap = isl_map_project_out(isl_map_copy(map), isl_dim_out,
 +            pos+1, n_out-pos-1);
 +    tmap = isl_map_project_out(tmap, isl_dim_out, 0, pos);
 +
@@ -145,5 +145,4 @@ index d383553..ee1b1f7 100644
  	int in;
 -- 
 1.9.3
-
 
