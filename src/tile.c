@@ -242,7 +242,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
  *  */
 void pluto_tile(PlutoProg *prog)
 {
-    int nbands, i, n_ibands;
+    int nbands, i, j, n_ibands;
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
@@ -251,6 +251,26 @@ void pluto_tile(PlutoProg *prog)
     IF_DEBUG(printf("Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
+    /*
+     * Create bands for innermost parallel loops to be 1-D tiled
+     * if they are not dominated by any band
+     */
+    int nloops;
+
+    Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
+    for (i=0; i<nloops; i++) {
+        if (pluto_is_loop_innermost(loops[i], prog)) {
+            for (j=0; j<nbands; j++) {
+                if (is_loop_dominated(loops[i], bands[j]->loop, prog)) break;
+            }
+            if (j==nbands) {
+                bands = realloc(bands, (nbands+1)*sizeof(Band *));
+                bands[nbands++] = pluto_band_alloc(loops[i], 1);
+            }
+        }
+    }
+    pluto_loops_free(loops, nloops);
+    
     /* Now, we are ready to tile */
     if (options->lt >= 0 && options->ft >= 0)   {
         /* User option specified tiling */

@@ -413,6 +413,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cl
 Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtType);
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 
+int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
