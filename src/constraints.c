@@ -1471,7 +1471,7 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst)
         isl_set_free(iset);
         isl_ctx_free(ctx);
     }else{
-        sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        sol = pluto_constraints_lexmin(cst, ALLOW_NEGATIVE_COEFF);
         is_empty = (sol == NULL);
         free(sol);
     }
