@@ -84,8 +84,10 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     fprintf(fp, "c\n\n");
 
     /* Context: setting conditions on parameters */
-    pluto_constraints_print_polylib(fp, prog->context);
-
+    PlutoConstraints *ctx = pluto_constraints_dup(prog->context);
+    pluto_constraints_intersect(ctx, prog->codegen_context);
+    pluto_constraints_print_polylib(fp, ctx);
+    pluto_constraints_free(ctx);
 
     /* Setting parameter names */
     fprintf(fp, "\n1\n");
@@ -100,8 +102,6 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     /* Print statement domains */
     for (i=0; i<nstmts; i++)    {
         fprintf(fp, "# S%d (%s)\n", stmts[i]->id+1, stmts[i]->text);
-        fprintf(fp, "%d # of domains\n", 
-                pluto_constraints_num_in_list(stmts[i]->domain));
         pluto_constraints_print_polylib(fp, stmts[i]->domain);
         fprintf(fp, "0 0 0\n\n");
     }
