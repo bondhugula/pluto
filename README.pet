@@ -1,0 +1,4 @@
+Use the --pet option to use 'pet' to extract polyhedral representation 
+from the source program instead of clan.
+
+Run ./apply_patches.sh once you have cloned the branch
