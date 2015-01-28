@@ -246,6 +246,8 @@ fi
 
 (cd pet && ./configure ${configureopts})
 
+dnl check if pet configure had failed
+AC_CHECK_FILE([pet/Makefile], [], [AC_MSG_ERROR([configure in pet/ failed])])
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo ""
