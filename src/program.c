@@ -2680,6 +2680,7 @@ PlutoOptions *pluto_options_alloc()
     options->identity = 0;
 
     options->lbtile = 0;
+    options->pet = 0;
     options->partlbtile = 0;
 
     options->iss = 0;
