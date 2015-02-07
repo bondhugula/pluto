@@ -38,6 +38,7 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
     }
     int is_invariant = (i==newacc->nrows);
     pluto_matrix_free(newacc);
+    free(divs);
     return is_invariant;
 }
 
@@ -55,6 +56,7 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
         /* No spatial reuse when the func is varying at a non-innermost dim */
         if (newacc->val[i][depth] != 0) {
             pluto_matrix_free(newacc);
+            free(divs);
             return 0;
         }
     }
@@ -62,10 +64,12 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
     if (newacc->val[newacc->nrows-1][depth] >= 1 &&
             newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) {
         pluto_matrix_free(newacc);
+        free(divs);
         return 1;
     }
 
     pluto_matrix_free(newacc);
+    free(divs);
 
     return 0;
 }
@@ -166,9 +170,11 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
         pluto_make_innermost(loops[l], prog);
         IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
         IF_DEBUG(pluto_loop_print(loops[l]););
+        pluto_loops_free(loops, num);
         return 1;
     }
 
+    pluto_loops_free(loops, num);
     return 0;
 }
 
