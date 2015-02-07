@@ -197,7 +197,10 @@ int main(int argc, char *argv[])
         {"isldepcompact", no_argument, &options->isldepcompact, 1},
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
+        {"glpksolve", no_argument, &options->glpksolve, 1},
         {"time", no_argument, &options->time, 1},
+        {"disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1},
+        {"disable-neg-coeffs", no_argument, &options->disable_neg_coeffs, 1},
         {0, 0, 0, 0}
     };
 
@@ -640,7 +643,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         if (tmpfp)    {
             fprintf(tmpfp, "%s\n", outFileName);
             fclose(tmpfp);
-            printf( "[Pluto] Output written to %s\n", outFileName);
+            PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
         }
         free(outFileName);
 
@@ -651,7 +654,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     t_all = rtclock() - t_start_all;
 
-    if (options->time) {
+    if (options->time && !options->silent) {
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);

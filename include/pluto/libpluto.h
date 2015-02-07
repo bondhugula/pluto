@@ -140,7 +140,10 @@ struct plutoOptions{
     /* DEV: Don't use cost function */
     int nodepbound;
 
-    /* hard upper bound for transformation coefficients */
+    /* 
+     * Hard bound on transformation coefficients; absolute values of all
+     * coefficients <= coeff_bound
+     */
     int coeff_bound;
 
     /* Ask candl to privatize */
@@ -155,6 +158,8 @@ struct plutoOptions{
     /* Use isl as ilp solver. */
     int islsolve;
 
+    int glpksolve;
+
     /* Index set splitting */
     int iss;
 
@@ -163,6 +168,9 @@ struct plutoOptions{
 
     /* Polyhedral compile time stats */
     int time;
+
+    int disable_param_coeffs;
+    int disable_neg_coeffs;
 };
 typedef struct plutoOptions PlutoOptions;
 

@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdio.h>
@@ -35,7 +35,6 @@
 #include <isl/set.h>
 #include <isl/deprecated/int.h>
 #include "candl/candl.h"
-
 
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 5000
 #define MAX_FARKAS_CST  2000
@@ -120,208 +119,237 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
+    IF_DEBUG(printf("compute permutability constraints\n"););
+
     dest_stmt = dep->dest;
     src_stmt = dep->src;
 
+    IF_MORE_DEBUG(printf("[pluto] compute permutability constraints: Dep %d\n", dep->id+1););
+
     /* Convert everything to >= 0 form */
-    PlutoConstraints *dpoly = pluto_constraints_to_pure_inequalities_single(dep->dpolytope);
+    PlutoConstraints *dpoly =
+        pluto_constraints_to_pure_inequalities_single(dep->dpolytope);
+
+    IF_MORE_DEBUG(printf("Dep %d\n", dep->id+1););
 
     /* Non-uniform dependence - farkas lemma comes in */
     /* Apply farkas lemma, eliminate farkas multipliers using
-     * fourier-motzkin 
-     * 
-     * -- farkas_cst format for legality --
-     * [ mapping coeff for src | ... for dest |farkas multipliers|constant]
-     * SIZE: [nvar+1 | nvar+1 | dep.dpolytope->nrows+1 | 1]
+     * fourier-motzkin
      *
-     * -- farkas_cst format for bounding function --
-     * [bounding func | mapping coeff for src | ... for dest |farkas multipliers|constant]
-     * SIZE: [npar+1| nvar+1 | nvar+1 | dep.dpolytope->nrows+1 | 1]
+     * -- farkas_cst format for validity --
+     * [ mapping coeff for src | ... for dest |farkas multipliers|constant]
+     * SIZE: [nvar+npar+1 | nvar+npar+1 | dep.dpolytope->nrows+1 | 1]
+     *
+     * farkas multipliers in the order l_1, l_2, ...., l_n, l_0
+     * (l_0 - the translation one comes last)
+     *
+     * -- comm_farkas_cst format (for bounding function) --
+     * [bounding func | mapping coeff for src | ... for dest |farkas
+     *multipliers|constant]
+     * SIZE: [npar+1| nvar+npar+1 | nvar+npar+1 | dep.dpolytope->nrows+1 | 1]
      *
      */
-    if (src_stmt != dest_stmt)  {
+    if (src_stmt != dest_stmt) {
         /* Inter-statement non-uniform dep */
-        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, 2*nvar+2+dpoly->nrows+2);
-        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+2*nvar+2+dpoly->nrows+2);
+        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST,
+                2* nvar + 2*npar + 2 + dpoly->nrows + 2);
+        comm_farkas_cst = pluto_constraints_alloc(
+                MAX_FARKAS_CST, npar + 1 + 2*nvar + 2*npar + 2 + dpoly->nrows + 2);
 
-        farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
-        farkas_cst->ncols = 2*(nvar+1)+dpoly->nrows+2;
+        farkas_cst->nrows = (2*nvar + npar + 1) + 1 + dpoly->nrows + 1;
+        farkas_cst->ncols = 2*(nvar + npar + 1) + dpoly->nrows + 2;
 
-        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
-        comm_farkas_cst->ncols = npar+1+2*(nvar+1)+dpoly->nrows+2;
+        comm_farkas_cst->nrows = (2*nvar + npar + 1) + 1 + dpoly->nrows + 1;
+        comm_farkas_cst->ncols = npar + 1 + 2*(nvar + npar + 1) + dpoly->nrows + 2;
     }else{
         /* Intra-statement non-uniform dependence */
-        farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, nvar+1+dpoly->nrows+2);
-        comm_farkas_cst = pluto_constraints_alloc(MAX_FARKAS_CST, npar+1+nvar+1+dpoly->nrows+2);
+        farkas_cst =
+            pluto_constraints_alloc(MAX_FARKAS_CST, nvar + npar + 1 + dpoly->nrows + 2);
+        comm_farkas_cst = pluto_constraints_alloc(
+                MAX_FARKAS_CST, npar + 1 + nvar + npar + 1 + dpoly->nrows + 2);
 
-        farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
-        farkas_cst->ncols = (nvar+1)+dpoly->nrows+2;
+        farkas_cst->nrows = (2*nvar + npar + 1) + 1 + dpoly->nrows + 1;
+        farkas_cst->ncols = (nvar + npar + 1) + dpoly->nrows + 2;
 
-        comm_farkas_cst->nrows = (2*nvar+npar+1)+1+dpoly->nrows+1;
-        comm_farkas_cst->ncols = npar+1+(nvar+1)+dpoly->nrows+2;
+        comm_farkas_cst->nrows = (2*nvar + npar + 1) + 1 + dpoly->nrows + 1;
+        comm_farkas_cst->ncols = npar + 1 + (nvar + npar + 1) + dpoly->nrows + 2;
     }
 
-
     /* Initialize all to zero */
-    for (j=0; j<farkas_cst->nrows; j++)  {
-        for (k=0; k<farkas_cst->ncols; k++)  {
+    for (j = 0; j < farkas_cst->nrows; j++) {
+        for (k = 0; k < farkas_cst->ncols; k++) {
             farkas_cst->val[j][k] = 0;
         }
     }
 
-    for (j=0; j<comm_farkas_cst->nrows; j++)  {
-        for (k=0; k<comm_farkas_cst->ncols; k++)  {
+    for (j = 0; j < comm_farkas_cst->nrows; j++) {
+        for (k = 0; k < comm_farkas_cst->ncols; k++) {
             comm_farkas_cst->val[j][k] = 0;
         }
     }
 
-    if (src_stmt != dest_stmt)  {
-
-        /* Add tiling legality constraints */
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            if (j < nvar)   {
+    if (src_stmt != dest_stmt) {
+        /* Add tiling validity constraints */
+        for (j = 0; j < 2 * nvar + npar + 1; j++) {
+            if (j < nvar) {
                 /* src stmt coeff */
                 farkas_cst->val[j][j] = -1;
-            }else if (j < 2*nvar)   {
+            } else if (j < 2 * nvar) {
                 /* dest stmt coeff */
-                farkas_cst->val[j][j+1] = 1;
-            }else if (j < 2*nvar+npar)  {
-                /* Do nothing - all coeff multipliers stay zero */
-                /* since structure parameters not in our affine mappings */
+                farkas_cst->val[j][j + npar + 1] = 1;
+            } else if (j < 2 * nvar + npar) {
+                /* Parameters */
+                farkas_cst->val[j][j - 2*nvar + nvar] = -1;
+                farkas_cst->val[j][j - 2*nvar + nvar + npar +1 + nvar] = 1;
             }else{
                 /* j = 2*nvar+npar */
                 /* Translation coefficients in the affine mappings */
-                farkas_cst->val[j][nvar] = -1;
-                farkas_cst->val[j][2*nvar+1] = 1;
+                farkas_cst->val[j][nvar+npar] = -1;
+                farkas_cst->val[j][2 * nvar + 2*npar + 1] = 1;
                 /* \lambda_0 */
-                farkas_cst->val[j][farkas_cst->ncols-2] = -1;
-            } 
+                farkas_cst->val[j][farkas_cst->ncols - 2] = -1;
+            }
 
             /* Set coeff's for farkas multipliers (all except \lambda_0) */
-            for (k=2*nvar+2; k<2*nvar+2+dpoly->nrows; k++)  {
+            for (k = 2*nvar + 2*npar + 2; k < 2*nvar + 2*npar + 2 + dpoly->nrows; k++) {
                 /* Note that dep polytope is dpolytope->nrows x (2*nvar+npar+1) */
-                farkas_cst->val[j][k] = -dpoly->val[k-2*nvar-2][j];
+                farkas_cst->val[j][k] = -dpoly->val[k - 2*nvar - 2*npar - 2][j];
             }
-            farkas_cst->val[j][farkas_cst->ncols-1] = 0;
+            /* Constant part is always zero */
+            farkas_cst->val[j][farkas_cst->ncols - 1] = 0;
         }
 
         /* Since the above are equalities - add sigma negative */
-        for (k=0; k<farkas_cst->ncols; k++)    {
-            farkas_cst->val[2*nvar+npar+1][k] = 0;
-            for (j=0; j<2*nvar+npar+1; j++)  {
-                farkas_cst->val[2*nvar+npar+1][k] -= farkas_cst->val[j][k];
+        for (k = 0; k < farkas_cst->ncols; k++) {
+            farkas_cst->val[2*nvar + npar + 1][k] = 0;
+            for (j = 0; j < 2*nvar + npar + 1; j++) {
+                farkas_cst->val[2*nvar + npar + 1][k] -= farkas_cst->val[j][k];
             }
         }
 
         /* All Farkas multipliers are non-negative */
-        for (j=0; j<dpoly->nrows+1; j++)  {
-            for (k=0; k<dpoly->nrows+1; k++)  {
-                farkas_cst->val[2*nvar+npar+2+j][2*nvar+2+k] = ((j==k)?1:0);
+        for (j = 0; j < dpoly->nrows + 1; j++) {
+            for (k = 0; k < dpoly->nrows + 1; k++) {
+                farkas_cst->val[2*nvar + npar + 2 + j][2*nvar + 2*npar + 2 + k] =
+                    ((j == k) ? 1 : 0);
             }
         }
 
-        /* Bounding function constraints */
-        for (k=0; k<npar; k++)  {
-            comm_farkas_cst->val[2*nvar+k][k] = 1;
+        /* Bounding function (u.n + w) constraints */
+        /* u */
+        for (k = 0; k < npar; k++) {
+            comm_farkas_cst->val[2*nvar + k][k] = 1;
         }
 
-        comm_farkas_cst->val[2*nvar+npar][npar] = 1;
+        /* w */
+        comm_farkas_cst->val[2*nvar + npar][npar] = 1;
 
-        for (j=0; j<2*nvar+npar+1; j++)
-            for (k=0; k<farkas_cst->ncols-dpoly->nrows-2; k++)
-                comm_farkas_cst->val[j][npar+1+k] = -farkas_cst->val[j][k];
+        for (j = 0; j < 2*nvar + npar + 1; j++)
+            for (k = 0; k < farkas_cst->ncols - dpoly->nrows - 2; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = -farkas_cst->val[j][k];
 
-        for (j=0; j<2*nvar+npar+1; j++)
-            for (k=farkas_cst->ncols-dpoly->nrows-2; k<farkas_cst->ncols; k++)
-                comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
+        for (j = 0; j < 2 * nvar + npar + 1; j++)
+            for (k = farkas_cst->ncols - dpoly->nrows - 2; k < farkas_cst->ncols; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = farkas_cst->val[j][k];
 
         /* Add opp inequality since the above were equalities */
-        for (k=0; k<comm_farkas_cst->ncols; k++)    {
-            comm_farkas_cst->val[2*nvar+npar+1][k] = 0;
-            for (j=0; j<2*nvar+npar+1; j++) {
-                comm_farkas_cst->val[2*nvar+npar+1][k] -= comm_farkas_cst->val[j][k];
+        for (k = 0; k < comm_farkas_cst->ncols; k++) {
+            comm_farkas_cst->val[2 * nvar + npar + 1][k] = 0;
+            for (j = 0; j < 2 * nvar + npar + 1; j++) {
+                comm_farkas_cst->val[2 * nvar + npar + 1][k] -=
+                    comm_farkas_cst->val[j][k];
             }
         }
 
-        for (j=2*nvar+npar+2; j<farkas_cst->nrows; j++)
-            for (k=0; k<farkas_cst->ncols; k++)
-                comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
-        
-        eliminate_farkas_multipliers(farkas_cst, farkas_cst->ncols-2*nvar-3);
-        eliminate_farkas_multipliers(comm_farkas_cst, comm_farkas_cst->ncols-npar-1-2*nvar-3);
+        for (j = 2*nvar + npar + 2; j < farkas_cst->nrows; j++)
+            for (k = 0; k < farkas_cst->ncols; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = farkas_cst->val[j][k];
+
+        eliminate_farkas_multipliers(farkas_cst, farkas_cst->ncols - 2*nvar - 2*npar - 3);
+        eliminate_farkas_multipliers(comm_farkas_cst, comm_farkas_cst->ncols -
+                npar - 1 - 2*nvar - 2*npar - 3);
 
         /* constraints_print(stdout, farkas_cst); */
 
     }else{
         /* Source stmt == Dest stmt */
 
-        for (j=0; j<2*nvar+npar+1; j++)  {
-            if (j < nvar)   {
+        for (j = 0; j < 2*nvar + npar + 1; j++) {
+            if (j < nvar) {
                 /* src stmt coeff */
                 farkas_cst->val[j][j] = -1;
-            }else if (j < 2*nvar)   {
+            } else if (j < 2 * nvar) {
                 /* dest stmt coeff */
-                farkas_cst->val[j][j-nvar] = 1;
-            }else if (j < 2*nvar+npar)  {
-                /* Do nothing - all coeff multipliers stay zero */
-                /* NOTE: structure parameters not in our affine mappings */
+                farkas_cst->val[j][j - nvar] = 1;
+            } else if (j < 2 * nvar + npar) {
+                /* Parameter coefficients get subtracted out */
+                farkas_cst->val[j][j - 2*nvar + nvar] = 0;
             }else{
                 /* Translation coefficient gets subtracted out */
                 farkas_cst->val[j][nvar] = 0;
-                farkas_cst->val[j][farkas_cst->ncols-2] = -1;
-            } 
+                /* \lambda_0 */
+                farkas_cst->val[j][farkas_cst->ncols - 2] = -1;
+            }
 
             /* Set coeff's for farkas multipliers */
-            for (k=nvar+1; k<nvar+1+dpoly->nrows; k++)  {
-                farkas_cst->val[j][k] = -dpoly->val[k-nvar-1][j];
+            for (k = nvar + npar + 1; k < nvar + npar + 1 + dpoly->nrows; k++) {
+                farkas_cst->val[j][k] = -dpoly->val[k - nvar - npar - 1][j];
             }
-            farkas_cst->val[j][farkas_cst->ncols-1] = 0;
+            /* Constant part is always zero */
+            farkas_cst->val[j][farkas_cst->ncols - 1] = 0;
         }
 
         /* Since the above are equalities - add sigma negative */
-        for (k=0; k<farkas_cst->ncols; k++)    {
-            farkas_cst->val[2*nvar+npar+1][k] = 0;
-            for (j=0; j<2*nvar+npar+1; j++)  {
-                farkas_cst->val[2*nvar+npar+1][k] -= farkas_cst->val[j][k];
+        for (k = 0; k < farkas_cst->ncols; k++) {
+            farkas_cst->val[2 * nvar + npar + 1][k] = 0;
+            for (j = 0; j < 2 * nvar + npar + 1; j++) {
+                farkas_cst->val[2 * nvar + npar + 1][k] -= farkas_cst->val[j][k];
             }
         }
 
-        /* All farkas multipliers are positive */
-        for (j=0; j<dpoly->nrows+1; j++)  {
-            for (k=0; k<dpoly->nrows+1; k++)  {
-                farkas_cst->val[2*nvar+npar+2+j][nvar+1+k] = ((j==k)?1:0);
+        /* All farkas multipliers are non-negative */
+        for (j = 0; j < dpoly->nrows + 1; j++) {
+            for (k = 0; k < dpoly->nrows + 1; k++) {
+                farkas_cst->val[2*nvar + npar + 2 + j][nvar + npar + 1 + k] =
+                    ((j == k) ? 1 : 0);
             }
         }
 
-        /* Bounding function constraints */
-        for (k=0; k<npar; k++)  {
-            comm_farkas_cst->val[2*nvar+k][k] = 1;
+        /* Bounding function (u.n + w) constraints */
+        /* u */
+        for (k = 0; k < npar; k++) {
+            comm_farkas_cst->val[2*nvar + k][k] = 1;
         }
 
-        comm_farkas_cst->val[2*nvar+npar][npar] = 1;
+        /* w */
+        comm_farkas_cst->val[2*nvar + npar][npar] = 1;
 
-        for (j=0; j<2*nvar+npar+1; j++)
-            for (k=0; k<farkas_cst->ncols-dpoly->nrows-2; k++)
-                comm_farkas_cst->val[j][npar+1+k] = -farkas_cst->val[j][k];
+        for (j = 0; j < 2 * nvar + npar + 1; j++)
+            for (k = 0; k < farkas_cst->ncols - dpoly->nrows - 2; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = -farkas_cst->val[j][k];
 
-        for (j=0; j<2*nvar+npar+1; j++)
-            for (k=farkas_cst->ncols-dpoly->nrows-2; k<farkas_cst->ncols; k++)
-                comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
+        for (j = 0; j < 2*nvar + npar + 1; j++)
+            for (k = farkas_cst->ncols - dpoly->nrows - 2; k < farkas_cst->ncols; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = farkas_cst->val[j][k];
 
         /* Add opp inequality since the above were equalities */
-        for (k=0; k<comm_farkas_cst->ncols; k++)    {
-            comm_farkas_cst->val[2*nvar+npar+1][k] = 0;
-            for (j=0; j<2*nvar+npar+1; j++) {
-                comm_farkas_cst->val[2*nvar+npar+1][k] -= comm_farkas_cst->val[j][k];
+        for (k = 0; k < comm_farkas_cst->ncols; k++) {
+            comm_farkas_cst->val[2 * nvar + npar + 1][k] = 0;
+            for (j = 0; j < 2 * nvar + npar + 1; j++) {
+                comm_farkas_cst->val[2 * nvar + npar + 1][k] -=
+                    comm_farkas_cst->val[j][k];
             }
         }
 
-        for (j=2*nvar+npar+2; j<farkas_cst->nrows; j++)
-            for (k=0; k<farkas_cst->ncols; k++)
-                comm_farkas_cst->val[j][npar+1+k] = farkas_cst->val[j][k];
+        for (j = 2*nvar + npar + 2; j < farkas_cst->nrows; j++)
+            for (k = 0; k < farkas_cst->ncols; k++)
+                comm_farkas_cst->val[j][npar + 1 + k] = farkas_cst->val[j][k];
 
-        eliminate_farkas_multipliers(farkas_cst, farkas_cst->ncols-nvar-2);
-        eliminate_farkas_multipliers(comm_farkas_cst, comm_farkas_cst->ncols-npar-1-nvar-2);
+        // pluto_constraints_pretty_print(stdout, farkas_cst);
+
+        eliminate_farkas_multipliers(farkas_cst, farkas_cst->ncols -nvar -npar - 2);
+        eliminate_farkas_multipliers(comm_farkas_cst,
+                comm_farkas_cst->ncols - npar - 1 - nvar - npar - 2);
 
         /* constraints_print(stdout, farkas_cst); */
     }
@@ -330,32 +358,35 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
      * global format format */
 
     /* Initialize everything to zero */
-    cst = pluto_constraints_alloc(farkas_cst->nrows + comm_farkas_cst->nrows, CST_WIDTH);
+    cst = pluto_constraints_alloc(farkas_cst->nrows + comm_farkas_cst->nrows,
+            CST_WIDTH);
     cst->ncols = CST_WIDTH;
 
-    for (k=0; k<farkas_cst->nrows+comm_farkas_cst->nrows; k++)   {
-        for (j=0; j<cst->ncols; j++)  {
+    for (k = 0; k < farkas_cst->nrows + comm_farkas_cst->nrows; k++) {
+        for (j = 0; j < cst->ncols; j++) {
             cst->val[k][j] = 0;
         }
     }
 
-    src_offset = npar+1+src_stmt*(nvar+1);
-    dest_offset = npar+1+dest_stmt*(nvar+1);
+    src_offset = npar + 1 + src_stmt*(nvar + npar + 1 + 3) + 1;
+    dest_offset = npar + 1 + dest_stmt*(nvar + npar + 1+ 3) + 1;
 
     /* Permutability constraints */
     if (!IS_RAR(dep->type)) {
-        for (k=0; k<farkas_cst->nrows; k++)   {
-            for (j=0; j<nvar+1; j++)  {
-                cst->val[cst->nrows+k][src_offset+j] = farkas_cst->val[k][j];
+        for (k = 0; k < farkas_cst->nrows; k++) {
+            for (j = 0; j < nvar + npar + 1; j++) {
+                cst->val[cst->nrows + k][src_offset + j] = farkas_cst->val[k][j];
                 if (src_stmt != dest_stmt) {
-                    cst->val[cst->nrows+k][dest_offset+j] = farkas_cst->val[k][nvar+1+j];
+                    cst->val[cst->nrows + k][dest_offset + j] =
+                        farkas_cst->val[k][nvar + npar + 1 + j];
                 }
             }
             /* constant part */
-            if (src_stmt == dest_stmt)  {
-                cst->val[cst->nrows+k][cst->ncols-1] = farkas_cst->val[k][nvar+1];
+            if (src_stmt == dest_stmt) {
+                cst->val[cst->nrows + k][cst->ncols - 1] = farkas_cst->val[k][nvar + npar + 1];
             }else{
-                cst->val[cst->nrows+k][cst->ncols-1] = farkas_cst->val[k][2*nvar+2];
+                cst->val[cst->nrows + k][cst->ncols - 1] =
+                    farkas_cst->val[k][2 * nvar + 2*npar + 2];
             }
         }
         cst->nrows = farkas_cst->nrows;
@@ -363,39 +394,44 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     if (!options->nodepbound)   {
         /* Add bounding constraints */
-        src_offset = npar+1+src_stmt*(nvar+1);
-        dest_offset = npar+1+dest_stmt*(nvar+1);
+        src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+        dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 +3) + 1;
 
-        for (k=0; k<comm_farkas_cst->nrows; k++)   {
-            for (j=0; j<npar+1; j++)  {
-                cst->val[cst->nrows+k][j] = comm_farkas_cst->val[k][j];
+        for (k = 0; k < comm_farkas_cst->nrows; k++) {
+            /* bounding function */
+            for (j = 0; j < npar + 1; j++) {
+                cst->val[cst->nrows + k][j] = comm_farkas_cst->val[k][j];
             }
-            for (j=0; j<nvar+1; j++)  {
-                cst->val[cst->nrows+k][src_offset+j] = comm_farkas_cst->val[k][npar+1+j];
-                if (src_stmt != dest_stmt) cst->val[cst->nrows+k][dest_offset+j] = comm_farkas_cst->val[k][npar+1+nvar+1+j];
+            for (j = 0; j < nvar + npar + 1; j++) {
+                cst->val[cst->nrows + k][src_offset + j] =
+                    comm_farkas_cst->val[k][npar + 1 + j];
+                if (src_stmt != dest_stmt)
+                    cst->val[cst->nrows + k][dest_offset + j] =
+                        comm_farkas_cst->val[k][npar + 1 + nvar + npar + 1 + j];
             }
             /* constant part */
-            if (src_stmt == dest_stmt)  {
-                cst->val[cst->nrows+k][cst->ncols-1] = comm_farkas_cst->val[k][npar+1+nvar+1];
+            if (src_stmt == dest_stmt) {
+                cst->val[cst->nrows + k][cst->ncols - 1] =
+                    comm_farkas_cst->val[k][npar + 1 + nvar + npar + 1];
             }else{
-                cst->val[cst->nrows+k][cst->ncols-1] = comm_farkas_cst->val[k][npar+1+2*nvar+2];
+                cst->val[cst->nrows + k][cst->ncols - 1] =
+                    comm_farkas_cst->val[k][npar + 1 + 2 * nvar + 2*npar + 2];
             }
         }
         cst->nrows += comm_farkas_cst->nrows;
     }
 
-
     /* Coefficients of those variables that don't appear in the outer loop
      * are useless */
-    for (k=0; k<nvar; k++)    {
-        if (!stmts[src_stmt]->is_orig_loop[k])  {
-            for (j=0; j < cst->nrows; j++)   {
-                cst->val[j][src_offset+k] = 0;
+    for (k = 0; k < nvar; k++) {
+        if (!stmts[src_stmt]->is_orig_loop[k]) {
+            for (j = 0; j < cst->nrows; j++) {
+                cst->val[j][src_offset + k] = 0;
             }
         }
-        if (src_stmt != dest_offset && !stmts[dest_stmt]->is_orig_loop[k])  {
-            for (j=0; j < farkas_cst->nrows+comm_farkas_cst->nrows; j++)   {
-                cst->val[j][dest_offset+k] = 0;
+        if (src_stmt != dest_offset && !stmts[dest_stmt]->is_orig_loop[k]) {
+            for (j = 0; j < farkas_cst->nrows + comm_farkas_cst->nrows; j++) {
+                cst->val[j][dest_offset + k] = 0;
             }
         }
     }
@@ -560,27 +596,68 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
  * Eliminates the last num_elim variables from farkas_cst -- these are the
  * farkas multipliers
  */
-static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_elim)
+static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst,
+        int num_elim) 
 {
     int i;
     int best_elim;
 
     if (options->moredebug) {
-        printf("To start with: %d constraints, %d to be eliminated out of %d vars\n", 
-                farkas_cst->nrows, num_elim, farkas_cst->ncols-1);
+        printf(
+                "To start with: %d constraints, %d to be eliminated out of %d vars\n",
+                farkas_cst->nrows, num_elim, farkas_cst->ncols - 1);
+        // pluto_constraints_pretty_print(stdout, farkas_cst);
     }
 
     for (i=0; i<num_elim; i++)  {
         best_elim = pluto_constraints_best_elim_candidate(farkas_cst, num_elim-i);
         fourier_motzkin_eliminate(farkas_cst, best_elim);
         if (options->moredebug) {
-            printf("After elimination of %d variable: %d constraints\n", 
-                    num_elim-i, farkas_cst->nrows); 
+            printf("After elimination of %d variable: %d constraints\n", num_elim - i,
+                    farkas_cst->nrows);
+            // pluto_constraints_pretty_print(stdout, farkas_cst);
         }
-        // pluto_constraints_print(stdout, farkas_cst);
     }
-
 }
+
+/* Generate mod sum reduction constraints in a similar way as 
+ * we did for non trivial solution aavoiding constraints. */
+/* void generate_linear_ind_mod_cnst_coeffs(int64 **val, int i, int j, int n, */
+/*         int stmt_row_offset, int stmt_col_offset)  */
+/* { */
+/*     int mid, temp, k; */
+/*     if (n == 0) */
+/*         return; */
+/*     else { */
+/*         mid = (1 << (n - 1)) - 1; */
+/*         for (temp = i; temp <= i + mid; temp++) { */
+/*             val[stmt_row_offset + temp][stmt_col_offset + j] = 1; */
+/*         } */
+/*  */
+/*         k = (1 << n); */
+/*         for (temp = i + mid + 1; temp < i + k; temp++) { */
+/*             val[stmt_row_offset + temp][stmt_col_offset + j] = -1; */
+/*         } */
+/*         generate_mod_const_coeffs(val, i, j + 1, n - 1, stmt_row_offset, */
+/*                 stmt_col_offset); */
+/*         generate_mod_const_coeffs(val, i + mid + 1, j + 1, n - 1, stmt_row_offset, */
+/*                 stmt_col_offset); */
+/*         return; */
+/*     } */
+/* } */
+
+
+/* void get_linear_ind_mod_sum_constraints(int64 **val, int stmt_row_offset, */
+/*         int stmt_col_offset, int nvar)  */
+/* { */
+/*     int nrows, i; */
+/*     nrows = 1 << nvar; */
+/*     for (i = 0; i < nrows; i++) { */
+/*         val[stmt_row_offset + i][stmt_col_offset + 0] = 1; // coeff of c_sum */
+/*     } */
+/*  */
+/*     generate_linear_ind_mod_cnst_coeffs(val, 0, 1, nvar, stmt_row_offset, stmt_col_offset); */
+/* } */
 
 
 /*
@@ -606,22 +683,25 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
  * If the null space is 0-dimensional, *orthonum will be zero and the return
  * value is NULL
  */
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-        const PlutoConstraints *currcst, int *orthonum)
+PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
+        const PlutoProg *prog,
+        int *orthonum) 
 {
-    int i, j, k, p, q;
+    int i, j, k, p, q, stmt_col_offset;
     PlutoConstraints **orthcst;
     isl_ctx *ctx;
     isl_mat *h;
-    isl_basic_set *isl_currcst;
+    // isl_basic_set *isl_currcst;
 
     IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
 
+    int coeff_bound = prog->options->coeff_bound;
     int nvar = prog->nvar;
     int npar = prog->npar;
     int nstmts = prog->nstmts;
     HyperplaneProperties *hProps = prog->hProps;
 
+    // pluto_stmt_print(stdout, stmt);
     if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
@@ -648,14 +728,14 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     h = isl_mat_alloc(ctx, q, p);
 
-    p=0; 
-    q=0;
-    for (i=0; i<nvar; i++) {
-        if (stmt->is_orig_loop[i])    {
-            q=0;
-            for (j=0; j<stmt->trans->nrows; j++) {
+    p = 0;
+    q = 0;
+    for (i = 0; i < nvar; i++) {
+        if (stmt->is_orig_loop[i]) {
+            q = 0;
+            for (j = 0; j < stmt->trans->nrows; j++) {
                 /* Skip rows of h that are zero */
-                if (hProps[j].type != H_SCALAR)   {
+                if (hProps[j].type != H_SCALAR) {
                     h = isl_mat_set_element_si(h, q, p, stmt->trans->val[j][i]);
                     q++;
                 }
@@ -670,10 +750,12 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     isl_mat_free(h);
 
-    orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *)); 
+    orthcst =
+        (PlutoConstraints **)malloc((nvar + 1) * sizeof(PlutoConstraints *));
 
-    for (i=0; i<nvar+1; i++)  {
-        orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
+    for (i = 0; i < nvar + 1; i++) {
+        /* Fixme: Only the last row one requires (1<<nvar+4) rows. */
+        orthcst[i] = pluto_constraints_alloc(2, CST_WIDTH); 
         orthcst[i]->ncols = CST_WIDTH;
     }
 
@@ -684,70 +766,102 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
      * basically only look in the orthogonal space where everything is
      * non-negative
      *
-     * All of these constraints are added later to 
+     * All of these constraints are added later to
      * the global constraint matrix
      */
 
     /* Normalize ortho first */
-    for (j=0; j<ortho->ncols; j++)    {
-        if (ortho->val[0][j] == 0) continue;
+    for (j = 0; j < ortho->ncols; j++) {
+        if (ortho->val[0][j] == 0)
+            continue;
         int colgcd = abs(ortho->val[0][j]);
-        for (i=1; i<ortho->nrows; i++)    {
-            if (ortho->val[i][j] == 0)  break;
-            colgcd = gcd(colgcd,abs(ortho->val[i][j]));
+        for (i = 1; i < ortho->nrows; i++) {
+            if (ortho->val[i][j] == 0)
+                break;
+            colgcd = gcd(colgcd, abs(ortho->val[i][j]));
         }
-        if (i == ortho->nrows)   {
-            if (colgcd > 1)    {
-                for (k=0; k<ortho->nrows; k++)    {
+        if (i == ortho->nrows) {
+            if (colgcd > 1) {
+                for (k = 0; k < ortho->nrows; k++) {
                     ortho->val[k][j] /= colgcd;
                 }
             }
         }
     }
     // printf("Ortho matrix\n");
-    // pluto_matrix_print(stdout, ortho); 
-
-    isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    // pluto_matrix_print(stdout, ortho);
 
     assert(p == ortho->nrows);
-    p=0;
-    for (i=0; i<ortho->ncols; i++) {
+    p = 0;
+
+    for (i = 0; i < ortho->ncols; i++) {
         isl_basic_set *orthcst_i;
 
-        j=0;
-        for (q=0; q<nvar; q++) {
-            if (stmt->is_orig_loop[q])    {
-                orthcst[p]->val[0][npar+1+(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
+        j = 0;
+
+        /* orthcst[p]->nrows = (1 << nvar) + 4; // 1;// 1<<nvar+4 rows */
+
+        for (q = 0; q < nvar; q++) {
+            if (stmt->is_orig_loop[q]) {
+                orthcst[p]->val[0][npar + 1 + (stmt->id) * (nvar + npar + 1+3) + q+1] = 
+                    ortho->val[j][i]*(int)pow((double)(coeff_bound+1), (double)(i));
                 j++;
             }
         }
-        orthcst[p]->nrows = 1;
-        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        orthcst[p]->nrows = 2;// 1<<nvar+4 rows
+        orthcst[p]->val[0][CST_WIDTH - 1] = -1;
         orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
-        orthcst[p]->val[0][CST_WIDTH-1] = 0;
+        orthcst[p]->val[0][CST_WIDTH - 1] = 0;
 
-        orthcst_i = isl_basic_set_intersect(orthcst_i,
-                isl_basic_set_copy(isl_currcst));
-        if (isl_basic_set_fast_is_empty(orthcst_i) 
-                || isl_basic_set_is_empty(orthcst_i)) {
-            pluto_constraints_negate_row(orthcst[p], 0);
-        }
         isl_basic_set_free(orthcst_i);
         p++;
         /* assert(p<=nvar-1); */
     }
 
-    // pluto_matrix_print(stdout, stmt->trans);
+    /* printf("ortho constraints\n"); */
+    /* pluto_constraints_pretty_print(stdout,orthcst[p]); */
 
-    if (p > 0)  {
-        /* Sum of all of the above is the last constraint */
-        for(j=0; j<CST_WIDTH; j++)  {
-            for (i=0; i<p; i++) {
+    /* The ortho matrix constains the "weighted sum" of each coefficient of the 
+     * set of all possible linearly independent hyperplanes. These are used to 
+     * generate constraints for equations 5 and 6. The trivial zero soultion is 
+     * avoided in the same way as we avoided the zero solution.   */
+    if (p >= 1) {
+        
+        stmt_col_offset = npar + 1 + (stmt->id) * (nvar + npar + 4);
+        // coeffs for delta and csum in equations (5) and (6).
+        int nrows=2;
+        orthcst[p]->val[0][stmt_col_offset + nvar + npar + 3] = 
+            (int)pow((double)(coeff_bound+1), (double)ortho->ncols);
+        orthcst[p]->val[1][stmt_col_offset + nvar + npar + 3] =
+            -(int)pow((double)(coeff_bound+1), (double)ortho->ncols); 
+        for (i=0 ; i<nrows;i++){
+            orthcst[p]->val[i][stmt_col_offset + 0] = 0;
+        }
+
+        // Constant terms in equations 5 and 6.
+        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        orthcst[p]->val[1][CST_WIDTH-1] = (int)pow((double)(coeff_bound+1), (double)ortho->ncols) - 1;
+
+        // Constraints on delta added along with bounding constraints
+        /* orthcst[p]->val[2][stmt_col_offset + nvar + npar + 3] = 1; */
+        /* orthcst[p]->val[3][stmt_col_offset + nvar + npar + 3] = -1; */
+        /* orthcst[p]->val[3][CST_WIDTH-1] = 1; */
+
+        orthcst[p]->nrows = 2; 
+
+        for (j = 0; j < CST_WIDTH; j++) {
+            for (i = 0; i < p; i++) {
                 orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
             }
         }
-        orthcst[p]->nrows = 1;
-        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        /* stmt_col_offset=npar+1+(stmt->id)*(nvar+npar+4); */
+        int temp;
+        for (i = 1; i <= nvar; i++){
+            temp = orthcst[p]->val[0][stmt_col_offset + i];
+            orthcst[p]->val[0][stmt_col_offset + i] = temp;
+            orthcst[p]->val[1][stmt_col_offset+i] = -temp;
+        }
+        /* get_linear_ind_mod_sum_constraints(orthcst[p]->val,4,stmt_col_offset,nvar); */
         p++;
     }
 
@@ -758,14 +872,16 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         // print_polylib_visual_sets("li", orthcst[i]);
         // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
     }
+    IF_DEBUG2(printf("ortho constraints\n"));
+    IF_DEBUG2(pluto_constraints_compact_print(stdout,orthcst[p-1]));
 
     /* Free the unnecessary ones */
-    for (i=p; i<nvar+1; i++)    {
+    for (i = p; i < nvar + 1; i++) {
         pluto_constraints_free(orthcst[i]);
     }
 
     pluto_matrix_free(ortho);
-    isl_basic_set_free(isl_currcst);
+    //isl_basic_set_free(isl_currcst);
     isl_ctx_free(ctx);
 
     return orthcst;
@@ -796,8 +912,8 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     assert(level < src_stmt->trans->nrows);
     assert(level < dest_stmt->trans->nrows);
 
-    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), 
-            src_dim+dest_dim+npar+1);
+    cst = pluto_constraints_alloc(2 * (1 + dep->dpolytope->nrows),
+            src_dim + dest_dim + npar + 1);
 
     /*
      * constraint format
@@ -806,15 +922,15 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
      */
 
     cst->is_eq[0] = 0;
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = src_stmt->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = -dest_stmt->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = -dest_stmt->trans->val[level][j - src_dim];
     }
-    for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar+1; j++)    {
-        cst->val[0][j] = 
-            src_stmt->trans->val[level][j-dest_dim] - dest_stmt->trans->val[level][j-src_dim];
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar + 1; j++) {
+        cst->val[0][j] = src_stmt->trans->val[level][j - dest_dim] -
+            dest_stmt->trans->val[level][j - src_dim];
     }
 
     cst->nrows = 1;
@@ -830,7 +946,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 }
 
 /* Direction vector component at level 'level'
- * TODO: assumes no parametric shifts 
+ * TODO: assumes no parametric shifts
  */
 DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {
@@ -852,78 +968,91 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 
-            (src_dim+dest_dim)+npar+1);
+    cst = pluto_constraints_alloc(2 * (2 + dep->dpolytope->nrows),
+            (src_dim + dest_dim) + npar + 1);
 
     /*
      * Check for zero
      *
-     * To test \phi (dest) - \phi(src) = 0, we try 
+     * To test \phi (dest) - \phi(src) = 0, we try
      *
      * \phi(dest) - \phi(src) >= 1
      */
     cst->is_eq[0] = 0;
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar]-1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] +
+            stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -stmts[src]->trans->val[level][src_dim + npar] +
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
     cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int64 *sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    bool is_empty = pluto_constraints_is_empty(cst);
 
-    if (!sol)   {
-        for (j=0; j<src_dim; j++)    {
+    if (is_empty) {
+        for (j = 0; j < src_dim; j++) {
             cst->val[0][j] = stmts[src]->trans->val[level][j];
         }
-        for (j=src_dim; j<src_dim+dest_dim; j++)    {
-            cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
+        for (j = src_dim; j < src_dim + dest_dim; j++) {
+            cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
         }
-        cst->val[0][src_dim+dest_dim+npar] = 
-            stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar]-1;
-        cst->nrows=1;
+        for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+            cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
+                - stmts[dest]->trans->val[level][j - src_dim];
+        }
+        cst->val[0][src_dim + dest_dim + npar] =
+            stmts[src]->trans->val[level][src_dim + npar] 
+            - stmts[dest]->trans->val[level][dest_dim + npar] - 1;
+        cst->nrows = 1;
 
         pluto_constraints_add(cst, dep->dpolytope);
 
-        sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+        is_empty = pluto_constraints_is_empty(cst);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
-        if (!sol)   {
+        if (is_empty) {
             pluto_constraints_free(cst);
             return DEP_ZERO;
         }
     }
 
-
     /*
      * Check for PLUS
-     * Constraint format 
+     * Constraint format
      * \phi(dest) - \phi (src) <= -1
      * (reverse of plus)
      */
 
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar] -1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
+            - stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        stmts[src]->trans->val[level][src_dim + npar] -
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
 
-    cst->nrows=1;
+    cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    free(sol);
-    sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    is_empty = pluto_constraints_is_empty(cst);
 
-    if (!sol)   {
+    if (is_empty) {
         pluto_constraints_free(cst);
         return DEP_PLUS;
     }
@@ -931,32 +1060,34 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     /*
      * Check for MINUS
      *
-     * Constraint format 
+     * Constraint format
      * \phi(dest) - \phi (src) >= 1
      * reverse of minus, we alraedy know that it's not zero
      */
 
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar] -1;
-    cst->nrows=1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] 
+            + stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -stmts[src]->trans->val[level][src_dim + npar] +
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
+    cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    free(sol);
-    sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    is_empty = pluto_constraints_is_empty(cst);
     pluto_constraints_free(cst);
 
-    if (!sol)   {   
+    if (is_empty) {
         return DEP_MINUS;
     }
-
-    free(sol);
 
     /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
     return DEP_STAR;

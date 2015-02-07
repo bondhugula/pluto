@@ -50,8 +50,16 @@
 
 #define PI_TABLE_SIZE 256
 
-#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
+// One decision variable to avoid zero solution,
+// one decision variable for linear independence,
+// and one to minimize the sum of absolute values
+// in linear independence constraints.
+// [bounding coeffs |           stmt-wise vars                 | const ]
+// [npar + 1        |   1  | nvar + npar + 1 |       1 + 1     | 1     ]
+// [u, w            | c_sum| c_i s    | per-stmt decision vars | const ]
+#define CST_WIDTH (npar+1+nstmts*(nvar+npar+1+3)+1)
 
+#define COEFF_BOUND 4
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
 
@@ -86,8 +94,6 @@ typedef struct pluto_access{
 
     PlutoMatrix *mat;
 } PlutoAccess;
-
-
 
 
 struct statement{
@@ -389,6 +395,8 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
+PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt, 
+        const PlutoProg *prog, int *orthonum);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
@@ -529,8 +537,10 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 
 void pluto_iss_dep(PlutoProg *prog);
+void generate_mod_const_coeffs(int64 **val, int i, int j, int n, int stmt_row_offset, int stmt_col_offset);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
 
+int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst, const PlutoProg *prog);
 
 #endif

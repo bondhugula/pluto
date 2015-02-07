@@ -2680,6 +2680,7 @@ PlutoOptions *pluto_options_alloc()
     options->identity = 0;
 
     options->lbtile = 0;
+    options->pet= 0;
     options->partlbtile = 0;
 
     options->iss = 0;
@@ -2714,7 +2715,7 @@ PlutoOptions *pluto_options_alloc()
     /* Default context is no context */
     options->codegen_context = -1;
 
-    options->coeff_bound = -1;
+    options->coeff_bound = COEFF_BOUND;
 
     options->forceparallel = 0;
 
@@ -2726,6 +2727,8 @@ PlutoOptions *pluto_options_alloc()
     options->candldep = 0;
 
     options->islsolve = 0;
+
+    options->glpksolve = 0;
 
     options->readscop = 0;
 
@@ -2740,6 +2743,9 @@ PlutoOptions *pluto_options_alloc()
     options->out_file = NULL;
 
     options->time = 1;
+
+    options->disable_param_coeffs = 0;
+    options->disable_neg_coeffs = 0;
 
     return options;
 }

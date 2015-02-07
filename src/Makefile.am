@@ -50,7 +50,7 @@ pluto_LDADD =  \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
-   -lm
+   -lglpk -lm
 
 lib_LTLIBRARIES = libpluto.la
 
