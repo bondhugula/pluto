@@ -640,7 +640,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         if (tmpfp)    {
             fprintf(tmpfp, "%s\n", outFileName);
             fclose(tmpfp);
-            printf( "[Pluto] Output written to %s\n", outFileName);
+            PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
         }
         free(outFileName);
 
