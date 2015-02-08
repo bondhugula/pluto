@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007-2012 Uday Bondhugula
+ * Copyright (C) 2007-2015 Uday Bondhugula
  *
  * This file is part of Pluto.
  *
@@ -271,8 +271,8 @@ int main(int argc, char *argv[])
                 options->ufactor = atoi(optarg);
                 break;
             case 'v':
-                printf("PLUTO %s - An automatic parallelizer and locality optimizer\n\
-Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
+                printf("PLUTO+ %s - An automatic parallelizer and locality optimizer\n\
+Copyright (C) 2007--2015  Uday Bondhugula\n\
 This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n", PLUTO_VERSION);
                 pluto_options_free(options);
