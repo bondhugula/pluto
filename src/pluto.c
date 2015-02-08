@@ -627,8 +627,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG2(printf("Transformed constraints\n"));
     IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst_sel_negated));
 
-    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables)\n",
-                cst->ncols-1););
+    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
 
     /* Solve the constraints */
     if (options->glpksolve) {

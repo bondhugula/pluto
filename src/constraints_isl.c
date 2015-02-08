@@ -327,8 +327,8 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar)
     isl_basic_set *bset, *all_positive;
     isl_set *domain, *all_positive_set, *lexmin;
 
-    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables)\n",
-                cst->ncols-1););
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
 
     ctx = isl_ctx_alloc();
     bset = isl_basic_set_from_pluto_constraints(ctx, cst);
