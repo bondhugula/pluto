@@ -13,7 +13,10 @@ DIRS = ssymm \
 	   jacobi-2d-imper \
 	   fdtd-2d \
 	   mvt \
-	   lu
+	   lu \
+	   heat-1dp \
+	   heat-2dp \
+	   heat-3dp
 
 all: orig orig_par tiled par
 
