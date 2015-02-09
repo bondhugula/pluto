@@ -1,4 +1,4 @@
-SRC=heat-2dp
+SRC=heat-3dp
 
 PLCFLAGS_OLD_PLUTO = ${PLCFLAGS} --pet --islsolve
 PLCFLAGS+=--pet --iss --islsolve --nolastwriter
