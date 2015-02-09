@@ -22,34 +22,25 @@ your system, it can be installed easily with, for eg.,
 'sudo yum -y install gmp gmp-devel' on a Fedora, or 
 'sudo apt-get install libgmp3-dev' on an Ubuntu. 
 
-Pluto includes all libraries that it depends on.  autoconf/automake 
-system will take care of automatically building everything. Nothing else 
-needs to be downloaded and installed separately.  
+In addition, GLPK (version 4.47 or higher) is needed.  "yum -y install 
+glpk-devel" for Fedora or download from https://www.gnu.org/software/glpk/)
+
+Pluto includes all other libraries that it depends on. The  
+autoconf/automake system will take care of the build. Nothing else needs to 
+be installed separately.  
 
 
-BUILDING PLUTO
+BUILDING PLUTO+
 
-Stable release
-
-$ tar zxvf pluto+-0.12.0.tar.gz
-$ cd pluto+-0.12.0/
-$ ./configure
-$ make
-$ make test
+git clone git://repo.or.cz/pluto.git -b pluto+
+git submodule update --init
+./apply_patches.sh
+./autogen.sh
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+make -j<num>
 
 configure can be provided --with-isl-prefix=<isl install location> to 
 build with another isl, otherwise the bundled isl is used.
-
-Development version from Git
-
-$ git clone git://repo.or.cz/pluto.git
-$ cd pluto/
-$ git submodule init 
-$ git submodule update
-$ ./autogen.sh
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
-$ make
-$ make test
 
 * --with-isl-prefix=<location> to compile and link with an already installed 
 isl. By default, the version of isl bundled with Pluto will be used.
