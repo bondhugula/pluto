@@ -1,7 +1,7 @@
 SRC=heat-1dp
 
 PLCFLAGS_OLD_PLUTO = ${PLCFLAGS} --pet --islsolve
-PLCFLAGS+=--pet --iss --islsolve --partlbtile
+PLCFLAGS+=--pet --iss --islsolve
 
 include ../common.mk
 
