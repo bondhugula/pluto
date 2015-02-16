@@ -372,6 +372,50 @@ int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog,
     return parallel;
 }
 
+
+/*
+ * Does the loop satisfy an inter-stmt dependence?
+ */
+int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop)
+{
+    int satisfies, i;
+
+    /* All statements under a parallel loop should be of type orig */
+    for (i=0; i<loop->nstmts; i++) {
+        if ((loop->stmts[i]->type != ORIG) 
+                && (loop->stmts[i]->type != ORIG_IN_FUNCTION)) break;
+    }
+    if (i<loop->nstmts) {
+        /* conservative */
+        return 1;
+    }
+
+    if (prog->hProps[loop->depth].dep_prop == PARALLEL) {
+        return 0;
+    }
+
+    satisfies = 0;
+
+    for (i=0; i<prog->ndeps; i++) {
+        Dep *dep = prog->deps[i];
+        if (IS_RAR(dep->type)) continue;
+        assert(dep->satvec != NULL);
+        if (dep->satvec[loop->depth]
+                && dep->src != dep->dest
+                && pluto_stmt_is_member_of(dep->src, loop->stmts, loop->nstmts)
+                && pluto_stmt_is_member_of(dep->dest, loop->stmts, loop->nstmts)
+           ) {
+            satisfies = 1;
+            break;
+        }
+    }
+
+    return satisfies;
+}
+
+
+
 /* Is loop1 dominated by loop2 */
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
 {

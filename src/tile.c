@@ -336,6 +336,9 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
+    /* Late distribution */
+    pluto_post_tile_distribute(prog, bands, nbands);
+
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {

@@ -1,9 +1,11 @@
 
 int u[2][1000];
+#define N 1000
+#define T 1000
 
 int main() 
 {
-    int N = 1000, T=1000;
+    //int N = 1000, T=1000;
     int i, t;
 
 #pragma scop
