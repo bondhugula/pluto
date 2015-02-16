@@ -20,19 +20,26 @@ test/nodep.c \
 test/simple.c \
 test/test7.c \
 test/test8.c \
+test/tricky1.c \
 test/tricky2.c \
 test/tricky3.c \
 test/tce-4index-transform.c"
 
 for file in $TESTS; do
 	echo -e "$file" 
-	./polycc $file $* 
+	./polycc $file $*  -o test_temp_out.pluto.c
     if [ $? -ne 0 ]; then
-        echo Failed!
-        exit
-    #else
-        # echo -e "Successful!"
+        echo Failed test case "$file"!
+        break
     fi
 done
 
+cleanup()
+{
+rm -f test_temp_out.pluto.c
+rm -f test_temp_out.pluto.pluto.cloog
+}
+
 echo
+
+trap cleanup SIGINT exit

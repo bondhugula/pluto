@@ -5,4 +5,3 @@ for(j=0; j < N; j++) {
     a[j] = 0;
 }
 #pragma endscop
-

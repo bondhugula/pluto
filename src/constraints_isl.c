@@ -261,14 +261,15 @@ PlutoConstraints *isl_basic_map_to_pluto_constraints(
 {
     PlutoConstraints *cst;
 
-    isl_basic_map_to_pluto_constraints_func_arg(bmap, &cst);
+    isl_basic_map_to_pluto_constraints_func_arg(
+            isl_basic_map_copy(bmap), &cst);
 
     return cst;
 }
 
 /* Convert an isl_basic_map to a PlutoConstraints object */
 int isl_basic_map_to_pluto_constraints_func_arg(
-        __isl_keep isl_basic_map *bmap, void *user)
+        __isl_take isl_basic_map *bmap, void *user)
 {
     int i, j;
     int eq_row;
@@ -309,6 +310,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
 
     isl_mat_free(eq);
     isl_mat_free(ineq);
+    isl_basic_map_free(bmap);
 
     *(PlutoConstraints **)user = cons; 
     return 0;
@@ -325,8 +327,8 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar)
     isl_basic_set *bset, *all_positive;
     isl_set *domain, *all_positive_set, *lexmin;
 
-    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables)\n",
-                cst->ncols-1););
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
 
     ctx = isl_ctx_alloc();
     bset = isl_basic_set_from_pluto_constraints(ctx, cst);

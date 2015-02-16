@@ -357,8 +357,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
     pluto_matrix_free(newcstmat);
 
-    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables)\n",
-                cst->ncols-1););
+    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
     sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
