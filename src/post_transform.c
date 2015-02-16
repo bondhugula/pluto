@@ -170,9 +170,11 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
         pluto_make_innermost(loops[l], prog);
         IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
         IF_DEBUG(pluto_loop_print(loops[l]););
+        pluto_loops_free(loops, num);
         return 1;
     }
 
+    pluto_loops_free(loops, num);
     return 0;
 }
 
