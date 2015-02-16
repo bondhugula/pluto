@@ -4788,6 +4788,24 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
 	return p;
 }
 
+
+static int read_codegen_context_from_file(PlutoConstraints *codegen_context)
+{
+    FILE *fp = fopen("codegen.context", "r");
+
+    if (fp) {
+        IF_DEBUG(printf("[Pluto] Reading from codegen.context\n"););
+        PlutoConstraints *cc = pluto_constraints_read(fp);
+        if (cc && cc->ncols == codegen_context->ncols) {
+            pluto_constraints_add(codegen_context, cc);
+            return 0;
+        }
+        IF_DEBUG(printf("[WARNING] Failed to read from codegen.context\n"););
+    }
+
+    return 1;
+}
+
 /* 
  * Extract necessary information from pet_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto. 
@@ -4826,6 +4844,8 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
             prog->codegen_context->val[i][prog->codegen_context->ncols-1] = -options->codegen_context;
         }
     }
+
+    read_codegen_context_from_file(prog->codegen_context);
 
     prog->options = options;
     prog->nstmts = pscop->n_stmt;
