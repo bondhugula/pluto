@@ -1178,6 +1178,12 @@ void pluto_print_dep_directions(PlutoProg *prog)
                 printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
             }
         }
+
+        printf("satvec: ");
+        for (j=0; j<nlevels; j++) {
+            printf("%d, ", deps[i]->satvec[j]);
+        }
+        printf("\n");
     }
 }
 

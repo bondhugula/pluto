@@ -339,7 +339,7 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
 
     if (max_score >= 1) {
         pluto_make_innermost(maxloc, prog);
-        IF_DEBUG(printf("[Pluto] intratile_loc: loop to be made innermost:"););
+        IF_DEBUG(printf("[pluto-intra-tile-opt] loop to be made innermost: "););
         IF_DEBUG(pluto_loop_print(maxloc););
         pluto_loops_free(loops, num);
         return 1;

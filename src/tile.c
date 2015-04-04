@@ -251,9 +251,9 @@ void pluto_tile(PlutoProg *prog)
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    IF_DEBUG(printf("Outermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Outermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(bands, nbands););
-    IF_DEBUG(printf("Innermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
     /*
