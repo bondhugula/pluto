@@ -336,6 +336,9 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
+
+    /* DEPRECATED: now taken care of in intra_tile_optimize */
+#if 0
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
@@ -349,6 +352,7 @@ void pluto_tile(PlutoProg *prog)
             pluto_print_hyperplane_properties(prog);
         }
     }
+#endif
 
     if (options->parallel) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
