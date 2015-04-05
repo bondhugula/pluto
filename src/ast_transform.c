@@ -113,6 +113,9 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
 
     Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
 
+    IF_DEBUG(printf("[pluto_mark_vector] parallel loops\n"););
+    IF_DEBUG(pluto_loops_print(ploops, nploops););
+
     // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
     // clast_pprint(stdout, root, 0, cloogOptions);
 
@@ -120,7 +123,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
         /* Only the innermost ones */
         if (!pluto_is_loop_innermost(ploops[i], prog)) continue;
 
-        IF_DEBUG(printf("[pluto_mark_vector] marking loop\n"););
+        IF_DEBUG(printf("[pluto_mark_vector] marking loop vectorizable\n"););
         IF_DEBUG(pluto_loop_print(ploops[i]););
         char iter[5];
         sprintf(iter, "t%d", ploops[i]->depth+1);
