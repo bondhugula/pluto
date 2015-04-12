@@ -431,7 +431,7 @@ int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
 void pluto_print_dep_directions(PlutoProg *prog);
-void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels);
+void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 

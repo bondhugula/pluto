@@ -1132,13 +1132,17 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 }
 
 
-void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels)
+void pluto_print_depsat_vectors(PlutoProg *prog, int levels)
 {
     int i, j;
+    Dep **deps;
+
+    deps = prog->deps;
 
     printf("\nSatisfaction vectors for transformed program\n");
 
-    for (i=0; i<ndeps; i++) {
+    for (i=0; i<prog->ndeps; i++) {
+        assert(deps[i]->satvec != NULL);
         printf("Dep %d: S%d to S%d: ", i+1, deps[i]->src+1, deps[i]->dest+1);
         printf("(");
         for (j=0; j<levels; j++) {
@@ -1164,7 +1168,12 @@ void pluto_print_dep_directions(PlutoProg *prog)
         for (j=0; j<nlevels; j++) {
             printf("%c, ", deps[i]->dirvec[j]);
         }
-        printf(") Satisfied: %d, Sat level: %d\n", deps[i]->satisfied, deps[i]->satisfaction_level);
+        printf(") satisfied: %s, satvec: (", 
+                deps[i]->satisfied? "yes":"no");
+        for (j=0; j<nlevels; j++) {
+            printf("%d, ", deps[i]->satvec[j]);
+        }
+        printf(")\n");
 
         for (j=0; j<nlevels; j++) {
             if (deps[i]->dirvec[j] > 0)  {
@@ -1178,6 +1187,12 @@ void pluto_print_dep_directions(PlutoProg *prog)
                 printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
             }
         }
+
+        printf("satvec: ");
+        for (j=0; j<nlevels; j++) {
+            printf("%d, ", deps[i]->satvec[j]);
+        }
+        printf("\n");
     }
 }
 
