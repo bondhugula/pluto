@@ -239,6 +239,33 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     return nzcst;
 }
 
+PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar, s;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients */
+    for (s=0; s<nstmts; s++)  {
+        for (i=0; i<nvar; i++)  {
+            IF_DEBUG2(printf("Adding lower bound %d for stmt dim coefficients\n", -4););
+            pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+i, -4);
+        }
+        IF_DEBUG2(printf("Adding lower bound %d for stmt translation coefficient\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+nvar, 0);
+    }
+    return cst;
+}
+
 
 /*
  * This calls pluto_constraints_lexmin, but before doing that does some preprocessing
@@ -2032,6 +2059,11 @@ int pluto_diamond_tile(PlutoProg *prog)
 
     /* Don't free basecst */
     PlutoConstraints *basecst = get_permutability_constraints(prog);
+
+    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
 
     /* 
      * For partial concurrent, if we are trying to find a hyperplane c 
