@@ -2826,6 +2826,11 @@ int pluto_diamond_tile(PlutoProg *prog)
     /* Don't free basecst */
     PlutoConstraints *basecst = get_permutability_constraints(prog);
 
+    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
+
     /* 
      * For partial concurrent, if we are trying to find a hyperplane c 
      * such that the face f is in the cone of c and a previously found 
