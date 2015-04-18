@@ -239,6 +239,12 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     return nzcst;
 }
 
+/**
+ * Coefficient bounds when finding the cone complement; the cone complement
+ * could have (and always has in the case of Pluto as opposed to Pluto+)
+ * negative coefficients. So, we can't assume non-negative coefficients as in
+ * the remaining Pluto hyperplanes
+ */
 PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
 {
     int i, npar, nstmts, nvar, s;
@@ -257,6 +263,7 @@ PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *
     /* Lower bound for transformation coefficients */
     for (s=0; s<nstmts; s++)  {
         for (i=0; i<nvar; i++)  {
+            /* Set this to -4 (is enough) */
             IF_DEBUG2(printf("Adding lower bound %d for stmt dim coefficients\n", -4););
             pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+i, -4);
         }
@@ -1486,6 +1493,11 @@ int find_cone_complement_hyperplane(int evict_pos,
      * No need of non-zero solution constraints
      */
     con_start_cst = pluto_constraints_dup(basecst);
+
+    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+    pluto_constraints_add(con_start_cst, boundcst);
+    pluto_constraints_free(boundcst);
+
     for (i=0; i<nvar*nstmts; i++) {
         pluto_constraints_add_dim(con_start_cst, basecst->ncols-1, NULL);
     }
