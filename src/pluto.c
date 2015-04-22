@@ -516,6 +516,40 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     return nzcst;
 }
 
+/**
+ * Coefficient bounds when finding the cone complement; the cone complement
+ * could have (and always has in the case of Pluto as opposed to Pluto+)
+ * negative coefficients. So, we can't assume non-negative coefficients as in
+ * the remaining Pluto hyperplanes
+ */
+PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar, s;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients */
+    for (s=0; s<nstmts; s++)  {
+        for (i=0; i<nvar; i++)  {
+            /* Set this to -4 (is enough) */
+            IF_DEBUG2(printf("Adding lower bound %d for stmt dim coefficients\n", -4););
+            pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+i, -4);
+        }
+        IF_DEBUG2(printf("Adding lower bound %d for stmt translation coefficient\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+nvar, 0);
+    }
+    return cst;
+}
+
 
 /*
  * This calls pluto_constraints_lexmin, but before doing that does some preprocessing:
@@ -1685,14 +1719,19 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     pluto_detect_hyperplane_types_stmtwise(prog);
 }
 
-void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels)
+
+void pluto_print_depsat_vectors(PlutoProg *prog, int levels)
 {
     int i, j;
+    Dep **deps;
+
+    deps = prog->deps;
 
     printf("\nSatisfaction vectors for transformed program\n");
 
-    for (i = 0; i < ndeps; i++) {
-        printf("Dep %d: S%d to S%d: ", i + 1, deps[i]->src + 1, deps[i]->dest + 1);
+    for (i=0; i<prog->ndeps; i++) {
+        assert(deps[i]->satvec != NULL);
+        printf("Dep %d: S%d to S%d: ", i+1, deps[i]->src+1, deps[i]->dest+1);
         printf("(");
         for (j = 0; j < levels; j++) {
             printf("%d, ", deps[i]->satvec[j]);
@@ -1718,8 +1757,12 @@ void pluto_print_dep_directions(PlutoProg *prog)
         for (j = 0; j < nlevels; j++) {
             printf("%c, ", deps[i]->dirvec[j]);
         }
-        printf(") Satisfied: %d, Sat level: %d\n", deps[i]->satisfied,
-                deps[i]->satisfaction_level);
+        printf(") satisfied: %s, satvec: (", 
+                deps[i]->satisfied? "yes":"no");
+        for (j=0; j<nlevels; j++) {
+            printf("%d, ", deps[i]->satvec[j]);
+        }
+        printf(")\n");
 
         for (j = 0; j < nlevels; j++) {
             if (deps[i]->dirvec[j] > 0) {
@@ -1735,6 +1778,12 @@ void pluto_print_dep_directions(PlutoProg *prog)
                 printf("%d %d\n", deps[i]->satisfaction_level, deps[i]->satisfied);
             }
         }
+
+        printf("satvec: ");
+        for (j=0; j<nlevels; j++) {
+            printf("%d, ", deps[i]->satvec[j]);
+        }
+        printf("\n");
     }
 }
 
@@ -2027,6 +2076,7 @@ int find_cone_complement_hyperplane(int evict_pos,
     pluto_constraints_add(con_start_cst, boundcst);
     pluto_constraints_free(modsumcst);
     pluto_constraints_free(boundcst);
+
     for (i=0; i<nvar*nstmts; i++) {
         pluto_constraints_add_dim(con_start_cst, basecst->ncols-1, NULL);
     }
@@ -2775,6 +2825,11 @@ int pluto_diamond_tile(PlutoProg *prog)
 
     /* Don't free basecst */
     PlutoConstraints *basecst = get_permutability_constraints(prog);
+
+    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
 
     /* 
      * For partial concurrent, if we are trying to find a hyperplane c 

@@ -946,7 +946,6 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 }
 
 /* Direction vector component at level 'level'
- * TODO: assumes no parametric shifts
  */
 DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {

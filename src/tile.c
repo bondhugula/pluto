@@ -251,9 +251,9 @@ void pluto_tile(PlutoProg *prog)
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    IF_DEBUG(printf("Outermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Outermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(bands, nbands););
-    IF_DEBUG(printf("Innermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
     /*
@@ -339,6 +339,9 @@ void pluto_tile(PlutoProg *prog)
     /* Late distribution */
     pluto_post_tile_distribute(prog, bands, nbands);
 
+
+    /* DEPRECATED: now taken care of in intra_tile_optimize */
+#if 0
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
@@ -352,6 +355,7 @@ void pluto_tile(PlutoProg *prog)
             pluto_print_hyperplane_properties(prog);
         }
     }
+#endif
 
     if (options->parallel) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
