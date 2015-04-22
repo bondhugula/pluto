@@ -25,12 +25,12 @@ MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS     := -O3 -fp-model precise
-	PAR_FLAGS     := -parallel
-	OMP_FLAGS     := -openmp
 	MPICC         := OMPI_CC=icc mpicc # OPENMPI
 	#uncomment the following line and comment the previous line when running on fist (MVAPICH/MPICH)
 	#MPICC         := mpicc -cc=icc
+	OPT_FLAGS :=-O3 -fp-model precise -ansi-alias -ipo
+	PAR_FLAGS := -parallel
+	OMP_FLAGS := -openmp
 else
 	# for gcc
 	OPT_FLAGS     := -O3 -ftree-vectorize -msse3 
@@ -69,6 +69,8 @@ $(SRC).par.c:  $(SRC).c
 $(SRC).distopt.c: $(SRC).c
 	$(PLC) $(SRC).c --distmem --commreport --mpiomp --tile $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
 
+$(SRC).lbpar.c:  $(SRC).c
+	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
@@ -82,6 +84,9 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
+lbpar: $(SRC).lbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
+
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
@@ -92,9 +97,14 @@ distopt: $(SRC).distopt.c sigma.c pi.c
 perf: orig tiled par orig_par
 	rm -f .test
 	./orig
-	OMP_NUM_THREADS=4 ./orig_par
+	OMP_NUM_THREADS=$(NTHREADS) ./orig_par
 	./tiled
-	OMP_NUM_THREADS=4 ./par 
+	OMP_NUM_THREADS=$(NTHREADS) ./par 
+
+lbperf: par lbpar
+	rm -f .test
+	OMP_NUM_THREADS=$(NTHREADS) ./par
+	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 
 
 
 test: orig tiled par
@@ -105,6 +115,14 @@ test: orig tiled par
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	rm -f .test
 	diff -q out_orig out_par4
+	@echo Success!
+
+lbtest: par lbpar
+	touch .test
+	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
+	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
+	rm -f .test
+	diff -q out_par4 out_lbpar4
 	@echo Success!
 
 opt-test: orig opt
@@ -135,11 +153,11 @@ dist_test2: orig_par distopt
 
 
 clean:
-	rm -f out_* *.tiled.c *.opt.c *.par.c *.distopt.c orig opt tiled par distopt sched orig_par \
+	rm -f out_* *.lbpar.c *.tiled.c *.opt.c *.par.c *.distopt.c orig opt tiled par distopt sched orig_par \
 		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
-	rm -f out_* opt orig tiled  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
+	rm -f out_* opt orig tiled lbtile lbpar  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d

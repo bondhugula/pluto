@@ -89,8 +89,10 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     fprintf(fp, "c\n\n");
 
     /* Context: setting conditions on parameters */
-    pluto_constraints_print_polylib(fp, prog->context);
-
+    PlutoConstraints *ctx = pluto_constraints_dup(prog->context);
+    pluto_constraints_intersect(ctx, prog->codegen_context);
+    pluto_constraints_print_polylib(fp, ctx);
+    pluto_constraints_free(ctx);
 
     /* Setting parameter names */
     fprintf(fp, "\n1\n");
@@ -161,7 +163,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
         fprintf(outfp, " __bee_schedule");
         for (j=0; j<stmt->trans->nrows; j++)    {
             fprintf(outfp, "[");
-            pretty_print_affine_function(outfp, stmt->trans->val[j], 
+            pluto_affine_function_print(outfp, stmt->trans->val[j], 
                     stmt->dim, stmt->iterators);
             fprintf(outfp, "]");
         }
@@ -705,7 +707,7 @@ void print_dynsched_file(char *srcFileName, FILE *cloogfp, FILE *outfp, PlutoPro
                     }
                     else fprintf(sysloogfp, "0 ");
                 }
-                fprintf(sysloogfp, "%d\n", -options->context);
+                fprintf(sysloogfp, "%d\n", -options->codegen_context);
             }
 
             fprintf(sysloogfp, "\n1\n");

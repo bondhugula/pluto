@@ -1,3 +1,32 @@
+0.11.3
+
+Diamond tiling code update 
+
+Minor bug fixes. See git history for all changes
+
+
+0.11.2
+
+Minor fixes. See git history for all changes
+
+0.11.1
+
+Clean up command-line options, better debug and progress output
+
+Misc minor fixes and changes
+
+See git history for all changes
+http://repo.or.cz/w/pluto.git/shortlog
+
+0.11.0
+
+- add all inner loop iterators in private vars of omp parallel pragma
+
+- migration to openscop (osl) from scoplib as frontend
+
+- see git history for remaining changes
+
+
 0.10.1
 
 - add all inner loop iterators in private vars of omp parallel pragma

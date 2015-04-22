@@ -1,5 +1,5 @@
 /*
- * PLuTo: An automatic parallelier and locality optimizer
+ * PLUTO: An automatic parallelier and locality optimizer
  * 
  * Copyright (C) 2007-2008 Uday Bondhugula
  *
@@ -22,14 +22,19 @@
 
 #include <stdio.h>
 
+#include "isl/mat.h"
+
 #define PLMAX(a,b) ((a>=b)?(a):(b))
 #define PLMIN(a,b) ((a<=b)?(a):(b))
 #define PLABS(a) ((a>=0)?(a):(-a))
 
+#define int64 long long int
+#define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
+
 /* A matrix */
 struct plutoMatrix{
     /* The values */
-    int **val;
+    int64 **val;
 
     int nrows;
     int ncols;
@@ -46,7 +51,7 @@ PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
 void pluto_matrix_free(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src);
 PlutoMatrix *pluto_matrix_identity(int size);
-void pluto_matrix_initialize(PlutoMatrix *mat, int val);
+void pluto_matrix_set(PlutoMatrix *mat, int val);
 PlutoMatrix *pluto_matrix_input(FILE *fp);
 
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
@@ -70,10 +75,16 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-inline int lcm(int a, int b);
-inline int gcd(int a, int b);
-int *min_lexical(int *a, int *b, int num);
+inline int64 lcm(int64 a, int64 b);
+inline int64 gcd(int64 a, int64 b);
+int64 *min_lexical(int64 *a, int64 *b, int64 num);
 
 char *concat(const char *prefix, const char *suffix);
+void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars);
+
+void pluto_matrix_reverse_rows(PlutoMatrix *mat);
+void pluto_matrix_negate(PlutoMatrix *mat);
+
+PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
 
 #endif

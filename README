@@ -2,7 +2,6 @@
 # Pluto README
 #
 # Uday Bondhugula
-# udayreddy@gmail.com
 # uday@csa.iisc.ernet.in
 #
 
@@ -32,8 +31,8 @@ BUILDING PLUTO
 
 Stable release
 
-$ tar zxvf pluto-0.11.0.tar.gz
-$ cd pluto-0.11.0/
+$ tar zxvf pluto-0.11.3.tar.gz
+$ cd pluto-0.11.3/
 $ ./configure
 $ make
 $ make test
@@ -184,4 +183,5 @@ doc/DOC.txt
 
 CONTACT
 
-Please send all bugs reports and comments to Uday <uday@csa.iisc.ernet.in>
+Please send all bugs reports and comments to Uday Bondhugula 
+<uday@csa.iisc.ernet.in>.

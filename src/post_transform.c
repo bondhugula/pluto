@@ -38,6 +38,7 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
     }
     int is_invariant = (i==newacc->nrows);
     pluto_matrix_free(newacc);
+    free(divs);
     return is_invariant;
 }
 
@@ -47,19 +48,28 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth)
     int i, *divs;
     PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
     assert(depth <= newacc->ncols-1);
+
+    /* Scalars */
+    if (newacc->nrows == 0) return 0;
+
     for (i=0; i<newacc->nrows-1; i++) {
+        /* No spatial reuse when the func is varying at a non-innermost dim */
         if (newacc->val[i][depth] != 0) {
             pluto_matrix_free(newacc);
+            free(divs);
             return 0;
         }
     }
+
     if (newacc->val[newacc->nrows-1][depth] >= 1 &&
             newacc->val[newacc->nrows-1][depth] <= SHORT_STRIDE) {
         pluto_matrix_free(newacc);
+        free(divs);
         return 1;
     }
 
     pluto_matrix_free(newacc);
+    free(divs);
 
     return 0;
 }
@@ -131,6 +141,28 @@ int getDeepestNonScalarLoop(PlutoProg *prog)
 }
 
 
+/* Check if loop is amenable to straightforward vectorization */
+int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog)
+{
+    int s, t, a;
+
+    /* LIMITATION: it is possible (rarely) that a loop is not parallel at this
+     * position, but, once made innermost, is parallel. We aren't checking
+     * if it would be parallel at its new position
+     */
+    if (!pluto_loop_is_parallel(prog, loop)) return 0;
+    a = get_num_accesses(loop, prog);
+    s = get_num_spatial_accesses(loop, prog);
+    t = get_num_invariant_accesses(loop, prog);
+    /* Vectorize only if each access has either spatial or temporal
+     * reuse */
+    /* if accesses haven't been provided, a would be 0 */
+    if (a >= 1 && a == s + t) return 1;
+
+    return 0;
+}
+
+
 /* Vectorize first loop in band that meets criteria */
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 {
@@ -145,24 +177,18 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
             band->loop->depth + num_tiling_levels*band->width, prog, &num);
 
     for (l=0; l<num; l++) {
-        if (!pluto_loop_is_parallel(prog, loops[l])) continue;
-        int s, t, a;
-        a = get_num_accesses(loops[l], prog);
-        s = get_num_spatial_accesses(loops[l], prog);
-        t = get_num_invariant_accesses(loops[l], prog);
-        /* Vectorize only if each access has either spatial or temporal
-         * reuse */
-        /* if accesses haven't been provided, a would be 0 */
-        if (a >= 1 && a == s + t) break;
+        if (pluto_loop_is_vectorizable(loops[l], prog)) break;
     }
 
     if (l < num) {
         pluto_make_innermost(loops[l], prog);
         IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
         IF_DEBUG(pluto_loop_print(loops[l]););
+        pluto_loops_free(loops, num);
         return 1;
     }
 
+    pluto_loops_free(loops, num);
     return 0;
 }
 
@@ -314,10 +340,14 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
     max_score = 0;
     maxloc = NULL;
     for (l=0; l<num; l++) {
-        int s, t, score;
+        int s, t, v, score;
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
-        score = (2*s + 4*t)*loops[l]->nstmts;
+        v = pluto_loop_is_vectorizable(loops[l], prog);
+        /* High priority for vectorization since if it's vectorizable,
+         * everything in it has either spatial or temporal reuse
+         */
+        score = (2*s + 4*t + 8*v)*loops[l]->nstmts;
         /* Using >= since we'll take the last one if all else is the same */
         if (score >= max_score) {
             max_score = score;
@@ -327,7 +357,7 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
 
     if (max_score >= 1) {
         pluto_make_innermost(maxloc, prog);
-        IF_DEBUG(printf("[Pluto] intratile_loc: loop to be made innermost:"););
+        IF_DEBUG(printf("[pluto-intra-tile-opt] loop to be made innermost: "););
         IF_DEBUG(pluto_loop_print(maxloc););
         pluto_loops_free(loops, num);
         return 1;
@@ -343,14 +373,24 @@ int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
 {
     int i, nbands, retval;
     Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+
     retval = 0;
     for (i=0; i<nbands; i++) {
         retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog); 
     }
     pluto_bands_free(bands, nbands);
+
+    if (retval) {
+        /* Detect properties again */
+        pluto_detect_transformation_properties(prog);
+        if (!options->silent) {
+            printf("[pluto] After intra-tile optimize\n");
+            pluto_transformations_pretty_print(prog);
+        }
+    }
+
     return retval;
 }
-
 
 
 

@@ -177,7 +177,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
             int total_copy_level = src_copy_level + dest_copy_level;
 
             //tdpoly = pluto_get_transformed_dpoly(dep, src, dest);
-            PlutoConstraints *tdpoly = pluto_constraints_dup(dep->src_unique_dpolytype);
+            PlutoConstraints *tdpoly = pluto_constraints_dup(dep->src_unique_dpolytope);
             //tdpoly = pluto_constraints_dup(dep->dpolytope);
 
             assert(!pluto_constraints_is_empty(tdpoly));
@@ -418,9 +418,10 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts,
                 assert(sigma->stmts[0]->trans->nrows == sigma->num_hyperplanes);
             }
 
-            pluto_separate_stmts(sigma, sigma->stmts, sigma->nstmts, 0);
-            pluto_separate_stmts(is_receiver, is_receiver->stmts, is_receiver->nstmts, 0);
-            if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) pluto_separate_stmts(sigma_check, sigma_check->stmts, sigma_check->nstmts, 0);
+            pluto_separate_stmts(sigma, sigma->stmts, sigma->nstmts, 0, 0);
+            pluto_separate_stmts(is_receiver, is_receiver->stmts, is_receiver->nstmts, 0, 0);
+            if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) 
+                pluto_separate_stmts(sigma_check, sigma_check->stmts, sigma_check->nstmts, 0, 0);
         }
 
         FILE *outfp, *cloogfp=NULL;
@@ -682,7 +683,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts,
             assert(sigma->stmts[0]->trans->nrows == sigma->num_hyperplanes);
         }
 
-        pluto_separate_stmts(sigma, sigma->stmts, sigma->nstmts, 0);
+        pluto_separate_stmts(sigma, sigma->stmts, sigma->nstmts, 0, 0);
     }
 
     FILE *outfp, *cloogfp = NULL;
@@ -734,7 +735,7 @@ PlutoConstraints* get_receiver_tiles_of_dep(Dep *dep,
 
     PlutoConstraints *tdpoly;
     if (!use_tile_dest_outside) tdpoly = pluto_get_transformed_dpoly(dep, src, dest);
-    else tdpoly = pluto_constraints_dup(dep->src_unique_dpolytype);
+    else tdpoly = pluto_constraints_dup(dep->src_unique_dpolytope);
     assert(tdpoly->ncols == src->trans->nrows+dest->trans->nrows+prog->npar+1);
 
     pluto_constraints_project_out(tdpoly, src_copy_level, src->trans->nrows-src_copy_level);
@@ -866,7 +867,7 @@ void generate_tau(struct stmt_access_pair *wacc_stmt,
     //pluto_constraints_print(stdout, udcst);
 
     /* Separate code for different dependences */
-    pluto_separate_stmts(tau, tau->stmts, tau->nstmts, 0);
+    pluto_separate_stmts(tau, tau->stmts, tau->nstmts, 0, 0);
 
     FILE *cloogfp = fopen("tau.cloog", "w+");
     pluto_gen_cloog_file(cloogfp, tau);
@@ -973,7 +974,7 @@ Dep *pluto_dependence_dup(Dep *dep, PlutoConstraints *tdpoly, PlutoConstraints *
 	d->dest_acc = dep->dest_acc;
 	d->dirvec = dep->dirvec;
 	d->dpolytope = pluto_constraints_dup(tdpoly);
-	d->src_unique_dpolytype = pluto_constraints_dup(tile_dest_outside);
+	d->src_unique_dpolytope = pluto_constraints_dup(tile_dest_outside);
 	d->id = dep->id;
 	d->satisfaction_level = dep->satisfaction_level;
 	d->satisfied = dep->satisfied;
@@ -1537,7 +1538,7 @@ PlutoConstraints *compute_flow_in_of_dep(Dep *dep,
 
     PlutoConstraints *tdpoly;
     if (!use_tile_dest_outside) tdpoly = pluto_get_transformed_dpoly(dep, src, dest);
-    else tdpoly = pluto_constraints_dup(dep->src_unique_dpolytype);
+    else tdpoly = pluto_constraints_dup(dep->src_unique_dpolytope);
     assert(tdpoly->ncols == src->trans->nrows+dest->trans->nrows+prog->npar+1);
 
     //printf("tdpoly\n");
@@ -1731,7 +1732,7 @@ PlutoConstraints *compute_flow_out_of_dep(Dep *dep,
         pluto_constraints_project_out(tile_dest, src_copy_level,
                 src->trans->nrows-src_copy_level);
 
-        dep->src_unique_dpolytype = pluto_constraints_dup(tdpoly);
+        dep->src_unique_dpolytope = pluto_constraints_dup(tdpoly);
         if (split) {
             assert(dcst1 != NULL);
             
@@ -1765,10 +1766,10 @@ PlutoConstraints *compute_flow_out_of_dep(Dep *dep,
         // difference should be taken after the two sets are parameterized on the source src_copy_level iterators
         pluto_constraints_subtract(tile_dest, tile_dest_inside);
 
-        dep->src_unique_dpolytype = pluto_constraints_dup(tile_dest);
+        dep->src_unique_dpolytope = pluto_constraints_dup(tile_dest);
         for(j=0; j<src->trans->nrows; j++)
-            pluto_constraints_add_dim(dep->src_unique_dpolytype , src_copy_level, NULL);
-        pluto_constraints_intersect(dep->src_unique_dpolytype, tdpoly);
+            pluto_constraints_add_dim(dep->src_unique_dpolytope , src_copy_level, NULL);
+        pluto_constraints_intersect(dep->src_unique_dpolytope, tdpoly);
     }
 
     /* dcst is parameterized by the source src_copy_level iterators */
@@ -1848,7 +1849,7 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
 
 		//Create a identity access function for data with outer copy level parameters
 		PlutoMatrix *data_access = pluto_matrix_alloc(access_nrows, data->ncols);
-		pluto_matrix_initialize(data_access, 0);
+		pluto_matrix_set(data_access, 0);
 		int i;
 		for(i=0; i<access_nrows; i++){
 			data_access->val[i][copy_level + i] = 1;
@@ -1858,7 +1859,7 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
 
 		while(dep_list != NULL) {
 			assert(dep_list->dep != NULL);
-			Dep *dep = pluto_dependence_dup(dep_list->dep, dep_list->dep->dpolytope, dep_list->dep->src_unique_dpolytype);
+			Dep *dep = pluto_dependence_dup(dep_list->dep, dep_list->dep->dpolytope, dep_list->dep->src_unique_dpolytope);
 
 			Stmt *dest = prog->stmts[dep->dest];
 			Stmt *src = prog->stmts[dep->src];
@@ -1866,7 +1867,7 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
 			int src_ncols = src->trans->nrows;
 			int dest_ncols = dest->trans->nrows;
 
-			PlutoConstraints *src_iterators = pluto_constraints_dup(dep->src_unique_dpolytype);
+			PlutoConstraints *src_iterators = pluto_constraints_dup(dep->src_unique_dpolytope);
 
 			assert(src_iterators != NULL);
 
@@ -1910,10 +1911,10 @@ void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_leve
                 for(i=0; i<dest_ncols; i++)
                     pluto_constraints_add_dim(tdpoly, src_ncols, NULL);
 
-                pluto_constraints_intersect(dep->src_unique_dpolytype, tdpoly);
+                pluto_constraints_intersect(dep->src_unique_dpolytope, tdpoly);
             }
 
-            if ((tdpoly==NULL) || pluto_constraints_is_empty(dep->src_unique_dpolytype)) {
+            if ((tdpoly==NULL) || pluto_constraints_is_empty(dep->src_unique_dpolytope)) {
                 if (prev_dep_list == NULL) {
                     curr->deps = dep_list->next;
                     dep_list->next = NULL;
@@ -1974,13 +1975,13 @@ void compute_flow_out_partitions(struct stmt_access_pair *wacc_stmt,
         PlutoConstraints *dcst = compute_flow_out_of_dep(dep, src_copy_level, copy_level, prog, 1, &dcst1, pi_mappings);
 
         if(!pluto_constraints_is_empty(dcst)){
-            assert(!pluto_constraints_is_empty(dep->src_unique_dpolytype));
+            assert(!pluto_constraints_is_empty(dep->src_unique_dpolytope));
             /* split the dependence into atomic sections*/
             split_flow_out_set(prog, atomic_flowouts, dcst, dep);
         }
 
         if((dcst1 != NULL) && !pluto_constraints_is_empty(dcst1)){
-            assert(!pluto_constraints_is_empty(dep->src_unique_dpolytype));
+            assert(!pluto_constraints_is_empty(dep->src_unique_dpolytope));
             /* split the dependence into atomic sections*/
             split_flow_out_set(prog, atomic_flowouts, dcst1, dep);
         }

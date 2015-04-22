@@ -2132,10 +2132,10 @@ int pluto_distmem_parallelize(PlutoProg *prog)
 
         /* Parallel loop is distributed (loop distribution) around these
          * statements - except for write-out statements */
-        pluto_separate_stmts(prog, sep_stmts[l], num_comm_stmts*num_data[l], dist_parallel_loop);
+        pluto_separate_stmts(prog, sep_stmts[l], num_comm_stmts*num_data[l], dist_parallel_loop, 0);
         /* Add scalar dimension to separate the fused statements out inside (immediately inside); since they are
          * to be fused for dist_parallel_loop - used only for write-out pack and unpack */
-        pluto_separate_stmts(prog, NULL, 0, dist_parallel_loop+2);
+        pluto_separate_stmts(prog, NULL, 0, dist_parallel_loop+2, 0);
 
         /* dist_parallel_loop's position now changes */
         dist_parallel_loop++;
@@ -2184,7 +2184,7 @@ int pluto_distmem_parallelize(PlutoProg *prog)
 
     // scalar dimensions have already been added before and after dist_parallel_loop
     /* Add outermost scalar dimension to separate the write-out statements from the rest */
-    pluto_separate_stmts(prog, NULL, 0, 0);
+    pluto_separate_stmts(prog, NULL, 0, 0, 0);
 
     for (l=0; l<nloops; l++) {
         // depth of the loop before any scalar dimensions were added

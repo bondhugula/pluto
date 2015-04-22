@@ -43,13 +43,13 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols)
 
     mat = (PlutoMatrix *) malloc(sizeof(PlutoMatrix));
 
-    mat->val = (int **) malloc(PLMAX(alloc_nrows,1)*sizeof(int *));
+    mat->val = (int64 **) malloc(PLMAX(alloc_nrows,1)*sizeof(int64 *));
 
     mat->alloc_nrows = PLMAX(alloc_nrows,1);
     mat->alloc_ncols = PLMAX(alloc_ncols,1);
 
     for (i=0; i<mat->alloc_nrows; i++) {
-        mat->val[i] = (int *) malloc(mat->alloc_ncols*sizeof(int));
+        mat->val[i] = (int64 *) malloc(mat->alloc_ncols*sizeof(int64));
     }
 
     mat->nrows = alloc_nrows;
@@ -62,12 +62,14 @@ void pluto_matrix_free(PlutoMatrix *mat)
 {
     int i;
 
-    for (i=0; i<mat->alloc_nrows; i++) {
-        free(mat->val[i]);
-    }
+    if (mat) {
+        for (i=0; i<mat->alloc_nrows; i++) {
+            free(mat->val[i]);
+        }
 
-    free(mat->val);
-    free(mat);
+        free(mat->val);
+        free(mat);
+    }
 }
 
 
@@ -110,14 +112,14 @@ void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols)
     int alloc_nrows = PLMAX(nrows,mat->alloc_nrows);
     int alloc_ncols = PLMAX(ncols,mat->alloc_ncols);
 
-    mat->val = (int **) realloc(mat->val, alloc_nrows*sizeof(int *));
+    mat->val = (int64 **) realloc(mat->val, alloc_nrows*sizeof(int64 *));
 
     for (i=mat->alloc_nrows; i<alloc_nrows; i++)    {
         mat->val[i] = NULL;
     }
 
     for (i=0; i<alloc_nrows; i++) {
-        mat->val[i] = (int *) realloc(mat->val[i], alloc_ncols*sizeof(int));
+        mat->val[i] = (int64 *) realloc(mat->val[i], alloc_ncols*sizeof(int64));
     }
 
     mat->alloc_nrows = alloc_nrows;
@@ -161,6 +163,14 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos)
 
     for (j=0; j<mat->ncols; j++)    {
         mat->val[pos][j] = -mat->val[pos][j];
+    }
+}
+
+void pluto_matrix_negate(PlutoMatrix *mat)
+{
+    int r;
+    for (r=0; r<mat->nrows; r++)    {
+        pluto_matrix_negate_row(mat, r);
     }
 }
 
@@ -271,7 +281,7 @@ PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src)
 }
 
 /* Initialize matrix with val */
-void pluto_matrix_initialize(PlutoMatrix *mat, int val)
+void pluto_matrix_set(PlutoMatrix *mat, int val)
 {
     int i, j;
 
@@ -288,7 +298,7 @@ PlutoMatrix *pluto_matrix_identity(int size)
     int i;
 
     PlutoMatrix *mat = pluto_matrix_alloc(size, size);
-    pluto_matrix_initialize(mat, 0);
+    pluto_matrix_set(mat, 0);
 
     for (i=0; i<size; i++)  {
         mat->val[i][i] = 1;
@@ -329,7 +339,7 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat)
 
     for (i=0; i<mat->nrows; i++)
         for (j=0; j<mat->ncols; j++)
-            fscanf(fp, "%d", &mat->val[i][j]);
+            fscanf(fp, "%lld", &mat->val[i][j]);
 }
 
 PlutoMatrix *pluto_matrix_input(FILE *fp)
@@ -341,7 +351,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp)
 
     for (i=0; i<mat->nrows; i++)
         for (j=0; j<mat->ncols; j++)
-            fscanf(fp, "%d", &mat->val[i][j]);
+            fscanf(fp, "%lld", &mat->val[i][j]);
 
     return mat;
 }
@@ -357,7 +367,7 @@ void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat)
 
     for (i=0; i<mat->nrows; i++) {
         for (j=0; j<mat->ncols; j++) {
-            fprintf(fp, "%s%d ", mat->val[i][j]>=0? " ":"", mat->val[i][j]);
+            fprintf(fp, "%s%lld ", mat->val[i][j]>=0? " ":"", mat->val[i][j]);
         }
         fprintf(fp, "\n");
     }
@@ -373,10 +383,10 @@ void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
     /* Normalize mat first */
     for (i=0; i<mat->nrows; i++)    {
         if (mat->val[i][0] == 0) continue;
-        int rowgcd = abs(mat->val[i][0]);
+        int rowgcd = llabs(mat->val[i][0]);
         for (j=1; j<mat->ncols; j++)    {
             if (mat->val[i][j] == 0)  break;
-            rowgcd = gcd(rowgcd,abs(mat->val[i][j]));
+            rowgcd = gcd(rowgcd,llabs(mat->val[i][j]));
         }
         if (i == mat->nrows) {
             if (rowgcd > 1) {
@@ -404,8 +414,8 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos)
             for (r2=0; r2<mat->nrows; r2++) {
                 if (r2 == r) continue;
                 if (mat->val[r2][pos] != 0) {
-                    factor1 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r2][pos];
-                    factor2 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r][pos];
+                    factor1 = lcm(llabs(mat->val[r][pos]),llabs(mat->val[r2][pos]))/mat->val[r2][pos];
+                    factor2 = lcm(llabs(mat->val[r][pos]),llabs(mat->val[r2][pos]))/mat->val[r][pos];
                     for (c=0; c<mat->ncols; c++) {
                         // printf("%d %d\n", mat->val[r2][pos], mat->val[r][pos]);
                         // printf("%d\n", factor1);
@@ -426,7 +436,7 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos)
 }
 
 /* Eliminate variables from start to end (inclusive); start is 0-indexed
- */
+*/
 void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
 {
     int i;
@@ -437,7 +447,7 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim)
 }
 
 
-inline int lcm(int a, int b)
+inline int64 lcm(int64 a, int64 b)
 {
     if (a*b == 0) return 0;
     return (a*b)/gcd(a,b);
@@ -445,10 +455,10 @@ inline int lcm(int a, int b)
 
 
 /* Assuming both args are not zero */
-inline int gcd(int a, int b)
+inline int64 gcd(int64 a, int64 b)
 {
-    a = abs(a);
-    b = abs(b);
+    a = llabs(a);
+    b = llabs(b);
 
     /* At least one of them is zero */
     if (a*b ==0)   return a+b;
@@ -459,7 +469,7 @@ inline int gcd(int a, int b)
 }
 
 
-int *min_lexical(int *a, int *b, int num)   
+int64 *min_lexical(int64 *a, int64 *b, int64 num)   
 {
     int i;
 
@@ -534,6 +544,7 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat)
     return mat;
 }
 
+/* Rank of the matrix */
 int pluto_matrix_get_rank(const PlutoMatrix *mat)
 {
     int i, j, null, rank;
@@ -546,11 +557,110 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat)
     for (i=0; i<re->nrows; i++) {
         int sum = 0;
         for (j=0; j<re->ncols; j++) {
-            sum += abs(re->val[i][j]);
+            sum += llabs(re->val[i][j]);
         }
         if (sum==0) null++;
     }
     rank = re->nrows - null;
     pluto_matrix_free(re);
     return rank;
+}
+
+
+void pluto_matrix_swap_rows(PlutoMatrix *mat, int r1, int r2)
+{
+    int64 tmp;
+    int j;
+
+    for (j=0; j<mat->ncols; j++) {
+        tmp = mat->val[r2][j];
+        mat->val[r2][j] = mat->val[r1][j];
+        mat->val[r1][j] = tmp;
+    }
+
+}
+
+/* Reverse the order of rows in the matrix */
+void pluto_matrix_reverse_rows(PlutoMatrix *mat)
+{
+    int i;
+
+    for (i=0; i<mat->nrows/2; i++) {
+        pluto_matrix_swap_rows(mat, i, mat->nrows-1-i);
+    }
+}
+
+/*
+ * Construct a PlutoMatrix with the same content as the given isl_mat.
+ */
+PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
+{
+    int i, j;
+    int rows, cols;
+    PlutoMatrix *pluto;
+
+    rows = isl_mat_rows(mat);
+    cols = isl_mat_cols(mat);
+    pluto = pluto_matrix_alloc(rows, cols);
+
+    for (i = 0; i < rows; ++i)
+        for (j = 0; j < cols; ++j) {
+            isl_val *v = isl_mat_get_element_val(mat, i, j);
+            pluto->val[i][j] = isl_val_get_num_si(v);
+            isl_val_free(v);
+        }
+
+    return pluto;
+}
+
+/*
+ * Pretty prints a one-dimensional affine function
+ * ndims: number of variables
+ * func should have ndims+1 elements (affine function)
+ * vars: names of the variables; if NULL, x0, x1, ... are used
+ */
+void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars)
+{
+    char *var[ndims];
+    int j;
+
+    for (j=0; j<ndims; j++)  {
+        if (vars && vars[j]) {
+            var[j] = strdup(vars[j]);
+        }else{
+            var[j] = malloc(5);
+            sprintf(var[j], "x%d", j+1);
+        }
+    }
+
+    int first = 0;
+    for (j=0; j<ndims; j++)   {
+        if (func[j] == 1)  {
+            if (first) fprintf(fp, "+");
+            fprintf(fp, "%s", var[j]);
+        }else if (func[j] == -1)  {
+            fprintf(fp, "-%s", var[j]);
+        }else if (func[j] != 0)  {
+            if (func[j] > 0) {
+                fprintf(fp, "%s%lld%s", first?"+":"", func[j], var[j]);
+            }else{
+                fprintf(fp, "%lld%s", func[j], var[j]);
+            }
+        }
+        if (func[j] != 0) first = 1;
+    }
+    /* Constant part */
+    if (func[ndims] >= 1)  {
+        if (first) fprintf(fp, "+");
+        fprintf(fp, "%lld", func[ndims]);
+    }else if (func[ndims] <= -1){
+        fprintf(fp, "%lld", func[ndims]);
+    }else{
+        /* 0 */
+        if (!first) fprintf(fp, "0");
+    }
+
+    for (j=0; j<ndims; j++)  {
+        free(var[j]);
+    }
 }

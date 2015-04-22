@@ -42,10 +42,7 @@
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
 #define IF_MORE_DEBUG(foo) {if (options->moredebug) {foo; }}
-
-
-#define MAX_CONSTRAINTS 10000
-#define MAX_FARKAS_CST  2000
+#define PLUTO_MESSAGE(foo) {if (!options->silent) { foo; }}
 
 #define MAX_TILING_LEVELS 2
 
@@ -87,6 +84,8 @@ typedef struct pluto_access{
 } PlutoAccess;
 
 
+
+
 struct statement{
     int id;
 
@@ -119,6 +118,10 @@ struct statement{
      *       stmt->dim + npar + 1 after auto_transform (after denormalize)
      */
     PlutoMatrix *trans;
+
+    /* The hyperplane evicted by the hyperplane enabling
+     * concurrent start (diamond tiling) */
+    PlutoMatrix *evicted_hyp;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
@@ -183,7 +186,7 @@ struct dependence{
      * Polyhedra used to store source unique dependence polyhedra
      * in FOP scheme
      */
-    PlutoConstraints *src_unique_dpolytype;
+    PlutoConstraints *src_unique_dpolytope;
 
     PlutoConstraints *depsat_poly;
 
@@ -197,6 +200,12 @@ struct dependence{
 
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
+
+    /* Constraints for validity of a transformation */
+    PlutoConstraints *valid_cst;
+
+    /* Constraints for bounding the dependence distance */
+    PlutoConstraints *bounding_cst;
 
     /* Dependence direction in transformed space */
     DepDir *dirvec;
@@ -284,11 +293,15 @@ struct plutoProg{
 
     char *decls;
 
+    /* Codegen context */
+    PlutoConstraints *codegen_context;
     /* Temp autotransform data */
     PlutoConstraints *globcst;
-    PlutoConstraints **depcst;
 
-    /* Pointer toScoplib structure */
+    /* Hyperplane that was replaced in case concurrent start 
+     * had been found*/
+    int evicted_hyp_pos;
+
     osl_scop_p scop;
 };
 typedef struct plutoProg PlutoProg;
@@ -296,7 +309,8 @@ typedef struct plutoProg PlutoProg;
 /*
  * A Ploop is NOT an AST loop; this is a dimension in the scattering tree
  * which is not a scalar one. Ploop exists in the polyhedral representation
- * and corresponds to one or more loops in the final generated AST 
+ * and corresponds to one or more loops at the *same* depth (same t<num>) in
+ * the final generated AST
  */
 typedef struct pLoop{
     int depth;
@@ -367,7 +381,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
-PlutoConstraints *get_permutability_constraints(Dep **, int, const PlutoProg *);
+PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
 PlutoConstraints *get_global_independence_cst(
@@ -391,7 +405,8 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
-bool create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
+bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
+int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 
 int pluto_omp_parallelize(PlutoProg *prog);
 int pluto_distmem_parallelize(PlutoProg *prog);
@@ -403,12 +418,8 @@ int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
-void pretty_print_affine_function(FILE *fp, int *, int, char **);
-void pluto_transformations_print(const PlutoProg *prog);
-void pluto_transformations_pretty_print(const PlutoProg *prog);
-void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_print_dep_directions(PlutoProg *prog);
-void pluto_print_depsat_vectors(Dep **deps, int ndeps, int levels);
+void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
@@ -453,17 +464,24 @@ int get_outermost_parallel_loop(const PlutoProg *prog);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
+Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
+Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_placement_levels);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
 int pluto_loop_compar(const void *_l1, const void *_l2);
+Band *pluto_band_alloc(Ploop *loop, int width);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
+int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
+        const Stmt *stmt);
+int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
+        const Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
@@ -471,6 +489,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num);
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, int *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
@@ -488,5 +507,11 @@ PlutoDepList* pluto_dep_list_alloc(Dep *dep);
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
+int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
+
+void pluto_iss_dep(PlutoProg *prog);
+PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
+void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
 
 #endif

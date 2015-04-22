@@ -17,6 +17,12 @@ struct plutoOptions{
     /* dynamic scheduling */
     int dynschedule;
 
+    /* Load-balanced tiling */
+    int lbtile;
+
+    /* Load-balanced tiling (one dimensional concurrent start)*/
+    int partlbtile;
+
     /* parallelization */
     int parallel;
 
@@ -42,9 +48,9 @@ struct plutoOptions{
     /* for debugging - print default cloog-style total */
     int scancount;
 
-    /* parameters will be more than at least this much */
-    /* setting parameter context for cloog */
-    int context;
+    /* parameters will be assumed to be at least this much */
+    /* This is appended to the context passed to cloog */
+    int codegen_context;
 
     /* Loop depth (1-indexed) to force as parallel */
     int forceparallel;
@@ -98,19 +104,23 @@ struct plutoOptions{
     /* Enable cloog's -backtrack */
     int cloogbacktrack;
 
-    /* Use isl to compute dependences */
+    /* Use isl to compute dependences (default) */
     int isldep;
-    int noisldep;
+
+    /* Use candl to compute dependences */
+    int candldep;
 
     /* Compact dependences with ISL */
     int isldepcompact;
 
     /* Compute lastwriter for dependences */
     int lastwriter;
-    int nolastwriter;
 
     /* DEV: Don't use cost function */
-    int nobound;
+    int nodepbound;
+
+    /* hard upper bound for transformation coefficients */
+    int coeff_bound;
 
     /* Ask candl to privatize */
     int scalpriv;
@@ -124,6 +134,7 @@ struct plutoOptions{
     /* Use isl as ilp solver. */
     int islsolve;
 
+<<<<<<< HEAD
     int distmem;
 
     /*  adding support to generate opencl code */
@@ -153,8 +164,14 @@ struct plutoOptions{
     int blockcyclic;
     int cyclesize;
 
+    /* Index set splitting */
+    int iss;
+
     /* Output file name supplied from -o */
     char *out_file;
+
+    /* Polyhedral compile time stats */
+    int time;
 };
 typedef struct plutoOptions PlutoOptions;
 
