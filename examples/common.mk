@@ -72,6 +72,59 @@ $(SRC).distopt.c: $(SRC).c
 $(SRC).lbpar.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
+$(SRC).dist.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --nocommopt --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+
+$(SRC).distopt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --tile $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_data_dist.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --mpiomp --tile --data_dist $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_idt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --tile --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_idnt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_foifi.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --commopt_foifi --tile $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).dhpf.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --commopt_foifi --tile $(TILEFLAGS) --isldep $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_fop.c: $(SRC).c
+
+$(SRC).distopt_fop.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --commopt_fop --tile $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_fop_idt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --tile --commopt_fop --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+	
+$(SRC).distopt_dsfo_data_dist.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --mpiomp --commopt_foifi --tile --data_dist $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_dsfo_data_dist_verify.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --mpiomp --commopt_foifi --tile --data_dist --verify_output $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_foifi_data_dist.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --mpiomp --commopt_foifi --tile --data_dist $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_foifi_data_dist_verify.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --mpiomp --commopt_foifi --tile --data_dist --verify_output $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_fop_idnt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --commopt_fop --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_foifi_idt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --tile --commopt_foifi --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distopt_foifi_idnt.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --mpiomp --commopt_foifi --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
+
+$(SRC).distomp.c: $(SRC).c
+	$(PLC) $(SRC).c --distmem --timereport --nocommopt --mpiomp --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
@@ -94,6 +147,15 @@ distopt: $(SRC).distopt.c sigma.c pi.c
 	$(MPICC) $(OPT_FLAGS) $(OMP_FLAGS) -DMPI $(CFLAGS) $(SRC).distopt.c sigma.c pi.c \
 		-o $@ -L $(POLYRTLIBDIR) -lpolyrt $(LDFLAGS)
 		
+distopt_foifi: $(SRC).distopt_foifi.c sigma_$(SRC).distopt_foifi.c pi_$(SRC).distopt_foifi.c
+	$(MPICC) $(OPT_FLAGS) $(OMP_FLAGS) $(CFLAGS) $(SRC).distopt_foifi.c sigma_$(SRC).distopt_foifi.c pi_$(SRC).distopt_foifi.c\
+		$(POLYRTINCDIR)/polyrt.c -o $@ -I $(POLYRTINCDIR) $(LDFLAGS)
+		
+
+distopt_fop: $(SRC).distopt_fop.c sigma_$(SRC).distopt_fop.c pi_$(SRC).distopt_fop.c
+	$(MPICC) $(OPT_FLAGS) $(OMP_FLAGS) $(CFLAGS) $(SRC).distopt_fop.c sigma_$(SRC).distopt_fop.c pi_$(SRC).distopt_fop.c\
+		$(POLYRTINCDIR)/polyrt.c -o $@ -I $(POLYRTINCDIR) $(LDFLAGS)
+	
 perf: orig tiled par orig_par
 	rm -f .test
 	./orig

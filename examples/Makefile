@@ -38,7 +38,6 @@ orig_par:
 		done
 
 
-
 tiled:
 	@-for d in $(DIRS); do \
 		make -C $$d tiled; \
@@ -58,6 +57,41 @@ distopt:
 test:
 	@-for d in $(DIRS); do \
 		make -C $$d test; \
+
+dist_test: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_test; \
+		done
+
+dist_foifi_test: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_foifi_test; \
+		done
+
+dist_fop_test: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_fop_test; \
+		done
+
+
+dist_test2: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_test2; \
+		done
+
+dist_foifi_test2: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_foifi_test2; \
+		done
+
+dist_fop_test2: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_fop_test2; \
+		done
+
+dist_compare_test2: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_compare_test2; \
 		done
 
 perf: 
