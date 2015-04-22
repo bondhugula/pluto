@@ -5,8 +5,8 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-CC=icc
-#CC=gcc
+#CC=icc
+CC=gcc
 
 NPROCS=4
 NTHREADS=4
@@ -42,7 +42,7 @@ else
 endif
 
 CFLAGS += -DTIME
-LDFLAGS += -lm
+LDFLAGS += -lm -L ../../cloog-isl/.libs/ -lcloog-isl
 PLCFLAGS += --isldep --lastwriter
 DISTOPT_FLAGS += --cloogsh
 TILEFLAGS += 
