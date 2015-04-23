@@ -103,7 +103,7 @@ void usage_message(void)
     fprintf(stdout, "       --glpk                    Use GLPK as ilp solver\n");
     fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
     fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "                                     (enabled by default with --distmem; disabled otherwise)\n");
+    fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
     fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
     fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
     fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
@@ -155,6 +155,8 @@ int main(int argc, char *argv[])
     char *srcFileName;
 
     FILE *cloogfp, *outfp, *dynschedfp, *sigmafp, *headerfp;
+
+    struct pet_scop *pscop;
 
     dynschedfp = NULL;
     sigmafp = NULL;
@@ -414,7 +416,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         assert(options->distmem == 0);
     }
 
-    if (options->distmem == 1 && options->parallel == 0)    {
+    if (options->distmem == 1 && options->dynschedule == 0 && options->parallel == 0)    {
         options->parallel = 1;
     }
 
@@ -483,69 +485,94 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
 
-    /* Extract polyhedral representation */
+    /* Extract polyhedral representation from osl scop */
     PlutoProg *prog = NULL; 
 
     osl_scop_p scop = NULL;
     char *irroption = NULL;
 
-    /* Extract polyhedral representation from clan scop */
-    if(!strcmp(srcFileName, "stdin")){  //read from stdin
-        src_fp = stdin;
-        osl_interface_p registry = osl_interface_get_default_registry();
+    /* Extract polyhedral representation from input program */
+    if (options->pet) {
+        isl_ctx *pctx = isl_ctx_alloc();
+        pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
+
+        if (!pscop) {
+            fprintf(stdout, "[pluto] No SCoPs extracted or error extracting SCoPs  using pet\n");
+            pluto_options_free(options);
+            isl_ctx_free(pctx);
+            return 12;
+        }
         t_start = rtclock();
-        scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+        prog = pet_to_pluto_prog(pscop, pctx, options);
         t_d = rtclock() - t_start;
-    }else{  // read from regular file
 
-      src_fp  = fopen(srcFileName, "r");
+        pet_scop_free(pscop);
+        isl_ctx_free(pctx);
 
-      if (!src_fp)   {
-          fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
-          pluto_options_free(options);
-          return 6;
-      }
+        FILE *srcfp = fopen(".srcfilename", "w");
+        if (srcfp)    {
+            fprintf(srcfp, "%s\n", srcFileName);
+            fclose(srcfp);
+        }
+    }else{
+        /* Extract polyhedral representation from clan scop */
+        if(!strcmp(srcFileName, "stdin")){  //read from stdin
+            src_fp = stdin;
+            osl_interface_p registry = osl_interface_get_default_registry();
+            t_start = rtclock();
+            scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+            t_d = rtclock() - t_start;
+        }else{  // read from regular file
 
-      clan_options_p clanOptions = clan_options_malloc();
+            src_fp  = fopen(srcFileName, "r");
 
-      if (options->readscop){
-          osl_interface_p registry = osl_interface_get_default_registry();
-          t_start = rtclock();
-          scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-          t_d = rtclock() - t_start;
-      }else{
-          t_start = rtclock();
-          scop = clan_scop_extract(src_fp, clanOptions);
-          t_d = rtclock() - t_start;
-      }
+            if (!src_fp)   {
+                fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
+                pluto_options_free(options);
+                return 6;
+            }
 
-      if (!scop || !scop->statement)   {
-          fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
-                  srcFileName);
-          pluto_options_free(options);
-          return 8;
-      }
-      FILE *srcfp = fopen(".srcfilename", "w");
-      if (srcfp)    {
-          fprintf(srcfp, "%s\n", srcFileName);
-          fclose(srcfp);
-      }
+            /* Extract polyhedral representation from input program */
+            clan_options_p clanOptions = clan_options_malloc();
 
-      clan_options_free(clanOptions);
+            if (options->readscop){
+                osl_interface_p registry = osl_interface_get_default_registry();
+                t_start = rtclock();
+                scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+                t_d = rtclock() - t_start;
+            }else{
+                t_start = rtclock();
+                scop = clan_scop_extract(src_fp, clanOptions);
+                t_d = rtclock() - t_start;
+            }
 
-      /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+            if (!scop || !scop->statement)   {
+                fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+                        srcFileName);
+                pluto_options_free(options);
+                return 8;
+            }
+            FILE *srcfp = fopen(".srcfilename", "w");
+            if (srcfp)    {
+                fprintf(srcfp, "%s\n", srcFileName);
+                fclose(srcfp);
+            }
+
+            clan_options_free(clanOptions);
+
+            /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+        }
+
+        /* Convert clan scop to Pluto program */
+        prog = scop_to_pluto_prog(scop, options);
+
+        /* Backup irregular program portion in .scop. */
+        osl_irregular_p irreg_ext = NULL;
+        irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+        if (irreg_ext!=NULL)
+            irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
+        osl_irregular_free(irreg_ext);
     }
-
-    /* Convert clan scop to Pluto program */
-    prog = scop_to_pluto_prog(scop, options);
-
-    /* Backup irregular program portion in .scop. */
-    osl_irregular_p irreg_ext = NULL;
-    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
-    if(irreg_ext!=NULL)
-      irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
-    osl_irregular_free(irreg_ext);
-
     IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
     int dim_sum=0;
@@ -553,6 +580,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         dim_sum += prog->stmts[i]->dim;
     }
 
+    
    
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
@@ -650,7 +678,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    if(!strcmp(srcFileName, "stdin")){  
+    if(!options->pet && !strcmp(srcFileName, "stdin")){
         //input stdin == output stdout
         pluto_populate_scop(scop, prog, options);
         osl_scop_print(stdout, scop);
@@ -822,7 +850,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             }
         }
 
-        pluto_detect_scalar_dimensions(prog);
+        if (!options->pet) pluto_detect_scalar_dimensions(prog);
         if (options->moredebug) {
             printf("After scalar dimension detection (final transformations)\n");
             pluto_transformations_pretty_print(prog);
@@ -831,9 +859,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* Generate .cloog file */
         pluto_gen_cloog_file(cloogfp, prog);
         /* Add the <irregular> tag from clan, if any */
-        if (irroption != NULL) {
-            fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-            free(irroption);
+        if(!options->pet) {
+            if (irroption) {
+                fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
+                free(irroption);
+            }
         }
         rewind(cloogfp);
 
@@ -878,7 +908,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 //			pluto_shared_memory_data_dist(prog, headerfp);
 
 //            fprintf(outfp, "#include \"%s\"\n", headerFileName);
-            // t_start = rtclock();
+// t_start = rtclock();
 //            pluto_sharedmem_data_dist_codegen(prog, cloogfp, outfp, headerfp);
             // t_c = rtclock() - t_start;
 
