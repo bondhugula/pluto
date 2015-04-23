@@ -410,7 +410,6 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt, const PlutoConstra
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
-Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtType);
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
