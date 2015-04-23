@@ -383,10 +383,10 @@ void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos)
     /* Normalize mat first */
     for (i=0; i<mat->nrows; i++)    {
         if (mat->val[i][0] == 0) continue;
-        int rowgcd = abs(mat->val[i][0]);
+        int rowgcd = llabs(mat->val[i][0]);
         for (j=1; j<mat->ncols; j++)    {
             if (mat->val[i][j] == 0)  break;
-            rowgcd = gcd(rowgcd,abs(mat->val[i][j]));
+            rowgcd = gcd(rowgcd,llabs(mat->val[i][j]));
         }
         if (i == mat->nrows) {
             if (rowgcd > 1) {
@@ -414,8 +414,8 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos)
             for (r2=0; r2<mat->nrows; r2++) {
                 if (r2 == r) continue;
                 if (mat->val[r2][pos] != 0) {
-                    factor1 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r2][pos];
-                    factor2 = lcm(abs(mat->val[r][pos]),abs(mat->val[r2][pos]))/mat->val[r][pos];
+                    factor1 = lcm(llabs(mat->val[r][pos]),llabs(mat->val[r2][pos]))/mat->val[r2][pos];
+                    factor2 = lcm(llabs(mat->val[r][pos]),llabs(mat->val[r2][pos]))/mat->val[r][pos];
                     for (c=0; c<mat->ncols; c++) {
                         // printf("%d %d\n", mat->val[r2][pos], mat->val[r][pos]);
                         // printf("%d\n", factor1);
@@ -457,8 +457,8 @@ inline int64 lcm(int64 a, int64 b)
 /* Assuming both args are not zero */
 inline int64 gcd(int64 a, int64 b)
 {
-    a = abs(a);
-    b = abs(b);
+    a = llabs(a);
+    b = llabs(b);
 
     /* At least one of them is zero */
     if (a*b ==0)   return a+b;
@@ -557,7 +557,7 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat)
     for (i=0; i<re->nrows; i++) {
         int sum = 0;
         for (j=0; j<re->ncols; j++) {
-            sum += abs(re->val[i][j]);
+            sum += llabs(re->val[i][j]);
         }
         if (sum==0) null++;
     }

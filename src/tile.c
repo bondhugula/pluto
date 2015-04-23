@@ -122,6 +122,12 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
     int firstD = band->loop->depth;
     int lastD = band->loop->depth+band->width-1;
 
+    int num_domain_supernodes[band->loop->nstmts];
+
+    for (s=0; s<band->loop->nstmts; s++) {
+        num_domain_supernodes[s] = 0;
+    }
+
     for (depth=firstD; depth<=lastD; depth++)    {
         for (s=0; s<band->loop->nstmts; s++) {
             Stmt *stmt = band->loop->stmts[s];
@@ -137,23 +143,22 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
             /* 1.2 Specify tile shapes in the original domain */
             // pluto_constraints_print(stdout, stmt->domain);
-            int num_domain_supernodes = 0;
             if (hyp_type != H_SCALAR) {
                 assert(tile_sizes[depth-firstD] >= 1);
                 /* Domain supernodes aren't added for scalar dimensions */
                 // printf("S%d dim: %d %d\n", stmt->id+1, stmt->dim, depth-firstD);
-                pluto_stmt_add_dim(stmt, num_domain_supernodes, depth, iter, hyp_type, prog);
+                pluto_stmt_add_dim(stmt, num_domain_supernodes[s], depth, iter, hyp_type, prog);
                 /* Add relation b/w tile space variable and intra-tile variables like
                  * 32*xt <= 2t+i <= 32xt + 31 */
                 /* Lower bound */
                 pluto_constraints_add_inequality(stmt->domain);
 
-                for (j=num_domain_supernodes+1; j<stmt->dim+npar; j++) {
+                for (j=num_domain_supernodes[s]+1; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes] = 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]] = 
                     -tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
@@ -166,12 +171,12 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
                 /* Upper bound */
                 pluto_constraints_add_inequality(stmt->domain);
-                for (j=num_domain_supernodes+1; j<stmt->dim+npar; j++) {
+                for (j=num_domain_supernodes[s]+1; j<stmt->dim+npar; j++) {
                     stmt->domain->val[stmt->domain->nrows-1][j] = 
                         -stmt->trans->val[firstD+(depth-firstD)+1+(depth-firstD)][j];
                 }
 
-                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes] 
+                stmt->domain->val[stmt->domain->nrows-1][num_domain_supernodes[s]] 
                     = tile_sizes[depth-firstD];
 
                 stmt->domain->val[stmt->domain->nrows-1][stmt->domain->ncols-1] = 
@@ -183,7 +188,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
                 pluto_update_deps(stmt, ub, prog);
                 pluto_constraints_free(ub);
 
-                num_domain_supernodes++;
+                num_domain_supernodes[s]++;
 
                 // printf("after adding tile constraints\n");
                 // pluto_constraints_print(stdout, stmt->domain);
@@ -246,9 +251,9 @@ void pluto_tile(PlutoProg *prog)
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    IF_DEBUG(printf("Outermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Outermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(bands, nbands););
-    IF_DEBUG(printf("Innermost tilable bands\n"););
+    IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
     /*
@@ -331,6 +336,9 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
+
+    /* DEPRECATED: now taken care of in intra_tile_optimize */
+#if 0
     if (options->prevector) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
@@ -344,6 +352,7 @@ void pluto_tile(PlutoProg *prog)
             pluto_print_hyperplane_properties(prog);
         }
     }
+#endif
 
     if (options->parallel) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);

@@ -696,11 +696,15 @@ PlutoConstraints *pluto_constraints_from_inequalities(const PlutoMatrix *mat)
 /* Read constraints in polylib format from a file */
 PlutoConstraints *pluto_constraints_read(FILE *fp)
 {
-    int i, j, ineq, nrows, ncols;
+    int i, j, ineq, nrows, ncols, retval, num;
 
     fscanf(fp, "%d", &nrows);
-    fscanf(fp, "%d", &ncols);
+    retval = fscanf(fp, "%d", &ncols);
     ncols--;
+
+    if (retval == EOF || retval == 0) {
+        return NULL;
+    }
 
     PlutoConstraints *cst = pluto_constraints_alloc(nrows, ncols);
     cst->nrows = nrows;
@@ -713,7 +717,6 @@ PlutoConstraints *pluto_constraints_read(FILE *fp)
         }
     }
 
-    int num;
     if (fscanf(fp, "%d", &num) != EOF) {
         if (num >= 1) cst->names = malloc(num*sizeof(char *));
         for (i=0; i<num; i++) {
@@ -909,8 +912,8 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar)
     int64 *sol;
     PlutoMatrix *pipmat;
 
-    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables)\n",
-                cst->ncols-1););
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
 
     pipmat = pluto_matrix_alloc(cst->nrows, cst->ncols+1);
 

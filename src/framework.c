@@ -833,7 +833,6 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 }
 
 /* Direction vector component at level 'level'
- * TODO: assumes no parametric shifts 
  */
 DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
 {
@@ -855,78 +854,91 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     assert(level < stmts[src]->trans->nrows);
     assert(level < stmts[dest]->trans->nrows);
 
-    cst = pluto_constraints_alloc(2*(2+dep->dpolytope->nrows), 
-            (src_dim+dest_dim)+npar+1);
+    cst = pluto_constraints_alloc(2 * (2 + dep->dpolytope->nrows),
+            (src_dim + dest_dim) + npar + 1);
 
     /*
      * Check for zero
      *
-     * To test \phi (dest) - \phi(src) = 0, we try 
+     * To test \phi (dest) - \phi(src) = 0, we try
      *
      * \phi(dest) - \phi(src) >= 1
      */
     cst->is_eq[0] = 0;
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar]-1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] +
+            stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -stmts[src]->trans->val[level][src_dim + npar] +
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
     cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    int64 *sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    bool is_empty = pluto_constraints_is_empty(cst);
 
-    if (!sol)   {
-        for (j=0; j<src_dim; j++)    {
+    if (is_empty) {
+        for (j = 0; j < src_dim; j++) {
             cst->val[0][j] = stmts[src]->trans->val[level][j];
         }
-        for (j=src_dim; j<src_dim+dest_dim; j++)    {
-            cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
+        for (j = src_dim; j < src_dim + dest_dim; j++) {
+            cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
         }
-        cst->val[0][src_dim+dest_dim+npar] = 
-            stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar]-1;
-        cst->nrows=1;
+        for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+            cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
+                - stmts[dest]->trans->val[level][j - src_dim];
+        }
+        cst->val[0][src_dim + dest_dim + npar] =
+            stmts[src]->trans->val[level][src_dim + npar] 
+            - stmts[dest]->trans->val[level][dest_dim + npar] - 1;
+        cst->nrows = 1;
 
         pluto_constraints_add(cst, dep->dpolytope);
 
-        sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+        is_empty = pluto_constraints_is_empty(cst);
 
         /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
-        if (!sol)   {
+        if (is_empty) {
             pluto_constraints_free(cst);
             return DEP_ZERO;
         }
     }
 
-
     /*
      * Check for PLUS
-     * Constraint format 
+     * Constraint format
      * \phi(dest) - \phi (src) <= -1
      * (reverse of plus)
      */
 
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        stmts[src]->trans->val[level][src_dim+npar] - stmts[dest]->trans->val[level][dest_dim+npar] -1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
+            - stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        stmts[src]->trans->val[level][src_dim + npar] -
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
 
-    cst->nrows=1;
+    cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    free(sol);
-    sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    is_empty = pluto_constraints_is_empty(cst);
 
-    if (!sol)   {
+    if (is_empty) {
         pluto_constraints_free(cst);
         return DEP_PLUS;
     }
@@ -934,32 +946,34 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     /*
      * Check for MINUS
      *
-     * Constraint format 
+     * Constraint format
      * \phi(dest) - \phi (src) >= 1
      * reverse of minus, we alraedy know that it's not zero
      */
 
-    for (j=0; j<src_dim; j++)    {
+    for (j = 0; j < src_dim; j++) {
         cst->val[0][j] = -stmts[src]->trans->val[level][j];
     }
-    for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j - src_dim];
     }
-    cst->val[0][src_dim+dest_dim+npar] = 
-        -stmts[src]->trans->val[level][src_dim+npar] + stmts[dest]->trans->val[level][dest_dim+npar] -1;
-    cst->nrows=1;
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] 
+            + stmts[dest]->trans->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -stmts[src]->trans->val[level][src_dim + npar] +
+        stmts[dest]->trans->val[level][dest_dim + npar] - 1;
+    cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);
 
-    free(sol);
-    sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+    is_empty = pluto_constraints_is_empty(cst);
     pluto_constraints_free(cst);
 
-    if (!sol)   {   
+    if (is_empty) {
         return DEP_MINUS;
     }
-
-    free(sol);
 
     /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
     return DEP_STAR;

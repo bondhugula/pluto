@@ -5,8 +5,8 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-CC=icc
-#CC=gcc
+#CC=icc
+CC=gcc
 
 NPROCS=4
 NTHREADS=4
@@ -17,7 +17,7 @@ MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS :=-O3 -fp-model precise
+	OPT_FLAGS :=-O3 -fp-model precise -ansi-alias -ipo
 	PAR_FLAGS := -parallel
 	OMP_FLAGS := -openmp
 else
@@ -76,9 +76,14 @@ par: $(SRC).par.c
 perf: orig tiled par orig_par
 	rm -f .test
 	./orig
-	OMP_NUM_THREADS=4 ./orig_par
+	OMP_NUM_THREADS=$(NTHREADS) ./orig_par
 	./tiled
-	OMP_NUM_THREADS=4 ./par 
+	OMP_NUM_THREADS=$(NTHREADS) ./par 
+
+lbperf: par lbpar
+	rm -f .test
+	OMP_NUM_THREADS=$(NTHREADS) ./par
+	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 
 
 
 test: orig tiled par
