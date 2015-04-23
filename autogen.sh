@@ -42,4 +42,7 @@ cd clan
 ./autogen.sh
 cd ..
 
+echo -e "\n*** Running autotools on pet ***"
+(cd pet && ./autogen.sh)
+
 cd ..

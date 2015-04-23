@@ -49,31 +49,18 @@
 #include "candl/candl.h"
 #include "candl/scop.h"
 
+#include "pet.h"
+
 PlutoOptions *options;
 
 void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
+    fprintf(stdout, "       --pet                     Use libpet for polyhedral extraction instead of clan [default - clan]\n");
+    fprintf(stdout, "\n");
     fprintf(stdout, "       --tile                    Tile for locality\n");
     fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
-    fprintf(stdout, "       --variables_not_global    Variables not declared globally (if so, macros provide variable declarations)\n");
-    fprintf(stdout, "       --distmem                 Parallelize for distributed memory (generate MPI)\n");
-    fprintf(stdout, "       --mpiomp                  Parallelize for shared-memory along with distributed-memory (generate OpenMP along with MPI)\n");
-    fprintf(stdout, "\n   Communication code    Options related to communication code generation schemes for distributed-memory\n");
-    fprintf(stdout, "       --commopt                 Generate communication code using Flow-Out (FO) scheme (enabled by default)\n");
-    fprintf(stdout, "       --commopt_foifi           Generate communication code using Flow-Out Intersection Flow-In (FOIFI) scheme\n");
-    fprintf(stdout, "       --commopt_fop             Generate communication code using Flow-Out Partitioning (FOP) scheme (multicast pack by default)\n");
-    fprintf(stdout, "       --fop_unicast_runtime     FOP: generate code to choose between unicast and multicast pack at runtime\n");
-    fprintf(stdout, "       --commreport              Generate code to report communication volume and time\n\n");
-    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector           Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
-    fprintf(stdout, "       --context=<context>       Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
-    fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "                                     (enabled by default with --distmem; disabled otherwise)\n");
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
     fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP)\n");
     fprintf(stdout, "     | --parallelize\n");
@@ -83,25 +70,51 @@ void usage_message(void)
     fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
     fprintf(stdout, "       --multipipe               Extract two or more degrees of pipelined parallelism if possible;\n");
     fprintf(stdout, "                                     by default one degree is extracted (if it exists)\n");
-    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
-    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
-    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
-    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
-    fprintf(stdout, "       --readscop             Read input from a .scop file\n");
-    fprintf(stdout, "       --lastwriter           Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
-    fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
-    fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
-    fprintf(stdout, "       --help    | -h         Print this help menu\n");
-    fprintf(stdout, "       --version | -v         Display version number\n");
+    fprintf(stdout, "       --variables_not_global    Variables not declared globally (if so, macros provide variable declarations)\n");
+    fprintf(stdout, "\n   Runtime               Options related to compilation for a runtime\n");
+    fprintf(stdout, "       --dynschedule             Dynamically schedule tasks on processors using Synthesized Runtime Interface\n");
+    fprintf(stdout, "                                     (for shared and distributed memory)\n");
+    fprintf(stdout, "       --dynschedule_graph       Dynamically schedule tasks on processors using Intel TBB Flow Graph\n");
+    fprintf(stdout, "                                     (only for shared-memory)\n");
+    fprintf(stdout, "       --dataflow                Alias to --dynschedule\n");
+    fprintf(stdout, "\n   Architecture          Options related to compilation for a specific architecture\n");
+#ifdef PLUTO_OPENCL
+    fprintf(stdout, "       --opencl                  Generate OpenCL code \n");
+#endif
+    fprintf(stdout, "       --distmem                 Parallelize for distributed-memory clusters (generate MPI)\n");
+    fprintf(stdout, "       --mpiomp                  Parallelize for shared-memory along with distributed-memory (generate MPI+OpenMP)\n");
+    fprintf(stdout, "       --data_dist               Performs data tiling and with distmem option distributes the data across multiple compute nodes at the granularity of data tiles\n");
+    fprintf(stdout, "       --data_tile_opt           Trys to hoist mod and divide operations out of innermost loop, to be used with data_dist option\n");
+    fprintf(stdout, "\n   Analysis              Options related to analyzing generated code (for Runtime or Architecture)\n");
+    fprintf(stdout, "       --timereport              Generate code to report communication volume (for distributed-memory only)\n");
+    fprintf(stdout, "                                     and analysis of time (for distributed-memory or runtime)\n");
+    fprintf(stdout, "\n   Communication code    Options related to communication code generation for distributed-memory\n");
+    fprintf(stdout, "       --commopt                 Generate communication code using Flow-Out (FO) scheme (enabled by default)\n");
+    fprintf(stdout, "       --commopt_foifi           Generate communication code using Flow-Out Intersection Flow-In (FOIFI) scheme\n");
+    fprintf(stdout, "       --commopt_fop             Generate communication code using Flow-Out Partitioning (FOP) scheme (multicast pack by default)\n");
+    fprintf(stdout, "       --fop_unicast_runtime     FOP: generate code to choose between unicast and multicast pack at runtime\n\n");
+    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
+    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
+    fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (enabled by default)\n");
+    fprintf(stdout, "       --islsolve                Use ISL as ilp solver\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ilp solver\n");
+    fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
+    fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
+    fprintf(stdout, "                                     (enabled by default with --distmem; disabled otherwise)\n");
+    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
+    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
+    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
+    fprintf(stdout, "       --help    | -h            Print this help menu\n");
+    fprintf(stdout, "       --version | -v            Display version number\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
     fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "\n   Index Set Splitting        \n");
+    fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
@@ -141,9 +154,11 @@ int main(int argc, char *argv[])
 
     char *srcFileName;
 
-    FILE *cloogfp, *outfp, *dynschedfp;
+    FILE *cloogfp, *outfp, *dynschedfp, *sigmafp, *headerfp;
 
     dynschedfp = NULL;
+    sigmafp = NULL;
+    headerfp = NULL;
 
     if (argc <= 1)  {
         usage_message();
@@ -159,11 +174,17 @@ int main(int argc, char *argv[])
         {"intratileopt", no_argument, &options->intratileopt, 1},
         {"nointratileopt", no_argument, &options->intratileopt, 0},
         {"lbtile", no_argument, &options->lbtile, 1},
+        {"pet", no_argument, &options->pet, 1},
         {"diamond-tile", no_argument, &options->lbtile, 1},
         {"part-diamond-tile", no_argument, &options->partlbtile, 1},
         {"partlbtile", no_argument, &options->partlbtile, 1},
-        {"debug", no_argument, &options->debug, true},
-        {"moredebug", no_argument, &options->moredebug, true},
+        {"dynschedule", no_argument, &options->dynschedule, 1},
+        {"dataflow", no_argument, &options->dynschedule, 1},
+        {"dynschedule_graph", no_argument, &options->dynschedule_graph, 1},
+        {"dynschedule_graph_old", no_argument, &options->dynschedule_graph_old, 1},
+        {"dyn_trans_deps_tasks", no_argument, &options->dyn_trans_deps_tasks, 1},
+        {"debug", no_argument, &options->debug, 1},
+        {"moredebug", no_argument, &options->moredebug, 1},
         {"rar", no_argument, &options->rar, 1},
         {"identity", no_argument, &options->identity, 1},
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
@@ -172,18 +193,19 @@ int main(int argc, char *argv[])
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
-        {"dynschedule", no_argument, &options->dynschedule, 1},
+        {"iss", no_argument, &options->iss, 1},
         {"distmem", no_argument, &options->distmem, 1},
+        {"no_multi_level_distribution", no_argument, &options->multi_level_distribution, 0},
+        {"multi_level_distribution", no_argument, &options->multi_level_distribution, 1},
         {"commopt", no_argument, &options->commopt, 1},
         {"commopt_fop", no_argument, &options->commopt_fop, 1},
         {"fop_unicast_runtime", no_argument, &options->fop_unicast_runtime, 1},
         {"commopt_foifi", no_argument, &options->commopt_foifi, 1},
         {"nocommopt", no_argument, &options->commopt, 0},
-        {"commreport", no_argument, &options->commreport, 1},
+        {"timereport", no_argument, &options->timereport, 1},
         {"variables_not_global", no_argument, &options->variables_not_global, 1},
         {"mpiomp", no_argument, &options->mpiomp, 1},
         {"blockcyclic", no_argument, &options->blockcyclic, 1},
-        {"iss", no_argument, &options->iss, 1},
         {"unroll", no_argument, &options->unroll, 1},
         {"nounroll", no_argument, &options->unroll, 0},
         {"polyunroll", no_argument, &options->polyunroll, 1},
@@ -217,6 +239,17 @@ int main(int argc, char *argv[])
         {"readscop", no_argument, &options->readscop, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
         {"fusesends", no_argument, &options->fusesends, 1},
+        {"data_dist", no_argument, &options->data_dist, 1},
+        {"verify_output", no_argument, &options->verify_output, 1},
+        {"data_tile_opt", no_argument, &options->data_tile_opt, 1},
+        {"nodata_tile_opt", no_argument, &options->data_tile_opt,0},
+        {"identity_data_dist", no_argument, &options->identity_data_dist,1},
+        {"global_opt", no_argument, &options->global_opt,1},
+        {"noglobal_opt", no_argument, &options->global_opt,0},
+        {"compute_pi", no_argument, &options->compute_pi,1},
+        {"donot_compute_pi", no_argument, &options->compute_pi,0},
+        {"num_tiles_per_dim", required_argument, 0, 'T'},
+        {"num_parts", required_argument, 0, 'U'},
         {"time", no_argument, &options->time, 1},
         {0, 0, 0, 0}
     };
@@ -242,6 +275,12 @@ int main(int argc, char *argv[])
                 break;
             case 'S':
                 options->cyclesize = atoi(optarg);
+                break;
+            case 'T':
+                options->num_tiles_per_dim = atoi(optarg);
+                break;
+            case 'U':
+                options->num_inital_partitions = atoi(optarg);
                 break;
             case 'b':
                 options->bee = 1;
@@ -312,14 +351,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 5;
     }
 
-    src_fp  = fopen(srcFileName, "r");
-
-    if (!src_fp)   {
-        fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
-        pluto_options_free(options);
-        return 6;
-    }
-
     if (options->fusesends && options->mpiomp) {
         fprintf(stderr, "Error: fusesends should not be used with mpiomp\n");
         return 7;
@@ -367,6 +398,22 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lbtile = 0;
     }
 
+    if (options->dynschedule && options->dynschedule_graph) {
+        options->dynschedule_graph = 0;
+    }
+
+    if (options->dynschedule && options->dynschedule_graph_old) {
+        options->dynschedule_graph_old = 0;
+    }
+
+    if (options->dynschedule_graph && options->dynschedule_graph_old) {
+        options->dynschedule_graph_old = 0;
+    }
+
+    if (options->dynschedule_graph || options->dynschedule_graph_old) {
+        assert(options->distmem == 0);
+    }
+
     if (options->distmem == 1 && options->parallel == 0)    {
         options->parallel = 1;
     }
@@ -384,9 +431,45 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
-    if (options->multipipe == 1 && options->parallel == 0)    {
-        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
-        options->parallel = 1;
+    if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && !options->tile)  {
+        fprintf(stderr, "[Pluto] WARNING: dynschedule needs tile to be on; turning on tile\n");
+        options->tile = 1;
+    }
+
+    if (options->distmem == 1 && options->multi_level_distribution == 1) {
+        options->multipipe = 1; // even for dynschedule
+    }else{
+        if (options->multipipe == 1 && options->parallel == 0)    {
+            fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+            options->parallel = 1;
+        }
+
+        if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && (options->multipipe))  {
+            fprintf(stderr, "[Pluto] WARNING: --multipipe option not needed with --dynschedule; turning off multipipe\n");
+            options->multipipe = 0;
+        }
+    }
+
+    if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && (options->parallel))  {
+        fprintf(stderr, "[Pluto] WARNING: --parallel option not needed with --dynschedule; turning off parallel\n");
+        options->parallel = 0;
+    }
+
+    //reset commopt and commopt_foifi when commopt_fop is selected, default of commopt is 1
+    if(options->commopt && options->commopt_fop) {
+        options->commopt = 0;
+    }
+    if(options->commopt_foifi && options->commopt_fop) {
+        options->commopt_foifi = 0;
+    }
+
+    //reset commopt when commopt_foifi is selected, default of commopt is 1
+    if(options->commopt && options->commopt_foifi) {
+        options->commopt = 0;
+    }
+
+    if(options->data_dist){
+    	options->verify_output = 1;
     }
 
     /* Disable pre-vectorization if tile is not on */
@@ -470,62 +553,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         dim_sum += prog->stmts[i]->dim;
     }
 
-    if (options->distmem == 1 && options->parallel == 0)    {
-        options->parallel = 1;
-    }
-
-    if (options->distmem == 1)    {
-        options->isldep = 1;
-    }
-
-    if (options->distmem == 1)    {
-        options->lastwriter = 1;
-    }
-
-    if (options->multipipe == 1 && options->parallel == 0)    {
-        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
-        options->parallel = 1;
-    }
-
-    if (options->dynschedule && !options->tile)  {
-        fprintf(stderr, "[Pluto] WARNING: dynschedule needs tile to be on; turning on tile\n");
-        options->tile = 1;
-    }
-
-    if (options->dynschedule && (options->parallel || options->multipipe))  {
-        fprintf(stderr, "[Pluto] WARNING: --parallel or --multipipe options not needed with --dynschedule; turning off parallel and multipipe\n");
-        options->parallel = 0;
-        options->multipipe = 0;
-    }
-
-    if (options->dynschedule && options->distmem)  {
-        fprintf(stderr, "[Pluto] WARNING: dynschedule is not compatible with distributed memory yet; turning off distmem\n");
-        options->distmem = 0;
-    }
-
-    //reset commopt and commopt_foifi when commopt_fop is selected, default of commopt is 1
-    if(options->commopt && options->commopt_fop) {
-        options->commopt = 0;
-    }
-    if(options->commopt_foifi && options->commopt_fop) {
-        options->commopt_foifi = 0;
-    }
-
-    //reset commopt when commopt_foifi is selected, default of commopt is 1
-    if(options->commopt && options->commopt_foifi) {
-        options->commopt = 0;
-    }
-
-    /* Disable pre-vectorization if tile is not on */
-    if (options->tile == 0 && options->prevector == 1) {
-        /* If code will not be tiled, pre-vectorization does not make
-         * sense */
-        if (!options->silent)   {
-            fprintf(stdout, "[Pluto] Warning: pre-vectorization does not fit (--tile is off)\n");
-        }
-        options->prevector = 0;
-    }
-
+   
     if (!options->silent)   {
         fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
         fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
@@ -557,6 +585,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_auto_transform(prog);
     }
     t_t = rtclock() - t_start;
+
+    if (options->identity_data_dist && options->data_dist) {
+    	pluto_data_dist_identity_trans(prog);
+    }
+
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
@@ -594,12 +627,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
     if (options->unroll || options->polyunroll)    {
         /* Will generate a .unroll file */
         /* plann/plorc needs a .params */
@@ -623,15 +650,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
     }
 
-    int distretval = 1;
-
-    if (options->distmem)  {
-        distretval = pluto_distmem_parallelize(prog);
-        pluto_compute_dep_satisfaction_complex(prog);
-        IF_DEBUG(pluto_transformations_pretty_print(prog));
-        IF_DEBUG(pluto_print_hyperplane_properties(prog));
-    }
-
     if(!strcmp(srcFileName, "stdin")){  
         //input stdin == output stdout
         pluto_populate_scop(scop, prog, options);
@@ -645,9 +663,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         gen_unroll_file(prog);
 
         char *outFileName;
-        char *cloogFileName = NULL;
-        char *dynschedFileName = NULL;
-        char *basec, *bname;
+        char *headerFileName; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
+        char *cloogFileName;
+        char *dynschedFileName;
+        char *sigmaFileName = NULL; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
+        char *piFileName = NULL; // used only by options->distmem
+        char *bname, *basec;
         if (options->out_file == NULL)  {
             /* Get basename, remove .c extension and append a new one */
             basec = strdup(srcFileName);
@@ -671,18 +692,24 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
 
         if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+            headerFileName = malloc(strlen(bname)-2+strlen(".h")+1);
             cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
             dynschedFileName = malloc(strlen(bname)-2+strlen(".pluto.append.c")+1);
+            strncpy(headerFileName, bname, strlen(bname)-2);
             strncpy(cloogFileName, bname, strlen(bname)-2);
             strncpy(dynschedFileName, bname, strlen(bname)-2);
+            headerFileName[strlen(bname)-2] = '\0';
             cloogFileName[strlen(bname)-2] = '\0';
             dynschedFileName[strlen(bname)-2] = '\0';
         }else{
+            headerFileName = malloc(strlen(bname)+strlen(".h")+1);
             cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
             dynschedFileName = malloc(strlen(bname)+strlen(".pluto.append.c")+1);
+            strcpy(headerFileName, bname);
             strcpy(cloogFileName, bname);
             strcpy(dynschedFileName, bname);
         }
+        strcat(headerFileName, ".h");
         strcat(cloogFileName, ".pluto.cloog");
         strcat(dynschedFileName, ".pluto.append.c");
         free(basec);
@@ -707,7 +734,82 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             return 10;
         }
 
-        if (options->dynschedule) {
+        int retval = 1;
+
+#ifdef PLUTO_OPENCL
+    if (options->distmem || options->opencl || options->dynschedule || options->dynschedule_graph || options->data_dist)  
+#else
+        if (options->distmem || options->dynschedule || options->dynschedule_graph || options->data_dist)  
+#endif
+        {
+            sigmaFileName = malloc(strlen("sigma_")+strlen(outFileName)+1);
+            strcpy(sigmaFileName, "sigma_");
+            strcat(sigmaFileName, outFileName);
+
+            sigmafp = fopen(sigmaFileName, "w");
+            if (!sigmafp) {
+                fprintf(stderr, "[Pluto] Can't open file: '%s'\n", sigmaFileName);
+                free(sigmaFileName);
+                pluto_options_free(options);
+                pluto_prog_free(prog);
+                return 12;
+            }
+            fprintf(sigmafp, "#include \"%s\"\n", headerFileName);
+            if (options->distmem)  {
+                fprintf(sigmafp, "#include \"polyrt.h\"\n");
+            if(options->data_dist)
+            fprintf(sigmafp, "#include \"buffer_manager.h\"\n");
+
+            }
+
+            headerfp = fopen(headerFileName, "w");
+            if (!headerfp) {
+                fprintf(stderr, "[Pluto] Can't open file: '%s'\n", headerFileName);
+                free(headerFileName);
+                pluto_options_free(options);
+                pluto_prog_free(prog);
+                return 13;
+            }
+            fprintf(headerfp, "#include \"polyrt.h\"\n");
+            if(options->data_dist)
+            fprintf(headerfp, "#include \"buffer_manager.h\"\n");
+
+            piFileName = malloc(strlen("pi_")+strlen(outFileName)+1);
+            strcpy(piFileName, "pi_");
+            strcat(piFileName, outFileName);
+
+            FILE *pifp = fopen(piFileName, "w");
+            free(piFileName);
+            if (!pifp) {
+                fprintf(stderr, "[Pluto] Can't open file: '%s'\n", piFileName);
+                pluto_options_free(options);
+                pluto_prog_free(prog);
+                return 14;
+            }
+
+#ifdef PLUTO_OPENCL
+            if (options->distmem || options->opencl)  
+#else
+            if (options->distmem)  
+#endif
+            {
+                retval = pluto_distmem_parallelize(prog, sigmafp, headerfp, pifp);
+
+            }else{ // shared-memory
+                if (options->dynschedule || options->dynschedule_graph) {
+                    retval = pluto_dynschedule_parallelize(prog, sigmafp, headerfp, pifp);
+                }
+                else if (options->data_dist) {
+					fprintf(outfp, "#include \"%s\"\n", headerFileName);
+                    retval = pluto_shared_memory_data_dist(prog, headerfp, outfp);
+                }
+            }
+
+
+            fclose(pifp);
+            IF_DEBUG(pluto_transformations_pretty_print(prog));
+            IF_DEBUG(pluto_print_hyperplane_properties(prog));
+        }else if (options->dynschedule_graph_old) {
             dynschedfp = fopen(dynschedFileName, "w");
             if (!dynschedfp) {
                 fprintf(stderr, "[Pluto] Can't open file %s for writing\n", dynschedFileName);
@@ -738,16 +840,48 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* Very important: Dont change the order of calls to print_dynsched_file
          * between pluto_gen_cloog_file() and pluto_*_codegen()
          */
-        if (options->dynschedule) {
+        if (options->dynschedule_graph_old) {
             print_dynsched_file(srcFileName, cloogfp, dynschedfp, prog);
             rewind(cloogfp);
         }
 
         /* Generate code using Cloog and add necessary stuff before/after code */
-        if (options->distmem && !distretval)   {
+        if (options->distmem && !retval){
+            fprintf(outfp, "#include \"%s\"\n", headerFileName);
             t_start = rtclock();
-            pluto_distmem_codegen(prog, cloogfp, outfp);
+            pluto_distmem_codegen(prog, cloogfp, sigmafp, outfp, headerfp);
             t_c = rtclock() - t_start;
+        }else if (options->dynschedule && !retval){ // shared-memory
+            fprintf(outfp, "#include \"%s\"\n", headerFileName);
+            pluto_dynschedule_codegen(prog, sigmafp, outfp, headerfp);
+        }else if (options->dynschedule_graph && !retval){ // shared-memory
+            fprintf(outfp, "#include \"%s\"\n", headerFileName);
+            pluto_dynschedule_graph_codegen(prog, sigmafp, outfp, headerfp);
+        }
+        else if(!options->distmem && !options->dynschedule && options->data_dist){
+
+
+//        	if(!headerfp){
+//				headerfp = fopen(headerFileName, "w");
+//				if (!headerfp) {
+//					fprintf(stderr, "[Pluto] Can't open file: '%s'\n", headerFileName);
+//					free(headerFileName);
+//					pluto_options_free(options);
+//					pluto_prog_free(prog);
+//					return 13;
+//				}
+//				fprintf(headerfp, "#include \"polyrt.h\"\n");
+//				if(options->data_dist)
+//				fprintf(headerfp, "#include \"buffer_manager.h\"\n");
+//        	}
+//
+//			pluto_shared_memory_data_dist(prog, headerfp);
+
+//            fprintf(outfp, "#include \"%s\"\n", headerFileName);
+            // t_start = rtclock();
+//            pluto_sharedmem_data_dist_codegen(prog, cloogfp, outfp, headerfp);
+            // t_c = rtclock() - t_start;
+
         }else{
             if (options->distmem) { // no parallel loops to distribute
                 // ensure only one processor will output the data
@@ -759,8 +893,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
                 fprintf(outfp, "\tMPI_Finalize();\n");
             }
             t_start = rtclock();
-            pluto_multicore_codegen(cloogfp, options->dynschedule ? dynschedfp : outfp, prog);
+            pluto_multicore_codegen(cloogfp, (options->dynschedule_graph_old) ? dynschedfp : outfp, prog);
             t_c = rtclock() - t_start;
+        }
+
+#ifdef PLUTO_OPENCL
+        if (options->distmem || options->opencl || options->dynschedule || options->dynschedule_graph)  
+#else
+        if (options->distmem || options->dynschedule || options->dynschedule_graph)  
+#endif
+        {
+            fclose(sigmafp);
+            fclose(headerfp);
         }
 
         FILE *tmpfp = fopen(".outfilename", "w");
@@ -771,7 +915,22 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
         free(outFileName);
 
-        if (options->dynschedule) {
+        if (options->distmem || options->dynschedule || options->dynschedule_graph || options->data_dist) {
+            tmpfp = fopen(".sigmafilename", "w");
+            if (tmpfp) {
+                fprintf(tmpfp, "%s\n", sigmaFileName);
+                fclose(tmpfp);
+            }
+            free(sigmaFileName);
+
+            tmpfp = fopen(".headerfilename", "w");
+            if (tmpfp) {
+                fprintf(tmpfp, "%s\n", headerFileName);
+                fclose(tmpfp);
+            }
+        }
+
+        if (options->dynschedule_graph_old) {
             tmpfp = fopen(".appendfilename", "w");
             if (tmpfp) {
                 fprintf(tmpfp, "%s\n", dynschedFileName);
@@ -780,8 +939,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
         free(dynschedFileName);
 
-        /* create main file for dynschedule */
-        if (options->dynschedule) {
+        /* create main file for dynschedule_graph_old */
+        if (options->dynschedule_graph_old) {
             fprintf(outfp,"\n\n#include \"scheduler.h\"\n");
             fprintf(outfp,"\n\n\tgenerate_dag();\n");
             fprintf(outfp,"\t##ifdef __STATIC_SCHEDULE__\n");
@@ -793,19 +952,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             fprintf(outfp,"\t\tfree_schedule();\n");
             fprintf(outfp,"\t##endif\n");
             fprintf(outfp,"\tfree_dag();\n");
-        }
-
-        if (options->dynschedule) {
             fclose(dynschedfp);
         }
         fclose(cloogfp);
         fclose(outfp);
-
+        free(headerFileName);
     }
+
 
     t_all = rtclock() - t_start_all;
 
-    if (options->time) {
+    if (options->time && !options->silent) {
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);

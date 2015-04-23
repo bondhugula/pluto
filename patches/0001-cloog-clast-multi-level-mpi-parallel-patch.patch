@@ -1,0 +1,86 @@
+diff --git a/include/cloog/clast.h b/include/cloog/clast.h
+index 3348aa8..f118c1e 100644
+--- a/include/cloog/clast.h
++++ b/include/cloog/clast.h
+@@ -104,6 +104,8 @@ struct clast_for {
+     cloog_int_t		stride;
+     struct clast_stmt *	body;
+     int parallel;
++    /* if a loop is parallel, ID of the parallel loop nest it belongs to */
++    int loop_id;
+     /* Comma separated list of loop private variables for OpenMP parallelization */
+     char *private_vars;
+     /* Comma separated list of reduction variable/operators for OpenMP parallelization */
+diff --git a/source/clast.c b/source/clast.c
+index a4fb958..0e86d3c 100644
+--- a/source/clast.c
++++ b/source/clast.c
+@@ -230,6 +230,7 @@ struct clast_for *new_clast_for(CloogDomain *domain, const char *it,
+     f->UB = UB;
+     f->body = NULL;
+     f->parallel = CLAST_PARALLEL_NOT;
++    f->loop_id = -1;
+     f->private_vars = NULL;
+     f->reduction_vars = NULL;
+     f->time_var_name = NULL;
+diff --git a/source/pprint.c b/source/pprint.c
+index c7e494f..7506c3f 100644
+--- a/source/pprint.c
++++ b/source/pprint.c
+@@ -497,7 +497,16 @@ void pprint_for(struct cloogoptions *options, FILE *dst, int indent,
+                 fprintf(dst, ";\n");
+             }
+             fprintf(dst, "%*s", indent, "");
+-            fprintf(dst, "polyrt_loop_dist(_lb_dist, _ub_dist, nprocs, my_rank, &lbp, &ubp);\n");
++            if (f->loop_id != -1) {
++                /* implies multi-level distribution */
++                fprintf(dst, "polyrt_multi_dim_loop_dist(_lb_dist, _ub_dist, nprocs, my_rank, \
++                    __NUM_DIST_DIMS%d, __DIM%d%s, &lbd_%s, &ubd_%s);\n",
++                        f->loop_id, f->loop_id, f->iterator, f->iterator, f->iterator);
++            }else{
++                fprintf(dst, "polyrt_loop_dist(_lb_dist, _ub_dist, nprocs, my_rank, &lbd_%s, &ubd_%s);\n",
++                        f->iterator, f->iterator);
++            }
++
+             if (f->parallel & CLAST_PARALLEL_OMP) {
+                 fprintf(dst, "#pragma omp parallel for%s%s%s%s%s%s\n",
+                         (f->private_vars)? " private(":"",
+@@ -518,15 +527,17 @@ void pprint_for(struct cloogoptions *options, FILE *dst, int indent,
+ 	fprintf(dst, "for (");
+ 
+     if (f->LB) {
+-	fprintf(dst, "%s=", f->iterator);
+-        if (f->parallel & (CLAST_PARALLEL_OMP | CLAST_PARALLEL_MPI)) {
++        fprintf(dst, "%s=", f->iterator);
++        if (f->parallel & CLAST_PARALLEL_MPI) {
++            fprintf(dst, "lbd_%s", f->iterator);
++        }else if (f->parallel & CLAST_PARALLEL_OMP) {
+             fprintf(dst, "lbp");
+         }else if (f->parallel & CLAST_PARALLEL_VEC){
+             fprintf(dst, "lbv");
+         }else{
+-	pprint_expr(options, dst, f->LB);
++            pprint_expr(options, dst, f->LB);
+         }
+-    } else if (options->language == CLOOG_LANGUAGE_FORTRAN)
++    }else if (options->language == CLOOG_LANGUAGE_FORTRAN)
+ 	cloog_die("unbounded loops not allowed in FORTRAN.\n");
+ 
+     if (options->language == CLOOG_LANGUAGE_FORTRAN)
+@@ -535,10 +546,12 @@ void pprint_for(struct cloogoptions *options, FILE *dst, int indent,
+ 	fprintf(dst,";");
+ 
+     if (f->UB) { 
+-	if (options->language != CLOOG_LANGUAGE_FORTRAN)
+-	    fprintf(dst,"%s<=", f->iterator);
++        if (options->language != CLOOG_LANGUAGE_FORTRAN)
++            fprintf(dst,"%s<=", f->iterator);
+ 
+-        if (f->parallel & (CLAST_PARALLEL_OMP | CLAST_PARALLEL_MPI)) {
++        if (f->parallel & CLAST_PARALLEL_MPI) {
++            fprintf(dst, "ubd_%s", f->iterator);
++        }else if (f->parallel & CLAST_PARALLEL_OMP) {
+             fprintf(dst, "ubp");
+         }else if (f->parallel & CLAST_PARALLEL_VEC){
+             fprintf(dst, "ubv");
+

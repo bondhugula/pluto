@@ -108,6 +108,891 @@ int pluto_diamond_tile_reschedule(PlutoProg *prog)
 
 }
 
+Array *get_corrs_array(PlutoAccess *access, PlutoProg* prog){
+
+	int k =0;
+
+	//Search the find the array
+	for(k = 0; k<prog->narrays; k++){
+		if(!strcmp(prog->arrays[k]->text, access->name)){
+			return prog->arrays[k];
+		}
+	}
+
+	return NULL;
+}
+
+/* pos: position of domain iterator
+ * time_pos: position of time iterator; iter: domain iterator; supply -1
+ * if you don't want a scattering function row added for it */
+void pluto_array_add_dim(Array *arr, PlutoConstraints *domain, int copy_level, int pos,
+		int time_pos, PlutoProg *prog, char *iter)
+{
+    int i;
+
+    PlutoMatrix *trans = arr->trans;
+
+    int dim = arr->dim ;
+
+    assert(pos <= dim);
+    assert(time_pos <= trans->nrows);
+
+    pluto_constraints_add_dim(domain, copy_level + pos, NULL);
+
+    if(!arr->dim_updated){
+
+		arr->dim++;
+		arr->num_cur_tiled_loops++;
+		arr->iterators = (char **) realloc(arr->iterators, (arr->dim )*sizeof(char *));
+		for (i=arr->dim-2; i>=pos ; i--) {
+			arr->iterators[i+1] = arr->iterators[i];
+		}
+		arr->iterators[pos] = strdup(iter);
+
+		/* Array should always have a transformation */
+		assert(trans != NULL);
+		pluto_matrix_add_col(trans, pos);
+
+		if (time_pos != -1) {
+			pluto_matrix_add_row(trans, time_pos);
+			trans->val[time_pos][pos] = 1;
+		}
+    }
+
+    return;
+}
+
+
+void pluto_dist_tile_array_dim( Array *arr, PlutoConstraints *domain, int *dom_tiled_loops,
+	 int copy_level, int tile_size,	int depth, int dim_orig,  PlutoProg *prog){
+
+    PlutoMatrix *trans = arr->trans;
+
+    int j =0, k=0;
+
+    /* 1. Specify tiles in the original domain.
+     * NOTE: tile shape info comes in here */
+
+    /* 1.1 Add additional dimensions */
+    char iter[6];
+    sprintf(iter, "zT%d", domain->ncols);
+    int npar = prog->npar;
+
+    print_polylib_visual_sets("domain", domain);
+
+    /* 1.2 Specify tile shapes in the original domain */
+    int num_domain_supernodes = 0;
+
+	assert(tile_size >= 1);
+
+	/* Domain supernodes aren't added for scalar dimensions */
+	pluto_array_add_dim(arr, domain, copy_level,  num_domain_supernodes,
+			0, prog, iter);
+
+	(*dom_tiled_loops)++;
+	/* Add relation b/w tile space variable and intra-tile variables like
+	 * 32*xt <= 2t+i <= 32xt + 31 */
+	/* Lower bound */
+	pluto_constraints_add_inequality(domain);
+
+	PlutoConstraints *cst = domain;
+
+	int start = num_domain_supernodes + copy_level + *dom_tiled_loops;
+
+	while(cst != NULL){
+		for (j=start, k=0; k<arr->dim_orig+npar; j++, k++) {
+			cst->val[cst->nrows-1][j] =
+				trans->val[dim_orig][arr->num_cur_tiled_loops+ k];
+		}
+
+		cst->val[cst->nrows-1][num_domain_supernodes + copy_level] =
+			-tile_size;
+
+		cst->val[cst->nrows-1][domain->ncols-1] =
+			trans->val[dim_orig][trans->ncols-1];
+
+		cst = cst->next;
+	}
+
+	print_polylib_visual_sets("domain", domain);
+
+
+	/* Upper bound */
+	pluto_constraints_add_inequality(domain);
+	cst = domain;
+
+	while(cst!=NULL){
+		for (j=start, k=0; k<arr->dim_orig+npar; j++, k++) {
+			cst->val[cst->nrows-1][j] =
+				-trans->val[dim_orig][arr->num_cur_tiled_loops+ k];
+		}
+
+		cst->val[cst->nrows-1][num_domain_supernodes + copy_level]
+			= tile_size;
+
+		cst->val[cst->nrows-1][domain->ncols-1] =
+			-trans->val[dim_orig][trans->ncols - 1]
+			+tile_size-1;
+
+		cst = cst->next;
+	}
+
+	print_polylib_visual_sets("domain", domain);
+	num_domain_supernodes++;
+}
+
+//void pluto_dist_update_arr_domain(Array *arr, PlutoConstraints *domain, int copy_level
+//		, PlutoProg *prog){
+//
+//	int j =0;
+//	arr->array_bounds = pluto_constraints_dup(domain);
+//	arr->copy_level = copy_level;
+//
+//	arr->dim = domain->ncols - prog->npar - 1;
+//	arr->dim_orig = domain->ncols - copy_level - prog->npar - 1;
+//
+//	arr->iterators = (char **)malloc(arr->dim * sizeof(char *));
+//	for (j = 0; j < arr->dim; ++j) {
+//		arr->iterators[j] = (char *)malloc(25 * sizeof(char));
+//		sprintf(arr->iterators[j], "t%d", j);
+//	}
+//
+//	return;
+//
+//}
+
+/* Returns the data tiles required to allocate the data space parametrized on copy level
+ */
+
+void pluto_dist_permute_tile_dims(PlutoConstraints *cst, int start, int last){
+	int j = start, k = last;
+
+	assert(j>=0 && j<cst->ncols);
+	assert(k>=0 && k<cst->ncols);
+	assert(j<=k);
+
+	for (j = start, k = last; j<k ; ++j, --k) {
+		pluto_constraints_interchange_cols(cst, j, k);
+	}
+
+	return;
+}
+
+void pluto_dist_permute_iterators(char **iterators, int start, int last){
+	int j = start, k = last;
+
+	char* temp;
+	assert(j<=k);
+
+	for (j = start, k = last; j<k ; ++j, --k) {
+		temp = iterators[last];
+		iterators[last] = iterators[start];
+		iterators[start] = temp;
+	}
+
+	return;
+}
+
+PlutoConstraints* pluto_dist_get_required_data_tiles(PlutoConstraints *domain, int copylevel,
+		char *arr_name, PlutoProg *prog ){
+
+	int k, j;
+	Array *arr = pluto_get_corrs_array(arr_name, prog);
+
+//	PlutoConstraints *tiled_domain = pluto_get_new_arr_domain(arr, domain, arr->copy_level);
+	PlutoConstraints *tiled_domain = pluto_constraints_dup(domain);
+
+	assert(arr != NULL);
+
+	struct TiledHyperplane *t = arr->tiled_hyperplane;
+
+	int trans_row, dom_tiled_loops = 0;
+
+	for (k = 0; k < arr->num_tiled_loops; ++k) {
+
+		if (!arr->dim_updated) {
+
+			/* after each dim tiling,  tiled_dim needs to be updated
+			*/
+			for (j = 0; j < arr->num_hyperplanes_found; ++j) {
+
+			   if(arr->tiled_hyperplane[j].orig_dim >= t[k].firstD)
+				   arr->tiled_hyperplane[j].orig_dim++;
+
+			   if(arr->tiled_hyperplane[j].tiled_dim >= t[k].firstD)
+				   arr->tiled_hyperplane[j].tiled_dim++;
+			}
+
+			arr->tiled_hyperplane[k].tiled_dim = 0;
+
+			arr->first_tile_dim = t[k].firstD ;
+			arr->last_tile_dim = t[k].firstD + arr->num_tiled_loops - 1;
+
+			arr->copy_level_used = copylevel;
+		}
+
+//		if(!arr->dim_updated)
+			trans_row = t[k].orig_dim;
+//		else
+//			trans_row = t[k].orig_dim - arr->copy_level_used;
+
+		pluto_dist_tile_array_dim(arr, tiled_domain, &dom_tiled_loops, copylevel,
+				t[k].tile_sizes, t[k].depth, trans_row , prog);
+
+	}
+
+	int i =0;
+
+	if (!arr->dim_updated) {
+
+//
+//		arr->first_tile_dim += copylevel;
+//		arr->last_tile_dim += copylevel;
+//
+//		for (i = 0; i< arr->num_tiled_loops; ++i) {
+//			arr->tiled_hyperplane[i].orig_dim += copylevel;
+//			arr->tiled_hyperplane[i].tiled_dim += copylevel;
+//			arr->tiled_hyperplane[i].firstD += copylevel;
+//			arr->tiled_hyperplane[i].lastD += copylevel;
+//		}
+
+		arr->dim_updated = 1;
+		arr->npar = prog->npar;
+
+
+		/* Permute the tiled dims and itertors
+		 *  jj ii i j -> ii jj i j
+		 */
+		pluto_dist_permute_iterators(arr->iterators,
+				arr->first_tile_dim, arr->last_tile_dim);
+
+		//Update the tilied_dims
+		int diff = arr->num_tiled_loops;
+		t = arr->tiled_hyperplane;
+		for (i = 0; i < arr->dim_orig; ++i) {
+
+			if(t[i].is_tiled)
+				t[i].tiled_dim = t[i].orig_dim - diff;
+			else
+				diff++;
+		}
+
+	}
+
+	pluto_dist_permute_tile_dims(tiled_domain,
+			arr->first_tile_dim+copylevel, arr->last_tile_dim+copylevel);
+
+	print_polylib_visual_sets("tiles", tiled_domain);
+	/* project out the intra data tile iterators
+	 */
+	pluto_constraints_project_out(tiled_domain,
+			copylevel+arr->num_tiled_loops, arr->dim_orig);
+
+	print_polylib_visual_sets("tiles_perm", tiled_domain);
+
+	return tiled_domain;
+
+}
+
+void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel){
+
+	Stmt *stmt = prog->stmts[0];
+	int i, j, k;
+
+	copylevel = 2;
+
+	for (j = 0; j < prog->narrays; ++j) {
+
+		PlutoConstraints *data = NULL;
+		PlutoConstraints *curr = NULL;
+		Array *arr = prog->arrays[j];
+
+		char *arr_name = prog->arrays[j]->text;
+
+		for (i = 0; i < stmt->nreads; ++i) {
+			PlutoAccess* acc = stmt->reads[i];
+
+			if(strcmp(arr_name, acc->name) != 0) continue;
+
+			curr = pluto_compute_region_data(stmt, stmt->domain, acc, copylevel, prog);
+
+			print_polylib_visual_sets("x", curr);
+
+
+			if(data == NULL)
+				data = pluto_constraints_dup(curr);
+			else
+				pluto_constraints_unionize(data, curr);
+
+			pluto_constraints_free(curr);
+
+		}
+
+		for (i = 0; i < stmt->nwrites; ++i) {
+			PlutoAccess* acc = stmt->writes[i];
+
+			if(strcmp(arr_name, acc->name) != 0) continue;
+
+			curr = pluto_compute_region_data(stmt, stmt->domain, acc, copylevel, prog);
+
+			if(data == NULL)
+				data = pluto_constraints_dup(curr);
+			else
+				pluto_constraints_unionize(data, curr);
+
+			pluto_constraints_free(curr);
+		}
+
+//		pluto_dist_update_arr_domain(prog->arrays[j], data, copylevel, prog);
+		pluto_constraints_free(data);
+
+		struct TiledHyperplane *t = arr->tiled_hyperplane;
+
+		int dom_tiled_loops = 0;
+		for (k = 0; k < arr->num_tiled_loops; ++k) {
+			pluto_dist_tile_array_dim(arr, arr->array_bounds, &dom_tiled_loops, copylevel,
+					t[k].tile_sizes, t[k].depth, t[k].firstD,prog );
+
+			/* add the tiled dim update code here
+			 * after each dim tiling,  tiled_dim needs to be updated
+			 */
+			for (i = 0; i < arr->num_hyperplanes_found; ++i) {
+
+				if(arr->tiled_hyperplane[i].orig_dim >= t[i].firstD)
+					arr->tiled_hyperplane[i].orig_dim++;
+
+				if(arr->tiled_hyperplane[i].tiled_dim >= t[i].firstD)
+					arr->tiled_hyperplane[i].tiled_dim++;
+			}
+
+//			arr->num_tiled_loops++;
+			t[k].tiled_dim = t[k].firstD;
+			arr->first_tile_dim = t[k].firstD ;
+			arr->last_tile_dim = t[k].lastD;
+		}
+		arr->first_tile_dim += copylevel;
+		arr->last_tile_dim += copylevel;
+
+		for (i = 0; i< arr->num_tiled_loops; ++i) {
+			arr->tiled_hyperplane[i].orig_dim += copylevel;
+			arr->tiled_hyperplane[i].tiled_dim += copylevel;
+			arr->tiled_hyperplane[i].firstD += copylevel;
+			arr->tiled_hyperplane[i].lastD += copylevel;
+		}
+
+		print_polylib_visual_sets("d", arr->array_bounds);
+//
+//		PlutoConstraints *t1 = pluto_constraints_dup(arr->array_bounds);
+//
+//		pluto_constraints_project_out(t1, 4, 2);
+//
+//		print_polylib_visual_sets("t", t1);
+//		print_polylib_visual_sets("t", t1);
+	}
+
+//			Array *arr = get_corrs_array(acc, prog);
+	//		print_polylib_visual_sets("domain", stmt->domain);
+	//
+	//		print_polylib_visual_sets("data", data);
+	//
+	//		pluto_dist_update_arr_domain(arr, data, copylevel, prog);
+	//
+	//		struct TiledHyperplane *t = arr->tiled_hyperplane;
+	//
+	//		for (j = 0; j < arr->num_tiled_loops; ++j) {
+	//			pluto_tile_dim(arr, t[j].tile_sizes, t[j].depth, t[j].firstD, prog);
+	//		}
+	//
+	//		print_polylib_visual_sets("d", arr->array_bounds);
+
+
+}
+
+/* This function returns the size of a data tile
+ * data_tile_size = tile_size1 * tile_size2...
+ */
+char *pluto_dist_get_tile_size(Array *arr){
+
+	int i = 0;
+	char *tile_size = (char *)malloc(256*sizeof(char));
+	tile_size[0] = 0;
+
+	for (i = 0; i < arr->num_tiled_loops; ++i) {
+		if(arr->tiled_hyperplane[i].is_tiled){
+			sprintf(tile_size+strlen(tile_size), "%d", arr->tiled_hyperplane[i].tile_sizes);
+			if(i != arr->num_tiled_loops -1)
+				sprintf(tile_size+strlen(tile_size), "*");
+		}
+	}
+
+	return tile_size;
+}
+
+/* Generate the code for data tile declarations
+ */
+
+void pluto_dist_declarations(PlutoProg *prog){
+
+	int i = 0, j = 0;
+
+	for (i = 0; i < prog->narrays; ++i) {
+		Array *arr = prog->arrays[i];
+
+		PlutoConstraints *domain = pluto_constraints_dup(arr->array_bounds);
+
+		/* project out copy level dims
+		 */
+//		pluto_constraints_project_out(domain, 0, arr->copy_level);
+		print_polylib_visual_sets("set", domain);
+
+		int start = arr->first_tile_dim + arr->num_hyperplanes_found ;
+		int num_intra_tile_dim = arr->dim_orig;
+
+		print_polylib_visual_sets("set", domain);
+		//project out the intra tile dim
+		pluto_constraints_project_out(domain, start, num_intra_tile_dim );
+
+		print_polylib_visual_sets("set", domain);
+
+		/* Using a hack here, domains after project out seems to have
+		 * extra unbounded constraints, so setting next to null
+		 * TODO: try fixing this or use the array domain extracted from
+		 * file.
+		 */
+
+		domain->next = NULL;
+		print_polylib_visual_sets("set", domain);
+		/* Number of points in the projected out domain gives the
+		 * total number of data tiles
+		 */
+		assert(domain->ncols ==  arr->num_tiled_loops + prog->npar + 1);
+
+	    char* decl = (char *) malloc(1024 * sizeof(char));
+	    decl[0] = 0;
+
+	    sprintf(decl+strlen(decl), "%s ", arr->data_type);
+
+	    sprintf(decl+strlen(decl), "%s_trans", arr->text);
+
+		char *buf_size =
+		get_parametric_bounding_box(domain,arr->first_tile_dim + j,
+				arr->num_tiled_loops, prog->npar, (const char **)prog->params);
+
+		sprintf(decl+strlen(decl), "[%s]", buf_size );
+
+		free(buf_size);
+
+	    sprintf(decl+strlen(decl), ";");
+
+	}
+}
+
+void pluto_dist_print_tiles_index_string(char* new_stmt_text, Array *arr, PlutoProg *prog){
+
+	int  j=0, k = 0;
+
+	for (j = 0, k = arr->last_tile_dim; j < arr->dim_orig; ++j, k--) {
+		if(arr->tiled_hyperplane[j].is_tiled){
+
+			sprintf(new_stmt_text+strlen(new_stmt_text), "(%s)", arr->iterators[k]);
+
+			if(j != arr->dim_orig -1)
+				sprintf(new_stmt_text+strlen(new_stmt_text), "* %s + ", pluto_dist_get_ptr_dim_stride(arr, j, prog));
+		}
+	}
+
+	return;
+}
+
+void pluto_dist_print_tiles_strided_access(char* new_stmt_text, Array *arr, PlutoProg *prog){
+
+	int  j=0, k = 0;
+
+	sprintf(new_stmt_text+strlen(new_stmt_text), "[");
+	for (j = 0, k = arr->last_tile_dim; j < arr->dim_orig; ++j, k--) {
+		if(arr->tiled_hyperplane[j].is_tiled){
+
+			sprintf(new_stmt_text+strlen(new_stmt_text), "(%s)", arr->iterators[k]);
+
+			if(j != arr->dim_orig -1)
+				sprintf(new_stmt_text+strlen(new_stmt_text), "* %s + ", pluto_dist_get_ptr_dim_stride(arr, j, prog));
+		}
+		else
+			sprintf(new_stmt_text+strlen(new_stmt_text), "[%s]", arr->iterators[k]);
+	}
+	sprintf(new_stmt_text+strlen(new_stmt_text), "]");
+	//
+	//	for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
+	//		sprintf(stmt_text+ strlen(stmt_text),"[%s]", arr->iterators[j]);
+	//	}
+	return;
+}
+
+char *pluto_dist_ptr_init_stmt_text(char *arr_name, PlutoProg *prog ){
+
+
+	Array * arr = pluto_get_corrs_array(arr_name, prog);
+
+	char *new_stmt_text = (char *)malloc(2048 * sizeof(char));
+	new_stmt_text[0] = '\0';
+
+	sprintf(new_stmt_text + strlen(new_stmt_text) , "%s_trans",arr->text);
+
+	pluto_dist_print_tiles_strided_access(new_stmt_text, arr, prog);
+
+	sprintf(new_stmt_text+ strlen(new_stmt_text), " = NULL; \t");
+
+	return new_stmt_text;
+}
+
+
+
+char *pluto_dist_malloc_stmt_text(char *arr_name, PlutoProg *prog, int use_strides){
+
+	int  j=0, k =0;
+
+	Array * arr = pluto_get_corrs_array(arr_name, prog);
+
+	char *stmt_text = (char *)malloc(1024* 5 * sizeof(char));
+	stmt_text[0] = '\0';
+
+	sprintf(stmt_text+ strlen(stmt_text), "if(%s_trans",arr_name);
+
+	if(use_strides){
+		sprintf(stmt_text+ strlen(stmt_text), "[");
+
+		for (j = arr->last_tile_dim, k = arr->first_tile_dim ;
+				j >= arr->first_tile_dim; --j, k++) {
+
+			sprintf(stmt_text + strlen(stmt_text),"(%s)", arr->iterators[j]);
+
+			if(j != arr->first_tile_dim)
+				sprintf(stmt_text + strlen(stmt_text)," * (%s) + ",
+						pluto_dist_get_ptr_dim_stride_malloc(arr, k , prog));
+		}
+//
+//		int tiled_dim = -1;
+//		for (j = 0; j < arr->dim_orig; ++j) {
+//			if(arr->tiled_hyperplane[j].is_tiled){
+//
+//				tiled_dim = arr->tiled_hyperplane[j].tiled_dim;
+//
+//				sprintf(stmt_text + strlen(stmt_text),"(%s)", arr->iterators[tiled_dim]);
+//
+//				if(j != arr->dim_orig - 1)
+//					sprintf(stmt_text + strlen(stmt_text)," * (%s) + ",
+//							pluto_dist_get_ptr_dim_stride(arr, j, prog));
+//
+//				}
+//
+//		}
+
+		sprintf(stmt_text+ strlen(stmt_text), "]");
+	}
+	else {
+		for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
+			sprintf(stmt_text + strlen(stmt_text),"[%s]", arr->iterators[j]);
+		}
+	}
+
+	sprintf(stmt_text  + strlen(stmt_text), " == NULL)\t");
+
+	sprintf(stmt_text + strlen(stmt_text) , "%s_trans",arr->text);
+
+	if(use_strides){
+		sprintf(stmt_text+ strlen(stmt_text), "[");
+
+		pluto_dist_print_tiles_index_string(stmt_text, arr, prog);
+
+		sprintf(stmt_text+ strlen(stmt_text), "]");
+	}
+	else {
+		for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
+			sprintf(stmt_text + strlen(stmt_text),"[%s]", arr->iterators[j]);
+		}
+	}
+
+	sprintf(stmt_text+ strlen(stmt_text), " = (%s *) buffer_alloc_atomic(", arr->data_type);
+
+	pluto_dist_print_tiles_index_string(stmt_text, arr, prog);
+
+	sprintf(stmt_text+ strlen(stmt_text), ", %s * sizeof(%s), buff_mang_%s); ",
+			pluto_dist_get_tile_size(arr), arr->data_type, arr_name);
+
+	return stmt_text;
+}
+
+void pluto_dist_intial_copy_stmt(PlutoProg *prog){
+
+	int i =0, j = 0;
+
+	for(i=0; i<prog->narrays;i++){
+		Array *arr = prog->arrays[i];
+
+		char *stmt_text = (char *)malloc(1024 * sizeof(char));
+
+		sprintf(stmt_text , "%s_trans",arr->text);
+
+		for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
+			sprintf(stmt_text+ strlen(stmt_text),"[%s]", arr->iterators[j]);
+		}
+
+		for(j=0;j<arr->dim-arr->num_tiled_loops ;j++){
+			sprintf(stmt_text+ strlen(stmt_text),"[%s]", arr->iterators[arr->last_tile_dim + 1+j]);
+		}
+
+		sprintf(stmt_text+ strlen(stmt_text), " = ");
+
+		sprintf(stmt_text+ strlen(stmt_text), "%s", arr->text);
+
+		struct TiledHyperplane h;
+
+		for(j=0;j<arr->dim_orig;j++){
+			 h = arr->tiled_hyperplane[j];
+			if(h.is_tiled){
+				sprintf(stmt_text+ strlen(stmt_text), "[%s*%d+%s]",
+					arr->iterators[h.tiled_dim], h.tile_sizes, arr->iterators[h.orig_dim]);
+			}
+			else {
+				sprintf(stmt_text+strlen(stmt_text), "[%s]", arr->iterators[h.orig_dim]);
+			}
+		}
+
+//		pluto_add_stmt(prog,arr->array_bounds, arr->trans, arr->iterators, stmt_text,
+//				INITIAL_ARRAY_COPY);
+
+	}
+
+}
+
+void pluto_dist_array_intialize(PlutoProg *prog){
+
+	Array *arr;
+	int i = 0;
+
+	for(i=0;i<prog->narrays;i++){
+		arr = prog->arrays[i];
+
+		assert(arr->trans != NULL);
+		arr->trans_orig = pluto_matrix_dup(arr->trans);
+
+		if(arr->tiled_hyperplane != NULL) continue;
+
+		assert(arr->num_hyperplanes_found > 0);
+
+//		arr->tiled_hyperplane = (struct TiledHyperplane *)
+//				malloc(arr->dim_orig * sizeof(struct TiledHyperplane));
+//
+//		for(j=0;j<arr->dim_orig;j++){
+//			arr->tiled_hyperplane[j].loop_tiled = 0;
+//			arr->tiled_hyperplane[j].orig_dim = j;
+//			arr->tiled_hyperplane[j].is_tiled = 0;
+//			arr->tiled_hyperplane[j].tile_sizes = 0;
+//			arr->tiled_hyperplane[j].tiled_dim = -1;
+//
+//		}
+//
+//		arr->num_tiled_loops = 0;
+//		arr->dim_updated = 0;
+//		arr->num_cur_tiled_loops = 0;
+	}
+}
+/* Read tile sizes from file tile.sizes */
+ int pluto_dist_read_tile_sizes(int *tile_sizes, int num_tile_dims)
+{
+    int i = 0;
+
+    FILE *tsfile = fopen("tile.sizes", "r");
+
+    if (tsfile){
+		for (i=0; i < num_tile_dims && !feof(tsfile); i++)   {
+				fscanf(tsfile, "%d", &tile_sizes[i]);
+		}
+    }
+
+    if (i < num_tile_dims)  {
+        printf("WARNING: not enough tile sizes provided\n");
+        for(;i<num_tile_dims;i++)
+        	tile_sizes[i] = 32;
+    }
+
+    if(tsfile)
+		fclose(tsfile);
+
+    return 1;
+}
+
+void pluto_dist_array_tile(PlutoProg *prog){
+
+	Array *arr;
+	int i = 0, j =0 ;
+
+	int *tile_sizes = (int *)malloc(prog->max_array_dim * sizeof(int));
+
+	pluto_dist_read_tile_sizes(tile_sizes, prog->max_array_dim);
+
+	for(i=0;i<prog->narrays;i++){
+		arr = prog->arrays[i];
+
+		assert(arr->trans != NULL);
+
+		if(arr->trans_orig != NULL)
+			arr->trans_orig = pluto_matrix_dup(arr->trans);
+
+		if(arr->tiled_hyperplane != NULL){
+			arr->tiled_hyperplane = (struct TiledHyperplane *)
+				malloc(arr->num_hyperplanes_found * sizeof(struct TiledHyperplane));
+		}
+
+		for(j=0;j<arr->num_hyperplanes_found;j++){
+			arr->tiled_hyperplane[j].orig_dim = j;
+			arr->tiled_hyperplane[j].is_tiled = 1;
+			arr->tiled_hyperplane[j].tiled_dim = -1;
+			arr->tiled_hyperplane[j].loop_tiled =1;
+			arr->tiled_hyperplane[j].depth=j;
+			arr->tiled_hyperplane[j].firstD= 0;
+			arr->tiled_hyperplane[j].lastD= arr->num_hyperplanes_found;
+			arr->tiled_hyperplane[j].tile_sizes =tile_sizes[j];
+		}
+
+		arr->num_tiled_loops = arr->num_hyperplanes_found;
+	}
+
+}
+
+void pluto_dist_reorder_hyperplanes(Array *arr, int firstD, int lastD, int cur_dim){
+
+	int i;
+
+	for(i=0;i<firstD;i++){
+		arr->hyperplane_mapping[cur_dim + i] = i;
+	}
+
+
+}
+/* Copy the loop tiling info like tile size and dims
+ * into arrays
+ */
+
+void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band, int *tile_sizes){
+	Array *arr;
+	int i = 0, j =0, s=0;
+
+    int depth;
+
+	int firstD = band->loop->depth;
+	int lastD = band->loop->depth+band->width-1;
+
+	Stmt *stmt;
+	int row = 0;
+
+	for (depth=firstD; depth<=lastD; depth++)    {
+
+        for (s=0; s<band->loop->nstmts; s++) {
+
+        	stmt = band->loop->stmts[s];
+
+        	for(i=0;i<stmt->nreads;i++){
+
+        		if(is_access_scalar(stmt->reads[i]))
+        			continue;
+
+        		arr = get_corrs_array(stmt->reads[i], prog);
+
+        		assert(arr != NULL);
+
+        		row = arr->hyperplane_mapping[depth - firstD];
+//        		row = arr->hyperplane_mapping[depth];
+
+        		if(row<0){
+					pluto_dist_reorder_hyperplanes(arr, firstD, lastD, depth);
+
+					row = arr->hyperplane_mapping[depth];
+					if(row<0) continue;
+        		}
+
+        		assert(row<arr->dim_orig);
+
+        		if(arr->tiled_hyperplane[row].is_tiled) continue;
+
+        		arr->tiled_hyperplane[row].is_tiled =1;
+        		arr->tiled_hyperplane[row].loop_tiled =1;
+        		arr->tiled_hyperplane[row].depth=depth - firstD;
+        		arr->tiled_hyperplane[row].firstD= 0;
+        		arr->tiled_hyperplane[row].lastD=lastD - firstD;
+        		arr->tiled_hyperplane[row].tile_sizes =tile_sizes[depth-firstD];
+
+        		arr->num_tiled_loops ++;
+
+        	}
+
+        	/* TODO: duplicate the same for write access also
+			 */
+        	for(i=0;i<stmt->nwrites;i++){
+
+        		arr = get_corrs_array(stmt->writes[i], prog);
+
+        		assert(arr != NULL);
+
+        		//correct mapping from comp hyperplane being tiled to array hyperplane
+        		row = arr->hyperplane_mapping[depth - firstD];
+
+        		if(row<0){
+					pluto_dist_reorder_hyperplanes(arr, firstD, lastD, depth);
+
+					row = arr->hyperplane_mapping[depth];
+					if(row<0) continue;
+        		}
+
+        		assert(row<arr->dim_orig);
+
+        		if(arr->tiled_hyperplane[row].is_tiled) continue;
+
+        		arr->tiled_hyperplane[row].is_tiled =1;
+        		arr->tiled_hyperplane[row].loop_tiled =1;
+        		arr->tiled_hyperplane[row].depth=depth - firstD;
+        		arr->tiled_hyperplane[row].firstD= 0;
+        		arr->tiled_hyperplane[row].lastD=lastD - firstD;
+        		arr->tiled_hyperplane[row].tile_sizes =tile_sizes[depth-firstD];
+
+        		arr->num_tiled_loops ++;
+        	}
+
+        }
+        row++;
+	}
+
+	/* If any arrays tiling info is not updated then initalize to default
+	 * tilig info
+	 */
+
+	for (i = 0; i < prog->narrays; ++i) {
+
+		arr = prog->arrays[i];
+
+		int tiled = 0;
+		for (j = 0; j < arr->dim_orig; ++j) {
+			tiled += arr->tiled_hyperplane[j].is_tiled;
+		}
+
+		if(tiled) continue;
+
+		for (j = 0; j < arr->dim_orig; ++j) {
+			arr->tiled_hyperplane[j].is_tiled = 1;
+			arr->tiled_hyperplane[j].loop_tiled = 1;
+			arr->tiled_hyperplane[j].tile_sizes = tile_sizes[j];
+			arr->tiled_hyperplane[j].depth = 0;
+			arr->tiled_hyperplane[j].firstD = 0;
+			arr->tiled_hyperplane[j].lastD= arr->dim_orig;
+
+			arr->num_tiled_loops++;
+		}
+
+	}
+
+
+}
+
 
 /* Manipulates statement domain and transformation to tile scattering 
  * dimensions from firstD to lastD */
@@ -354,7 +1239,7 @@ void pluto_tile(PlutoProg *prog)
     }
 #endif
 
-    if (options->parallel) {
+    if (options->parallel || options->dynschedule_graph || options->dynschedule) {
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
         if (retval && !options->silent) {
             printf("[Pluto] After tile scheduling:\n");

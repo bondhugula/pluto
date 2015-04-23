@@ -3,6 +3,8 @@
 #include "isl/union_set.h"
 #include "isl/union_map.h"
 
+#include "osl/scop.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -14,14 +16,32 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
-    /* dynamic scheduling */
-    int dynschedule;
-
     /* Load-balanced tiling */
     int lbtile;
 
     /* Load-balanced tiling (one dimensional concurrent start)*/
     int partlbtile;
+
+    /* Extract scop information from libpet*/
+    int pet;
+
+    /* dynamic scheduling 
+     * using Synthesized Runtime Interface */
+    int dynschedule;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using Intel TBB Flow Graph scheduler */
+    int dynschedule_graph;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using a custom DAG scheduler */
+    // no longer maintained
+    int dynschedule_graph_old;
+
+    /* consider transitive dependences between tasks */
+    int dyn_trans_deps_tasks;
 
     /* parallelization */
     int parallel;
@@ -89,6 +109,9 @@ struct plutoOptions{
     /* Identity transformation */
     int identity;
 
+    /* Identity transformation */
+    int identity_data_dist;
+
     /* Generate scheduling pragmas for Bee+Cl@k */
     int bee;
 
@@ -134,14 +157,22 @@ struct plutoOptions{
     /* Use isl as ilp solver. */
     int islsolve;
 
+    /* Index set splitting */
+    int iss;
+
     int distmem;
 
     /*  adding support to generate opencl code */
     int opencl; 
 
+    /* use multi-level distribution function */
+    /* for dynamic scheduling or distributed-memory code */
+    /* OFF by default */
+    int multi_level_distribution;
+
     int commopt;
 
-    /*Communication code generation using flow-out partioning */
+    /*Communication code generation using flow-out partitioning */
     int commopt_fop;
     /* generate code to choose between unicast pack and multicast pack 
      * for each partition at runtime */
@@ -151,20 +182,35 @@ struct plutoOptions{
     int commopt_foifi;
 
     /*Report communication for distributed memory*/
-    int commreport;
+    int timereport;
 
     /* if true, variables are not declared globally
      * but each variable's declaration is provided 
      * through the macro '#define __DECLARATION_OF_<variable-name> <declaration>'*/
     int variables_not_global;
 
+    int data_dist;
+    int verify_output;
+
     int mpiomp;
     int fusesends;
     int blockcyclic;
     int cyclesize;
 
-    /* Index set splitting */
-    int iss;
+    //enables mod eliminate and data ptr optimization for data tiling
+    int data_tile_opt;
+
+    //Propagates the bounding box constraints across non fused loops
+    int global_opt;
+
+    //auto compute pi
+    int compute_pi;
+
+    //max number of tiles to be used while computing pi
+    int num_tiles_per_dim;
+
+    //number of initial partitions used while computing pi
+    int num_inital_partitions;
 
     /* Output file name supplied from -o */
     char *out_file;

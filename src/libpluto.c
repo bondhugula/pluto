@@ -191,7 +191,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         pluto_bands_free(bands, nbands);
     }
 
-    if ((options->parallel) && !options->tile && !options->identity)   {
+    if ((options->parallel) && !options->tile)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;
@@ -211,13 +211,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         }
 
     }
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
 
     if (options->parallel && !options->silent) {
         int nploops;

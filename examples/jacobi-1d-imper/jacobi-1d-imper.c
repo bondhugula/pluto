@@ -14,6 +14,8 @@ double b[N];
 
 double t_start, t_end;
 
+#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
+
 void init_array()
 {
     int j;

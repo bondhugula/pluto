@@ -32,6 +32,11 @@ lbpar:
 		make -C $$d lbpar; \
 		done
 
+dyn:
+	@-for d in $(DIRS); do \
+		make -C $$d dyn; \
+		done
+
 orig_par:
 	@-for d in $(DIRS); do \
 		make -C $$d $@; \
@@ -53,10 +58,25 @@ distopt:
 		make -C $$d distopt; \
 		done
 
+distopt_foifi: 
+	@-for d in $(DIRS); do \
+		make -C $$d distopt_foifi; \
+		done
+
+distopt_fop: 
+	@-for d in $(DIRS); do \
+		make -C $$d distopt_fop; \
+		done
 
 test:
 	@-for d in $(DIRS); do \
 		make -C $$d test; \
+		done
+
+dyn_test:
+	@-for d in $(DIRS); do \
+		make -C $$d $@; \
+		done
 
 dist_test: 
 	@-for d in $(DIRS); do \
@@ -73,6 +93,10 @@ dist_fop_test:
 		make -C $$d dist_fop_test; \
 		done
 
+dist_compare_test: 
+	@-for d in $(DIRS); do \
+		make -C $$d dist_compare_test; \
+		done
 
 dist_test2: 
 	@-for d in $(DIRS); do \

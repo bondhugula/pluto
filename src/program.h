@@ -25,6 +25,7 @@
 #include "clan/clan.h"
 #include "candl/candl.h"
 
+#include "pet.h"
 #include "osl/scop.h"
 
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
@@ -36,7 +37,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 void pluto_prog_print(FILE *fp, PlutoProg *prog);
 
 Dep *pluto_dep_alloc();
-void pluto_dep_print(FILE *fp, Dep *dep);
+void pluto_dep_print(FILE *fp, const Dep *dep);
 void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
@@ -72,10 +73,10 @@ PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog);
 PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **strides);
 
 void get_parametric_extent(const PlutoConstraints *cst, int pos,
-        int npar, const char **params, char **extent);
+        int npar, const char **params, char **extent, char **p_lbexpr);
 
 void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
-        int npar, const char **params, char **extent);
+        int npar, const char **params, char **extent, char **p_lbexpr);
 
 char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
         int num, int npar, const char **params);
@@ -86,7 +87,12 @@ void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level, int
 int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts);
 int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
 int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
+PlutoAccess **pluto_get_all_distinct_write_vars(const PlutoProg *prog, int *num);
+PlutoAccess **pluto_get_all_distinct_vars(Stmt **stmts, int nstmts, int *num);
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num);
+PlutoAccess **pluto_get_all_accs(PlutoProg *prog, int *num);
+PlutoAccess **pluto_get_accs(Stmt **stmts, int nstmts, int *num);
+PlutoAccess **pluto_get_waccs(Stmt **stmts, int nstmts, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos);
 PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, int **divs); 
@@ -103,6 +109,7 @@ int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
 
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *, PlutoOptions *);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 
@@ -119,5 +126,6 @@ Dep *pluto_dep_dup(Dep *d);
 void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
+Array *pluto_get_corrs_array(char *arr_name, const PlutoProg* prog);
 
 #endif

@@ -137,6 +137,10 @@ PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
 
     PlutoConstraints *ucst = polylib_to_pluto_constraints(pol3);
 
+    //Polyhedron_Print(stdout, "%4d ", pol1);
+    //Polyhedron_Print(stdout, "%4d ", pol2);
+    //Polyhedron_Print(stdout, "%4d ", pol3);
+
     Domain_Free(pol1);
     Domain_Free(pol2);
     Domain_Free(pol3);

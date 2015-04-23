@@ -242,12 +242,11 @@ void calculate_tlevel_blevel(void)
     i = 0;
     while (i < dag.nVertices)
     {
-        int vertexId, nChildren;
+        int vertexId;
         Edge *cEdge;
 
         vertexId = reverseTopSort[i];
         maxValue = 0;
-        nChildren = dag.vertexList[vertexId].nChildren;
         cEdge = dag.vertexList[vertexId].childList;
         while (cEdge)
         {
@@ -274,7 +273,6 @@ void calculate_tlevel_blevel(void)
 
 void dfs_visit(int vertexId, int *nextIndex, int *reverseTopSort)
 {
-    int nChildren;
     Edge *cEdge;
 
 #ifdef __DEBUG2__
@@ -282,7 +280,6 @@ void dfs_visit(int vertexId, int *nextIndex, int *reverseTopSort)
 #endif
 
     dag.vertexList[vertexId].DFSColor = GREY;
-    nChildren = dag.vertexList[vertexId].nChildren;
 
     cEdge = dag.vertexList[vertexId].childList;
     while (cEdge)
@@ -313,7 +310,7 @@ int dag_vertices_not_complete()
 
 void dag_execute()
 {
-    int i, threadId;
+    int i;
 #ifndef __STATIC_SCHEDULE__
     PQueue *taskQ;
     omp_lock_t taskQLock;
@@ -339,9 +336,9 @@ void dag_execute()
     }
 #endif
 #ifdef __STATIC_SCHEDULE__
-#pragma omp parallel private(threadId, index) shared(syncFlag)
+#pragma omp parallel private(index) shared(syncFlag)
     {
-        threadId = omp_get_thread_num();
+        int threadId = omp_get_thread_num();
         for (index = 0; index < schedule.nTasks[threadId]; index++)
         {
             int taskId, i, syncOut;
@@ -407,12 +404,14 @@ void dag_execute()
         }
     }
     omp_init_lock(&taskQLock);
-#pragma omp parallel private(threadId) shared(taskQLock, taskQ)
+#pragma omp parallel shared(taskQLock, taskQ)
     {
         int taskId, i, syncOut;
         Edge *pEdge;
 
-        threadId = omp_get_thread_num();
+#ifdef __DEBUG1__
+        int threadId = omp_get_thread_num();
+#endif
         while (dag_vertices_not_complete())
         {
             omp_set_lock(&taskQLock);

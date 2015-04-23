@@ -73,12 +73,16 @@ typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ,
 
 
 /* ORIG is an original compute statement provided by a polyhedral extractor */
-typedef enum stmttype {ORIG=0, FOIFI_COPY_OUT, FOIFI_COPY_IN, COPY_OUT, COPY_IN, LW_COPY_OUT, LW_COPY_IN, 
-    COMM_CALL, LW_COMM_CALL, SIGMA, TAU, MISC, STMT_UNKNOWN} PlutoStmtType;
+typedef enum stmttype {ORIG=0, ORIG_IN_FUNCTION, IN_FUNCTION, 
+    COMM_CALL, LW_COMM_CALL, SIGMA, TAU, MISC, DATA_DIST_INIT, DATA_SETUP, DATA_DIST_MANG,DATA_DIST_COPY,
+    COPY_OUT, COPY_IN, LW_COPY_OUT, LW_COPY_IN, ALL_TASKS,
+    STMT_UNKNOWN} PlutoStmtType;
 
 typedef struct pluto_access{
     int sym_id;
     char *name;
+
+    /* scoplib_symbol_p symbol; */
 
     PlutoMatrix *mat;
 } PlutoAccess;
@@ -147,8 +151,17 @@ struct statement{
 
     PlutoStmtType type;
 
-    /* Compute statement associated with distmem copy/sigma stmt */
-    const struct statement *parent_compute_stmt;
+    /* ID of the domain parallel loop that the statement belongs to */
+    int ploop_id;
+
+
+    /* indicates whether inner loop is vectorized or not*/
+    int inner_loop_vec;
+
+    int pos_peel_offset;
+
+    int neg_peel_offset;
+
 };
 typedef struct statement Stmt;
 
@@ -156,6 +169,102 @@ struct stmt_access_pair{
     PlutoAccess *acc;
     Stmt *stmt;
 };
+
+struct TiledHyperplane{
+
+	//Is the corresponding loop hyperplane tiled?
+	int loop_tiled;
+
+    //already tiled?
+    int is_tiled;
+
+    //Used to store the tile size tiled dim
+    int tile_sizes;
+
+    //Indicates the tile loop dim corresponding to original array dim
+    int tiled_dim;
+
+    //current col number of orignal dim
+    int orig_dim;
+
+    int depth;
+
+    int firstD;
+
+    int lastD;
+
+    char *size_buffer;
+};
+
+struct array{
+
+	int id;
+
+	/*name of the array*/
+	char *text;
+
+	//datatype
+	char *data_type;
+
+    PlutoConstraints *array_bounds;
+
+    PlutoConstraints **parmetric_domain;
+
+    int dim_updated;
+
+	/*Dimensionality of array*/
+	int dim;
+
+	/*Original dimensionality of array*/
+	int dim_orig;
+
+	//	Should the data layout of the array be changed?
+	int change_layout;
+
+	//Affine data transformation matrix of array
+	//Size: nvar+npar+1
+	PlutoMatrix *trans;
+	PlutoMatrix *trans_orig;
+
+	//Read access of the array
+    PlutoAccess **reads;
+    int nreads;
+
+    //Write access of the array
+    PlutoAccess **writes;
+    int nwrites;
+
+    //Statements that have this array reference
+    int nstmts;
+    Stmt** stmts;
+
+    //Num of hyperplanes found
+    int num_hyperplanes_found;
+
+    //iterator names
+    char **iterators;
+
+    struct TiledHyperplane *tiled_hyperplane;
+
+    int num_tiled_loops;
+
+    int first_tile_dim;
+
+    int last_tile_dim;
+
+    int num_cur_tiled_loops;
+
+    //dim upto copy level should be treated as parameters
+    int *copy_level;
+
+    int copy_level_used;
+
+    //npar in arr parametric domain
+    int npar;
+
+    int *hyperplane_mapping;
+};
+typedef struct array Array;
 
 
 struct dependence{
@@ -251,6 +360,11 @@ struct plutoProg{
     Dep **deps;
     int ndeps;
 
+
+    //Array of arrays in the prog
+    Array **arrays;
+    int narrays;
+
     /* Array of dependences */
     /* Used for calculating write-out set only if options->lastwriter */
     /* May contain transitive WAR dependences */
@@ -258,7 +372,7 @@ struct plutoProg{
     int ntransdeps;
 
     /* Array of data variable names */
-    // not being used currently
+    /* used by distmem to set different tags for different data */
     char **data_names;
     int num_data;
 
@@ -285,16 +399,23 @@ struct plutoProg{
     /* Max (original) domain dimensionality */
     int nvar;
 
+    /* Max dim of all the arrays*/
+    int max_array_dim;
+
     /* Number of program parameters */
     int npar;
 
     /* Param context */
     PlutoConstraints *context;
 
-    char *decls;
-
     /* Codegen context */
     PlutoConstraints *codegen_context;
+
+    char *decls;
+
+    PlutoAccess **orig_accesses;
+    int num_accesses;
+
     /* Temp autotransform data */
     PlutoConstraints *globcst;
 
@@ -303,6 +424,15 @@ struct plutoProg{
     int evicted_hyp_pos;
 
     osl_scop_p scop;
+
+    /* number of outermost parallel dimensions to be parameterized */
+    /* used by dynschedule */
+    int num_parameterized_loops;
+
+    /* used to store decls var for vec optimization in data dist*/
+    char **decl_indices;
+    int num_decl_indices;
+    char *vec_decls;
 };
 typedef struct plutoProg PlutoProg;
 
@@ -384,14 +514,23 @@ void pluto_compute_dep_directions(PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
+PlutoConstraints **get_array_ortho_constraints(Array *array, const PlutoProg *prog,
+        const PlutoConstraints *currcst, int *orthonum);
 PlutoConstraints *get_global_independence_cst(
         PlutoConstraints ***ortho_cst, int *orthonum, 
         const PlutoProg *prog);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 
 int pluto_auto_transform(PlutoProg *prog);
-int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
-int pluto_distmem_codegen(PlutoProg *prog, FILE *cloogfp, FILE *outfp);
+int pluto_dist_auto_transform(PlutoProg *prog);
+
+PlutoConstraints* pluto_dist_add_constraints_array_access(PlutoAccess *access,
+		Stmt *stmt, PlutoProg *prog);
+
+int pluto_multicore_codegen(FILE *fp, FILE *outfp, PlutoProg *prog);
+int pluto_dynschedule_graph_codegen(PlutoProg *prog, FILE *sigmafp, FILE *outfp, FILE *headerfp);
+int pluto_dynschedule_codegen(PlutoProg *prog, FILE *sigmafp, FILE *outfp, FILE *headerfp);
+int pluto_distmem_codegen(PlutoProg *prog, FILE *cloogfp, FILE *sigmafp, FILE *outfp, FILE *headerfp);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
        bool loop_search_mode, int max_sols);
@@ -409,7 +548,9 @@ bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 
 int pluto_omp_parallelize(PlutoProg *prog);
-int pluto_distmem_parallelize(PlutoProg *prog);
+int pluto_dynschedule_graph_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp);
+int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp, FILE *pifp);
+int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp, FILE *pifp);
 
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
@@ -421,20 +562,31 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
+
+int is_access_scalar(PlutoAccess *access);
+
+PlutoConstraints *pluto_arr_get_schedule(const Array *arr);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
+
+PlutoConstraints *pluto_get_new_arr_domain(const Array *arr, PlutoConstraints *domain, int copy_level);
+
 PlutoConstraints *pluto_compute_region_data(const Stmt *stmt, const PlutoConstraints *dom,
         const PlutoAccess *acc, int copy_level, const PlutoProg *prog);
 
-int generate_declarations(const PlutoProg *prog, FILE *outfp);
+int generate_declarations(PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
-Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *, PlutoStmtType);
+void pluto_mark_vec_stmts(FILE *cloogfp, PlutoProg *prog);
+Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *text, PlutoStmtType type, int ploop_num);
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
+Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatrix *trans,
+        char ** iterators, const char *text, PlutoStmtType type);
 
+void pluto_add_stmt_at_given_pos(PlutoProg *prog, Stmt *stmt, int pos);
 PlutoConstraints *compute_flow_in_of_dep(Dep *dep, 
-        int copy_level, PlutoProg *prog, int use_tile_dest_outside);
+        int copy_level, PlutoProg *prog, int use_src_unique_dpolytope);
 PlutoConstraints *compute_flow_in(struct stmt_access_pair *wacc_stmt, 
         int copy_level, PlutoProg *prog);
 PlutoConstraints *compute_flow_out_of_dep(Dep *dep, 
@@ -447,15 +599,20 @@ PlutoConstraints *compute_write_out(struct stmt_access_pair *wacc_stmt,
         int copy_level, PlutoProg *prog);
 void split_deps_acc_flowout(PlutoConstraintsList *atomic_flowouts, int copy_level, int access_nrows, PlutoProg *prog);
 
-void generate_pi(FILE *pifp, int copy_level, const PlutoProg *prog, int loop_num, int *dimensions_to_skip, int num_dimensions);
-void generate_sigma(struct stmt_access_pair **wacc_stmt, int naccs,
-        int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings);
-void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmt, int naccs,
-        int *copy_level, PlutoProg *prog, PlutoConstraintsList *list, int loop_num, int *pi_mappings);
-void generate_tau(struct stmt_access_pair *wacc_stmt, 
-        int copy_level, PlutoProg *prog);
+void generate_pi(FILE *pifp, FILE *headerfp, int outer_dist_loop_level, int inner_dist_loop_level, 
+        const PlutoProg *prog, Ploop *loop, int loop_num, int *dimensions_to_skip, int num_dimensions);
+void generate_outgoing(Stmt **loop_stmts, int nstmts,
+        int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings, char *tasks_loops_decl, FILE *outfp, FILE *headerfp);
+void generate_incoming(Stmt **loop_stmts, int nstmts,
+        int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings, FILE *outfp, FILE *headerfp);
+void generate_sigma(struct stmt_access_pair **wacc_stmts, int naccs,
+        int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings, FILE *outfp, FILE *headerfp);
+void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts, int naccs,
+        int *copy_level, PlutoProg *prog, PlutoConstraintsList *list, int loop_num, int *pi_mappings, FILE *outfp, FILE *headerfp);
+void generate_tau(struct stmt_access_pair **racc_stmts,
+        int naccs, int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings, FILE *outfp, FILE *headerfp);
 PlutoConstraints* get_receiver_tiles_of_dep(Dep *dep, 
-        int src_copy_level, int dest_copy_level, PlutoProg *prog, int use_tile_dest_outside);
+        int src_copy_level, int dest_copy_level, PlutoProg *prog, int use_src_unique_dpolytope);
 PlutoConstraints* get_receiver_tiles(struct stmt_access_pair **wacc_stmt, int naccs,
         int src_copy_level, int dest_copy_level, PlutoProg *prog, int dep_loop_num, int *pi_mappings);
 
@@ -480,6 +637,8 @@ Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
         const Stmt *stmt);
+int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop);
 int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
         const Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
@@ -506,7 +665,65 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
 PlutoDepList* pluto_dep_list_alloc(Dep *dep);
 
 void pluto_detect_scalar_dimensions(PlutoProg *prog);
-int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
+void pluto_opencl_codegen();
+
+Array *pluto_dist_get_corrs_array(char *arr_name, const PlutoProg* prog);
+
+PlutoConstraints* pluto_dist_get_required_data_tiles(PlutoConstraints *domain, int copylevel,
+		char *arr_name, PlutoProg *prog );
+
+char *pluto_dist_modify_stmt_text(char* stmt_text, int use_stride, PlutoProg *prog);
+int pluto_dist_apply_mod_optimization(char *stmt_text , char *new_stmt_text, char* decls, const Stmt *stmt, PlutoProg *prog);
+char *pluto_dist_malloc_stmt_text(char *arr_name, PlutoProg *prog, int usr_strides);
+
+char *pluto_dist_ptr_init_stmt_text(char *arr_name, PlutoProg *prog );
+
+char* pluto_dist_get_ptr_dim_stride(Array *arr, int curr_dim, PlutoProg *prog);
+char* pluto_dist_get_ptr_dim_stride_malloc(Array *arr, int curr_dim, PlutoProg *prog);
+
+void add_data_dist_parm_decl(FILE *fp, char *acc_name, PlutoProg *prog);
+void pluto_dist_print_tiles_strided_access(char* new_stmt_text, Array *arr, PlutoProg *prog);
+
+void pluto_dist_add_upper_lower_bounds(PlutoConstraints *cst, PlutoProg *prog);
+void pluto_data_dist_identity_trans(PlutoProg *prog);
+void pluto_dist_print_tiles_index_string(char* new_stmt_text, Array *arr, PlutoProg *prog);
+void restore_data_hyperplane(Array *arr, int row);
+
+int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp, FILE *outfp);
+int pluto_sharedmem_data_dist_codegen(PlutoProg *prog,Ploop **loops, int nloops,
+		int copy_level[nloops], FILE *outfp);
+
+int pluto_dist_get_innermost_loop(const Stmt *stmt, const PlutoProg *prog);
+
+void pluto_dist_generate_copy_back_code(Ploop **loops, int nloops, int *copy_level,
+		FILE *headerfp, PlutoProg *prog);
+
+void gen_copy_back_function(Stmt ****copy_back_stmts, int *num_write_data,
+        int num_copy_back_stmts, int nloops, PlutoProg *prog, FILE *headerfp);
+
+void print_data_dist_parm_call(char* str, Array *arr);
+PlutoConstraints *compute_read_in(struct stmt_access_pair *racc_stmt,
+        int copy_level, PlutoProg *prog);
+
+
+void generate_pack_or_unpack(FILE *packfp, PlutoProg *prog,
+		PlutoConstraints *constraints, char *stmttext, PlutoStmtType stmttype, char **iters,
+		int src_copy_level, int acc_nrows, char* acc_name, char *send_count);
+
+int pluto_dist_gen_intial_code(int nloops, Ploop **loops, int *copy_level,
+        PlutoProg *prog, FILE *headerfp);
+
+int pluto_dist_gen_compute_pi(int nloops, Ploop **loops, int *copy_level,
+                PlutoProg *prog, int *pi_mappings, FILE *outfp, FILE *headerfp);
+
+void generate_sigma_common(struct stmt_access_pair **wacc_stmts, int naccs, 
+    int *copy_level, PlutoProg *prog, int loop_num, int *pi_mappings, int isRemoteOnly, 
+    int *broadcast, int *num_dest_loops, PlutoConstraints *tdpoly_list[prog->ndeps], 
+    int dep_loop_num_list[prog->ndeps], PlutoMatrix *trans[prog->ndeps], 
+    char **iters[prog->ndeps], char *indices[prog->ndeps]);
+
+int pluto_dist_read_tile_sizes(int *tile_sizes, int num_tile_dims);
+
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 
 void pluto_iss_dep(PlutoProg *prog);

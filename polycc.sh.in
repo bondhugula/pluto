@@ -14,12 +14,10 @@
 
 pluto=@SOURCE_DIR@/src/pluto
 distloog=@SOURCE_DIR@/distloog
-vloog=@SOURCE_DIR@/vloog
 plann=@SOURCE_DIR@/plann
 plorc=@SOURCE_DIR@/plorc
 
 DISTMEM=0
-
 # Some additional setup here to ensure that variables are visible outside of the run function
 SOURCEFILE=""
 OUTFILE=""
@@ -67,6 +65,14 @@ APPENDFILE="__nothing"
 if [ -f .appendfilename ]; then
     APPENDFILE=`cat .appendfilename`
 fi
+SIGMAFILE="__nothing"
+if [ -f .sigmafilename ]; then
+    SIGMAFILE=`cat .sigmafilename`
+fi
+HEADERFILE="__nothing"
+if [ -f .headerfilename ]; then
+    HEADERFILE=`cat .headerfilename`
+fi
 
 dirname=`dirname  $SOURCEFILE`
 basename=`basename $SOURCEFILE`
@@ -84,25 +90,70 @@ fi
     #$plann $PLUTOOUT @SOURCE_DIR@/annotations
 #fi
 
+
 # put the original skeleton around the transformed code
 @SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
 if [ -f $APPENDFILE ]; then
-	cat $APPENDFILE >> $OUTFILE
-	rm -f $APPENDFILE
+    gcc -E -P -CC $APPENDFILE >>$OUTFILE
+    rm -f $APPENDFILE
 fi
 # APPENDFILE contains the code which might need pre-vectorization
 
-# pre vectorize (#pragma ivdep and scalar bound rep for the 
-# vectorizable innermost loop if it was detected)
-#$vloog $PLUTOOUT
+sed -i 's/cloog_util_rtclock()/rtclock()/g' $OUTFILE
 
-if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog *.sysloog .appendfilename
+if [ -f $SIGMAFILE ]; then
+    cat $SIGMAFILE | grep -E \
+        "^#include|^#define floord\(|^#define ceild\(|^#define max\(|^#define min\(" >.includes
+    cat $SIGMAFILE | grep -vE \
+        "^#include|^#define floord\(|^#define ceild\(|^#define max\(|^#define min\(" >.body.c
+    cat .includes >$SIGMAFILE
+    gcc -E -P -CC .body.c >>$SIGMAFILE
+    sed -i -e 's/__omp_atomic_capture/\n#pragma omp atomic capture\n/' $SIGMAFILE
+    sed -i -e 's/__omp_atomic/\n#pragma omp atomic\n/' $SIGMAFILE
+    rm -f .includes .body.c
 fi
 
-if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
-    indent -kr -br -ce -l125 $OUTFILE
+if [ -f $HEADERFILE ]; then
+    cat $HEADERFILE | grep -E "__DECLARATION_OF_|^int max_|^int lb_|^int \*tasks_loop|^tbb::|^FILE" >.decls
+    if [[ -s .decls ]]; then
+        grep -E "#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS" $OUTFILE >.exists
+        if [[ -s .exists ]]; then
+            cat $HEADERFILE | grep -vE "__DECLARATION_OF_|^int max_|^int lb_|^int \*tasks_loop|^tbb::|^FILE" >.rest
+            cat .rest >$HEADERFILE
+            sed -e '/#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS/r .decls' \
+                $OUTFILE >.temp
+            cat .temp >$OUTFILE
+            rm .rest .temp
+        else
+            echo "ERROR: add '#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS' in source C file"
+            exit 1
+        fi
+        rm .exists
+    fi
+    rm .decls
+fi
+
+if [ -f $OUTFILE ]; then
+    sed -i -e 's/##/#/' $OUTFILE
+    sed -i -e 's/__omp_atomic/\n#pragma omp atomic\n/' $OUTFILE
+    sed -i -e 's/__ifndef USE_LOCAL_ARRAYS/\n#ifndef USE_LOCAL_ARRAYS\n/' $OUTFILE
+    sed -i -e 's/__else/\n#else\n/' $OUTFILE
+    sed -i -e 's/__endif/\n#endif\n/' $OUTFILE
+fi
+
+if [ "$INDENT" == 1 ]; then
+    if type astyle > /dev/null; then
+        astyle -nq $OUTFILE
+        if [ -f $SIGMAFILE ]; then
+            astyle -nq $SIGMAFILE
+        fi
+    elif type indent > /dev/null; then
+        indent -kr -br -ce -l125 $OUTFILE
+        if [ -f $SIGMAFILE ]; then
+            indent -kr -br -ce -l125 $SIGMAFILE
+        fi
+    fi
 fi
 }
 
@@ -143,8 +194,10 @@ cleanup()
 		mv $TEMPFILE $SOURCEFILE
 	fi
 if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog *.sysloog .appendfilename
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized\
+        $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
+        packunpack.cloog *.sysloog .appendfilename .sigmafilename .headerfilename
 fi
 }
 
-trap cleanup exit
+trap cleanup SIGINT exit

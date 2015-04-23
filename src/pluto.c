@@ -240,12 +240,64 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 }
 
 /**
+ * Bounds for Pluto ILP variables
+ */
+static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients */
+    for (i=0; i<cst->ncols-npar-1-1; i++)  {
+        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+i, 0);
+    }
+
+    if (options->coeff_bound != -1) {
+        for (i=0; i<cst->ncols-npar-1-1; i++)  {
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
+            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
+        }
+    }else{
+        /* Add upper bounds for transformation coefficients */
+        int ub = pluto_prog_get_largest_const_in_domains(prog);
+
+        /* Putting too small an upper bound can prevent useful transformations;
+         * also, note that an upper bound is added for all statements globally due
+         * to the lack of an easy way to determine bounds for each coefficient to
+         * prevent spurious transformations that involve shifts proportional to
+         * loop bounds
+         */
+        if (ub >= 10)   {
+            for (i=0; i<cst->ncols-npar-1-1; i++)  {
+                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+                pluto_constraints_add_ub(cst, npar+1+i, ub);
+            }
+        }
+    }
+
+    return cst;
+}
+
+
+/**
  * Coefficient bounds when finding the cone complement; the cone complement
  * could have (and always has in the case of Pluto as opposed to Pluto+)
  * negative coefficients. So, we can't assume non-negative coefficients as in
  * the remaining Pluto hyperplanes
  */
-PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
+
+static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog)
 {
     int i, npar, nstmts, nvar, s;
     PlutoConstraints *cst;
@@ -320,40 +372,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG2(printf("Constraints after reductions\n"));
     IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst));
 
-
-    if (options->coeff_bound != -1) {
-        for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
-            pluto_constraints_add_ub(newcst, npar+1+i, options->coeff_bound);
-        }
-    }else{
-        /* Add upper bounds for transformation coefficients */
-        int ub = pluto_prog_get_largest_const_in_domains(prog);
-
-        /* Putting too small an upper bound can prevent useful transformations;
-         * also, note that an upper bound is added for all statements globally due
-         * to the lack of an easy way to determine bounds for each coefficient to
-         * prevent spurious transformations that involve shifts proportional to
-         * loop bounds
-         */
-        if (ub >= 10)   {
-            for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-                pluto_constraints_add_ub(newcst, npar+1+i, ub);
-            }
-        }
-    }
-    /* Lower bound for bounding coefficients */
-    for (i=0; i<npar+1; i++)  {
-        pluto_constraints_add_lb(newcst, i, 0);
-    }
-    /* Lower bound for transformation coefficients */
-    for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        pluto_constraints_add_lb(newcst, npar+1+i, 0);
-    }
-
-
+        
     /* Reverse the variable order for stmts */
     PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);
     PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
@@ -393,8 +412,15 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
-    sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
-    /* print_polylib_visual_sets("csts", newcst); */
+
+    /* Solve the constraints */
+    if (options->islsolve) {
+        sol = pluto_constraints_lexmin_isl(newcst_permuted, ALLOW_NEGATIVE_COEFF);
+        /* print_polylib_visual_sets("csts", newcst); */
+    }else{
+        sol = pluto_constraints_lexmin_pip(newcst_permuted, ALLOW_NEGATIVE_COEFF);
+        /* print_polylib_visual_sets("csts", newcst); */
+    }
 
     pluto_constraints_free(newcst_permuted);
 
@@ -659,6 +685,78 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
         }
     }
 }
+/*
+ * Determine constraints to ensure linear independence of data hyperplanes
+ *
+ * lin_ind_mode = EAGER: all array hyperplanes have to be linearly independent
+ * w.r.t existing ones (ignoring stmts that already have enough lin ind solns)
+ *              = LAZY: at least one arry that does not have enough
+ * linearly independent solutions will get a new linearly independent
+ * hyperplane (this is enough to make progress)
+ */
+PlutoConstraints *pluto_dist_get_linear_ind_constraints(const PlutoProg *prog,
+        const PlutoConstraints *cst, bool lin_ind_mode)
+{
+    int narrays, i, j, k, orthosum;
+    int orthonum[prog->narrays];
+    PlutoConstraints ***orthcst;
+    Array **arrays = prog->arrays;
+
+    narrays = prog->narrays;
+
+
+    orthcst = (PlutoConstraints ***) malloc(narrays*sizeof(PlutoConstraints **));
+
+    orthosum = 0;
+
+    /* Get orthogonality constraints for each array*/
+    for (j=0; j<narrays; j++)    {
+        orthcst[j] = get_array_ortho_constraints(arrays[j],
+                prog, cst, &orthonum[j]);
+        orthosum += orthonum[j];
+    }
+
+
+    PlutoConstraints *indcst = pluto_constraints_alloc(1, cst->ncols);
+
+    if (orthosum >= 1) {
+        if (lin_ind_mode == EAGER) {
+            /* Look for linearly independent hyperplanes for all arrays*/
+            for (j=0; j<narrays; j++)    {
+                if (orthonum[j] >= 1)   {
+                    IF_DEBUG2(printf("Added ortho constraints for S%d\n", j+1););
+                    pluto_constraints_add(indcst, orthcst[j][orthonum[j]-1]);
+                }
+            }
+        }else{
+            assert(lin_ind_mode == LAZY);
+            /* At least one array should have a linearly independent hyperplane */
+
+            for (i=0; i<prog->narrays; i++) {
+                /* Everything was initialized to zero */
+                if (orthonum[i] >= 1) {
+                    for (j=0; j<cst->ncols-1; j++) {
+                        indcst->val[0][j] += orthcst[i][orthonum[i]-1]->val[0][j];
+                    }
+                }
+            }
+            indcst->val[0][cst->ncols-1] = -1;
+            indcst->nrows = 1;
+            IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
+            IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
+        }
+    }
+
+    for (j=0; j<narrays; j++)    {
+        for (k=0; k<orthonum[j]; k++)   {
+            pluto_constraints_free(orthcst[j][k]);
+        }
+        free(orthcst[j]);
+    }
+    free(orthcst);
+
+    return indcst;
+}
 
 /* 
  * Determine constraints to ensure linear independence of hyperplanes 
@@ -750,7 +848,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 {
     int num_sols_found, j, k;
     int64 *bestsol;
-    PlutoConstraints *basecst, *nzcst;
+    PlutoConstraints *basecst, *nzcst, *boundcst;
     PlutoConstraints *currcst;
 
     int nstmts = prog->nstmts;
@@ -766,6 +864,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
     /* Don't free basecst */
     basecst = get_permutability_constraints(prog);
+    boundcst = get_coeff_bounding_constraints(prog);
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
     // print_polylib_visual_sets("pluto", basecst);
 
     num_sols_found = 0;
@@ -780,8 +881,10 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         nzcst = get_non_trivial_sol_constraints(prog, loop_search_mode);
         pluto_constraints_add(currcst, nzcst);
         pluto_constraints_free(nzcst);
+        // print_polylib_visual_sets("curr", currcst);
 
         PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, lin_ind_mode);
+        // print_polylib_visual_sets("ind", indcst);
 
         if (indcst->nrows == 0) {
             /* If you don't have any independence constraints, we would end up finding
@@ -1231,10 +1334,13 @@ void pluto_print_dep_directions(PlutoProg *prog)
 }
 
 
-/* Pad statement domains to maximum domain depth to make it easier to construct
- * scheduling constraints. These will be removed before autopoly returns.
- * Also, corresponding dimensions from ILP space will be removed before ILP
- * calls
+/* 
+ * 1. Pad statement domains to maximum domain depth to make it easier to construct
+ * scheduling constraints. These will be removed before the actual ILP
+ * runs, and just before pluto_auto_transform returns
+ *
+ * 2. Pre-process dependence domains to allow a single affine bounding
+ * expression to be constructed. Fix this implementation (too brittle).
  */
 void normalize_domains(PlutoProg *prog)
 {
@@ -1261,6 +1367,7 @@ void normalize_domains(PlutoProg *prog)
     int count=0;
     if (npar >= 1)	{
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
+        pluto_constraints_set_names(context, prog->params);
         for (i=0; i<prog->nstmts; i++)    {
             PlutoConstraints *copy = pluto_constraints_dup(prog->stmts[i]->domain);
             for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
@@ -1270,7 +1377,7 @@ void normalize_domains(PlutoProg *prog)
             count += copy->nrows;
 
             if (count <= prog->nstmts*npar)    {
-                pluto_constraints_add(context, copy);
+                pluto_constraints_intersect(context, copy);
                 pluto_constraints_free(copy);
             }else{
                 pluto_constraints_free(copy);
@@ -1280,7 +1387,7 @@ void normalize_domains(PlutoProg *prog)
         pluto_constraints_simplify(context);
         if (options->debug) {
             printf("[Pluto] Global constraint context\n");
-            pluto_constraints_compact_print(stdout, context );
+            pluto_constraints_compact_print(stdout, context);
         }
 
         /* Add context to every dep polyhedron */
@@ -1494,7 +1601,7 @@ int find_cone_complement_hyperplane(int evict_pos,
      */
     con_start_cst = pluto_constraints_dup(basecst);
 
-    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+    PlutoConstraints *boundcst = get_coeff_bounding_constraints_for_cone_complement(prog);
     pluto_constraints_add(con_start_cst, boundcst);
     pluto_constraints_free(boundcst);
 
@@ -1608,9 +1715,629 @@ static void swap_hyperplanes(int64 *h1, int64 *h2, int ncols)
 }
 #endif
 
+void copy_comp_to_data_hyperplanes(Stmt *stmt, Array *arr,  int row){
+    int i;
+
+    //	assert(stmt->trans->ncols == arr->trans->ncols);
+
+    for(i=0;i<arr->trans->ncols;i++)
+        arr->trans->val[row][i] = stmt->trans->val[row][i];
+
+    return;
+}
+
+void restore_data_hyperplane(Array *arr, int row){
+    int i;
+
+    if(options->identity_data_dist) return;
+
+    for(i=0;i<arr->trans->ncols;i++)
+        arr->trans->val[row][i] = arr->trans_orig->val[row][i];
+
+    return;
+}
+
+PlutoConstraints* pluto_dist_get_nontrivial_solu_constraints(PlutoProg *prog){
+    int stmt_cst_width = prog->nvar + prog->npar + 1;
+
+    int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+    int cst_width = (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts * (stmt_cst_width) + prog->narrays *(arr_cst_width) + 1;
+
+    int cst_nrows = prog->narrays;
+    PlutoConstraints *cst = pluto_constraints_alloc(cst_nrows, cst_width);
+    cst->ncols = cst_width;
+    cst->nrows = cst_nrows;
+
+    int start_arr = (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts*(stmt_cst_width);
+    int i, j, offset, cur_row = 0;
+
+    //sigma ai >= 1 to avoid trivial solu
+    Array * arr;
+    for(i=0;i<prog->narrays;i++){
+        arr = prog->arrays[i];
+
+        //		if(arr->dim_orig < 2) continue;
+
+        if(arr->num_hyperplanes_found == arr->dim)
+            continue;
+
+        offset = arr->id * arr_cst_width + start_arr;
+
+        cst->val[cur_row][cst_width-1] = -1;
+        for(j=0;j<arr->dim;j++){
+            cst->val[cur_row][offset+j] = 1;
+        }
+
+        cur_row++;
+    }
+
+    cst->nrows = cur_row;
+
+    return cst;
+}
+
+void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog){
+
+    int i, j, k;
+    int cur = 0;
+
+    if(sol == NULL) {
+        printf("No Solution found\n");
+        return;
+    }
+
+    assert(sol != NULL);
+
+    printf("\nComm volume due to dep = \n\t");
+    for(i=0;i<prog->npar + 1; i++)
+        printf("%lld\t", sol[i]);
+    cur += prog->npar + 1;
+    printf("\n");
+
+    for(k=0;k<prog->narrays;k++){
+        printf("\n Comm due to data hyperplanes  of Array %s = \n\t", prog->arrays[k]->text);
+        for(i=0;i<prog->npar + 1; i++)
+            printf("%lld\t", sol[cur + i]);
+        cur += prog->npar + 1;
+        printf("\n");
+    }
+
+    int num_cols_reverse = 0;
+
+    //	printf("\n Comp Hyperplanes = \n");
+    for(i=0;i<prog->nstmts;i++){
+        printf("stmts_%d\t\t",i);
+        num_cols_reverse = prog->stmts[i]->dim_orig;
+        for(j=0;j<num_cols_reverse;j++){
+            printf("%lld\t", sol[cur+ num_cols_reverse - 1 - j]);
+        }
+        cur += j;
+
+        for(j=0;j<prog->npar+1;j++)
+            printf("%lld\t",sol[cur + j]);
+
+        cur += j;
+
+        printf("\n");
+    }
+
+    //	printf("\n Data Hyperplanes = \n");
+    for(i=0;i<prog->narrays;i++){
+        printf("array_%s\t\t",prog->arrays[i]->text);
+        num_cols_reverse = prog->arrays[i]->dim_orig;
+        for(j=0;j< num_cols_reverse;j++){
+            printf("%lld\t", sol[cur + num_cols_reverse -1 - j]);
+        }
+        cur += j;
+
+        for(j=0;j<prog->npar+1;j++)
+            printf("%lld\t",sol[cur + j]);
+
+        cur += j;
+
+        printf("\n");
+    }
+
+    return;
+}
+
+int64* pluto_dist_constraints_solve(PlutoConstraints *cst, PlutoProg *prog)
+{
+    int i, j, k;
+
+    int64 *sol;
+
+    print_polylib_visual_sets("cst", cst);
+
+    //Remove the redundant cols and change order of cols
+    int64 **mat = (int64 **)malloc(cst->nrows * sizeof(int64 *));
+    for(i=0;i<cst->nrows;i++)
+        mat[i] = (int64 *)malloc(cst->ncols * sizeof(int64));
+
+    int curr_col = 0, cst_col = 0;
+
+    //copy npar and const cols
+    for(i=0;i< (prog->npar+1) * (prog->narrays + 1);i++)
+        for(j=0;j<cst->nrows;j++)
+            mat[j][i] = cst->val[j][i];
+
+    curr_col += (prog->npar +1) * (prog->narrays + 1);
+    cst_col +=  (prog->npar +1) * (prog->narrays + 1);
+
+    int ncols_to_reverse;
+    for(i=0;i<prog->nstmts;i++){
+        ncols_to_reverse = prog->stmts[i]->dim_orig ;
+        for(j=0;j< ncols_to_reverse;j++){
+            for(k=0;k<cst->nrows; k++){
+                mat[k][curr_col + j] = cst->val[k][cst_col + ncols_to_reverse - 1 -j];
+            }
+        }
+        curr_col += ncols_to_reverse;
+        cst_col += prog->nvar;
+
+        //copy npar and const cols
+        for(k=0;k<prog->npar+1;k++)
+            for(j=0;j<cst->nrows;j++)
+                mat[j][curr_col + k] = cst->val[j][cst_col+k];
+
+        curr_col += prog->npar + 1;
+        cst_col += prog->npar + 1;
+    }
+
+    for(i=0;i<prog->narrays;i++){
+        ncols_to_reverse = prog->arrays[i]->dim_orig;
+        for(j=0;j< ncols_to_reverse;j++){
+            for(k=0;k<cst->nrows; k++){
+                mat[k][curr_col + j] = cst->val[k][cst_col + ncols_to_reverse -1 -j];
+            }
+        }
+
+        curr_col += ncols_to_reverse ;
+        cst_col += prog->max_array_dim;
+
+        //copy npar and const cols
+        for(k=0;k<prog->npar+1;k++)
+            for(j=0;j<cst->nrows;j++)
+                mat[j][curr_col + k] = cst->val[j][cst_col+k];
+
+        curr_col += prog->npar + 1;
+        cst_col += prog->npar + 1;
+    }
+
+    for(i=0;i<cst->nrows;i++){
+        mat[i][curr_col] = cst->val[i][cst_col];
+    }
+
+    cst_col++;
+    curr_col++;
+
+    assert(cst_col == cst->ncols);
+
+    int64** prev = cst->val;
+    int prev_ncols = cst->ncols;
+    cst->val = mat;
+    cst->ncols = curr_col;
+
+    print_polylib_visual_sets("temp", cst);
+    sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+
+    //TODO: remap the format of sol
+
+    cst->val = prev;
+    cst->ncols = prev_ncols;
+
+    return sol;
+}
+
+PlutoConstraints* pluto_dist_convert_constraints(PlutoProg *prog, PlutoConstraints *basecst){
+    int i, j, k;
+    int stmt_cst_width = prog->nvar + prog->npar + 1;
+    int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+    int cst_width = (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts * (stmt_cst_width) + prog->narrays *(arr_cst_width) + 1;
+
+    // PlutoConstraints *basecst = get_permutability_constraints(prog->deps,prog->ndeps, prog);
+
+    assert(basecst->ncols == (prog->npar + 1) + prog->nstmts * (prog->nvar + 1) + 1);
+
+    PlutoConstraints *cst = pluto_constraints_alloc(basecst->nrows, cst_width);
+    cst->nrows = basecst->nrows;
+    cst->ncols = cst_width;
+
+    int cst_curr_col = 0, base_curr_col = 0;
+
+    //copy npar + 1 col
+    for(i=0; i<prog->npar+1; i++){
+        for(j=0;j<basecst->nrows;j++)
+            cst->val[j][i] = basecst->val[j][i];
+    }
+    cst_curr_col += (prog->npar+1) * (prog->narrays + 1);
+    base_curr_col += prog->npar+1;
+
+    //for each statement copy comp hyperplane coeffs
+    for(i=0;i<prog->nstmts;i++){
+        for(j=0;j<prog->nvar;j++){
+            for(k=0;k<basecst->nrows;k++){
+                cst->val[k][cst_curr_col+j] = basecst->val[k][base_curr_col+j];
+            }
+        }
+
+        cst_curr_col += prog->nvar + prog->npar;
+        base_curr_col += prog->nvar;
+
+        for(j=0;j<basecst->nrows;j++)
+            cst->val[j][cst_curr_col] = basecst->val[j][base_curr_col];
+
+        cst_curr_col++;
+        base_curr_col++;
+    }
+
+    cst_curr_col += prog->narrays * arr_cst_width ;
+
+    for(i=0;i<basecst->nrows;i++)
+        cst->val[i][cst_curr_col] = basecst->val[i][base_curr_col];
+
+    cst_curr_col++;
+    base_curr_col++;
+
+    assert(base_curr_col == basecst->ncols);
+    assert(cst_curr_col == cst->ncols);
+
+    return cst;
+}
 
 
-/* Top-level automatic transformation algoritm */
+int pluto_dist_is_valid_hyperplane(int64 *sol, int start, int len){
+
+    assert(sol != NULL) ;
+
+    int i;
+
+    for (i = 0; i < len; ++i) {
+        if(sol[start + i] != 0)
+            return 1;
+    }
+
+    return 0;
+}
+
+
+void pluto_dist_add_hyperplanes(int64 *sol, int curr_hyperplane,  PlutoProg *prog)
+{
+    int i, j;
+    int cur = 0;
+
+    pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+
+    if(sol == NULL)
+        return;
+
+    //Upper bound on comm vol
+    //	for(i=0;i<prog->npar + 1; i++)
+    //		printf("%d\t", sol[i]);
+    cur += (prog->npar + 1) * (prog->narrays + 1) ;
+    Stmt *stmt;
+
+    //Add the comp hyperplanes
+    for(i=0;i<prog->nstmts;i++){
+
+        stmt = prog->stmts[i];
+        pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
+
+        //		if(pluto_stmt_get_num_ind_hyps(prog->stmts[i]) == prog->stmts[i]->dim_orig){
+        //			cur += stmt->dim_orig + prog->npar + 1;
+        //			continue;
+        //		}
+
+        for(j=0;j<stmt->dim_orig;j++){
+            stmt->trans->val[stmt->trans->nrows-1][j] = sol[cur+ stmt->dim_orig  - 1 - j];
+        }
+        cur += j;
+
+        for(j=0;j<prog->npar+1;j++){
+            stmt->trans->val[stmt->trans->nrows-1][prog->nvar + j] = sol[cur + j];
+        }
+        cur += j;
+
+        stmt->hyp_types[stmt->trans->nrows-1] =
+            pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
+            H_SCALAR: H_LOOP;
+    }
+
+    Array *arr;
+    //	printf("\n Data Hyperplanes = \n");
+    for(i=0;i<prog->narrays;i++){
+
+        arr = prog->arrays[i];
+
+        if(!pluto_dist_is_valid_hyperplane(sol, cur, arr->dim)){
+            cur += arr->dim_orig + prog->npar + 1;
+            continue;
+        }
+
+        if(arr->num_hyperplanes_found == arr->dim_orig){
+            cur += arr->dim_orig + prog->npar + 1;
+            continue;
+        }
+
+        /* Store the mapping of data and comp hyperplane.
+        */
+        arr->hyperplane_mapping[curr_hyperplane] = arr->num_hyperplanes_found;
+
+        pluto_matrix_add_row(arr->trans, arr->trans->nrows);
+
+        for(j=0;j<arr->dim_orig;j++){
+            arr->trans->val[arr->trans->nrows-1][j] = sol[cur + arr->dim_orig -1 - j];
+        }
+        cur += j;
+
+        for(j=0;j<prog->npar+1;j++){
+            arr->trans->val[arr->trans->nrows-1][prog->max_array_dim + j] = sol[cur+ j];
+        }
+        cur += j;
+
+        arr->num_hyperplanes_found++;
+    }
+
+    return;
+
+}
+
+int is_access_scalar(PlutoAccess *access){
+
+    int i = 0;
+
+    if(access->mat->nrows > 1)
+        return 0;
+
+    for(i=0; i<access->mat->ncols; i++)
+        if(access->mat->val[0][i] != 0)
+            return 0;
+
+    return 1;
+
+}
+
+
+
+void pluto_dist_verify_data_hyperplanes(PlutoProg *prog){
+
+    int i = 0;
+    Array *arr;
+    for(i=0;i<prog->narrays;i++){
+
+        arr = prog->arrays[i];
+
+        if(prog->arrays[i]->dim_orig > prog->arrays[i]->num_hyperplanes_found){
+
+            assert(0);
+
+
+            pluto_matrix_add_row(arr->trans, arr->trans->nrows);
+
+            if(arr->dim_orig == 1){
+                arr->hyperplane_mapping[0] = arr->num_hyperplanes_found;
+                arr->trans->val[arr->trans->nrows-1][0] = 1;
+            }
+            else{
+                arr->hyperplane_mapping[1] = arr->num_hyperplanes_found;
+                arr->trans->val[arr->trans->nrows-1][1] = 1;
+            }
+
+            arr->num_hyperplanes_found++;
+
+        }
+
+    }
+}
+/* Top level automatic transformation algorithm for distributed memory
+ * Find all the linearly independent permutable band of data and
+ * computation hyperplanes at a level
+ */
+int pluto_dist_find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
+        bool loop_search_mode, int max_sols, int num_ind_sols_found)
+{
+
+    Stmt *stmt;
+    int i=0, j=0;
+    int stmt_cst_width = prog->nvar + prog->npar + 1;
+    int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+    int cst_width = (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts * (stmt_cst_width) + prog->narrays *(arr_cst_width) + 1;
+    int cst_nrows = 0;
+    int64 *sol;
+    int num_sol_found = 0;
+    //	max_sol = (prog->nvar>prog->max_array_dim)?prog->nvar:prog->max_array_dim;
+
+    for(i=0; i<prog->nstmts; i++){
+        stmt = prog->stmts[i];
+        cst_nrows += stmt->nreads;
+        cst_nrows += stmt->nwrites;
+    }
+
+
+    PlutoConstraints *cst = pluto_constraints_alloc(cst_nrows * 2 * stmt_cst_width + cst_width, cst_width);
+    PlutoConstraints *temp, *pluto;
+
+    for(i=0; i<prog->nstmts; i++){
+        stmt = prog->stmts[i];
+
+        //add constraints for read array accesses
+        for(j=0; j<stmt->nreads; j++){
+
+            if(is_access_scalar(stmt->reads[j]) || (stmt->reads[j]->mat->nrows == 1))
+                continue;
+
+            temp = pluto_dist_add_constraints_array_access(stmt->reads[j],stmt, prog);
+            print_polylib_visual_sets( stmt->reads[j]->name, temp);
+            pluto_constraints_add(cst, temp);
+            pluto_constraints_free(temp);
+            //			 sol = pluto_constraints_lexmin(cst,DO_NOT_ALLOW_NEGATIVE_COEFF);
+
+        }
+        //add constraints for write array accesses
+        for(j=0; j<stmt->nwrites; j++){
+
+            if(is_access_scalar(stmt->writes[j]) || (stmt->writes[j]->mat->nrows == 1))
+                continue;
+
+            temp = pluto_dist_add_constraints_array_access(stmt->writes[j], stmt, prog);
+            print_polylib_visual_sets( stmt->reads[j]->name, temp);
+            pluto_constraints_add(cst, temp);
+            pluto_constraints_free(temp);
+        }
+    }
+
+
+    PlutoConstraints *pluto_basecst = get_permutability_constraints(prog);
+    print_polylib_visual_sets("pluto", pluto_basecst);
+
+    pluto_dist_add_upper_lower_bounds(cst, prog);
+
+    pluto = pluto_dist_convert_constraints(prog,pluto_basecst);
+
+    pluto_constraints_add(cst, pluto);
+    pluto_constraints_free(pluto);
+
+    PlutoConstraints* currcst = pluto_constraints_alloc(cst->nrows, cst->ncols);
+    PlutoConstraints *curr_pluto = pluto_constraints_alloc(pluto_basecst->nrows, pluto_basecst->ncols);
+
+    PlutoConstraints *nzcst, *non_zero_cst;
+    do{
+
+        pluto_constraints_copy(currcst, cst);
+        pluto_constraints_copy(curr_pluto, pluto_basecst);
+
+        //Add constraints to avoid trivial solun for data hyperplanes
+        non_zero_cst = pluto_dist_get_nontrivial_solu_constraints(prog);
+        pluto_constraints_add(currcst, non_zero_cst);
+        pluto_constraints_free(non_zero_cst);
+
+        //Add constraints to avoid trivial solun for comp hyperplanes
+        nzcst = get_non_trivial_sol_constraints(prog, EAGER);
+        print_polylib_visual_sets("nzcst", nzcst);
+        pluto_constraints_add(curr_pluto, nzcst);
+
+        //Add linear independent for data hyperplanes
+        PlutoConstraints *ind_cst_data = pluto_dist_get_linear_ind_constraints(prog, currcst , EAGER);
+        print_polylib_visual_sets("ind", ind_cst_data);
+        pluto_constraints_add(currcst, ind_cst_data);
+        pluto_constraints_free(ind_cst_data);
+
+        PlutoConstraints *indcst = NULL;
+        print_polylib_visual_sets("curr", curr_pluto);
+        PlutoConstraints *ind_cst = get_linear_ind_constraints(prog, curr_pluto, EAGER);
+        print_polylib_visual_sets("ind", ind_cst);
+        pluto_constraints_add(curr_pluto, ind_cst);
+
+        pluto_constraints_add(ind_cst, nzcst);
+        indcst = pluto_dist_convert_constraints(prog, ind_cst);
+        print_polylib_visual_sets("ind", indcst);
+        pluto_constraints_free(ind_cst);
+        pluto_constraints_free(nzcst);
+        pluto_constraints_add(currcst, indcst);
+
+        if (indcst != NULL && indcst->nrows == 0) {
+            /* If you don't have any independence constraints, we would end up finding
+             * the same solution that was found earlier; so we won't find anything
+             * new */
+            sol = NULL;
+        }else{
+
+            sol = pluto_dist_constraints_solve(currcst, prog);
+            pluto_dist_pretty_print(sol, prog);
+
+            if(sol != NULL){
+                pluto_dist_add_hyperplanes(sol,num_ind_sols_found+num_sol_found,prog);
+
+                free(sol);
+                num_sol_found++;
+            }
+
+        }
+        pluto_constraints_free(indcst);
+
+    }while(num_sol_found < max_sols && sol != NULL);
+
+    //add the dep cosntraints on comp hyperplanes
+
+    pluto_constraints_free(pluto_basecst);
+    pluto_constraints_free(currcst);
+    return  num_sol_found;
+}
+
+void pluto_dist_add_upper_lower_bounds(PlutoConstraints *cst, PlutoProg *prog){
+    int i=0;
+
+    //int stmt_cst_width = prog->nvar + prog->npar + 1;
+    //int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+    //int cst_width = (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts * (stmt_cst_width) + prog->narrays *(arr_cst_width) + 1;
+    int num_bounding_coeff = (prog->npar + 1) *( 1 + prog->narrays);
+
+    /* Add upper bounds for transformation coefficients */
+    //TODO: Add function to get upper bound for data hyperplanes.
+    int ub = pluto_prog_get_largest_const_in_domains(prog);
+
+    //Check the upper bound
+    if(ub < 10) ub = 25;
+
+    /* Putting too small an upper bound can prevent useful transformations;
+     * also, note that an upper bound is added for all statements globally due
+     * to the lack of an easy way to determine bounds for each coefficient to
+     * prevent spurious transformations that involve shifts proportional to
+     * loop bounds
+     */
+    if (ub >= 10)   {
+        for (i=0; i<cst->ncols - num_bounding_coeff -1; i++)  {
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+            pluto_constraints_add_ub(cst, num_bounding_coeff+i, ub);
+        }
+    }
+    for (i=0; i< cst->ncols- num_bounding_coeff -1 ; i++)  {
+        pluto_constraints_add_lb(cst, num_bounding_coeff+i, -5);
+    }
+
+    return;
+}
+
+
+void pluto_data_dist_identity_trans(PlutoProg *prog){
+
+    int i = 0, j = 0;
+    int max_dim = 0;
+
+    for(i=0;i<prog->nstmts;i++){
+
+        max_dim = prog->stmts[i]->dim > max_dim ? prog->stmts[i]->dim : max_dim;
+    }
+
+    for(i=0;i<prog->narrays;i++){
+        Array *arr = prog->arrays[i];
+
+        arr->trans = pluto_matrix_identity(arr->dim_orig);
+
+        for(j=0;j<prog->npar+1;j++)
+            pluto_matrix_add_col(arr->trans, arr->trans->ncols);
+
+        arr->num_hyperplanes_found = arr->dim_orig;
+
+        if(arr->hyperplane_mapping == NULL)
+            arr->hyperplane_mapping = malloc(max_dim* sizeof(int));
+
+        for(j=0;j<max_dim;j++){
+            arr->hyperplane_mapping[j] = -1;
+        }
+
+        for(j=0;j<max_dim;j++){
+            arr->hyperplane_mapping[j] = j%arr->dim_orig;
+        }
+    }
+
+}
+/* 
+ * Top-level automatic transformation algoritm 
+ *
+ * All dependences are reset to unsatisfied before starting
+ *
+ */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j, conc_start_found, depth;
@@ -1619,6 +2346,7 @@ int pluto_auto_transform(PlutoProg *prog)
     bool lin_ind_mode;
     bool loop_search_mode;
 
+    int first_loop_hyp;
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
@@ -1654,6 +2382,16 @@ int pluto_auto_transform(PlutoProg *prog)
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
     }
+
+    if (options->data_dist) {
+        for (i=0; i<prog->narrays; i++) {
+            Array *arr = prog->arrays[i];
+            arr->trans = pluto_matrix_alloc(2*arr->dim, arr->dim+prog->npar+1);
+            arr->trans->nrows = 0;
+            arr->num_hyperplanes_found = 0;
+        }
+    }
+
     prog->num_hyperplanes = 0;
     prog->hProps = NULL;
 
@@ -1664,8 +2402,7 @@ int pluto_auto_transform(PlutoProg *prog)
         nsols = PLMAX(nsols, stmts[i]->dim);
     }
 
-    num_ind_sols = 0;
-    depth=0;
+    depth = 0;
 
     if (precut(prog, ddg, depth))   {
         /* Distributed based on .fst or .precut file (customized user-supplied
@@ -1675,11 +2412,23 @@ int pluto_auto_transform(PlutoProg *prog)
         IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
                     num_ind_sols));
     }else{
+        num_ind_sols = 0;
         if (options->fuse == SMART_FUSE)    {
             cut_scc_dim_based(prog,ddg);
         }
     }
 
+    if (options->data_dist){
+        for (i=0; i<prog->narrays; i++) {
+            Array *arr = prog->arrays[i];
+            if(arr->hyperplane_mapping == NULL)
+                arr->hyperplane_mapping = malloc(nsols* sizeof(int));
+
+            for (j=0; j<nsols; j++) {
+                arr->hyperplane_mapping[j] = -1;
+            }
+        }
+    }
 
     /* Diamond tiling */
     conc_start_found = 0;
@@ -1705,14 +2454,21 @@ int pluto_auto_transform(PlutoProg *prog)
         }
         assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
 
-        num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
-                loop_search_mode, num_sols_left);
+        if (options->data_dist && !options->identity_data_dist) {
+            num_sols_found = pluto_dist_find_permutable_hyperplanes(prog, 
+                    lin_ind_mode, loop_search_mode,
+                    num_sols_left, num_ind_sols);
+        }else{
+            num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
+                    loop_search_mode, num_sols_left);
+        }
 
         IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
                     depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
         num_ind_sols = pluto_get_max_ind_hyps(prog);
+        first_loop_hyp = 0;
 
         /* Diamond tiling: done for the first band of permutable loops */
         if (options->lbtile && num_ind_sols >= 2 && !conc_start_found) {
@@ -1787,10 +2543,17 @@ int pluto_auto_transform(PlutoProg *prog)
 
 
     if (options->lbtile && !conc_start_found) {
-        printf("[Pluto] Diamond tiling not possible/useful\n");
+        PLUTO_MESSAGE(printf("[Pluto] Diamond tiling not possible/useful\n"););
+    }
+
+    if (options->data_dist) {
+        copy_comp_to_data_hyperplanes(prog->stmts[0], prog->arrays[0], first_loop_hyp);
     }
 
     denormalize_domains(prog);
+
+    if(options->data_dist && !options->identity_data_dist)
+        pluto_dist_verify_data_hyperplanes(prog);
 
     for (i=0; i<nstmts; i++)    {
         pluto_matrix_free(orig_trans[i]);
@@ -1955,6 +2718,35 @@ void ddg_compute_scc(PlutoProg *prog)
 
     graph_print_sccs(g);
 }
+
+/* Get this arrays's schedule
+ * Schedule format
+ * [num sched functions | orig dim iters | params | const ]
+ * Number of rows == num sched functions (each row for one hyperplane)
+ */
+PlutoConstraints *pluto_arr_get_schedule(const Array *arr)
+{
+    int i;
+
+    PlutoMatrix *sched, *trans;
+    PlutoConstraints *schedcst;
+
+    trans = arr->trans_orig;
+    sched = pluto_matrix_dup(trans);
+
+    for (i=0; i<sched->nrows; i++)  {
+        pluto_matrix_negate_row(sched, sched->nrows-1-i);
+        pluto_matrix_add_col(sched, 0);
+        sched->val[trans->nrows-1-i][0] = 1;
+    }
+
+    schedcst = pluto_constraints_from_equalities(sched);
+
+    pluto_matrix_free(sched);
+
+    return schedcst;
+}
+
 
 /* Get this statement's schedule
  * Schedule format
@@ -2206,6 +2998,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
     if (prog->num_hyperplanes <= 1) return 1;
 
     Ploop **loops = pluto_get_loops_under(stmts, nstmts, prog->num_hyperplanes-2, prog, &num);
+    // pluto_loops_print(loops, num);
     pluto_loops_free(loops, num);
 
     return num==1;

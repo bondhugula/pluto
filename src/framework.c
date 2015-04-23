@@ -33,6 +33,7 @@
 #include <isl/constraint.h>
 #include <isl/mat.h>
 #include <isl/set.h>
+#include <isl/deprecated/int.h>
 #include "candl/candl.h"
 
 
@@ -402,7 +403,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     PlutoConstraints *bounding_cst = NULL;
 
     /* Copy only the bounding constraints */
-    if (!options->nodepbound) {
+    if(!options->nodepbound && options->global_opt){
 
 		bounding_cst = pluto_constraints_alloc(comm_farkas_cst->nrows, CST_WIDTH);
 		bounding_cst->ncols = CST_WIDTH;
@@ -421,7 +422,6 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 				bounding_cst->val[k][j] = cst->val[farkas_cst->nrows+k][j];
 			}
 		}
-
     }
 
     pluto_constraints_free(farkas_cst);
@@ -454,7 +454,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
-        if (options->rar == 0 && IS_RAR(dep->type))  {
+        if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
         }
 
@@ -465,8 +465,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", 
                         i+1, dep->valid_cst->nrows));
             total_cst_rows += dep->valid_cst->nrows;
-            /* IF_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1)); */
-            /* IF_DEBUG(pluto_constraints_pretty_print(stdout, depcst[i])); */
+            // IF_DEBUG2(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+            // IF_DEBUG2(pluto_constraints_pretty_print(stdout, dep->valid_cst));
         }
     }
 
@@ -584,8 +584,183 @@ static void eliminate_farkas_multipliers(PlutoConstraints *farkas_cst, int num_e
 
 
 /*
- * Construct a PlutoMatrix with the same content as the given isl_mat.
+ * Returns linear independence constraints for a single array.
+ *
+ * In particular, if H contains the first rows of an affine transformation,
+ * then return a constraint on the coefficients of the next row that
+ * ensures that this next row is linearly independent of the first rows.
+ * Furthermore, the constraint is constructed in such a way that it allows
+ * for a solution when combined with the other constraints on the coefficients
+ * (currcst), provided any such constraint can be constructed.
+ *
+ * We do this by computing a basis for the null space of H and returning
+ * a constraint that enforces the sum of these linear expressions
+ * over the coefficients to be strictly greater than zero.
+ * In this sum, some of the linear expressions may be negated to ensure
+ * that a solution exists.
+ *
+ * The return value is a list of constraints, the first *orthonum corresponding
+ * to the linear expressions that form a basis of the null space
+ * and the final constraint the actual linear independence constraint.
+ *
+ * If the null space is 0-dimensional, *orthonum will be zero and the return
+ * value is NULL
  */
+
+PlutoConstraints **get_array_ortho_constraints(Array *arr, const PlutoProg *prog,
+        const PlutoConstraints *currcst, int *orthonum)
+{
+    int i, j, k, p, q;
+    PlutoConstraints **orthcst;
+    isl_ctx *ctx;
+    isl_mat *h;
+    isl_basic_set *isl_currcst;
+
+    int nvar = prog->max_array_dim;
+    int npar = prog->npar;
+    int narrays = prog->narrays;
+
+    if(arr->dim_orig < 2){
+    	*orthonum = 0;
+    	return NULL;
+    }
+    if (arr->num_hyperplanes_found >= arr->dim_orig) {
+        *orthonum = 0;
+        return NULL;
+    }
+
+    /* Get rid of the variables that don't appear in the domain of this
+     * statement and also beta rows */
+    p = arr->dim_orig;
+
+    assert(arr->trans != NULL);
+
+    q = arr->num_hyperplanes_found;
+
+    ctx = isl_ctx_alloc();
+    assert(ctx);
+
+    h = isl_mat_alloc(ctx, q, p);
+
+    p=0;
+    for (i=0; i<arr->dim_orig; i++) {
+		q=0;
+		for (j=0; j<arr->trans->nrows; j++) {
+			h = isl_mat_set_element_si(h, q, p, arr->trans->val[j][i]);
+			q++;
+        }
+		p++;
+    }
+
+    h = isl_mat_right_kernel(h);
+
+    PlutoMatrix *ortho = pluto_matrix_from_isl_mat(h);
+
+    isl_mat_free(h);
+
+    orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *));
+
+    for (i=0; i<nvar+1; i++)  {
+        orthcst[i] = pluto_constraints_alloc(1, currcst->ncols);
+        orthcst[i]->ncols = currcst->ncols;
+    }
+
+    /* All non-negative orthant only */
+    /* An optimized version where the constraints are added as
+     * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
+     *
+     * basically only look in the orthogonal space where everything is
+     * non-negative
+     *
+     * All of these constraints are added later to
+     * the global constraint matrix
+     */
+
+    /* Normalize ortho first */
+    for (j=0; j<ortho->ncols; j++)    {
+        if (ortho->val[0][j] == 0) continue;
+        int colgcd = abs(ortho->val[0][j]);
+        for (i=1; i<ortho->nrows; i++)    {
+            if (ortho->val[i][j] == 0)  break;
+            colgcd = gcd(colgcd,abs(ortho->val[i][j]));
+        }
+        if (i == ortho->nrows)   {
+            if (colgcd > 1)    {
+                for (k=0; k<ortho->nrows; k++)    {
+                    ortho->val[k][j] /= colgcd;
+                }
+            }
+        }
+    }
+    // printf("Ortho matrix\n");
+    // pluto_matrix_print(stdout, ortho);
+
+    isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    int start_arr = (npar +1)*(narrays + 1) + (prog->nvar + npar + 1) * prog->nstmts
+    		+ arr->id * (prog->max_array_dim + npar + 1);
+
+    assert(p == ortho->nrows);
+    p=0;
+    for (i=0; i<ortho->ncols; i++) {
+        isl_basic_set *orthcst_i;
+
+        j=0;
+        for (q=0; q<arr->dim_orig; q++) {
+			orthcst[p]->val[0][ start_arr+q] = ortho->val[j][i];
+			j++;
+        }
+        orthcst[p]->nrows = 1;
+        orthcst[p]->val[0][currcst->ncols-1] = -1;
+        orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        orthcst[p]->val[0][currcst->ncols-1] = 0;
+
+        orthcst_i = isl_basic_set_intersect(orthcst_i,
+                isl_basic_set_copy(isl_currcst));
+        if (isl_basic_set_fast_is_empty(orthcst_i)
+                || isl_basic_set_is_empty(orthcst_i)) {
+            pluto_constraints_negate_row(orthcst[p], 0);
+        }
+        isl_basic_set_free(orthcst_i);
+        p++;
+        /* assert(p<=nvar-1); */
+    }
+
+    // pluto_matrix_print(stdout, stmt->trans);
+
+    if (p > 0)  {
+        /* Sum of all of the above is the last constraint */
+        for(j=0; j< currcst->ncols; j++)  {
+            for (i=0; i<p; i++) {
+                orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
+            }
+        }
+        orthcst[p]->nrows = 1;
+        orthcst[p]->val[0][currcst->ncols-1] = -1;
+        p++;
+    }
+
+    *orthonum = p;
+
+
+    IF_DEBUG2(printf("Ortho constraints for %s; %d sets\n",arr->text, *orthonum));
+    for (i=0; i<*orthonum; i++) {
+        print_polylib_visual_sets(arr->text, orthcst[i]);
+        //IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+    }
+
+    /* Free the unnecessary ones */
+    for (i=p; i<nvar+1; i++)    {
+        pluto_constraints_free(orthcst[i]);
+    }
+
+    pluto_matrix_free(ortho);
+    isl_basic_set_free(isl_currcst);
+    isl_ctx_free(ctx);
+
+    return orthcst;
+}
+
+
 /*
  * Returns linear independence constraints for a single statement.
  *
@@ -898,6 +1073,7 @@ void pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
     printf("[pluto] computing dep satisfaction vectors\n");
 
     /* Piplib is not thread-safe (use multiple threads only with --islsolve) */
+// #pragma omp parallel for if (options->islsolve)
     for (i=0; i<prog->ndeps; i++) {
         int level;
         Dep *dep = prog->deps[i];
@@ -931,7 +1107,6 @@ void pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
         }
     }
 }
-
 
 /* Direction vector component at level 'level'
  */
@@ -1079,3 +1254,150 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
     return DEP_STAR;
 }
+
+PlutoConstraints* get_access_constraints(PlutoAccess *access, int mod_pos,
+		Stmt *stmt, PlutoProg *prog){
+
+	int i=0, j=0;
+	int stmt_cst_width = prog->nvar + prog->npar + 1;
+	int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+	int num_farkas_mul = stmt->domain->nrows+1;
+	int curr_row =0;
+	int start_stmt = -1, start_arr = -1, start_farkas_mul = -1;
+
+	PlutoMatrix *mat = access->mat;
+
+	int cst_nrows = mat->ncols + 1 + num_farkas_mul;
+	int cst_ncols = (prog->npar + 1)  + stmt_cst_width + arr_cst_width + num_farkas_mul + 1;
+	PlutoConstraints *cst = pluto_constraints_alloc(cst_nrows, cst_ncols);
+
+	cst->nrows = cst_nrows;
+	cst->ncols = cst_ncols;
+
+	assert(mat->ncols <= prog->nvar + prog->npar + 1);
+
+	start_stmt = (prog->npar + 1);
+	start_arr = start_stmt + stmt_cst_width;
+	start_farkas_mul = start_arr + arr_cst_width;
+
+	int actual_nvar = mat->ncols - prog->npar -1;
+
+	assert(mat->ncols == stmt->domain->ncols);
+
+	for(i=0;i<mat->ncols ;i++){
+
+		//Comp hyplerplane coeff c1, c2, c3...
+		cst->val[curr_row][start_stmt + i] = -1*mod_pos;
+
+		//set data hyperplane coeff according to access function a1, a2, a3....
+		for(j=0;j<mat->nrows; j++){
+			cst->val[curr_row][start_arr + j] = mat->val[j][i] * mod_pos;
+		}
+
+		//for program parameters and const we should set bounding func coeff u1, u2, u3 ... & w
+		//also set the data hyperplane coeff a_n, .. a_0
+		if(i >= actual_nvar) {
+			cst->val[curr_row][i-actual_nvar] = 1;
+			cst->val[curr_row][start_arr+i] = 1 * mod_pos;
+		}
+
+		//Set fakas coeff according to iteration doamin
+		for(j=0;j<stmt->domain->nrows;j++){
+			cst->val[curr_row][start_farkas_mul + j] = -stmt->domain->val[j][i];
+		}
+
+		//set the lamba_0 coeff if it is for const
+		if(i==actual_nvar + prog->npar)
+			cst->val[curr_row][start_farkas_mul+stmt->domain->nrows] = -1;
+
+		curr_row++;
+	}
+
+	//all above constraints are equalities so add negative constraints also
+	for(j=0;j<cst->ncols -1;j++){
+		cst->val[curr_row][j] = 0;
+		for(i=0;i<mat->ncols;i++){
+			cst->val[curr_row][j] -= cst->val[i][j];
+		}
+	}
+	curr_row++;
+
+	//farkas multiplier should be non-negative
+	for(i=0;i<num_farkas_mul; i++){
+		cst->val[curr_row][start_farkas_mul + i] = 1;
+		curr_row++;
+	}
+
+//	print_polylib_visual_sets("cst", cst);
+//	print_polylib_visual_sets("cst", prog->stmts[0]->domain);
+
+	eliminate_farkas_multipliers(cst,num_farkas_mul);
+	print_polylib_visual_sets("cst_after_fme", cst);
+
+	return cst;
+}
+
+void pluto_constraints_selctive_copy(PlutoConstraints *from, PlutoConstraints *to, int ncols,
+		int from_start, int to_start){
+
+	assert(from->nrows == to->nrows);
+	assert(from->ncols >= from_start + ncols);
+	assert(to->ncols >= to_start + ncols);
+
+
+	int i, j;
+	for(i=0; i<from->nrows;i++){
+		for(j=0;j<ncols;j++){
+			to->val[i][j+to_start] = from->val[i][j+from_start];
+		}
+	}
+
+}
+
+PlutoConstraints* pluto_dist_add_constraints_array_access(PlutoAccess *access,
+		Stmt *stmt, PlutoProg *prog){
+
+	//get constraints w(N) - C + A = Farkas
+	PlutoConstraints *cst_pos = get_access_constraints(access, 1, stmt, prog);
+	//get constraints w(N) + C - A = Farkas
+	PlutoConstraints *cst_neg = get_access_constraints(access, -1, stmt, prog);
+
+	pluto_constraints_add(cst_pos,cst_neg);
+
+	pluto_constraints_free(cst_neg);
+
+	int k =0;
+	int start_arr = -1, start_stmt = -1, start_bound_coeff = -1;
+
+	int stmt_cst_width = prog->nvar + prog->npar + 1;
+	int arr_cst_width = prog->max_array_dim + prog->npar + 1;
+
+
+	int cst_ncols =  (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts* stmt_cst_width + prog->narrays * arr_cst_width+1;
+	PlutoConstraints *cst = pluto_constraints_alloc(cst_pos->nrows, cst_ncols);
+	cst->nrows = cst_pos->nrows;
+	cst->ncols = cst_ncols;
+
+
+	start_stmt = (prog->npar + 1) * (prog->narrays + 1) + stmt->id *stmt_cst_width;
+
+
+	//Search the find the array id
+	for(k = 0; k<prog->narrays; k++){
+		if(!strcmp(prog->arrays[k]->text, access->name)){
+			start_arr =  (prog->npar + 1) * (prog->narrays + 1) + prog->nstmts * stmt_cst_width + prog->arrays[k]->id * arr_cst_width;
+			start_bound_coeff = (prog->npar + 1) * (1 + prog->arrays[k]->id);
+			break;
+		}
+	}
+	assert(start_arr != -1);
+
+	//copy constraints into global cst format
+	pluto_constraints_selctive_copy(cst_pos, cst, prog->npar + 1, 0, start_bound_coeff);
+	pluto_constraints_selctive_copy(cst_pos, cst, stmt_cst_width, prog->npar + 1, start_stmt);
+	pluto_constraints_selctive_copy(cst_pos, cst, arr_cst_width, prog->npar + 1 + prog->nvar + prog->npar + 1, start_arr);
+
+	return cst;
+}
+
+
