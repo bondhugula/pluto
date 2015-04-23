@@ -1,6 +1,6 @@
 SRC= tmm
 
-PLCFLAGS = --unroll
+PLCFLAGS = #--unroll
 TILEFLAGS = #--l2tile
 
 include ../common.mk
