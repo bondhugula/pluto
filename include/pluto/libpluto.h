@@ -134,7 +134,6 @@ struct plutoOptions{
     /* Use isl as ilp solver. */
     int islsolve;
 
-<<<<<<< HEAD
     int distmem;
 
     /*  adding support to generate opencl code */
