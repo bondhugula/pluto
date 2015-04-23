@@ -1,6 +1,6 @@
 SRC=mvt
 
-PLCFLAGS = --rar --unroll
+PLCFLAGS = --rar #--unroll
 TILEFLAGS = --l2tile
 
 include ../common.mk
