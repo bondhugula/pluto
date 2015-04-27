@@ -17,14 +17,14 @@ MKL=/opt/intel/mkl
 ACML=/usr/local/acml
 
 ifeq ($(CC), icc)
-	OPT_FLAGS :=-O3 -fp-model precise -ansi-alias -ipo
-	PAR_FLAGS := -parallel
-	OMP_FLAGS := -openmp
+	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
+	PAR_FLAGS     := -parallel
+	OMP_FLAGS     := -openmp
 else
 	# for gcc
-	OPT_FLAGS := -O3 -ftree-vectorize -msse3 
-	PAR_FLAGS := -ftree-parallelize-loops=4
-	OMP_FLAGS := -fopenmp
+	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
+	PAR_FLAGS     := -ftree-parallelize-loops=$(NTHREADS)
+	OMP_FLAGS     := -fopenmp
 endif
 
 CFLAGS += -DTIME
