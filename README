@@ -56,14 +56,11 @@ $ make test
 * --with-isl-prefix=<location> to compile and link with an already installed 
 isl. By default, the version of isl bundled with Pluto will be used.
 
-If you do not have ICC, uncomment line 7 and comment line 8 of 
-examples/common.mk.
-
-'polycc' is the wrapper script around src/pluto (core transformer) and 
-all other components. 'polycc' runs all of these in sequence on an input 
-C program (with the section to  parallelize/optimize marked) and is what 
-a user should use on input. Output generated is OpenMP parallel C code 
-that can be readily compiled and run on shared-memory parallel machines like 
+'polycc' is the wrapper script around src/pluto (core transformer) and all 
+other components. 'polycc' runs all of these in sequence on an input C 
+program (with the section to  parallelize/optimize marked) and is what a 
+user should use on input. Output generated is OpenMP parallel C code that 
+can be readily compiled and run on shared-memory parallel machines like 
 general-purpose multicores. libpluto.{so,a} is also built and can be found 
 in src/.libs/. 'make install' will install it.
 
@@ -86,20 +83,23 @@ TRYING A NEW CODE
 - Tile sizes can be specified in a file 'tile.sizes', otherwise default 
   sizes will be set. See doc/DOC.txt on how to specify the sizes.
 
-To run a good number of experiments on a code, it is best to use the 
-setup created for example codes in the examples/ directory
+To run a good number of experiments on a code, it is best to use the setup 
+created for example codes in the examples/ directory.  If you do not have 
+ICC (Intel C compiler), uncomment line 7 and comment line 
+8 of examples/common.mk to use GCC.
 
-- Just copy one of the sample directories, edit Makefile (SRC = ), 
-  util.h, decls.h appropriately (put your problem size declarations in 
-  decls.h)
+- Just copy one of the sample directories in examples/, edit Makefile (SRC = 
+  )
 
-- Now, do a make (this will build all executables; 'orig' is the 
-  original code, 'tiled' is the tiled code, 'par' is the OpenMP 
-  parallelized+locality optimized code; 'par2d' is with two degrees of 
-  parallelism whenever it exists). One could do 'make <target>', where
-  target can be orig, orig_par, opt, tiled, tiled_par
+- do a make (this will build all executables; 'orig' is the original code 
+  compiled with the native compiler, 'tiled' is the tiled code, 'par' is the 
+  OpenMP parallelized+locality optimized code, 'lbpar' with diamond tiling 
+  when possible. One could do 'make <target>' where target can be orig, 
+  orig_par, opt, tiled, par, lbpar, etc. (see examples/common.mk for full 
+  list)
 
-- 'make test' to test for correctness
+- 'make test' to test for correctness, 'make perf', 'make lbperf' to compare 
+performance
 
 
 COMMAND-LINE OPTIONS
@@ -113,24 +113,29 @@ or see documentation (doc/DOC.txt) for details
 
 TRYING ANY INCLUDED EXAMPLE CODE
 
-Let us say we are trying the 2-d Gauss Seidel. Do a 'make par', this 
-will generate seidel.par.c from seidel.c and also compile it to generate 
-'par'. Likewise, 'make tiled' for 'tiled' and 'make orig' for the 
-'orig'.
+Lets say we are trying the 2-d gauss seidel kernel. In examples/seidel, do 
+'make par'; this will generate seidel.par.c from seidel.c and also compile 
+it to generate 'par'.  Likewise, 'make tiled' for 'tiled' and 'make orig' 
+for 'orig'.
 
 $ cd examples/seidel
 
-seidel.orig.c: This is the original code (the kernel in this code is 
-extracted)
+seidel.c: This is the original code (the kernel in this code is extracted).  
+'orig' is the corresponding executable when compiled with the native 
+compiler (gcc or icc for eg.) with optimization flags, 'orig_par' with the 
+native compiler's auto-parallelization enabled.
 
-seidel.opt.c: This is the transformed code without tiling (this is not 
-of much use, except for seeing the benefits of fusion in some cases)
+seidel.opt.c: This is the transformed code without tiling (this is of not 
+much use, except for seeing benefits of fusion in some cases). 'opt' is the 
+corresponding executable.
 
-seidel.tiled.c: This the pluto tiled code (not parallelized) generated 
-from the tool - this should be used for single core execution
+seidel.tiled.c: This is Pluto generated code optimized for locality with 
+tiling and other transformations, but not not parallelized - this should be 
+used for sequential execution. 'tiled' is the corresponding executable.
 
-seidel.par.c: This is the pluto parallelized + locality tiled code. This 
-has OpenMP pragmas and the code is L1 tiled or L1 and L2 tiled.
+seidel.par.c: This is Pluto parallelized code optimized for locality and 
+parallelism  with tiling and other transformations. This code has OpenMP 
+pragmas. 'par' is the corresponding executable.
 
 seidel.par2d.c: In this case, since we have two degrees of pipelined 
 parallelism, so the .par2d.c is the code with nested parallel OpenMP 
@@ -139,34 +144,33 @@ pragmas.
 - To change any of the flags used for an example, edit the top section 
   of examples/common.mk or the Makefile in the example directory
 
-- To manually specify tile sizes, create tile.sizes; see 
-   examples/matmul/ for example or doc/DOC.txt for more information.  
+- To manually specify tile sizes, create tile.sizes; see examples/matmul/ 
+   for example or doc/DOC.txt for more information on setting tile sizes. 
 
-- orig (orig_par is the icc auto-parallelized original code), tiled, par 
-  and par2d are corresponding executables; they already have timers; you 
-  just have to run them and that will print execution time as well
+The executables already have timers; you just have to run them and that will 
+print execution time for the core part of the computation as well.
 
-So, to run pluto parallelized version:
+To run the Pluto parallelized version:
 
-$ export OMP_NUM_THREADS=4; ./par
+$ OMP_NUM_THREADS=4; ./par
 
-To run ICC auto-parallelized version:
+To run native compiler optimized/auto-parallelized version:
 
-$ export OMP_NUM_THREADS=4; ./orig_par
+$ OMP_NUM_THREADS=4; ./orig_par
 
-To run the original unparallelized code (compiled with icc -fast)
+To run the original unparallelized code:
 
 $ ./orig
 
-To run the pluto tiled version (non-parallelized, local tiled)
+To run the locality optimized version generated by Pluto:
 
 $ ./tiled
 
-- 'make clean' in the particular example's directory removes all the 
-    executables as well as the generated codes
+- 'make clean' in the particular example's directory removes all executables 
+    as well as generated codes
 
 To launch a complete verification that compares output of tiled, par
-with orig for all examples, in the examples/ directory, run
+with orig for all examples, in examples/, run 'make test'.
 
 [examples/ ]$ make test
 
@@ -186,4 +190,4 @@ doc/DOC.txt
 CONTACT
 
 Please send all bugs reports and comments to Uday Bondhugula 
-<uday@csa.iisc.ernet.in>.
+<uday@csa.iisc.ernet.in> or post of pluto-development@googlegroups.com.

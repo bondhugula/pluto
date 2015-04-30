@@ -41,7 +41,7 @@ S_LFLAGS +=  $(MKLROOT)/lib/intel64/libmkl_scalapack_ilp64.a -Wl,--start-group  
 
 ifeq ($(CC), icc)
 	CXX           := icpc
-	OPT_FLAGS     := -O3 -fp-model precise -ansi-alias -ipo
+	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
 	OMP_FLAGS     := -openmp
 	ifeq ($(MPI), mvapich)
@@ -57,8 +57,8 @@ ifeq ($(CC), icc)
 else
 	# for gcc
 	CXX           := g++
-	OPT_FLAGS     := -O3 -ftree-vectorize -msse3 
-	PAR_FLAGS     := -ftree-parallelize-loops=4
+	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
+	PAR_FLAGS     := -ftree-parallelize-loops=$(NTHREADS)
 	OMP_FLAGS     := -fopenmp
 	ifeq ($(MPI), mvapich)
 		MPICC        := mpicc -cc=gcc -D__MPI
