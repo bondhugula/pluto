@@ -118,7 +118,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
-        prog->params[i] = NULL;
+        char *param = malloc(5);
+        sprintf(param, "p%d", i);
+        prog->params[i] = param;
     }
 
     prog->ndeps = 0;
