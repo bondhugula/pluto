@@ -1892,8 +1892,11 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
     }
 
     for (i=0; i<num; i++) {
-        assert(names[src_offset+i] != NULL);
-        cst->names[dest_offset+i] = strdup(names[src_offset+i]);
+        if (names[src_offset+i] != NULL) {
+            cst->names[dest_offset+i] = strdup(names[src_offset+i]);
+        }else{
+            cst->names[dest_offset+i] = NULL;
+        }
     }
 }
 
