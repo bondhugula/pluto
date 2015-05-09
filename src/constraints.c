@@ -44,7 +44,9 @@ PipMatrix *pip_matrix_populate(int64 **cst, int nrows, int ncols);
  * Allocate with a max size of max_rows and max_cols;
  * initialized all to zero and is_eq to 0
  *
- * nrows set to 0, and ncols to max_cols;
+ * nrows set to 0, and ncols to max_cols, i.e., the initially allocated
+ * constraints correspond to the universe (no constraints)
+ *
  * As rows are added, increase nrows
  */
 PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
@@ -58,7 +60,7 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
     cst->buf = (int64 *) malloc(size);
 
     if (cst->buf == NULL) {
-        fprintf(stderr, "[pluto] Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] ERROR: Not enough memory to allocate constraints\n");
         fprintf(stderr, "[pluto] %zd bytes needed\n", size);
         exit(1);
     }
@@ -355,7 +357,7 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
     return cst1;
 }
 
-/* Temporary data structure to compare two rows */
+/* Temporary structure to compare two rows */
 struct row_info {
     int64 *row;
     int ncols;
@@ -854,7 +856,7 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
     assert(cst->next == NULL);
 
     if (nrows == 0) {
-        printf("No constraints (%d dimensions)!\n", cst->ncols-1);
+        printf("Universal polyhedron -- No constraints (%d dimensions)!\n", cst->ncols-1);
     }
 
     for (i=0; i<nrows; i++) {
@@ -864,7 +866,7 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
                 /* constant */
                 if (cst->val[i][j] == 0 && !first) fprintf(fp, " ");
                 else fprintf(fp, "%s%lld ", 
-                        (cst->val[i][j]>=0)?"+":"", cst->val[i][j]);
+                        (cst->val[i][j]>=0 && !first)?"+":"", cst->val[i][j]);
             }else{
                 char var[6];
                 var[5] = '\0';
