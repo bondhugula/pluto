@@ -182,6 +182,121 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols
     free(newCst);
 }
 
+/*
+ * The affine form of the Farkas lemma
+ *
+ * cst is the domain on which the affine form described in phi is non-negative
+ *
+ * Returns: constraints on the variables that correspond to the columns of 
+ * \phi (each row of phi is an affine function of these variables). The output 
+ * is thus a  constraint set with phi->ncols-1 variables. Farkas multipliers 
+ * are eliminated  by Fourier-Motzkin elimination. In effect, this allows one 
+ * to linearize the constraint describing \phi.
+ *
+ * The rows of phi correspond to coefficients of variables in 'dom' in
+ * that order with the last row of phi representing the translation part of
+ * the affine form. The number of rows in phi is thus the same as the number
+ * of columns in dom (number of dom dimensions + 1).
+ *
+ * Each row of phi itself is an affine function of a set of variables
+ * (phi->ncols-1 variables); the last column corresponds to the constant.
+ *
+ * Eg:
+ * (c_1 + c_2)*i + (c_2 - c3)*j + (c1 + c2 + c3 + 1) >= 0 over a domain (dom) on
+ * (i,j), say {(i,j)| 0 <= i <= N-1 and j = i+1 }
+ *
+ * Here, phi would be
+ *
+ * [1 1 0  0] <-- i
+ * [0 1 -1 0] <-- j
+ * [1 1 1  1] <-- 1
+ *
+ * Let cst have faces (inequalities representing non-negative half-spaces) f1,
+ * f2, ..., fn
+ *
+ * The affine form of the Farkas lemma states that
+ *
+ * (c_1 + c_2)*i + (c_2 - c3)*j + (c1 + c2 + c3 + 1) = \lambda_1*f1 +
+ * \lambda_2*f2 + ... + \lambda_n*fn + \lambda_0,
+ * with all \lambda_i >= 0
+ *
+ * Eliminate Farkas multipliers by FM and return constraints in c_1, c_2, ...
+ *
+ * */
+PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi)
+{
+    int i, j;
+
+    /* Convert everything into inequalities of >= 0 form */
+    PlutoConstraints *idom = pluto_constraints_to_pure_inequalities_single(dom);
+
+    // printf("Initial constraints\n");
+    // pluto_constraints_pretty_print(stdout, idom);
+
+    // printf("phi matrix\n");
+    // pluto_matrix_print(stdout, phi);
+    
+    /* Add a trivial row (1 >= 0) for the translation Farkas
+     * multiplier (\lambda_0) so that the non-negative linear
+     * combination of the faces is modeled naturally below */
+    pluto_constraints_add_inequality(idom);
+    idom->val[idom->nrows-1][idom->ncols-1] = 1;
+
+    assert(phi->nrows == idom->ncols);
+
+    /*
+     * Farkas space
+     * idom->ncols equalities (one for each of the idom->ncols-1 variables)
+     * and one for the constant part, followed by idom->nrows constraints for
+     * the farkas multipliers *
+     * idom->nrows is the number of Farkas multipliers
+     * format: [phi->ncols-1 vars, idom->nrows farkas multipliers, const]
+     * the translation farkas multiplier appears last
+     *
+     *    Eg: [c_1, c_2, c_3, l_1, l_2, ..., l_n, l_0, 1]
+     */
+    PlutoConstraints *farkas = pluto_constraints_alloc(
+            idom->ncols+idom->nrows, phi->ncols+idom->nrows);
+    farkas->nrows = idom->ncols+idom->nrows;
+
+    int farkas_offset = phi->ncols-1;
+    /* First idom->ncols equalities */
+    for (i=0; i<idom->ncols; i++) {
+        farkas->is_eq[i] = 1;
+        for (j=0; j<phi->ncols-1; j++) {
+            farkas->val[i][j] = phi->val[i][j];
+        }
+        for (j=0; j<idom->nrows; j++) {
+            farkas->val[i][farkas_offset+j] = -idom->val[j][i];
+        }
+        farkas->val[i][farkas_offset + idom->nrows+1] = phi->val[i][phi->ncols-1];
+    }
+
+    /* All farkas multipliers are non-negative */
+    for (j=0; j<idom->nrows; j++) {
+        farkas->is_eq[idom->ncols+j] = 0;
+        farkas->val[idom->ncols+j][farkas_offset + j] = 1;
+    }
+
+    // printf("After equating both sides\n");
+    // pluto_constraints_pretty_print(stdout, farkas);
+    for (i=0; i<idom->nrows; i++) {
+        int best_elim = pluto_constraints_best_elim_candidate(farkas, idom->nrows-i);
+        fourier_motzkin_eliminate(farkas, best_elim);
+        // printf("After eliminating %d multiplier\n", i);
+        // printf("%d rows\n", farkas->nrows);
+        // pluto_constraints_pretty_print(stdout, farkas);
+    }
+    assert(farkas->ncols == phi->ncols);
+    
+    // printf("After farkas multiplier elimination\n");
+    // pluto_constraints_pretty_print(stdout, farkas);
+
+    pluto_constraints_free(idom);
+
+    return farkas;
+}
+
 
 /* Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself; only for
  * single element list. Multiple elements doesn't make sense; you may want to

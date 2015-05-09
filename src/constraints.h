@@ -177,4 +177,6 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
+PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
+
 #endif
