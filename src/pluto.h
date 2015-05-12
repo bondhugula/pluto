@@ -450,7 +450,6 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt, const PlutoConstra
 
 int generate_declarations(const PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cloogfp, FILE *outfp);
-Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *text, PlutoStmtType type, int ploop_num);
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatrix *trans,
         char ** iterators, const char *text, PlutoStmtType type);
@@ -507,6 +506,8 @@ Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
         const Stmt *stmt);
+int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop);
 int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
         const Ploop *loop);
 int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
