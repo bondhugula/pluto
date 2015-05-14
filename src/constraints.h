@@ -82,6 +82,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst);
 
 int64 *pluto_constraints_lexmin(const PlutoConstraints *,int);
 int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
+int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
 void pluto_constraints_add_inequality(PlutoConstraints *cst);
 void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos, const char *name);
@@ -179,4 +180,6 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
+PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
+
 #endif

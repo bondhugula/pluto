@@ -3,6 +3,8 @@
 #include "isl/union_set.h"
 #include "isl/union_map.h"
 
+#include "osl/scop.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
