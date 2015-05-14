@@ -64,5 +64,5 @@ int main() {
 
     isl_ctx_free(ctx);
 
-    // another();
+    another();
 }
