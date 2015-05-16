@@ -348,7 +348,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If code will not be tiled, pre-vectorization does not make
          * sense */
         if (!options->silent)   {
-            IF_DEBUG(fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n"););
+            IF_DEBUG(fprintf(stdout, "[pluto] Turning off pre-vectorization (--tile is off)\n"););
         }
         options->prevector = 0;
     }
@@ -452,11 +452,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     
    
     if (!options->silent)   {
-        fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
-        fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
-        fprintf(stdout, "[Pluto] Number of deps: %d\n", prog->ndeps);
-        fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
-        fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
+        fprintf(stdout, "[pluto] Number of statements: %d\n", prog->nstmts);
+        fprintf(stdout, "[pluto] Total number of loops: %d\n", dim_sum);
+        fprintf(stdout, "[pluto] Number of deps: %d\n", prog->ndeps);
+        fprintf(stdout, "[pluto] Maximum domain dimensionality: %d\n", prog->nvar);
+        fprintf(stdout, "[pluto] Number of parameters: %d\n", prog->npar);
     }
 
     if (options->iss) {
@@ -485,7 +485,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
-        fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
+        fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
@@ -511,9 +511,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If the user hasn't supplied --tile and there is only pipelined
          * parallelism, we will warn the user */
         if (retval)   {
-            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("use --tile for better parallelization \n");
-            IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
+            IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             IF_DEBUG(pluto_print_hyperplane_properties(prog););
         }
