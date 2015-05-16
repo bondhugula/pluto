@@ -777,8 +777,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     parm.presolve = GLP_ON;
 
     parm.msg_lev = GLP_MSG_OFF;
-    IF_DEBUG(parm.msg_lev = GLP_MSG_ON;);
-    IF_MORE_DEBUG(parm.msg_lev = GLP_MSG_ALL;);
+    IF_DEBUG(parm.msg_lev = GLP_MSG_ALL;);
 
     glp_prob *lp = glp_create_prob();
 
@@ -786,7 +785,12 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
 
     glp_scale_prob(lp, GLP_SF_AUTO);
     glp_adv_basis(lp, 0);
-    glp_simplex(lp, &parm);
+    int lp_retval = glp_simplex(lp, &parm);
+
+    if (lp_retval) {
+        fprintf(stderr, "GLPK LP failure\n");
+        assert(0);
+    }
 
     int lp_status = glp_get_status(lp);
 
@@ -803,10 +807,14 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
 
     iocp.msg_lev = GLP_MSG_OFF;
-    IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
-    IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
+    IF_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
 
-    glp_intopt(lp, &iocp);
+    int ilp_retval = glp_intopt(lp, &iocp);
+
+    if (ilp_retval) {
+        fprintf(stderr, "GLPK Int Opt failure\n");
+        assert(0);
+    }
 
     int ilp_status = glp_mip_status(lp);
 
