@@ -181,18 +181,18 @@ void dfs_for_scc(Graph *g)
             g->sccs[numScc].id = numScc;
             dfs_vertex (g, &g->vertices[vCopy[i].id], &time);
 
-            IF_DEBUG(printf("SCC %d: Stmts: ", numScc));
+            IF_MORE_DEBUG(printf("[pluto] dfs_for_scc: SCC %d: Stmt ids: ", numScc));
             for (j=0; j<g->nVertices; j++) {
                 if (g->vertices[j].scc_id == -1 && g->vertices[j].vn > 0) {
                     g->vertices[j].scc_id = numScc;
-                    IF_DEBUG(printf(" %d", g->vertices[j].id));
+                    IF_MORE_DEBUG(printf(" %d", g->vertices[j].id));
                 }
             }
-            IF_DEBUG(printf("\n"));
+            IF_MORE_DEBUG(printf("\n"));
             numScc++;
         }
     }
-    IF_DEBUG(printf("\n\n"));
+    IF_MORE_DEBUG(printf("\n\n"));
 
     g->num_sccs = numScc;
 
