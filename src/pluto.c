@@ -1717,7 +1717,7 @@ int pluto_auto_transform(PlutoProg *prog)
         num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
                 loop_search_mode, num_sols_left);
 
-        IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
+        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: level %d; %d hyperplane(s) found\n",
                     depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
@@ -1741,7 +1741,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
             ddg_compute_scc(prog);
 
-            if (ddg->num_sccs >= 2) {
+            if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
                 if (options->fuse == NO_FUSE)  {
                     /* No fuse */
                     cut_all_sccs(prog, ddg);
@@ -1754,7 +1754,8 @@ int pluto_auto_transform(PlutoProg *prog)
                     else cut_conservative(prog, ddg);
                 }
             }else{
-                /* Only one SCC */
+                /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
+                 * deps, and no solutions found  */
                 if (lin_ind_mode == EAGER)   {
                     IF_DEBUG(printf("Switching to LAZY mode\n"););
                     lin_ind_mode = LAZY;
@@ -1763,23 +1764,20 @@ int pluto_auto_transform(PlutoProg *prog)
                     /* LAZY mode */
                     assert(lin_ind_mode == LAZY);
                     /* There is a problem; solutions should have been found */
-                    if (options->debug) {
+                    if (options->debug || options->moredebug) {
                         printf("Number of unsatisfied deps: %d\n", 
                                 get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-                        printf("Number of unsatisfied inter-stmt deps: %d\n", 
-                                get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
-                        IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
-                        fprintf(stderr, "[Pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
+                        printf("Number of unsatisfied inter-scc deps: %d\n", 
+                                get_num_unsatisfied_inter_scc_deps(prog));
+                        fprintf(stderr, "[pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
                         fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
                         fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
                         fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
-                        fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
+                        fprintf(stderr, "\tTransformation found so far:\n");
                         pluto_transformations_pretty_print(prog);
-                        pluto_compute_dep_directions(prog);
-                        pluto_print_dep_directions(prog);
                     }
                     denormalize_domains(prog);
-                    printf("[Pluto] WARNING: working with original (identity) transformation (if they exist)\n");
+                    printf("[pluto] WARNING: working with original (identity) transformation (if they exist)\n");
                     /* Restore original ones */
                     for (i=0; i<nstmts; i++) {
                         stmts[i]->trans = orig_trans[i];
@@ -1796,7 +1794,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
 
     if (options->lbtile && !conc_start_found) {
-        printf("[Pluto] Diamond tiling not possible/useful\n");
+        PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
     }
 
     denormalize_domains(prog);
@@ -1847,6 +1845,24 @@ int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps)
 
 }
 
+int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog)
+{
+    int i;
+
+    int count = 0;
+    for (i=0; i<prog->ndeps; i++) {
+        Dep *dep = prog->deps[i];
+        if (IS_RAR(dep->type))   continue;
+        Stmt *src_stmt = prog->stmts[dep->src];
+        Stmt *dest_stmt = prog->stmts[dep->dest];
+        if (src_stmt->scc_id != dest_stmt->scc_id && !dep->satisfied)  {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 
 void ddg_print(Graph *g)
 {
@@ -1860,6 +1876,8 @@ void ddg_update(Graph *g, PlutoProg *prog)
 {
     int i, j;
     Dep *dep;
+
+    IF_DEBUG(printf("[pluto] updating DDG\n"););
 
     for (i=0; i<g->nVertices; i++) 
         for (j=0; j<g->nVertices; j++)
@@ -1936,6 +1954,8 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;
+
+    IF_DEBUG(printf("[pluto] ddg_compute_scc\n"););
 
     Graph *g = prog->ddg;
 
