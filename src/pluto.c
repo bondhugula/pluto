@@ -1240,10 +1240,13 @@ void pluto_print_dep_directions(PlutoProg *prog)
 }
 
 
-/* Pad statement domains to maximum domain depth to make it easier to construct
- * scheduling constraints. These will be removed before autopoly returns.
- * Also, corresponding dimensions from ILP space will be removed before ILP
- * calls
+/* 
+ * 1. Pad statement domains to maximum domain depth to make it easier to construct
+ * scheduling constraints. These will be removed before the actual ILP
+ * runs, and just before pluto_auto_transform returns
+ *
+ * 2. Pre-process dependence domains to allow a single affine bounding
+ * expression to be constructed. Fix this implementation (too brittle).
  */
 void normalize_domains(PlutoProg *prog)
 {
@@ -1270,6 +1273,7 @@ void normalize_domains(PlutoProg *prog)
     int count=0;
     if (npar >= 1)	{
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
+        pluto_constraints_set_names(context, prog->params);
         for (i=0; i<prog->nstmts; i++)    {
             PlutoConstraints *copy = pluto_constraints_dup(prog->stmts[i]->domain);
             for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
@@ -1288,8 +1292,8 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_simplify(context);
         if (options->debug) {
-            printf("[Pluto] Global constraint context\n");
-            pluto_constraints_compact_print(stdout, context );
+            printf("[pluto] parameter context from domains\n");
+            pluto_constraints_compact_print(stdout, context);
         }
 
         /* Add context to every dep polyhedron */
@@ -1314,7 +1318,6 @@ void normalize_domains(PlutoProg *prog)
         IF_DEBUG(printf("No global context\n"));
     }
 
-
     /* Add padding dimensions to statement domains */
     for (i=0; i<prog->nstmts; i++)    {
         Stmt *stmt = prog->stmts[i];
@@ -1324,7 +1327,6 @@ void normalize_domains(PlutoProg *prog)
             pluto_sink_statement(stmt, stmt->dim, 0, prog);
         }
     }
-
 
     for (i=0; i<prog->ndeps; i++)    {
         Dep *dep = prog->deps[i];
@@ -1447,7 +1449,7 @@ int find_cone_complement_hyperplane(int evict_pos,
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
-    IF_DEBUG(printf("[Pluto] finding cone complement hyperplane\n"););
+    IF_DEBUG(printf("[pluto] finding cone complement hyperplane\n"););
 
     int64 *bestsol;
     PlutoConstraints *con_start_cst, *lastcst;
@@ -1522,9 +1524,9 @@ int find_cone_complement_hyperplane(int evict_pos,
 
     /* pluto_constraints_lexmin is being called directly */
     if (bestsol == NULL) {
-        printf("[Pluto] No concurrent start possible\n");
+        printf("[pluto] No concurrent start possible\n");
     }else{
-        IF_DEBUG(printf("[Pluto] Concurrent start possible\n"););
+        IF_DEBUG(printf("[pluto] Concurrent start possible\n"););
         for (j=0; j<nstmts; j++) {
             cone_complement_hyps[j] =
                 pluto_matrix_alloc(1, stmts[j]->dim+npar+1);
@@ -1617,9 +1619,12 @@ static void swap_hyperplanes(int64 *h1, int64 *h2, int ncols)
 }
 #endif
 
-
-
-/* Top-level automatic transformation algoritm */
+/* 
+ * Top-level automatic transformation algoritm 
+ *
+ * All dependences are reset to unsatisfied before starting
+ *
+ */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
     int nsols, i, j, conc_start_found, depth;
@@ -1645,24 +1650,28 @@ int pluto_auto_transform(PlutoProg *prog)
 
     if (nstmts == 0)  return 0;
 
-    normalize_domains(prog);
-
     PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
+    PlutoHypType **orig_hyp_types = malloc(nstmts*sizeof(PlutoHypType *));
     int orig_num_hyperplanes = prog->num_hyperplanes;
     HyperplaneProperties *orig_hProps = prog->hProps;
-
-    lin_ind_mode = EAGER;
-    loop_search_mode = EAGER;
 
     /* Get rid of any existing transformation */
     for (i=0; i<nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
         /* Save the original transformation */
         orig_trans[i] = stmt->trans;
+        orig_hyp_types[i] = stmt->hyp_types;
         /* Pre-allocate a little more to prevent frequent realloc */
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
+        stmt->hyp_types = NULL;
     }
+
+    normalize_domains(prog);
+
+    lin_ind_mode = EAGER;
+    loop_search_mode = EAGER;
+
     prog->num_hyperplanes = 0;
     prog->hProps = NULL;
 
@@ -1673,17 +1682,17 @@ int pluto_auto_transform(PlutoProg *prog)
         nsols = PLMAX(nsols, stmts[i]->dim);
     }
 
-    num_ind_sols = 0;
-    depth=0;
+    depth = 0;
 
     if (precut(prog, ddg, depth))   {
         /* Distributed based on .fst or .precut file (customized user-supplied
          * fusion structure */
         num_ind_sols = pluto_get_max_ind_hyps(prog);
-        printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
+        printf("[pluto] Forced custom fusion structure from .fst/.precut\n");
         IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
                     num_ind_sols));
     }else{
+        num_ind_sols = 0;
         if (options->fuse == SMART_FUSE)    {
             cut_scc_dim_based(prog,ddg);
         }
@@ -1781,6 +1790,7 @@ int pluto_auto_transform(PlutoProg *prog)
                     /* Restore original ones */
                     for (i=0; i<nstmts; i++) {
                         stmts[i]->trans = orig_trans[i];
+                        stmts[i]->hyp_types = orig_hyp_types[i];
                         prog->num_hyperplanes = orig_num_hyperplanes;
                         prog->hProps = orig_hProps;
                     }
@@ -1801,9 +1811,11 @@ int pluto_auto_transform(PlutoProg *prog)
 
     for (i=0; i<nstmts; i++)    {
         pluto_matrix_free(orig_trans[i]);
+        free(orig_hyp_types[i]);
     }
     free(orig_trans);
-    if (orig_hProps) free(orig_hProps);
+    free(orig_hyp_types);
+    free(orig_hProps);
 
     return 0;
 }
@@ -2169,7 +2181,7 @@ int pluto_diamond_tile(PlutoProg *prog)
          * was found, store the replaced hyperplane so that it can be 
          * put back for the right intra-tile order */
         if (conc_start_found_band) {
-            IF_DEBUG(printf("[Pluto] Transformations before concurrent start enable\n")); 
+            IF_DEBUG(printf("[pluto] Transformations before concurrent start enable\n")); 
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             for (i=0; i<band->loop->nstmts; i++){
                 Stmt *stmt = band->loop->stmts[i];
@@ -2182,8 +2194,8 @@ int pluto_diamond_tile(PlutoProg *prog)
                         cone_complement_hyps[stmt->id]->val[0], stmt->trans->ncols);
             }
             prog->evicted_hyp_pos = evict_pos;
-            PLUTO_MESSAGE(printf("[Pluto] Concurrent start hyperplanes found\n"););
-            IF_DEBUG(printf("[Pluto] Transformations after concurrent start enable\n")); 
+            PLUTO_MESSAGE(printf("[pluto] Concurrent start hyperplanes found\n"););
+            IF_DEBUG(printf("[pluto] Transformations after concurrent start enable\n")); 
             IF_DEBUG(pluto_transformations_pretty_print(prog););
         }
 
