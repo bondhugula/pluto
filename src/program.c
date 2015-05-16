@@ -1875,6 +1875,7 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     /* suffix the destination iterators with a '*/
     char **dnames = malloc(stmts[dep->dest]->dim*sizeof(char *));
     for (j=0; j<stmts[dep->dest]->dim; j++) {
+        assert(stmts[dep->dest]->iterators[j] != NULL);
         dnames[j] = malloc(strlen(stmts[dep->dest]->iterators[j])+2);
         strcpy(dnames[j], stmts[dep->dest]->iterators[j]);
         strcat(dnames[j], "'");
@@ -4009,83 +4010,6 @@ PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num)
     return accs;
 }
 
-/* Temporary data structure used inside extra_stmt_domains
- *
- * stmts points to the array of Stmts being constructed
- * index is the index of the next stmt in the array
- */
-struct pluto_extra_stmt_info {
-    Stmt **stmts;
-    int index;
-};
-
-static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
-{
-    Stmt **stmts;
-    Stmt *stmt;
-    PlutoConstraints *bcst;
-    struct pluto_extra_stmt_info *info;
-
-    info = (struct pluto_extra_stmt_info *)user;
-
-    stmts = info->stmts;
-    stmt = stmts[info->index];
-
-    bcst = isl_basic_set_to_pluto_constraints(bset);
-    if (stmt->domain) {
-        stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
-        pluto_constraints_free(bcst);
-    }else{
-        stmt->domain = bcst;
-    }
-
-    isl_basic_set_free(bset);
-    return 0;
-}
-
-static int extract_stmt(__isl_take isl_set *set, void *user)
-{
-    int r;
-    Stmt **stmts;
-    int id;
-
-    stmts = (Stmt **) user;
-
-    int dim = isl_set_dim(set, isl_dim_all);
-    int npar = isl_set_dim(set, isl_dim_param);
-    PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, dim+1);
-    pluto_matrix_set(trans, 0);
-    trans->nrows = 0;
-
-    id = atoi(isl_set_get_tuple_name(set)+2);
-
-    stmts[id] = pluto_stmt_alloc(dim-npar, NULL, trans);
-
-    Stmt *stmt = stmts[id];
-    stmt->type = ORIG;
-    stmt->id = id;
-
-    struct pluto_extra_stmt_info info = {stmts, id};
-    r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
-
-    pluto_matrix_free(trans);
-
-    int j;
-    for (j=0; j<stmt->dim; j++)  {
-        stmt->is_orig_loop[j] = true;
-    }
-
-    isl_set_free(set);
-
-    return r;
-}
-
-int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
-{
-    isl_union_set_foreach_set(domains, &extract_stmt, stmts);
-
-    return 0;
-}
 
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
 {

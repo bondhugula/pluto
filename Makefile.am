@@ -55,7 +55,7 @@ pclean:
 	$(MAKE) -C src clean
 
 test_libpluto: src/test_libpluto.c
-	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -lpluto -lgomp -o test_libpluto
+	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
 
 test: .PHO
 
@@ -64,3 +64,4 @@ test: .PHO
 	./test.sh --tile --parallel
 	./test.sh --maxfuse
 	./test.sh --nofuse
+	./test.sh --iss
