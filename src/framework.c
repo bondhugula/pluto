@@ -50,11 +50,10 @@
  * nvar - number of parameters in whole program
  */
 
-/* Builds validity constraints for a dependence */
+/* Builds validity and bounding function constraints for a dependence */
 static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 {
-    PlutoConstraints *cst;
-    PlutoConstraints *tiling_valid_cst, *bounding_func_cst;
+    PlutoConstraints *cst, *tiling_valid_cst, *bounding_func_cst;
     int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
     int src_offset, dest_offset;
     PlutoMatrix *phi;
@@ -71,8 +70,6 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     dest_stmt = dep->dest;
     src_stmt = dep->src;
-
-    IF_MORE_DEBUG(printf("[pluto] compute permutability constraints: Dep %d\n", dep->id+1););
 
     /* Convert everything to >= 0 form */
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
@@ -154,6 +151,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         for (r=2*nvar; r<2*nvar+npar; r++) {
             /* for u */
             phi->val[r][r-2*nvar] = 1;
+            /* No parametric shift coefficients */
         }
         /* Statement's translation coefficients cancel out */
 
@@ -170,44 +168,43 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     /* Aggregate permutability and bounding function constraints together in
      * global format */
 
-    /* Initialize everything to zero */
+    /* Everything initialized to zero during allocation */
     cst = pluto_constraints_alloc(tiling_valid_cst->nrows + bounding_func_cst->nrows, CST_WIDTH);
+    cst->nrows = 0;
     cst->ncols = CST_WIDTH;
-
-    for (k=0; k<tiling_valid_cst->nrows+bounding_func_cst->nrows; k++)   {
-        for (j=0; j<cst->ncols; j++)  {
-            cst->val[k][j] = 0;
-        }
-    }
 
     src_offset = npar+1+src_stmt*(nvar+1);
     dest_offset = npar+1+dest_stmt*(nvar+1);
 
     /* Permutability constraints */
     if (!IS_RAR(dep->type)) {
-        for (k=0; k<tiling_valid_cst->nrows; k++)   {
+        /* Permutability constraints only for non-RAR deps */
+        for (k=0; k<tiling_valid_cst->nrows; k++) {
+            cst->is_eq[k] = tiling_valid_cst->is_eq[k];
             for (j=0; j<nvar+1; j++)  {
-                cst->val[cst->nrows+k][src_offset+j] = tiling_valid_cst->val[k][j];
+                cst->val[k][src_offset+j] = tiling_valid_cst->val[k][j];
                 if (src_stmt != dest_stmt) {
-                    cst->val[cst->nrows+k][dest_offset+j] = tiling_valid_cst->val[k][nvar+1+j];
+                    cst->val[k][dest_offset+j] = tiling_valid_cst->val[k][nvar+1+j];
                 }
             }
             /* constant part */
-            if (src_stmt == dest_stmt)  {
-                cst->val[cst->nrows+k][cst->ncols-1] = tiling_valid_cst->val[k][nvar+1];
+            if (src_stmt == dest_stmt) {
+                cst->val[k][cst->ncols-1] = tiling_valid_cst->val[k][nvar+1];
             }else{
-                cst->val[cst->nrows+k][cst->ncols-1] = tiling_valid_cst->val[k][2*nvar+2];
+                cst->val[k][cst->ncols-1] = tiling_valid_cst->val[k][2*nvar+2];
             }
         }
         cst->nrows = tiling_valid_cst->nrows;
     }
 
+    /* Bounding constraints */
     if (!options->nodepbound)   {
         /* Add bounding constraints */
         src_offset = npar+1+src_stmt*(nvar+1);
         dest_offset = npar+1+dest_stmt*(nvar+1);
 
         for (k=0; k<bounding_func_cst->nrows; k++)   {
+            cst->is_eq[cst->nrows+k] = bounding_func_cst->is_eq[k];
             for (j=0; j<npar+1; j++)  {
                 cst->val[cst->nrows+k][j] = bounding_func_cst->val[k][j];
             }
@@ -218,7 +215,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
                 }
             }
             /* constant part */
-            if (src_stmt == dest_stmt)  {
+            if (src_stmt == dest_stmt) {
                 cst->val[cst->nrows+k][cst->ncols-1] = bounding_func_cst->val[k][npar+1+nvar+1];
             }else{
                 cst->val[cst->nrows+k][cst->ncols-1] = bounding_func_cst->val[k][npar+1+2*nvar+2];
@@ -227,11 +224,10 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         cst->nrows += bounding_func_cst->nrows;
     }
 
-
-    /* Coefficients of those variables that don't appear in the outer loop
-     * are useless */
+    /* Coefficients of those dimensions that were adding for padding
+     * are of no utility */
     for (k=0; k<nvar; k++)    {
-        if (!stmts[src_stmt]->is_orig_loop[k])  {
+        if (!stmts[src_stmt]->is_orig_loop[k]) {
             for (j=0; j < cst->nrows; j++)   {
                 cst->val[j][src_offset+k] = 0;
             }
@@ -245,37 +241,28 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     PlutoConstraints *bounding_cst = NULL;
 
-    /* Copy only the bounding constraints */
+    /* Copy the bounding constraints into the global format */
     if (!options->nodepbound) {
-
-		bounding_cst = pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH);
-		bounding_cst->ncols = CST_WIDTH;
-		bounding_cst->nrows = bounding_func_cst->nrows;
-
-		for (k=0; k<bounding_func_cst->nrows; k++)   {
-			for (j=0; j<(bounding_cst)->ncols; j++)  {
-				(bounding_cst)->val[k][j] = 0;
-			}
-		}
-
-		assert(cst->ncols == bounding_cst->ncols);
-
-		for (k=0; k<bounding_func_cst->nrows; k++)   {
-			for (j=0; j<bounding_cst->ncols; j++)  {
-				bounding_cst->val[k][j] = cst->val[tiling_valid_cst->nrows+k][j];
-			}
-		}
+        bounding_cst = pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH);
+        for (k=0; k<bounding_func_cst->nrows; k++)   {
+            for (j=0; j<bounding_cst->ncols; j++)  {
+                bounding_cst->val[k][j] = cst->val[tiling_valid_cst->nrows+k][j];
+            }
+        }
+        bounding_cst->nrows = bounding_func_cst->nrows;
     }
+
+    pluto_constraints_free(dep->bounding_cst);
+    dep->bounding_cst = bounding_cst;
+
+    pluto_constraints_free(dep->cst);
+    dep->cst = cst;
 
     pluto_constraints_free(tiling_valid_cst);
     pluto_constraints_free(bounding_func_cst);
 
-    free(dep->valid_cst);
-    dep->valid_cst = cst;
-
-    free(dep->bounding_cst);
-    dep->bounding_cst = bounding_cst;
 }
+
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
@@ -300,15 +287,15 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             continue;
         }
 
-        if (dep->valid_cst == NULL) {
-            /* First time, get the constraints */
+        if (dep->cst == NULL) {
+            /* First time, compute the constraints */
             compute_permutability_constraints_dep(dep, prog);
 
-            IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", 
-                        i+1, dep->valid_cst->nrows));
-            total_cst_rows += dep->valid_cst->nrows;
+            IF_DEBUG(fprintf(stdout, "For dep: %d; num_constraints: %d\n", 
+                        i+1, dep->cst->nrows));
+            total_cst_rows += dep->cst->nrows;
             // IF_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
-            // IF_DEBUG(pluto_constraints_pretty_print(stdout, dep->valid_cst));
+            // IF_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
         }
     }
 
@@ -327,9 +314,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
 		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
-        if (options->rar == 0 && IS_RAR(dep->type))  {
-            continue;
-        }
+        if (options->rar == 0 && IS_RAR(dep->type)) continue;
 
         /* For debugging (skip deps listed here) */
         FILE *fp = fopen("skipdeps.txt", "r");
@@ -365,8 +350,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         }
 
         /* Subsequent calls can just use the old ones */
-        pluto_constraints_add(globcst, dep->valid_cst);
-        /* print_polylib_visual_sets("global", dep->valid_cst); */
+        pluto_constraints_add(globcst, dep->cst);
+        /* print_polylib_visual_sets("global", dep->cst); */
 
         IF_DEBUG(fprintf(stdout, "After dep: %d; num_constraints: %d\n", i+ 1,
                     globcst->nrows));
@@ -378,7 +363,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
          * because it leads to a large globcst and a number of constraits in
          * it are redundant */
         if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
-                globcst->nrows - dep->valid_cst->nrows < 
+                globcst->nrows - dep->cst->nrows < 
                 CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
             pluto_constraints_simplify(globcst);
             IF_DEBUG(fprintf(stdout,
@@ -394,7 +379,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
-    IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
+    // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
     return globcst;
 }

@@ -1394,7 +1394,7 @@ void pluto_dep_free(Dep *dep)
     if (dep->dirvec) {
         free(dep->satvec);
     }
-    pluto_constraints_free(dep->valid_cst);
+    pluto_constraints_free(dep->cst);
     pluto_constraints_free(dep->bounding_cst);
     free(dep);
 }
@@ -2946,7 +2946,7 @@ Dep *pluto_dep_alloc()
     dep->dirvec = NULL;
     dep->src_acc = NULL;
     dep->dest_acc = NULL;
-    dep->valid_cst = NULL;
+    dep->cst = NULL;
     dep->bounding_cst = NULL;
     dep->src_unique_dpolytope = NULL;
 
@@ -2976,7 +2976,7 @@ Dep *pluto_dep_dup(Dep *d)
     dep->satisfied = d->satisfied;
     dep->satisfaction_level = d->satisfaction_level;
     dep->dirvec = NULL; // TODO
-    dep->valid_cst = d->valid_cst? pluto_constraints_dup(d->valid_cst): NULL;
+    dep->cst = d->cst? pluto_constraints_dup(d->cst): NULL;
     dep->bounding_cst = d->bounding_cst? pluto_constraints_dup(d->bounding_cst): NULL;
 
     return dep;

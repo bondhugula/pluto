@@ -198,10 +198,11 @@ struct dependence{
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
 
-    /* Constraints for validity of a transformation */
-    PlutoConstraints *valid_cst;
+    /* Constraints for preserving this dependence while bounding 
+     * its distance */
+    PlutoConstraints *cst;
 
-    /* Constraints for bounding the dependence distance */
+    /* Constraints for bounding dependence distance */
     PlutoConstraints *bounding_cst;
 
     /* Dependence direction in transformed space */
