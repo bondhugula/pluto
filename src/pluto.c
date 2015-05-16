@@ -44,6 +44,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
+int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
 int pluto_diamond_tile(PlutoProg *prog);
 
@@ -60,11 +61,14 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
 
     num_new_carried = 0;
 
+    IF_DEBUG(printf("[pluto] dep_satisfaction_update\n"););
+
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
-        if (!dep_is_satisfied(dep))   {
+        if (!dep_is_satisfied(dep)) {
             dep->satisfied = dep_satisfaction_test(dep, prog, level);
-            if (dep->satisfied)    { 
+            if (dep->satisfied) {
+                IF_MORE_DEBUG(printf("[pluto] dep_satisfaction_update: dep %d satisfied\n", i+1););
                 if (!IS_RAR(dep->type)) num_new_carried++;
                 dep->satisfaction_level = level;
             }
@@ -74,7 +78,6 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
     return num_new_carried;
 }
 
-
 /* Check whether all deps are satisfied */
 int deps_satisfaction_check(Dep **deps, int ndeps)
 {
@@ -82,7 +85,7 @@ int deps_satisfaction_check(Dep **deps, int ndeps)
 
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i]->type)) continue;
-        if (!dep_is_satisfied(deps[i]))    {
+        if (!dep_is_satisfied(deps[i])) {
             return false;
         }
     }
@@ -354,13 +357,12 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     }
 
 
+        
     /* Reverse the variable order for stmts */
     PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);
     PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
 
-    for (i=0; i<newcst->ncols; i++) {
-        bzero(perm_mat->val[i], sizeof(int64)*newcst->ncols);
-    }
+    pluto_matrix_set(perm_mat, 0);
 
     for (i=0; i<npar+1; i++) {
         perm_mat->val[i][i] = 1;
@@ -388,11 +390,12 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
     PlutoConstraints *newcst_permuted;
-    newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
+    newcst_permuted = pluto_constraints_from_mixed_matrix(newcstmat, newcst->is_eq);
     pluto_matrix_free(newcstmat);
 
-    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
+    IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
+    /* Solve the constraints */
     sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
@@ -677,7 +680,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     PlutoConstraints ***orthcst;
     Stmt **stmts;
 
-    IF_DEBUG(printf("[Pluto] get_linear_ind_constraints\n"););
+    IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
 
     npar = prog->npar;
     nvar = prog->nvar;
@@ -758,7 +761,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(fprintf(stdout, "Finding hyperplanes: max %d\n", max_sols));
+    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d\n", max_sols));
 
     assert(max_sols >= 0);
 
@@ -782,6 +785,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         pluto_constraints_free(nzcst);
 
         PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, lin_ind_mode);
+        // print_polylib_visual_sets("ind", indcst);
+        IF_DEBUG2(printf("linear independence constraints\n"));
+        IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
 
         if (indcst->nrows == 0) {
             /* If you don't have any independence constraints, we would end up finding
@@ -790,14 +796,14 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
             bestsol = NULL;
         }else{
             pluto_constraints_add(currcst, indcst);
-            IF_DEBUG2(printf("Solving for %d solution\n", num_sols_found+1));
+            IF_DEBUG(printf("[pluto] Solving for hyperplane #%d\n", num_sols_found+1));
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
         pluto_constraints_free(indcst);
 
         if (bestsol != NULL)    {
-            IF_DEBUG(fprintf(stdout, "Found a hyperplane\n"));
+            IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
             num_sols_found++;
 
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
@@ -822,6 +828,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
             }
             free(bestsol);
+        }else{
+            IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: No hyperplane found\n"));
         }
     }while (num_sols_found < max_sols && bestsol != NULL);
 
@@ -1053,7 +1061,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
 
-    IF_DEBUG(printf("[Pluto] pluto_detect_transformation_properties\n"););
+    IF_DEBUG(printf("[pluto] pluto_detect_transformation_properties\n"););
 
     if (prog->nstmts == 0) return;
 
@@ -1115,7 +1123,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    fprintf(stderr, "[Pluto] Unfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stderr, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
                     fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
@@ -1202,6 +1210,7 @@ void pluto_print_dep_directions(PlutoProg *prog)
         for (j=0; j<nlevels; j++) {
             printf("%c, ", deps[i]->dirvec[j]);
         }
+        assert(deps[i]->satvec != NULL);
         printf(") satisfied: %s, satvec: (", 
                 deps[i]->satisfied? "yes":"no");
         for (j=0; j<nlevels; j++) {
