@@ -23,6 +23,8 @@ test/test8.c \
 test/tricky1.c \
 test/tricky2.c \
 test/tricky3.c \
+test/tricky4.c \
+test/ludcmp.c \
 test/tce-4index-transform.c"
 
 for file in $TESTS; do

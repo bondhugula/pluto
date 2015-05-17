@@ -1352,8 +1352,9 @@ void normalize_domains(PlutoProg *prog)
         Dep *dep = prog->deps[k];
         PlutoConstraints *dpoly = dep->dpolytope;
 
-        int j;
         bzero(neg, npar*sizeof(bool));
+
+        if (dpoly->nrows == 0) continue;
 
         for (j=2*nvar; j<2*nvar+npar; j++)  {
             int min = dpoly->val[0][j];
