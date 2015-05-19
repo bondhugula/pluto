@@ -161,7 +161,7 @@ int num_inter_stmt_deps (Dep *deps, int ndeps)
     count=0;
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i].type)) continue;
-        if (deps[i].src != deps[i].dest)    {
+        if (deps[i].src != deps[i].dest) {
             count++;
         }
     }
@@ -243,12 +243,63 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 }
 
 /**
+ * Bounds for Pluto ILP variables
+ */
+static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients (all non-negative) */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients (all non-negative) */
+    for (i=0; i<cst->ncols-npar-1-1; i++)  {
+        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+i, 0);
+    }
+
+    if (options->coeff_bound != -1) {
+        for (i=0; i<cst->ncols-npar-1-1; i++)  {
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
+            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
+        }
+    }else{
+        /* Add upper bounds for transformation coefficients */
+        int ub = pluto_prog_get_largest_const_in_domains(prog);
+
+        /* Putting too small an upper bound can prevent useful transformations;
+         * also, note that an upper bound is added for all statements globally due
+         * to the lack of an easy way to determine bounds for each coefficient to
+         * prevent spurious transformations that involve shifts proportional to
+         * loop bounds
+         */
+        if (ub >= 10)   {
+            for (i=0; i<cst->ncols-npar-1-1; i++)  {
+                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+                pluto_constraints_add_ub(cst, npar+1+i, ub);
+            }
+        }
+    }
+
+    return cst;
+}
+
+
+/**
  * Coefficient bounds when finding the cone complement; the cone complement
  * could have (and always has in the case of Pluto as opposed to Pluto+)
  * negative coefficients. So, we can't assume non-negative coefficients as in
  * the remaining Pluto hyperplanes
  */
-PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
+static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog)
 {
     int i, npar, nstmts, nvar, s;
     PlutoConstraints *cst;
@@ -267,10 +318,11 @@ PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *
     for (s=0; s<nstmts; s++)  {
         for (i=0; i<nvar; i++)  {
             /* Set this to -4 (is enough) */
-            IF_DEBUG2(printf("Adding lower bound %d for stmt dim coefficients\n", -4););
+            IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding lower bound %d for stmt dim coefficients\n", -4););
             pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+i, -4);
         }
-        IF_DEBUG2(printf("Adding lower bound %d for stmt translation coefficient\n", 0););
+        /* Translation coefficients need not be negative */
+        IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding lower bound %d for stmt translation coefficient\n", 0););
         pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+nvar, 0);
     }
     return cst;
@@ -321,41 +373,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         }
     }
     IF_DEBUG2(printf("Constraints after reductions\n"));
-    IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst));
-
-
-    if (options->coeff_bound != -1) {
-        for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
-            pluto_constraints_add_ub(newcst, npar+1+i, options->coeff_bound);
-        }
-    }else{
-        /* Add upper bounds for transformation coefficients */
-        int ub = pluto_prog_get_largest_const_in_domains(prog);
-
-        /* Putting too small an upper bound can prevent useful transformations;
-         * also, note that an upper bound is added for all statements globally due
-         * to the lack of an easy way to determine bounds for each coefficient to
-         * prevent spurious transformations that involve shifts proportional to
-         * loop bounds
-         */
-        if (ub >= 10)   {
-            for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-                pluto_constraints_add_ub(newcst, npar+1+i, ub);
-            }
-        }
-    }
-    /* Lower bound for bounding coefficients */
-    for (i=0; i<npar+1; i++)  {
-        pluto_constraints_add_lb(newcst, i, 0);
-    }
-    /* Lower bound for transformation coefficients */
-    for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        pluto_constraints_add_lb(newcst, npar+1+i, 0);
-    }
-
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout,newcst));
 
         
     /* Reverse the variable order for stmts */
@@ -395,6 +413,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
+
     /* Solve the constraints */
     sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
@@ -749,11 +768,11 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
  * end up being returned.
  * */
 int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-        bool loop_search_mode, int max_sols)
+        bool loop_search_mode, int max_sols, int band_depth)
 {
     int num_sols_found, j, k;
     int64 *bestsol;
-    PlutoConstraints *basecst, *nzcst;
+    PlutoConstraints *basecst, *nzcst, *boundcst;
     PlutoConstraints *currcst;
 
     int nstmts = prog->nstmts;
@@ -761,7 +780,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d\n", max_sols));
+    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d; band depth: %d\n", max_sols, band_depth));
 
     assert(max_sols >= 0);
 
@@ -769,6 +788,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
     /* Don't free basecst */
     basecst = get_permutability_constraints(prog);
+    boundcst = get_coeff_bounding_constraints(prog);
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
     // print_polylib_visual_sets("pluto", basecst);
 
     num_sols_found = 0;
@@ -790,13 +812,14 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
 
         if (indcst->nrows == 0) {
-            /* If you don't have any independence constraints, we would end up finding
-             * the same solution that was found earlier; so we won't find anything
-             * new */
+            /* If you don't have any independence constraints, we would end 
+             * up finding the same solution that was found earlier; so we 
+             * won't find anything new */
+            IF_DEBUG(printf("No linearly independent rows\n"););
             bestsol = NULL;
         }else{
             pluto_constraints_add(currcst, indcst);
-            IF_DEBUG(printf("[pluto] Solving for hyperplane #%d\n", num_sols_found+1));
+            IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
@@ -1128,7 +1151,6 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                     fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
                     fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
                     fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
-                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
                     pluto_transformations_pretty_print(prog);
                     pluto_compute_dep_directions(prog);
                     pluto_print_dep_directions(prog);
@@ -1231,10 +1253,6 @@ void pluto_print_dep_directions(PlutoProg *prog)
             }
         }
 
-        printf("satvec: ");
-        for (j=0; j<nlevels; j++) {
-            printf("%d, ", deps[i]->satvec[j]);
-        }
         printf("\n");
     }
 }
@@ -1371,13 +1389,13 @@ void normalize_domains(PlutoProg *prog)
             }
         }
 
+        /* For parameters appearing with negative coefficients in upper bounds */
         for (j=0; j<npar; j++)  {
             if (neg[j])   {
                 pluto_constraints_add_inequality(dpoly);
                 dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
             }
         }
-
     }
     free(neg);
 }
@@ -1506,7 +1524,7 @@ int find_cone_complement_hyperplane(int evict_pos,
      */
     con_start_cst = pluto_constraints_dup(basecst);
 
-    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+    PlutoConstraints *boundcst = get_coeff_bounding_constraints_for_cone_complement(prog);
     pluto_constraints_add(con_start_cst, boundcst);
     pluto_constraints_free(boundcst);
 
@@ -1725,9 +1743,9 @@ int pluto_auto_transform(PlutoProg *prog)
         assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
 
         num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
-                loop_search_mode, num_sols_left);
+                loop_search_mode, num_sols_left, depth);
 
-        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: level %d; %d hyperplane(s) found\n",
+        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
                     depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
