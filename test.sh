@@ -43,6 +43,16 @@ test/tricky4.c \
 test/ludcmp.c \
 test/tce-4index-transform.c"
 
+PET_TESTS="test/jacobi-2d-mod.c \
+    test/jacobi-2d-periodic.c \
+    test/multi-stmt-periodic.c \
+    test/multi-stmt-2d-periodic.c \
+    test/heat-3d.c"
+
+echo
+echo "Tests with $*"
+echo "======================"
+
 for file in $TESTS; do
 	echo -e "$file"
 	./polycc $file $*  -o test_temp_out.pluto.c
@@ -51,6 +61,20 @@ for file in $TESTS; do
         break
     fi
 done
+
+echo
+echo "Tests with --pet --iss $*"
+echo "======================"
+
+for file in $PET_TESTS; do
+	echo -e "$file"
+	./polycc $file --pet --iss $*  -o test_temp_out.pluto.c
+    if [ $? -ne 0 ]; then
+        echo Failed test case "$file"!
+        break
+    fi
+done
+
 
 cleanup()
 {

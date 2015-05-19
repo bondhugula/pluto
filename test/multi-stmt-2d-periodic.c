@@ -22,5 +22,3 @@ int main()
 
     return (int) u[T-1][1];
 }
-
-
