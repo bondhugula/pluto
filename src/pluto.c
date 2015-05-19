@@ -147,7 +147,7 @@ int num_satisfied_deps(Dep *deps, int ndeps)
     return num_satisfied;
 }
 
-int num_inter_stmt_deps(Dep *deps, int ndeps) 
+int num_inter_stmt_deps(Dep *deps, int ndeps)
 {
     int i;
     int count;
@@ -162,7 +162,7 @@ int num_inter_stmt_deps(Dep *deps, int ndeps)
     return count;
 }
 
-int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps) 
+int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps)
 {
     int i, count;
 
@@ -1260,8 +1260,8 @@ PlutoConstraints* get_coeff_bounding_constraints(PlutoProg *prog,
  * solution constraints are added in such a case, the trivial zero solution will
  * end up being returned.
  * */
-int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
-        bool loop_search_mode, int max_sols) 
+int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
+        bool loop_search_mode, int max_sols, int band_depth)
 {
     int num_sols_found, j, k;
     int64 *bestsol;
@@ -1273,7 +1273,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d\n", max_sols));
+    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d; band depth: %d\n", max_sols, band_depth));
 
     assert(max_sols >= 0);
 
@@ -1322,9 +1322,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
             bestsol = NULL;
         }else{
             pluto_constraints_add(currcst, indcst);
+            IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             IF_DEBUG2(printf("Constraints after addition of non zero constraints and linear ind constraints\n"));
-            IF_DEBUG2(pluto_constraints_compact_print(stdout,currcst));
-            IF_DEBUG(printf("[pluto] Solving for hyperplane #%d\n", num_sols_found+1));
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
@@ -1883,10 +1882,11 @@ void normalize_domains(PlutoProg *prog)
         Dep *dep = prog->deps[k];
         PlutoConstraints *dpoly = dep->dpolytope;
 
-        int j;
-        bzero(neg, npar * sizeof(bool));
+        bzero(neg, npar*sizeof(bool));
 
-        for (j = 2 * nvar; j < 2 * nvar + npar; j++) {
+        if (dpoly->nrows == 0) continue;
+
+        for (j=2*nvar; j<2*nvar+npar; j++)  {
             int min = dpoly->val[0][j];
             int max = dpoly->val[0][j];
             for (i = 1; i < dpoly->nrows; i++) {
@@ -1901,8 +1901,9 @@ void normalize_domains(PlutoProg *prog)
             }
         }
 
-        for (j = 0; j < npar; j++) {
-            if (neg[j]) {
+        /* For parameters appearing with negative coefficients in upper bounds */
+        for (j=0; j<npar; j++)  {
+            if (neg[j])   {
                 pluto_constraints_add_inequality(dpoly);
                 dpoly->val[dpoly->nrows - 1][2 * nvar + j] = 1;
             }
@@ -2268,9 +2269,9 @@ int pluto_auto_transform(PlutoProg *prog)
         assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
 
         num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
-                loop_search_mode, num_sols_left);
+                loop_search_mode, num_sols_left, depth);
 
-        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: level %d; %d hyperplane(s) found\n",
+        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
                     depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
         num_ind_sols = pluto_get_max_ind_hyps(prog);

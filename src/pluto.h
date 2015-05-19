@@ -413,7 +413,7 @@ int pluto_dynschedule_codegen(PlutoProg *prog, FILE *sigmafp, FILE *outfp, FILE 
 int pluto_distmem_codegen(PlutoProg *prog, FILE *cloogfp, FILE *sigmafp, FILE *outfp, FILE *headerfp);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-       bool loop_search_mode, int max_sols);
+       bool loop_search_mode, int max_sols, int band_depth);
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
 DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
