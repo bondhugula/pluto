@@ -232,6 +232,8 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMa
     /* Only for a convex constraint set */
     assert(dom->next == NULL);
 
+    assert(phi->nrows == dom->ncols);
+
     IF_MORE_DEBUG(printf("[farkas_lemma_affine]\n"););
 
     /* Convert everything into inequalities of >= 0 form */
@@ -249,8 +251,6 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMa
     pluto_constraints_add_inequality(idom);
     idom->val[idom->nrows-1][idom->ncols-1] = 1;
 
-    assert(phi->nrows == idom->ncols);
-
     /*
      * Farkas space
      * idom->ncols equalities (one for each of the idom->ncols-1 variables)
@@ -267,6 +267,7 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMa
     farkas->nrows = idom->ncols+idom->nrows;
 
     int farkas_offset = phi->ncols-1;
+
     /* First idom->ncols equalities */
     for (i=0; i<idom->ncols; i++) {
         farkas->is_eq[i] = 1;
@@ -276,7 +277,7 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMa
         for (j=0; j<idom->nrows; j++) {
             farkas->val[i][farkas_offset+j] = -idom->val[j][i];
         }
-        farkas->val[i][farkas_offset + idom->nrows+1] = phi->val[i][phi->ncols-1];
+        farkas->val[i][farkas_offset + idom->nrows] = phi->val[i][phi->ncols-1];
     }
 
     /* All farkas multipliers are non-negative */
