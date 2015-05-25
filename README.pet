@@ -1,6 +1,0 @@
-Use the --pet option to use 'pet' to extract polyhedral representation 
-from the source program instead of clan.
-
-Run ./apply_patches.sh once you have cloned the branch. See pet/README for 
-pet's pre-requisites. This version of pet included in pluto has been 
-verified to work with clang-3.4.
