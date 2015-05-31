@@ -66,7 +66,8 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg
 
 }
 
-void pluto_interchange_stmt(Stmt *stmt, int level1, int level2,
+/* Interchange loops for a stmt */
+void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2,
         PlutoProg *prog)
 {
     int j, tmp;
@@ -88,7 +89,7 @@ void pluto_interchange(PlutoProg *prog, int level1, int level2)
     int nstmts = prog->nstmts;
 
     for (k=0; k<nstmts; k++)    {
-        pluto_interchange_stmt(stmts[k], level1, level2, prog);
+        pluto_stmt_loop_interchange(stmts[k], level1, level2, prog);
     }
 
     hTmp = prog->hProps[level1]; 
@@ -120,14 +121,26 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog)
 }
 
 
-void pluto_make_innermost(Ploop *loop, PlutoProg *prog)
+/* Make loop the innermost loop; all loops below move up by one */
+void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog)
 {
-    int i, d; 
+    int i, d, last_depth; 
+
+    last_depth = prog->num_hyperplanes-1;
+    for (i=0; i<loop->nstmts; i++) {
+        Stmt *stmt = loop->stmts[i];
+        for (d=loop->depth; d<stmt->trans->nrows; d++) {
+            if (pluto_is_hyperplane_scalar(stmt, d)) {
+                break;
+            }
+        }
+        last_depth = PLMIN(last_depth, d-1);
+    }
 
     for (i=0; i<loop->nstmts; i++) {
         Stmt *stmt = loop->stmts[i];
-        for (d=loop->depth; d<stmt->trans->nrows-1; d++) {
-            pluto_interchange_stmt(stmt, d, d+1, prog);
+        for (d=loop->depth; d<last_depth; d++) {
+            pluto_stmt_loop_interchange(stmt, d, d+1, prog);
         }
     }
 }
