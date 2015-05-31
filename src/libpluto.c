@@ -17,6 +17,13 @@
  * `LICENSE.LGPL2' in the top-level directory of this distribution.
  *
  */
+
+#include <assert.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <sys/time.h>
+
 #include "pluto.h"
 #include "constraints.h"
 #include "candl/candl.h"
@@ -28,6 +35,15 @@
 
 PlutoOptions *options;
 
+static double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday(&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
+}
 
 /* Temporary data structure used inside extra_stmt_domains
  *
@@ -78,6 +94,13 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     pluto_matrix_set(trans, 0);
     trans->nrows = 0;
 
+    /* A statement's domain (isl_set) should be named S_%d */
+    const char *name = isl_set_get_tuple_name(set);
+    assert(name);
+    assert(strlen(name) >= 3);
+    assert(name[0] == 'S');
+    assert(name[1] == '_');
+    assert(isdigit(name[2]));
     id = atoi(isl_set_get_tuple_name(set)+2);
 
     stmts[id] = pluto_stmt_alloc(dim-npar, NULL, trans);
@@ -178,6 +201,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     int i, j, nbands, n_ibands, retval;
     isl_ctx *ctx;
     isl_space *space;
+    double t_t, t_all, t_start;
 
     ctx = isl_union_set_get_ctx(domains);
     space = isl_union_set_get_space(domains);
@@ -235,7 +259,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     IF_DEBUG(pluto_prog_print(stdout, prog););
 
+    t_start = rtclock();
     retval = pluto_auto_transform(prog);
+    t_t = rtclock() - t_start;
 
     if (retval) {
         /* Failure */
@@ -252,7 +278,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent) {
-        pluto_transformations_print(prog);
+        pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
     }
 
@@ -363,6 +389,15 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     pluto_prog_free(prog);
     isl_space_free(space);
+
+    t_all = rtclock() - t_start;
+
+    if (options->time && !options->silent) {
+        printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+        printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_t);
+        printf("[pluto] Total time: %0.6lfs\n", t_all);
+    }
+
 
     return schedules;
 }
