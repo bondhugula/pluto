@@ -878,15 +878,19 @@ PlutoConstraints *pluto_constraints_read(FILE *fp)
 }
 
 
-void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
+void pluto_constraints_compact_print_single(FILE *fp, 
+        const PlutoConstraints *cst, int set_num)
 {
-    int i, j;
+    int i, j, nrows, ncols;
 
-    int nrows = cst->nrows;
-    int ncols = cst->ncols;
+    if (cst == NULL) {
+        return;
+    }
 
-    /* Use pluto_constraints_print for list of constraints or extend this */
-    assert(cst->next == NULL);
+    nrows = cst->nrows;
+    ncols = cst->ncols;
+
+    printf("Set #%d\n", set_num+1);
 
     if (nrows == 0) {
         printf("Universal polyhedron -- No constraints (%d dims)!\n", cst->ncols-1);
@@ -927,8 +931,18 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
         fprintf(fp, "%s 0\n", cst->is_eq[i]? "=": ">=");
     }
     fprintf(fp, "\n");
+
+    if (cst->next != NULL) {
+        pluto_constraints_compact_print_single(fp, cst->next, set_num+1);
+    }
 }
 
+
+void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
+{
+    assert(cst != NULL);
+    pluto_constraints_compact_print_single(fp, cst, 0);
+}
 
 
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
@@ -1068,7 +1082,7 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar)
     int64 *sol;
     PlutoMatrix *pipmat;
 
-    IF_DEBUG(printf("[pluto] pluto_constraints_lexmin_pip (%d variables, %d constraints)\n",
+    IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
     pipmat = pluto_matrix_alloc(cst->nrows, cst->ncols+1);
