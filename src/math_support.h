@@ -75,8 +75,8 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-inline int64 lcm(int64 a, int64 b);
-inline int64 gcd(int64 a, int64 b);
+int64 lcm(int64 a, int64 b);
+int64 gcd(int64 a, int64 b);
 int64 *min_lexical(int64 *a, int64 *b, int64 num);
 
 char *concat(const char *prefix, const char *suffix);
