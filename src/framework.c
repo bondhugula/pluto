@@ -71,7 +71,6 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     dest_stmt = dep->dest;
     src_stmt = dep->src;
 
-    /* Convert everything to >= 0 form */
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
 
     if (src_stmt != dest_stmt) {
@@ -361,7 +360,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     pluto_constraints_simplify(globcst);
 
-    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, num variables: %d\n",
+    IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
     IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
@@ -411,6 +410,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int nstmts = prog->nstmts;
     HyperplaneProperties *hProps = prog->hProps;
 
+    /* Transformation has full column rank already */
     if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
         *orthonum = 0;
         return NULL;
@@ -470,11 +470,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     /* An optimized version where the constraints are added as
      * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
      *
-     * basically only look in the orthogonal space where everything is
+     * basically look only in the orthogonal space where everything is
      * non-negative
-     *
-     * All of these constraints are added later to 
-     * the global constraint matrix
      */
 
     /* Normalize ortho first */
@@ -526,9 +523,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         /* assert(p<=nvar-1); */
     }
 
-    // pluto_matrix_print(stdout, stmt->trans);
-
-    if (p > 0)  {
+    if (p >= 1)  {
         /* Sum of all of the above is the last constraint */
         for(j=0; j<CST_WIDTH; j++)  {
             for (i=0; i<p; i++) {
@@ -542,7 +537,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     *orthonum = p;
 
-    IF_DEBUG2(printf("Ortho constraints for S%d; %d sets\n", stmt->id+1, *orthonum));
+    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n", stmt->id+1, *orthonum-1));
     for (i=0; i<*orthonum; i++) {
         // print_polylib_visual_sets("li", orthcst[i]);
         // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));

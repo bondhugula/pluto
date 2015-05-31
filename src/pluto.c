@@ -50,6 +50,10 @@ int pluto_diamond_tile(PlutoProg *prog);
 
 /*
  * Returns the number of (new) satisfied dependences at this level
+ *
+ * NOTE: for every unsatisfied dependence, this function tests if the entire
+ * dependence has been satisfied at 'level'
+ *
  */
 int dep_satisfaction_update(PlutoProg *prog, int level)
 {
@@ -61,7 +65,7 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
 
     num_new_carried = 0;
 
-    IF_DEBUG(printf("[pluto] dep_satisfaction_update\n"););
+    IF_DEBUG(printf("[pluto] dep_satisfaction_update (level %d)\n", level););
 
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
@@ -74,6 +78,7 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
             }
         }
     }
+    IF_DEBUG(printf("\t %d dep(s) satisfied\n", num_new_carried););
 
     return num_new_carried;
 }
@@ -532,7 +537,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
     IF_DEBUG(printf("[pluto] Cutting between all SCCs\n"));
 
     if (ddg->num_sccs == 1) {
-        IF_DEBUG(printf("\t only one SCC\n"));
+        IF_DEBUG(printf("\tonly one SCC\n"));
         return 0;
     }
 
@@ -998,7 +1003,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                 /* Number of levels */
                 fscanf(precut, "%d", &ignore);
 
-                /* FIX this: to tile or not is specified depth-wise, why? Just
+                /* FIXME: to tile or not is specified depth-wise, why? Just
                  * specify once */
                 for (j=0; j<tiling_depth; j++)    {
                     fscanf(precut, "%d", &tile);
@@ -1127,8 +1132,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
             for (i=0; i<prog->ndeps; i++)   {
                 if (IS_RAR(deps[i]->type)) continue;
+                /* Dependences satisfied at scalar dimensions earlier are fine (even 
+                 * if at dimensions in the same band */
                 if (deps[i]->satisfaction_level < level && 
                         hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
+                /* Dependences satisfied within the band or not satisfied yet
+                 * should have non-negative components */
                 if (deps[i]->satisfaction_level >= bandStart 
                         && (deps[i]->dirvec[level] == DEP_MINUS 
                             || deps[i]->dirvec[level] == DEP_STAR))
@@ -1146,12 +1155,13 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    fprintf(stderr, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
-                    fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
-                    fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
-                    fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
-                    fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
+                    fprintf(stdout, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stdout, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
+                    fprintf(stdout, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
+                    fprintf(stdout, "\tor a bug in Pluto's auto transformation.\n");
+                    fprintf(stdout, "\tPlease send this input file to the author if possible.\n");
                     pluto_transformations_pretty_print(prog);
+                    pluto_print_hyperplane_properties(prog);
                     pluto_compute_dep_directions(prog);
                     pluto_print_dep_directions(prog);
                     assert(0);
@@ -1174,7 +1184,9 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
             hProps[level-1].dep_prop = SEQ;
     }
 
-    /* Permutable bands of loops could have inner parallel loops; they 
+    /* 
+     * This functionality is obsolete since Ploop based functions are now used
+     * Permutable bands of loops could have inner parallel loops; they 
      * all have been detected as fwd_dep (except the outer parallel one of a band); 
      * we just modify those to parallel */
     for (i=0; i<prog->num_hyperplanes; i++)  {
@@ -1333,7 +1345,7 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_free(context);
     }else{
-        IF_DEBUG(printf("No global context\n"));
+        IF_DEBUG(printf("\tNo global context\n"));
     }
 
     /* Add padding dimensions to statement domains */
@@ -1468,7 +1480,7 @@ int find_cone_complement_hyperplane(int evict_pos,
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
-    IF_DEBUG(printf("[pluto] finding cone complement hyperplane\n"););
+    IF_DEBUG(printf("[pluto] find_cone_complement_hyperplane\n"););
 
     int64 *bestsol;
     PlutoConstraints *con_start_cst, *lastcst;
@@ -1821,7 +1833,6 @@ int pluto_auto_transform(PlutoProg *prog)
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog->deps, prog->ndeps));
 
-
     if (options->lbtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
     }
@@ -1836,6 +1847,8 @@ int pluto_auto_transform(PlutoProg *prog)
     free(orig_hyp_types);
     free(orig_hProps);
 
+    IF_DEBUG(printf("[pluto] pluto_auto_transform: successful, done\n"););
+
     return 0;
 }
 
@@ -1848,7 +1861,7 @@ int get_num_unsatisfied_deps(Dep **deps, int ndeps)
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i]->type))   continue;
         if (!deps[i]->satisfied)  {
-            IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
+            IF_DEBUG(printf("\tUnsatisfied dep %d\n", i+1));
             count++;
         }
     }
@@ -2114,7 +2127,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
 
 
 /* 
- * For diamond tiling
+ * Diamond Tiling
  */
 int pluto_diamond_tile(PlutoProg *prog)
 {
