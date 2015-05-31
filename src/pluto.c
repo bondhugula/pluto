@@ -44,11 +44,16 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
+int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
 int pluto_diamond_tile(PlutoProg *prog);
 
 /*
  * Returns the number of (new) satisfied dependences at this level
+ *
+ * NOTE: for every unsatisfied dependence, this function tests if the entire
+ * dependence has been satisfied at 'level'
+ *
  */
 int dep_satisfaction_update(PlutoProg *prog, int level)
 {
@@ -60,20 +65,23 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
 
     num_new_carried = 0;
 
+    IF_DEBUG(printf("[pluto] dep_satisfaction_update (level %d)\n", level););
+
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
-        if (!dep_is_satisfied(dep))   {
+        if (!dep_is_satisfied(dep)) {
             dep->satisfied = dep_satisfaction_test(dep, prog, level);
-            if (dep->satisfied)    { 
+            if (dep->satisfied) {
+                IF_MORE_DEBUG(printf("[pluto] dep_satisfaction_update: dep %d satisfied\n", i+1););
                 if (!IS_RAR(dep->type)) num_new_carried++;
                 dep->satisfaction_level = level;
             }
         }
     }
+    IF_DEBUG(printf("\t %d dep(s) satisfied\n", num_new_carried););
 
     return num_new_carried;
 }
-
 
 /* Check whether all deps are satisfied */
 int deps_satisfaction_check(Dep **deps, int ndeps)
@@ -82,7 +90,7 @@ int deps_satisfaction_check(Dep **deps, int ndeps)
 
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i]->type)) continue;
-        if (!dep_is_satisfied(deps[i]))    {
+        if (!dep_is_satisfied(deps[i])) {
             return false;
         }
     }
@@ -158,7 +166,7 @@ int num_inter_stmt_deps (Dep *deps, int ndeps)
     count=0;
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i].type)) continue;
-        if (deps[i].src != deps[i].dest)    {
+        if (deps[i].src != deps[i].dest) {
             count++;
         }
     }
@@ -240,12 +248,63 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 }
 
 /**
+ * Bounds for Pluto ILP variables
+ */
+static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients (all non-negative) */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients (all non-negative) */
+    for (i=0; i<cst->ncols-npar-1-1; i++)  {
+        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+i, 0);
+    }
+
+    if (options->coeff_bound != -1) {
+        for (i=0; i<cst->ncols-npar-1-1; i++)  {
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
+            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
+        }
+    }else{
+        /* Add upper bounds for transformation coefficients */
+        int ub = pluto_prog_get_largest_const_in_domains(prog);
+
+        /* Putting too small an upper bound can prevent useful transformations;
+         * also, note that an upper bound is added for all statements globally due
+         * to the lack of an easy way to determine bounds for each coefficient to
+         * prevent spurious transformations that involve shifts proportional to
+         * loop bounds
+         */
+        if (ub >= 10)   {
+            for (i=0; i<cst->ncols-npar-1-1; i++)  {
+                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+                pluto_constraints_add_ub(cst, npar+1+i, ub);
+            }
+        }
+    }
+
+    return cst;
+}
+
+
+/**
  * Coefficient bounds when finding the cone complement; the cone complement
  * could have (and always has in the case of Pluto as opposed to Pluto+)
  * negative coefficients. So, we can't assume non-negative coefficients as in
  * the remaining Pluto hyperplanes
  */
-PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *prog)
+static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog)
 {
     int i, npar, nstmts, nvar, s;
     PlutoConstraints *cst;
@@ -264,10 +323,11 @@ PlutoConstraints *pluto_get_bounding_constraints_for_cone_complement(PlutoProg *
     for (s=0; s<nstmts; s++)  {
         for (i=0; i<nvar; i++)  {
             /* Set this to -4 (is enough) */
-            IF_DEBUG2(printf("Adding lower bound %d for stmt dim coefficients\n", -4););
+            IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding lower bound %d for stmt dim coefficients\n", -4););
             pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+i, -4);
         }
-        IF_DEBUG2(printf("Adding lower bound %d for stmt translation coefficient\n", 0););
+        /* Translation coefficients need not be negative */
+        IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding lower bound %d for stmt translation coefficient\n", 0););
         pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+nvar, 0);
     }
     return cst;
@@ -318,49 +378,14 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         }
     }
     IF_DEBUG2(printf("Constraints after reductions\n"));
-    IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst));
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout,newcst));
 
-
-    if (options->coeff_bound != -1) {
-        for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
-            pluto_constraints_add_ub(newcst, npar+1+i, options->coeff_bound);
-        }
-    }else{
-        /* Add upper bounds for transformation coefficients */
-        int ub = pluto_prog_get_largest_const_in_domains(prog);
-
-        /* Putting too small an upper bound can prevent useful transformations;
-         * also, note that an upper bound is added for all statements globally due
-         * to the lack of an easy way to determine bounds for each coefficient to
-         * prevent spurious transformations that involve shifts proportional to
-         * loop bounds
-         */
-        if (ub >= 10)   {
-            for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-                pluto_constraints_add_ub(newcst, npar+1+i, ub);
-            }
-        }
-    }
-    /* Lower bound for bounding coefficients */
-    for (i=0; i<npar+1; i++)  {
-        pluto_constraints_add_lb(newcst, i, 0);
-    }
-    /* Lower bound for transformation coefficients */
-    for (i=0; i<newcst->ncols-npar-1-1; i++)  {
-        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        pluto_constraints_add_lb(newcst, npar+1+i, 0);
-    }
-
-
+        
     /* Reverse the variable order for stmts */
     PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);
     PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
 
-    for (i=0; i<newcst->ncols; i++) {
-        bzero(perm_mat->val[i], sizeof(int64)*newcst->ncols);
-    }
+    pluto_matrix_set(perm_mat, 0);
 
     for (i=0; i<npar+1; i++) {
         perm_mat->val[i][i] = 1;
@@ -388,11 +413,13 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 
     PlutoConstraints *newcst_permuted;
-    newcst_permuted = pluto_constraints_from_inequalities(newcstmat);
+    newcst_permuted = pluto_constraints_from_mixed_matrix(newcstmat, newcst->is_eq);
     pluto_matrix_free(newcstmat);
 
-    IF_DEBUG(printf("[Pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
+    IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
+
+    /* Solve the constraints */
     sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
@@ -510,7 +537,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
     IF_DEBUG(printf("[pluto] Cutting between all SCCs\n"));
 
     if (ddg->num_sccs == 1) {
-        IF_DEBUG(printf("\t only one SCC\n"));
+        IF_DEBUG(printf("\tonly one SCC\n"));
         return 0;
     }
 
@@ -677,7 +704,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     PlutoConstraints ***orthcst;
     Stmt **stmts;
 
-    IF_DEBUG(printf("[Pluto] get_linear_ind_constraints\n"););
+    IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
 
     npar = prog->npar;
     nvar = prog->nvar;
@@ -746,11 +773,11 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
  * end up being returned.
  * */
 int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-        bool loop_search_mode, int max_sols)
+        bool loop_search_mode, int max_sols, int band_depth)
 {
     int num_sols_found, j, k;
     int64 *bestsol;
-    PlutoConstraints *basecst, *nzcst;
+    PlutoConstraints *basecst, *nzcst, *boundcst;
     PlutoConstraints *currcst;
 
     int nstmts = prog->nstmts;
@@ -758,7 +785,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(fprintf(stdout, "Finding hyperplanes: max %d\n", max_sols));
+    IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max solution(s): %d; band depth: %d\n", max_sols, band_depth));
 
     assert(max_sols >= 0);
 
@@ -766,6 +793,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
     /* Don't free basecst */
     basecst = get_permutability_constraints(prog);
+    boundcst = get_coeff_bounding_constraints(prog);
+    pluto_constraints_add(basecst, boundcst);
+    pluto_constraints_free(boundcst);
     // print_polylib_visual_sets("pluto", basecst);
 
     num_sols_found = 0;
@@ -782,22 +812,26 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         pluto_constraints_free(nzcst);
 
         PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, lin_ind_mode);
+        // print_polylib_visual_sets("ind", indcst);
+        IF_DEBUG2(printf("linear independence constraints\n"));
+        IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
 
         if (indcst->nrows == 0) {
-            /* If you don't have any independence constraints, we would end up finding
-             * the same solution that was found earlier; so we won't find anything
-             * new */
+            /* If you don't have any independence constraints, we would end 
+             * up finding the same solution that was found earlier; so we 
+             * won't find anything new */
+            IF_DEBUG(printf("No linearly independent rows\n"););
             bestsol = NULL;
         }else{
             pluto_constraints_add(currcst, indcst);
-            IF_DEBUG2(printf("Solving for %d solution\n", num_sols_found+1));
+            IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
         pluto_constraints_free(indcst);
 
         if (bestsol != NULL)    {
-            IF_DEBUG(fprintf(stdout, "Found a hyperplane\n"));
+            IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
             num_sols_found++;
 
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
@@ -822,6 +856,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
             }
             free(bestsol);
+        }else{
+            IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: No hyperplane found\n"));
         }
     }while (num_sols_found < max_sols && bestsol != NULL);
 
@@ -967,7 +1003,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                 /* Number of levels */
                 fscanf(precut, "%d", &ignore);
 
-                /* FIX this: to tile or not is specified depth-wise, why? Just
+                /* FIXME: to tile or not is specified depth-wise, why? Just
                  * specify once */
                 for (j=0; j<tiling_depth; j++)    {
                     fscanf(precut, "%d", &tile);
@@ -1053,7 +1089,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
 
-    IF_DEBUG(printf("[Pluto] pluto_detect_transformation_properties\n"););
+    IF_DEBUG(printf("[pluto] pluto_detect_transformation_properties\n"););
 
     if (prog->nstmts == 0) return;
 
@@ -1096,8 +1132,12 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
             for (i=0; i<prog->ndeps; i++)   {
                 if (IS_RAR(deps[i]->type)) continue;
+                /* Dependences satisfied at scalar dimensions earlier are fine (even 
+                 * if at dimensions in the same band */
                 if (deps[i]->satisfaction_level < level && 
                         hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
+                /* Dependences satisfied within the band or not satisfied yet
+                 * should have non-negative components */
                 if (deps[i]->satisfaction_level >= bandStart 
                         && (deps[i]->dirvec[level] == DEP_MINUS 
                             || deps[i]->dirvec[level] == DEP_STAR))
@@ -1115,13 +1155,13 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    fprintf(stderr, "[Pluto] Unfortunately, the transformation computed has violated a dependence.\n");
-                    fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
-                    fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
-                    fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
-                    fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
-                    IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
+                    fprintf(stdout, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stdout, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
+                    fprintf(stdout, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
+                    fprintf(stdout, "\tor a bug in Pluto's auto transformation.\n");
+                    fprintf(stdout, "\tPlease send this input file to the author if possible.\n");
                     pluto_transformations_pretty_print(prog);
+                    pluto_print_hyperplane_properties(prog);
                     pluto_compute_dep_directions(prog);
                     pluto_print_dep_directions(prog);
                     assert(0);
@@ -1144,7 +1184,9 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
             hProps[level-1].dep_prop = SEQ;
     }
 
-    /* Permutable bands of loops could have inner parallel loops; they 
+    /* 
+     * This functionality is obsolete since Ploop based functions are now used
+     * Permutable bands of loops could have inner parallel loops; they 
      * all have been detected as fwd_dep (except the outer parallel one of a band); 
      * we just modify those to parallel */
     for (i=0; i<prog->num_hyperplanes; i++)  {
@@ -1202,6 +1244,7 @@ void pluto_print_dep_directions(PlutoProg *prog)
         for (j=0; j<nlevels; j++) {
             printf("%c, ", deps[i]->dirvec[j]);
         }
+        assert(deps[i]->satvec != NULL);
         printf(") satisfied: %s, satvec: (", 
                 deps[i]->satisfied? "yes":"no");
         for (j=0; j<nlevels; j++) {
@@ -1222,19 +1265,18 @@ void pluto_print_dep_directions(PlutoProg *prog)
             }
         }
 
-        printf("satvec: ");
-        for (j=0; j<nlevels; j++) {
-            printf("%d, ", deps[i]->satvec[j]);
-        }
         printf("\n");
     }
 }
 
 
-/* Pad statement domains to maximum domain depth to make it easier to construct
- * scheduling constraints. These will be removed before autopoly returns.
- * Also, corresponding dimensions from ILP space will be removed before ILP
- * calls
+/* 
+ * 1. Pad statement domains to maximum domain depth to make it easier to construct
+ * scheduling constraints. These will be removed before the actual ILP
+ * runs, and just before pluto_auto_transform returns
+ *
+ * 2. Pre-process dependence domains to allow a single affine bounding
+ * expression to be constructed. Fix this implementation (too brittle).
  */
 void normalize_domains(PlutoProg *prog)
 {
@@ -1261,6 +1303,7 @@ void normalize_domains(PlutoProg *prog)
     int count=0;
     if (npar >= 1)	{
         PlutoConstraints *context = pluto_constraints_alloc(prog->nstmts*npar, npar+1);
+        pluto_constraints_set_names(context, prog->params);
         for (i=0; i<prog->nstmts; i++)    {
             PlutoConstraints *copy = pluto_constraints_dup(prog->stmts[i]->domain);
             for (j=0; j<prog->stmts[i]->dim_orig; j++)    {
@@ -1279,8 +1322,8 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_simplify(context);
         if (options->debug) {
-            printf("[Pluto] Global constraint context\n");
-            pluto_constraints_compact_print(stdout, context );
+            printf("[pluto] parameter context from domains\n");
+            pluto_constraints_compact_print(stdout, context);
         }
 
         /* Add context to every dep polyhedron */
@@ -1302,9 +1345,8 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_free(context);
     }else{
-        IF_DEBUG(printf("No global context\n"));
+        IF_DEBUG(printf("\tNo global context\n"));
     }
-
 
     /* Add padding dimensions to statement domains */
     for (i=0; i<prog->nstmts; i++)    {
@@ -1315,7 +1357,6 @@ void normalize_domains(PlutoProg *prog)
             pluto_sink_statement(stmt, stmt->dim, 0, prog);
         }
     }
-
 
     for (i=0; i<prog->ndeps; i++)    {
         Dep *dep = prog->deps[i];
@@ -1341,8 +1382,9 @@ void normalize_domains(PlutoProg *prog)
         Dep *dep = prog->deps[k];
         PlutoConstraints *dpoly = dep->dpolytope;
 
-        int j;
         bzero(neg, npar*sizeof(bool));
+
+        if (dpoly->nrows == 0) continue;
 
         for (j=2*nvar; j<2*nvar+npar; j++)  {
             int min = dpoly->val[0][j];
@@ -1359,13 +1401,13 @@ void normalize_domains(PlutoProg *prog)
             }
         }
 
+        /* For parameters appearing with negative coefficients in upper bounds */
         for (j=0; j<npar; j++)  {
             if (neg[j])   {
                 pluto_constraints_add_inequality(dpoly);
                 dpoly->val[dpoly->nrows-1][2*nvar+j] = 1;
             }
         }
-
     }
     free(neg);
 }
@@ -1438,7 +1480,7 @@ int find_cone_complement_hyperplane(int evict_pos,
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
-    IF_DEBUG(printf("[Pluto] finding cone complement hyperplane\n"););
+    IF_DEBUG(printf("[pluto] find_cone_complement_hyperplane\n"););
 
     int64 *bestsol;
     PlutoConstraints *con_start_cst, *lastcst;
@@ -1494,7 +1536,7 @@ int find_cone_complement_hyperplane(int evict_pos,
      */
     con_start_cst = pluto_constraints_dup(basecst);
 
-    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+    PlutoConstraints *boundcst = get_coeff_bounding_constraints_for_cone_complement(prog);
     pluto_constraints_add(con_start_cst, boundcst);
     pluto_constraints_free(boundcst);
 
@@ -1513,9 +1555,9 @@ int find_cone_complement_hyperplane(int evict_pos,
 
     /* pluto_constraints_lexmin is being called directly */
     if (bestsol == NULL) {
-        printf("[Pluto] No concurrent start possible\n");
+        printf("[pluto] No concurrent start possible\n");
     }else{
-        IF_DEBUG(printf("[Pluto] Concurrent start possible\n"););
+        IF_DEBUG(printf("[pluto] Concurrent start possible\n"););
         for (j=0; j<nstmts; j++) {
             cone_complement_hyps[j] =
                 pluto_matrix_alloc(1, stmts[j]->dim+npar+1);
@@ -1639,24 +1681,28 @@ int pluto_auto_transform(PlutoProg *prog)
 
     if (nstmts == 0)  return 0;
 
-    normalize_domains(prog);
-
     PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
+    PlutoHypType **orig_hyp_types = malloc(nstmts*sizeof(PlutoHypType *));
     int orig_num_hyperplanes = prog->num_hyperplanes;
     HyperplaneProperties *orig_hProps = prog->hProps;
-
-    lin_ind_mode = EAGER;
-    loop_search_mode = EAGER;
 
     /* Get rid of any existing transformation */
     for (i=0; i<nstmts; i++) {
         Stmt *stmt = prog->stmts[i];
         /* Save the original transformation */
         orig_trans[i] = stmt->trans;
+        orig_hyp_types[i] = stmt->hyp_types;
         /* Pre-allocate a little more to prevent frequent realloc */
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
+        stmt->hyp_types = NULL;
     }
+
+    normalize_domains(prog);
+
+    lin_ind_mode = EAGER;
+    loop_search_mode = EAGER;
+
     prog->num_hyperplanes = 0;
     prog->hProps = NULL;
 
@@ -1667,17 +1713,17 @@ int pluto_auto_transform(PlutoProg *prog)
         nsols = PLMAX(nsols, stmts[i]->dim);
     }
 
-    num_ind_sols = 0;
-    depth=0;
+    depth = 0;
 
     if (precut(prog, ddg, depth))   {
         /* Distributed based on .fst or .precut file (customized user-supplied
          * fusion structure */
         num_ind_sols = pluto_get_max_ind_hyps(prog);
-        printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
+        printf("[pluto] Forced custom fusion structure from .fst/.precut\n");
         IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
                     num_ind_sols));
     }else{
+        num_ind_sols = 0;
         if (options->fuse == SMART_FUSE)    {
             cut_scc_dim_based(prog,ddg);
         }
@@ -1709,9 +1755,9 @@ int pluto_auto_transform(PlutoProg *prog)
         assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
 
         num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
-                loop_search_mode, num_sols_left);
+                loop_search_mode, num_sols_left, depth);
 
-        IF_DEBUG(fprintf(stdout, "Level: %d; \t%d hyperplanes found\n",
+        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
                     depth, num_sols_found));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
@@ -1735,7 +1781,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
             ddg_compute_scc(prog);
 
-            if (ddg->num_sccs >= 2) {
+            if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
                 if (options->fuse == NO_FUSE)  {
                     /* No fuse */
                     cut_all_sccs(prog, ddg);
@@ -1748,7 +1794,8 @@ int pluto_auto_transform(PlutoProg *prog)
                     else cut_conservative(prog, ddg);
                 }
             }else{
-                /* Only one SCC */
+                /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
+                 * deps, and no solutions found  */
                 if (lin_ind_mode == EAGER)   {
                     IF_DEBUG(printf("Switching to LAZY mode\n"););
                     lin_ind_mode = LAZY;
@@ -1757,26 +1804,24 @@ int pluto_auto_transform(PlutoProg *prog)
                     /* LAZY mode */
                     assert(lin_ind_mode == LAZY);
                     /* There is a problem; solutions should have been found */
-                    if (options->debug) {
+                    if (options->debug || options->moredebug) {
                         printf("Number of unsatisfied deps: %d\n", 
                                 get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-                        printf("Number of unsatisfied inter-stmt deps: %d\n", 
-                                get_num_unsatisfied_inter_stmt_deps(prog->deps, prog->ndeps));
-                        IF_DEBUG(pluto_stmts_print(stdout, prog->stmts, prog->nstmts););
-                        fprintf(stderr, "[Pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
+                        printf("Number of unsatisfied inter-scc deps: %d\n", 
+                                get_num_unsatisfied_inter_scc_deps(prog));
+                        fprintf(stderr, "[pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
                         fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
                         fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
                         fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
-                        fprintf(stderr, "\tor (4) or a case where the PLUTO algorithm doesn't succeed\n");
+                        fprintf(stderr, "\tTransformation found so far:\n");
                         pluto_transformations_pretty_print(prog);
-                        pluto_compute_dep_directions(prog);
-                        pluto_print_dep_directions(prog);
                     }
                     denormalize_domains(prog);
-                    printf("[Pluto] WARNING: working with original (identity) transformation (if they exist)\n");
+                    printf("[pluto] WARNING: working with original (identity) transformation (if they exist)\n");
                     /* Restore original ones */
                     for (i=0; i<nstmts; i++) {
                         stmts[i]->trans = orig_trans[i];
+                        stmts[i]->hyp_types = orig_hyp_types[i];
                         prog->num_hyperplanes = orig_num_hyperplanes;
                         prog->hProps = orig_hProps;
                     }
@@ -1788,18 +1833,21 @@ int pluto_auto_transform(PlutoProg *prog)
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog->deps, prog->ndeps));
 
-
     if (options->lbtile && !conc_start_found) {
-        printf("[Pluto] Diamond tiling not possible/useful\n");
+        PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
     }
 
     denormalize_domains(prog);
 
     for (i=0; i<nstmts; i++)    {
         pluto_matrix_free(orig_trans[i]);
+        free(orig_hyp_types[i]);
     }
     free(orig_trans);
-    if (orig_hProps) free(orig_hProps);
+    free(orig_hyp_types);
+    free(orig_hProps);
+
+    IF_DEBUG(printf("[pluto] pluto_auto_transform: successful, done\n"););
 
     return 0;
 }
@@ -1813,7 +1861,7 @@ int get_num_unsatisfied_deps(Dep **deps, int ndeps)
     for (i=0; i<ndeps; i++) {
         if (IS_RAR(deps[i]->type))   continue;
         if (!deps[i]->satisfied)  {
-            IF_DEBUG(printf("Unsatisfied dep %d\n", i+1));
+            IF_DEBUG(printf("\tUnsatisfied dep %d\n", i+1));
             count++;
         }
     }
@@ -1841,6 +1889,24 @@ int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps)
 
 }
 
+int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog)
+{
+    int i;
+
+    int count = 0;
+    for (i=0; i<prog->ndeps; i++) {
+        Dep *dep = prog->deps[i];
+        if (IS_RAR(dep->type))   continue;
+        Stmt *src_stmt = prog->stmts[dep->src];
+        Stmt *dest_stmt = prog->stmts[dep->dest];
+        if (src_stmt->scc_id != dest_stmt->scc_id && !dep->satisfied)  {
+            count++;
+        }
+    }
+
+    return count;
+}
+
 
 void ddg_print(Graph *g)
 {
@@ -1854,6 +1920,8 @@ void ddg_update(Graph *g, PlutoProg *prog)
 {
     int i, j;
     Dep *dep;
+
+    IF_DEBUG(printf("[pluto] updating DDG\n"););
 
     for (i=0; i<g->nVertices; i++) 
         for (j=0; j<g->nVertices; j++)
@@ -1930,6 +1998,8 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;
+
+    IF_DEBUG(printf("[pluto] ddg_compute_scc\n"););
 
     Graph *g = prog->ddg;
 
@@ -2057,7 +2127,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
 
 
 /* 
- * For diamond tiling
+ * Diamond Tiling
  */
 int pluto_diamond_tile(PlutoProg *prog)
 {
@@ -2072,7 +2142,7 @@ int pluto_diamond_tile(PlutoProg *prog)
     /* Don't free basecst */
     PlutoConstraints *basecst = get_permutability_constraints(prog);
 
-    PlutoConstraints *boundcst = pluto_get_bounding_constraints_for_cone_complement(prog);
+    PlutoConstraints *boundcst = get_coeff_bounding_constraints_for_cone_complement(prog);
 
     pluto_constraints_add(basecst, boundcst);
     pluto_constraints_free(boundcst);
@@ -2148,7 +2218,7 @@ int pluto_diamond_tile(PlutoProg *prog)
          * was found, store the replaced hyperplane so that it can be 
          * put back for the right intra-tile order */
         if (conc_start_found_band) {
-            IF_DEBUG(printf("[Pluto] Transformations before concurrent start enable\n")); 
+            IF_DEBUG(printf("[pluto] Transformations before concurrent start enable\n")); 
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             for (i=0; i<band->loop->nstmts; i++){
                 Stmt *stmt = band->loop->stmts[i];
@@ -2161,8 +2231,8 @@ int pluto_diamond_tile(PlutoProg *prog)
                         cone_complement_hyps[stmt->id]->val[0], stmt->trans->ncols);
             }
             prog->evicted_hyp_pos = evict_pos;
-            PLUTO_MESSAGE(printf("[Pluto] Concurrent start hyperplanes found\n"););
-            IF_DEBUG(printf("[Pluto] Transformations after concurrent start enable\n")); 
+            PLUTO_MESSAGE(printf("[pluto] Concurrent start hyperplanes found\n"););
+            IF_DEBUG(printf("[pluto] Transformations after concurrent start enable\n")); 
             IF_DEBUG(pluto_transformations_pretty_print(prog););
         }
 

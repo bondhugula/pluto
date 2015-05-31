@@ -134,8 +134,8 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
 
 /* Get loops at this depth under the scattering tree that contain only and all
  * of the statements in 'stmts'
- * Caller has to ensure that 'stmts' are all fused up to depth-1 (or else 
- * no loops exist by definition)
+ * If all 'stmts' aren't fused up to depth-1, no such loops exist by
+ * definition
  */
 Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         const PlutoProg *prog, int *num)
@@ -372,6 +372,49 @@ int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog,
     return parallel;
 }
 
+
+/*
+ * Does the loop satisfy an inter-stmt dependence?
+ */
+int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop)
+{
+    int satisfies, i;
+
+    /* All statements under a parallel loop should be of type orig */
+    for (i=0; i<loop->nstmts; i++) {
+        if (loop->stmts[i]->type != ORIG) break;
+    }
+    if (i<loop->nstmts) {
+        /* conservative */
+        return 1;
+    }
+
+    if (prog->hProps[loop->depth].dep_prop == PARALLEL) {
+        return 0;
+    }
+
+    satisfies = 0;
+
+    for (i=0; i<prog->ndeps; i++) {
+        Dep *dep = prog->deps[i];
+        if (IS_RAR(dep->type)) continue;
+        assert(dep->satvec != NULL);
+        if (dep->satvec[loop->depth]
+                && dep->src != dep->dest
+                && pluto_stmt_is_member_of(dep->src, loop->stmts, loop->nstmts)
+                && pluto_stmt_is_member_of(dep->dest, loop->stmts, loop->nstmts)
+           ) {
+            satisfies = 1;
+            break;
+        }
+    }
+
+    return satisfies;
+}
+
+
+
 /* Is loop1 dominated by loop2 */
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog)
 {
@@ -414,6 +457,7 @@ int pluto_loop_compar(const void *_l1, const void *_l2)
 }
 
 
+/* Get all parallel loops */
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops)
 {
     Ploop **loops, **ploops;
@@ -796,6 +840,7 @@ int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog)
     return (num==0);
 }
 
+/* Does this band have any loops under it */
 int pluto_is_band_innermost(const Band *band, int num_tiling_levels)
 {
     int i, j;
@@ -807,6 +852,28 @@ int pluto_is_band_innermost(const Band *band, int num_tiling_levels)
     }
 
     return 1;
+}
+
+
+Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops)
+{
+    Ploop **loops, **iloops;
+    int i, num;
+
+    loops = pluto_get_all_loops(prog, &num);
+
+    *nloops = 0;
+    iloops = NULL;
+
+    for (i=0; i<num; i++) {
+        if (pluto_is_loop_innermost(loops[i], prog)) {
+            Ploop *loop = pluto_loop_dup(loops[i]);
+            iloops = pluto_loops_cat(iloops, (*nloops)++, 
+                    &loop, 1);
+        }
+    }
+
+    return iloops;
 }
 
 

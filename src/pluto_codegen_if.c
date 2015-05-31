@@ -78,7 +78,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     int nstmts = prog->nstmts;
     int npar = prog->npar;
 
-    IF_DEBUG(printf("[Pluto] generating Cloog file...\n"));
+    IF_DEBUG(printf("[pluto] generating Cloog file...\n"));
     fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
     fprintf(fp, "# language: C\n");
     fprintf(fp, "c\n\n");
@@ -269,14 +269,14 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
 
     if (!options->silent)   {
         if (nstmts >= 1 && cloogOptions->fs[0] >= 1) {
-            printf("[Pluto] using statement-wise -fs/-ls options: ");
+            printf("[pluto] using statement-wise -fs/-ls options: ");
             for (i=0; i<nstmts; i++) {
                 printf("S%d(%d,%d), ", i+1, cloogOptions->fs[i], 
                         cloogOptions->ls[i]);
             }
             printf("\n");
         }else{
-            printf("[Pluto] using Cloog -f/-l options: %d %d\n", 
+            printf("[pluto] using Cloog -f/-l options: %d %d\n", 
                     cloogOptions->f, cloogOptions->l);
         }
     }
@@ -288,9 +288,9 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
 
     fprintf(outfp, "/* Start of CLooG code */\n");
     /* Get the code from CLooG */
-    IF_DEBUG(printf("[Pluto] cloog_input_read\n"));
+    IF_DEBUG(printf("[pluto] cloog_input_read\n"));
     input = cloog_input_read(cloogfp, cloogOptions) ;
-    IF_DEBUG(printf("[Pluto] cloog_clast_create\n"));
+    IF_DEBUG(printf("[pluto] cloog_clast_create\n"));
     root = cloog_clast_create_from_input(input, cloogOptions);
     if (options->prevector) {
         pluto_mark_vector(root, prog, cloogOptions);
@@ -401,7 +401,7 @@ int pluto_omp_parallelize(PlutoProg *prog)
         }
     }
 
-    IF_DEBUG(fprintf(stdout, "[Pluto] marked %d loop(s) parallel\n",
+    IF_DEBUG(fprintf(stdout, "[pluto] marked %d loop(s) parallel\n",
                 num_parallel_loops));
 
     fclose(outfp);

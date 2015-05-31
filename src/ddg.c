@@ -71,7 +71,7 @@ void graph_print_sccs(Graph *g)
     assert(g->num_sccs != -1);
 
     for (i=0; i<g->num_sccs; i++)  {
-        IF_DEBUG(printf("SCC_id %d: size: %d: max stmt dim: %d\n", 
+        IF_DEBUG(printf("\tSCC %d: size: %d: max stmt dim: %d\n",
                 g->sccs[i].id, g->sccs[i].size, g->sccs[i].max_dim));
     }
 }
@@ -181,18 +181,18 @@ void dfs_for_scc(Graph *g)
             g->sccs[numScc].id = numScc;
             dfs_vertex (g, &g->vertices[vCopy[i].id], &time);
 
-            IF_DEBUG(printf("SCC %d: Stmts: ", numScc));
+            IF_MORE_DEBUG(printf("[pluto] dfs_for_scc: SCC %d: Stmt ids: ", numScc));
             for (j=0; j<g->nVertices; j++) {
                 if (g->vertices[j].scc_id == -1 && g->vertices[j].vn > 0) {
                     g->vertices[j].scc_id = numScc;
-                    IF_DEBUG(printf(" %d", g->vertices[j].id));
+                    IF_MORE_DEBUG(printf(" %d", g->vertices[j].id));
                 }
             }
-            IF_DEBUG(printf("\n"));
+            IF_MORE_DEBUG(printf("\n"));
             numScc++;
         }
     }
-    IF_DEBUG(printf("\n\n"));
+    IF_MORE_DEBUG(printf("\n\n"));
 
     g->num_sccs = numScc;
 

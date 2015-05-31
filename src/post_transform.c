@@ -181,7 +181,7 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
     }
 
     if (l < num) {
-        pluto_make_innermost(loops[l], prog);
+        pluto_make_innermost_loop(loops[l], prog);
         IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
         IF_DEBUG(pluto_loop_print(loops[l]););
         pluto_loops_free(loops, num);
@@ -313,52 +313,50 @@ int gen_unroll_file(PlutoProg *prog)
 /*
  * is_tiled: is band tiled?
  */
-int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog)
+int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *prog)
 {
     int num, l, max_score;
     Ploop *maxloc;
 
     /* Band has to be the innermost band as well */
-    if (is_tiled) {
-        if (prog->num_hyperplanes != band->loop->depth + 2*band->width)
-            return 0;
-    }else{
-        if (prog->num_hyperplanes != band->loop->depth + band->width)
-            return 0;
+    if (!pluto_is_band_innermost(band, num_tiled_levels)) {
+        return 0;
     }
 
     Ploop **loops;
 
-    if (is_tiled) { 
-        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-                band->loop->depth + band->width, prog, &num);
-    }else{
-        loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-                band->loop->depth, prog, &num);
-    }
+    loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
+            band->loop->depth + num_tiled_levels*band->width, prog, &num);
 
     max_score = 0;
     maxloc = NULL;
     for (l=0; l<num; l++) {
-        int s, t, v, score;
+        int a, s, t, v, score;
+        a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
         v = pluto_loop_is_vectorizable(loops[l], prog);
-        /* High priority for vectorization since if it's vectorizable,
-         * everything in it has either spatial or temporal reuse
+        /*
+         * Penalize accesses which will have neither spatial, nor temporal
+         * reuse (i.e., non contiguous ones); high priority for vectorization 
+         * since if it's vectorizable, everything in it has either spatial 
+         * or temporal reuse;
+         * TODO: tune this further
          */
-        score = (2*s + 4*t + 8*v)*loops[l]->nstmts;
+        score = (2*s + 4*t + 8*v - 16*(a-s-t))*loops[l]->nstmts;
         /* Using >= since we'll take the last one if all else is the same */
         if (score >= max_score) {
             max_score = score;
             maxloc = loops[l];
         }
+        IF_DEBUG(printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
+        IF_DEBUG(pluto_loop_print(loops[l]));
     }
 
     if (max_score >= 1) {
-        pluto_make_innermost(maxloc, prog);
         IF_DEBUG(printf("[pluto-intra-tile-opt] loop to be made innermost: "););
         IF_DEBUG(pluto_loop_print(maxloc););
+        pluto_make_innermost_loop(maxloc, prog);
         pluto_loops_free(loops, num);
         return 1;
     }

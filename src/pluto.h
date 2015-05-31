@@ -205,10 +205,11 @@ struct dependence{
     /* Level at which the dependence is satisfied */
     int satisfaction_level;
 
-    /* Constraints for validity of a transformation */
-    PlutoConstraints *valid_cst;
+    /* Constraints for preserving this dependence while bounding 
+     * its distance */
+    PlutoConstraints *cst;
 
-    /* Constraints for bounding the dependence distance */
+    /* Constraints for bounding dependence distance */
     PlutoConstraints *bounding_cst;
 
     /* Dependence direction in transformed space */
@@ -404,7 +405,7 @@ int pluto_dynschedule_codegen(PlutoProg *prog, FILE *sigmafp, FILE *outfp, FILE 
 int pluto_distmem_codegen(PlutoProg *prog, FILE *cloogfp, FILE *sigmafp, FILE *outfp, FILE *headerfp);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-       bool loop_search_mode, int max_sols);
+       bool loop_search_mode, int max_sols, int band_depth);
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
 DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
