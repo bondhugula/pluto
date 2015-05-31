@@ -36,7 +36,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt);
 void pluto_prog_print(FILE *fp, PlutoProg *prog);
 
 Dep *pluto_dep_alloc();
-void pluto_dep_print(FILE *fp, Dep *dep);
+void pluto_dep_print(FILE *fp, const Dep *dep);
 void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
@@ -110,6 +110,8 @@ void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_stmt_transformation_print(const Stmt *stmt);
+void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level);
+void pluto_transformation_print_level(const PlutoProg *prog, int level);
 
 Stmt *pluto_stmt_dup(const Stmt *stmt);
 PlutoAccess *pluto_access_dup(const PlutoAccess *acc);
