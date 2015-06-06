@@ -60,7 +60,7 @@ dirname=`dirname  $SOURCEFILE`
 basename=`basename $SOURCEFILE`
 prefix=`basename $SOURCEFILE .c`
 
-CLOOGFILE=$prefix.pluto.cloog
+CLOOGFILE=`basename $OUTFILE`.pluto.cloog
 PLUTOOUT=$OUTFILE
 
 # generate and insert unrolling annotations, run ancc on it,
@@ -119,8 +119,10 @@ cleanup()
 		mv $TEMPFILE $SOURCEFILE
 	fi
 if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog *.sysloog .appendfilename
+    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized\
+    $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
+    *.sysloog .appendfilename
 fi
 }
 
-trap cleanup exit
+trap cleanup SIGINT exit

@@ -82,6 +82,9 @@ COMMAND-LINE OPTIONS
     --help 
     List all available options with one-line summary
 
+    --pet Use 'pet' to extract polyhedral representation from the source 
+    program instead of clan.
+
     --tile [--l2tile]
     Tile code; in addition, --l2tile will tile once more for the L2 
     cache. By default, both of them are disabled. Tile sizes can be 

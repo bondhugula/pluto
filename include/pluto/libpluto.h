@@ -160,6 +160,9 @@ struct plutoOptions{
     /* Read input from a .scop file */
     int readscop;
 
+    /* Use PIP as ilp solver. */
+    int pipsolve;
+
     /* Use isl as ilp solver. */
     int islsolve;
 

@@ -11,23 +11,33 @@ Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
 
 INSTALLING PLUTO
 
-Requirements: A Linux distribution. Pluto has been tested on x86 and 
-x86-64 machines running Fedora Core {4,5,7,8,9}, Ubuntu, and RedHat  
-Enterprise Server 5.x. Solaris should also be fine if you have GNU 
-utilities. In order to use the development version from Pluto's git 
-repository, automatic build system tools including autoconf, automake, 
-and libtool are needed. GMP (GNU multi precision arithmetic library) is 
-needed by ISL (one of the included libraries). If it's not already on 
-your system, it can be installed easily with, for eg., 
-'sudo yum -y install gmp gmp-devel' on a Fedora, or 
-'sudo apt-get install libgmp3-dev' on an Ubuntu. 
+PREREQUISITES
+A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
+running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also 
+be fine if you have GNU utilities. In order to use the development version 
+from Pluto's git repository, automatic build system tools including 
+autoconf, automake, and libtool are needed. GMP (GNU multi precision 
+arithmetic library) is needed by ISL (one of the included libraries). If 
+it's not already on your system, it can be installed easily with, for eg., 
+'sudo yum -y install gmp gmp-devel' on a Fedora, or 'sudo apt-get install 
+libgmp3-dev' on an Ubuntu. 
 
-In addition, GLPK (version 4.47 or higher) is needed.  "yum -y install 
-glpk-devel" for Fedora or download from https://www.gnu.org/software/glpk/)
+GLPK (version 4.47 or higher) is required.  "yum -y install glpk-devel" 
+for Fedora or download from https://www.gnu.org/software/glpk/)
+Pluto includes all other libraries that it depends on.  
+autoconf/automake system will take care of automatically building 
+everything. Nothing else needs to be downloaded and installed 
+separately.  The pet library has its own pre-requisites (please see 
+pet/README); its best to have LLVM/Clang 3.4 or higher. The pet 
+submodule that Pluto git points to has been verified to work with 
+clang-3.4.
 
-Pluto includes all other libraries that it depends on. The  
-autoconf/automake system will take care of the build. Nothing else needs to 
-be installed separately.  
+The pet library has its own pre-requisites (please see pet/README); its best 
+to have LLVM/Clang 3.4 or higher.  See pet/README for pet's requirements.
+
+Pluto includes remaining libraries that it depends on.  autoconf/automake 
+system will take care of automatically building everything. Nothing else 
+needs to be downloaded and installed separately.  
 
 
 BUILDING PLUTO+
@@ -36,13 +46,25 @@ git clone git://repo.or.cz/pluto.git -b pluto+
 git submodule update --init
 ./apply_patches.sh
 ./autogen.sh
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+$ ./configure [--enable-debug]
 make -j<num>
 
-configure can be provided --with-isl-prefix=<isl install location> to 
+* configure can be provided --with-isl-prefix=<isl install location> to 
 build with another isl, otherwise the bundled isl is used.
 
-* --with-isl-prefix=<location> to compile and link with an already installed 
+Development version from Git
+
+$ git clone git://repo.or.cz/pluto.git
+$ cd pluto/
+$ git submodule init 
+$ git submodule update
+$ ./apply_patches.sh
+$ ./autogen.sh
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+$ make
+$ make test
+
+* --with-isl-prefix=<location> to compile and link with an already 
 isl. By default, the version of isl bundled with Pluto will be used.
 
 'polycc' is the wrapper script around src/pluto (core transformer) and all 
@@ -50,8 +72,8 @@ other components. 'polycc' runs all of these in sequence on an input C
 program (with the section to  parallelize/optimize marked) and is what a 
 user should use on input. Output generated is OpenMP parallel C code that 
 can be readily compiled and run on shared-memory parallel machines like 
-general-purpose multicores. libpluto.{so,a} is also built and can be found 
-in src/.libs/. 'make install' will install it.
+general-purpose multicores. libpluto.{so,a} is also built and can be 
+found in src/.libs/. 'make install' will install it.
 
 
 TRYING A NEW CODE
@@ -126,12 +148,8 @@ seidel.par.c: This is Pluto parallelized code optimized for locality and
 parallelism  with tiling and other transformations. This code has OpenMP 
 pragmas. 'par' is the corresponding executable.
 
-seidel.par2d.c: In this case, since we have two degrees of pipelined 
-parallelism, so the .par2d.c is the code with nested parallel OpenMP 
-pragmas.
-
-- To change any of the flags used for an example, edit the top section 
-  of examples/common.mk or the Makefile in the example directory
+- To change any of the flags used for an example, edit the top section of 
+  examples/common.mk or the Makefile in the example directory
 
 - To manually specify tile sizes, create tile.sizes; see examples/matmul/ 
    for example or doc/DOC.txt for more information on setting tile sizes. 
@@ -161,7 +179,6 @@ $ ./tiled
 To launch a complete verification that compares output of tiled, par
 with orig for all examples, in examples/, run 'make test'.
 
-[examples/ ]$ make test
 
 
 

@@ -370,44 +370,192 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     return globcst;
 }
 
-/* Generate mod sum reduction constraints in a similar way as 
- * we did for non trivial solution aavoiding constraints. */
-/* void generate_linear_ind_mod_cnst_coeffs(int64 **val, int i, int j, int n, */
-/*         int stmt_row_offset, int stmt_col_offset)  */
-/* { */
-/*     int mid, temp, k; */
-/*     if (n == 0) */
-/*         return; */
-/*     else { */
-/*         mid = (1 << (n - 1)) - 1; */
-/*         for (temp = i; temp <= i + mid; temp++) { */
-/*             val[stmt_row_offset + temp][stmt_col_offset + j] = 1; */
-/*         } */
-/*  */
-/*         k = (1 << n); */
-/*         for (temp = i + mid + 1; temp < i + k; temp++) { */
-/*             val[stmt_row_offset + temp][stmt_col_offset + j] = -1; */
-/*         } */
-/*         generate_mod_const_coeffs(val, i, j + 1, n - 1, stmt_row_offset, */
-/*                 stmt_col_offset); */
-/*         generate_mod_const_coeffs(val, i + mid + 1, j + 1, n - 1, stmt_row_offset, */
-/*                 stmt_col_offset); */
-/*         return; */
-/*     } */
-/* } */
+/* Builds 1-dimensional schedule constraints (sequential schedule) for a dependence */
+PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *prog)
+{
+    PlutoConstraints *cst, *sched_valid_cst;
+    int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
+    int src_offset, dest_offset;
+    PlutoMatrix *phi;
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    stmts = prog->stmts;
+    nstmts = prog->nstmts;
+
+    /* IMPORTANT: It's assumed that all statements are of dimensionality nvar */
+
+    IF_DEBUG(printf("[pluto] get 1-d scheduling constraints: Dep %d\n", dep->id+1););
+
+    dest_stmt = dep->dest;
+    src_stmt = dep->src;
+
+    PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
+
+    if (src_stmt != dest_stmt) {
+        phi = pluto_matrix_alloc(2*nvar+npar+1, 2*(nvar+npar+1)+1);
+        pluto_matrix_set(phi, 0);
+
+        for (r=0; r<nvar; r++) {
+            /* Source stmt */
+            phi->val[r][r] = -1;
+        }
+        for (r=nvar; r<2*nvar; r++) {
+            /* Dest stmt */
+            phi->val[r][(nvar+npar+1)+(r-nvar)] = 1;
+        }
+        /* coefficients for parameters */
+        for (r=2*nvar; r<2*nvar+npar; r++) {
+            /* Source stmt */
+            phi->val[r][nvar+r-2*nvar] = -1;
+            /* Dest stmt */
+            phi->val[r][(nvar+npar+1)+(nvar+r-2*nvar)] = 1;
+        }
+        /* Translation coefficients */
+        phi->val[2*nvar+npar][nvar+npar] = -1;
+        phi->val[2*nvar+npar][(nvar+npar+1)+nvar+npar] = 1;
+        /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
+        phi->val[2*nvar+npar][2*(nvar+npar+1)] = -1;
+    }else{
+        phi = pluto_matrix_alloc(2*nvar+npar+1, (nvar+npar+1)+1);
+        pluto_matrix_set(phi, 0);
+
+        for (r=0; r<nvar; r++) {
+            /* Source stmt */
+            phi->val[r][r] = -1;
+        }
+        for (r=nvar; r<2*nvar; r++) {
+            /* Dest stmt */
+            phi->val[r][r-nvar] = 1;
+        }
+        /* Parametric shifts cancel out */
+
+        /* Translation coefficients cancel out;
+         * so nothing for 2*nvar+npar */
+
+        /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
+        phi->val[2*nvar+npar][nvar+npar+1] = -1;
+    }
+
+    /* Apply Farkas lemma */
+    sched_valid_cst = farkas_lemma_affine(dpoly, phi);
+    // pluto_constraints_pretty_print(stdout, sched_valid_cst);
+    
+    pluto_matrix_free(phi);
+    pluto_constraints_free(dpoly);
+
+    /* Put scheduling constraints in global format */
+
+    /* Everything initialized to zero during allocation */
+    cst = pluto_constraints_alloc(sched_valid_cst->nrows, CST_WIDTH);
+    cst->nrows = 0;
+    cst->ncols = CST_WIDTH;
+
+    src_offset = npar+1+src_stmt*(nvar+npar+1+3)+1;
+    dest_offset = npar+1+dest_stmt*(nvar+npar+1+3)+1;
+
+    /* Permutability constraints */
+    if (!IS_RAR(dep->type)) {
+        /* Permutability constraints only for non-RAR deps */
+        for (k=0; k<sched_valid_cst->nrows; k++) {
+            pluto_constraints_add_constraint(cst, sched_valid_cst->is_eq[k]);
+            for (j=0; j<nvar+npar+1; j++)  {
+                cst->val[cst->nrows-1][src_offset+j] = sched_valid_cst->val[k][j];
+                if (src_stmt != dest_stmt) {
+                    cst->val[cst->nrows-1][dest_offset+j] = sched_valid_cst->val[k][nvar+npar+1+j];
+                }
+            }
+            /* constant part */
+            if (src_stmt == dest_stmt) {
+                cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][nvar+npar+1];
+            }else{
+                cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][2*nvar+2*npar+2];
+            }
+        }
+    }
+
+    /* Coefficients of those dimensions that were added for padding
+     * are of no utility */
+    for (k=0; k<nvar; k++)    {
+        if (!stmts[src_stmt]->is_orig_loop[k]) {
+            for (j=0; j < cst->nrows; j++)   {
+                cst->val[j][src_offset+k] = 0;
+            }
+        }
+        if (src_stmt != dest_offset && !stmts[dest_stmt]->is_orig_loop[k])  {
+            for (j=0; j < cst->nrows; j++)   {
+                cst->val[j][dest_offset+k] = 0;
+            }
+        }
+    }
+
+    pluto_constraints_free(sched_valid_cst);
+
+    return cst;
+}
 
 
-/* void get_linear_ind_mod_sum_constraints(int64 **val, int stmt_row_offset, */
-/*         int stmt_col_offset, int nvar)  */
-/* { */
-/*     int nrows, i; */
-/*     nrows = 1 << nvar; */
-/*     for (i = 0; i < nrows; i++) { */
-/*         val[stmt_row_offset + i][stmt_col_offset + 0] = 1; // coeff of c_sum */
-/*     } */
-/*  */
-/*     generate_linear_ind_mod_cnst_coeffs(val, 0, 1, nvar, stmt_row_offset, stmt_col_offset); */
-/* } */
+/* 
+ * 1-d affine schedule for a set of statements
+ */
+PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stmts,
+       int nstmts)
+{
+    int i, inc, nvar, npar, ndeps;
+    PlutoConstraints *fcst, *fcst_d;
+    Dep **deps;
+
+    ndeps = prog->ndeps;
+    deps = prog->deps;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    fcst = pluto_constraints_alloc(128, (npar+1+prog->nstmts*(nvar+npar+4)+1));
+
+    /* Compute the constraints and store them */
+    for (i=0, inc = 0; i<ndeps; i++) {
+        Dep *dep = deps[i];
+
+        if (options->rar == 0 && IS_RAR(dep->type)) {
+            continue;
+        }
+
+        if (!pluto_stmt_is_member_of(dep->src, stmts, nstmts)
+                || !pluto_stmt_is_member_of(dep->dest, stmts, nstmts)) {
+            continue;
+        }
+
+        fcst_d = get_feautrier_schedule_constraints_dep(dep, prog);
+
+        IF_DEBUG(fprintf(stdout, "\tFor dep: %d; num_constraints: %d\n",
+                    i+1, fcst_d->nrows));
+        IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+        IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, fcst_d));
+
+        pluto_constraints_add(fcst, fcst_d);
+        pluto_constraints_free(fcst_d);
+
+        if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+                fcst->nrows - fcst_d->nrows < 
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+            pluto_constraints_simplify(fcst);
+            IF_DEBUG(fprintf(stdout,
+                        "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
+                        fcst->nrows));
+            if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                inc++;
+            }
+        }
+    }
+    pluto_constraints_simplify(fcst);
+
+    IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
+                fcst->nrows, fcst->ncols - 1));
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout, fcst));
+
+    return fcst;
+}
 
 
 /*
