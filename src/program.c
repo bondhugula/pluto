@@ -4180,7 +4180,8 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
     isl_union_map *schedule;
     isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
-    IF_DEBUG(printf("[pluto] compute deps (isl)\n"););
+    IF_DEBUG(printf("[pluto] compute_deps (isl%s)\n",
+                options->lastwriter? " with lastwriter":""););
 
     isl_space *space = isl_set_get_space(pscop->context);
     empty = isl_union_map_empty(isl_space_copy(space));
@@ -4274,9 +4275,11 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
         }
     }
 
-    dep_raw = isl_union_map_coalesce(dep_raw);
-    dep_war = isl_union_map_coalesce(dep_war);
-    dep_waw = isl_union_map_coalesce(dep_waw);
+    if (options->isldepcoalesce) {
+        dep_raw = isl_union_map_coalesce(dep_raw);
+        dep_war = isl_union_map_coalesce(dep_war);
+        dep_waw = isl_union_map_coalesce(dep_waw);
+    }
 
     prog->ndeps = 0;
     isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
@@ -4318,9 +4321,6 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
     nstmts = pscop->n_stmt;
 
     if (nstmts == 0)    return NULL;
-
-    IF_DEBUG(printf("[pluto] Pet SCoP context\n"););
-    IF_DEBUG(isl_set_dump(pscop->context););
 
     params = NULL;
     if (npar >= 1)    {
@@ -4802,6 +4802,9 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
 
     pluto_constraints_free(prog->context);
     prog->context = isl_set_to_pluto_constraints(pscop->context);
+    IF_DEBUG(printf("[pluto] Pet SCoP context\n"));
+    IF_DEBUG(isl_set_dump(pscop->context););
+    IF_DEBUG(pluto_constraints_compact_print(stdout, prog->context));
 
     // isl_set_dump(pscop->context);
 
