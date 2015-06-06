@@ -62,6 +62,7 @@
 #include <isl/deprecated/mat_int.h>
 
 osl_relation_p get_identity_schedule(int dim, int npar);
+static int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 
 void pluto_add_dep(PlutoProg *prog, Dep *dep)
 {
@@ -97,16 +98,16 @@ int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
             row_id = i;
         }
     }
-  if (nb_ndims_found == 0) {
-    fprintf(stderr, "error: specified dimension not found");
-    exit(1);
-  }
-  if (nb_ndims_found > 1) {
-    fprintf(stderr, "error: specified dimension occurs multiple times");
-    exit(1);
-  }
+    if (nb_ndims_found == 0) {
+        fprintf(stderr, "error: specified dimension not found");
+        exit(1);
+    }
+    if (nb_ndims_found > 1) {
+        fprintf(stderr, "error: specified dimension occurs multiple times");
+        exit(1);
+    }
 
-  return row_id;
+    return row_id;
 }
 
 
@@ -2361,6 +2362,7 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
         prog->codegen_context->val[i][prog->codegen_context->ncols-1] = -options->codegen_context;
       }
     }
+    read_codegen_context_from_file(prog->codegen_context);
 
     prog->nstmts = osl_statement_number(scop->statement);
     prog->options = options;
@@ -3588,6 +3590,22 @@ osl_relation_p get_identity_schedule(int dim, int npar)
     return rln;
 }
 
+static int read_codegen_context_from_file(PlutoConstraints *codegen_context)
+{
+    FILE *fp = fopen("codegen.context", "r");
+
+    if (fp) {
+        IF_DEBUG(printf("[Pluto] Reading from codegen.context\n"););
+        PlutoConstraints *cc = pluto_constraints_read(fp);
+        if (cc && cc->ncols == codegen_context->ncols) {
+            pluto_constraints_add(codegen_context, cc);
+            return 0;
+        }
+        IF_DEBUG(printf("[WARNING] Failed to read from codegen.context\n"););
+    }
+
+    return 1;
+}
 
 /*
  * Return clone of a statement

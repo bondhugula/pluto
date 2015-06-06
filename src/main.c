@@ -58,9 +58,10 @@ void usage_message(void)
     fprintf(stdout, "       --tile                    Tile for locality\n");
     fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP)\n");
-    fprintf(stdout, "     | --parallelize\n");
-    fprintf(stdout, "       --lbtile | --diamond-tile Enables full dimensional concurrent start\n");
+    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas)\n");
+    fprintf(stdout, "    or --parallelize\n");
+    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
+    fprintf(stdout, "    or --diamond-tile\n");
     fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
@@ -85,13 +86,15 @@ void usage_message(void)
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
     fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "\n   Index Set Splitting        \n");
+    fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
-    fprintf(stdout, "       --codegen-context=<context>       Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --codegen-context=<value> Parameters are at least as much as <value>\n");
     fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug                   Verbose output\n");
-    fprintf(stdout, "       --moredebug               More verbose output\n");
+    fprintf(stdout, "       --debug                   Verbose/debug output\n");
+    fprintf(stdout, "       --moredebug               More verbose/debug output\n");
     fprintf(stdout, "\nTo report bugs, please email <pluto-development@googlegroups.com>\n\n");
 }
 
