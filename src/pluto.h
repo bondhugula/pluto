@@ -119,6 +119,10 @@ struct statement{
     /* The hyperplane evicted by the hyperplane enabling
      * concurrent start (diamond tiling) */
     PlutoMatrix *evicted_hyp;
+    
+    /* Hyperplane that was replaced in case concurrent start 
+     * had been found*/
+    int evicted_hyp_pos;
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
@@ -373,6 +377,7 @@ void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
+PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
 PlutoConstraints *get_global_independence_cst(

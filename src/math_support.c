@@ -664,3 +664,48 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars)
         free(var[j]);
     }
 }
+
+/*
+ * Is row r1 of mat1 parallel to row r2 of mat2
+ */
+int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2)
+{
+    int num, den, j;
+
+    assert(mat1->ncols == mat2->ncols);
+
+    num = 0;
+    den = 0;
+
+    for (j=0; j<mat1->ncols; j++) {
+        if (mat1->val[r1][j] == 0 && mat2->val[r2][j] == 0) continue;
+        if (mat1->val[r1][j] != 0 && mat2->val[r2][j] == 0) return 0;
+        if (mat1->val[r1][j] == 0 && mat2->val[r2][j] != 0) return 0;
+
+        /* num and den are always non-zero */
+        if (num == 0) {
+            /* first time */
+            num = mat1->val[r1][j];
+            den = mat2->val[r2][j];
+        }else{
+            if (num*mat2->val[r2][j] != den*mat1->val[r1][j]) return 0;
+        }
+    }
+
+    return 1;
+}
+
+
+int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2)
+{
+    int j, dot;
+
+    assert(mat1->ncols == mat2->ncols);
+
+    dot = 0;
+    for (j=0; j<mat1->ncols; j++) {
+        dot +=  mat1->val[r1][j]*mat2->val[r2][j];
+    }
+
+    return (dot == 0);
+}

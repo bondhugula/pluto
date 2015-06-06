@@ -85,6 +85,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars);
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
 
+int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
+int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
+
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
 
 #endif
