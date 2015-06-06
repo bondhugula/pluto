@@ -187,16 +187,23 @@ struct dependence{
 
     PlutoConstraints *depsat_poly;
 
-    int *satvec;
-
     /* Dependence type from Candl (raw, war, or rar) */
     int type;
 
     /* Has this dependence been satisfied? */
     bool satisfied;
 
-    /* Level at which the dependence is satisfied */
+    /* Level at which this dependence is completely satisfied (when doing
+     * conservative computation) or level *by* which the dependence is
+     * completely satisfied (if doing a complex/accurate check) */
     int satisfaction_level;
+
+    /* 
+     * A vector which provides the levels at which a
+     * dependence has been satisfied. Depending on how this is 
+     * computed, it may be conservative or accurate
+     */
+    int *satvec;
 
     /* Constraints for preserving this dependence while bounding 
      * its distance */
@@ -256,7 +263,7 @@ struct plutoProg{
     int ntransdeps;
 
     /* Array of data variable names */
-    // required only by commopt_foifi option
+    /* used by distmem to set different tags for different data */
     char **data_names;
     int num_data;
 
@@ -341,6 +348,7 @@ void pluto_constraints_list_add(PlutoConstraintsList *list,const PlutoConstraint
 void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints *cst);
 
 typedef struct band{
+    /* Root loop of this band */
     Ploop *loop;
     int width;
     /* Not used yet */
@@ -376,7 +384,7 @@ int pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-       bool loop_search_mode, int max_sols, int band_depth);
+        int max_sols, int band_depth);
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
 DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
