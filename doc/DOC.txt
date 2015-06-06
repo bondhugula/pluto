@@ -279,24 +279,26 @@ Alternative 2
 
 Using the '.precut' file
 
-The '.precut' can be used to specify any partial transformation that 
-Pluto can then complete. The format is as follows:
+The '.precut' can be used to specify any partial transformation that Pluto 
+can then complete. This is a useful way to test or manually specify a 
+particular transformation, or to check if a particular transformation is a 
+valid one. The format of .precut is as below.
 
 <number of statements>
 <number of levels to tile>
 # first statement
 <number of rows, and number of columns for the partial transformation>
-<rows of the partial transformation in cloog-like scattering function 
-format; so if the partial transformation is c1 = i+j+1 for a 2-d 
-statement with 1 program parameter, the row would be 0 1 1 0 1, the 
-first number is always a zero (for an equality), then 1 for i, 1 for j, 
-0 for the parameter, 1 for the constant part>
+<rows of the partial transformation in Cloog-like scattering function 
+format. For eg.,  if the partial transformation is c1 = i+j+1 for a 2-d 
+statement with one program parameter, the row would be 0 1 1 0 1, the first 
+number is always a zero (for an equality), then 1 for i, 1 for j, 
+0 for the parameter, and 1 for the constant part>
 <a number that's not currently used, specify anything>
 <whether or not to tile each of the levels, 0 for `don't tile', any 
 other number for tiling; as many lines as the number of tiling levels
 specified earlier>
 # second statement
-....
+...
 
 Parsing of any other text (like comments) in .fst or .precut is not 
 handled.
