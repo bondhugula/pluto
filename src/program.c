@@ -2771,7 +2771,8 @@ PlutoOptions *pluto_options_alloc()
 
     options->candldep = 0;
 
-    options->islsolve = 0;
+    options->pipsolve = 0;
+    options->islsolve = 1;
 
     options->readscop = 0;
 
@@ -3223,6 +3224,7 @@ Stmt *pluto_stmt_alloc(int dim,
 
     /* For diamond tiling */
     stmt->evicted_hyp = NULL;
+    stmt->evicted_hyp_pos = -1;
 
     stmt->first_tile_dim = 0;
     stmt->last_tile_dim = -1;

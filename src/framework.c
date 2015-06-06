@@ -368,6 +368,188 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     return globcst;
 }
 
+/* Builds 1-dimensional schedule constraints (sequential schedule) for a dependence */
+PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *prog)
+{
+    PlutoConstraints *cst, *sched_valid_cst;
+    int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
+    int src_offset, dest_offset;
+    PlutoMatrix *phi;
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    stmts = prog->stmts;
+    nstmts = prog->nstmts;
+
+    /* IMPORTANT: It's assumed that all statements are of dimensionality nvar */
+
+    IF_DEBUG(printf("[pluto] get 1-d scheduling constraints: Dep %d\n", dep->id+1););
+
+    dest_stmt = dep->dest;
+    src_stmt = dep->src;
+
+    PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
+
+    if (src_stmt != dest_stmt) {
+        phi = pluto_matrix_alloc(2*nvar+npar+1, 2*(nvar+1)+1);
+        pluto_matrix_set(phi, 0);
+
+        for (r=0; r<nvar; r++) {
+            /* Source stmt */
+            phi->val[r][r] = -1;
+        }
+        for (r=nvar; r<2*nvar; r++) {
+            /* Dest stmt */
+            phi->val[r][(nvar+1)+(r-nvar)] = 1;
+        }
+        /* No parametric shifts: all zero for 2*nvar to 2*nvar+npar */
+
+        /* Translation coefficients */
+        phi->val[2*nvar+npar][(nvar+1)+nvar] = 1;
+        phi->val[2*nvar+npar][nvar] = -1;
+        /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
+        phi->val[2*nvar+npar][2*(nvar+1)] = -1;
+    }else{
+        phi = pluto_matrix_alloc(2*nvar+npar+1, (nvar+1)+1);
+        pluto_matrix_set(phi, 0);
+
+        for (r=0; r<nvar; r++) {
+            /* Source stmt */
+            phi->val[r][r] = -1;
+        }
+        for (r=nvar; r<2*nvar; r++) {
+            /* Dest stmt */
+            phi->val[r][r-nvar] = 1;
+        }
+        /* No parametric shifts: so all zero for 2*nvar to 2*nvar+npar-1 */
+
+        /* Translation coefficients cancel out;
+         * so nothing for 2*nvar+npar */
+
+        /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
+        phi->val[2*nvar+npar][nvar+1] = -1;
+    }
+
+    /* Apply Farkas lemma */
+    sched_valid_cst = farkas_lemma_affine(dpoly, phi);
+    // pluto_constraints_pretty_print(stdout, sched_valid_cst);
+    
+    pluto_matrix_free(phi);
+    pluto_constraints_free(dpoly);
+
+    /* Put scheduling constraints in global format */
+
+    /* Everything initialized to zero during allocation */
+    cst = pluto_constraints_alloc(sched_valid_cst->nrows, CST_WIDTH);
+    cst->nrows = 0;
+    cst->ncols = CST_WIDTH;
+
+    src_offset = npar+1+src_stmt*(nvar+1);
+    dest_offset = npar+1+dest_stmt*(nvar+1);
+
+    /* Permutability constraints */
+    if (!IS_RAR(dep->type)) {
+        /* Permutability constraints only for non-RAR deps */
+        for (k=0; k<sched_valid_cst->nrows; k++) {
+            pluto_constraints_add_constraint(cst, sched_valid_cst->is_eq[k]);
+            for (j=0; j<nvar+1; j++)  {
+                cst->val[cst->nrows-1][src_offset+j] = sched_valid_cst->val[k][j];
+                if (src_stmt != dest_stmt) {
+                    cst->val[cst->nrows-1][dest_offset+j] = sched_valid_cst->val[k][nvar+1+j];
+                }
+            }
+            /* constant part */
+            if (src_stmt == dest_stmt) {
+                cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][nvar+1];
+            }else{
+                cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][2*nvar+2];
+            }
+        }
+    }
+
+    /* Coefficients of those dimensions that were added for padding
+     * are of no utility */
+    for (k=0; k<nvar; k++)    {
+        if (!stmts[src_stmt]->is_orig_loop[k]) {
+            for (j=0; j < cst->nrows; j++)   {
+                cst->val[j][src_offset+k] = 0;
+            }
+        }
+        if (src_stmt != dest_offset && !stmts[dest_stmt]->is_orig_loop[k])  {
+            for (j=0; j < cst->nrows; j++)   {
+                cst->val[j][dest_offset+k] = 0;
+            }
+        }
+    }
+
+    pluto_constraints_free(sched_valid_cst);
+
+    return cst;
+}
+
+
+/* 
+ * 1-d affine schedule for a set of statements
+ */
+PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stmts,
+       int nstmts)
+{
+    int i, inc, nvar, npar, ndeps;
+    PlutoConstraints *fcst, *fcst_d;
+    Dep **deps;
+
+    ndeps = prog->ndeps;
+    deps = prog->deps;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    fcst = pluto_constraints_alloc(128, (npar+1+prog->nstmts*(nvar+1)+1));
+
+    /* Compute the constraints and store them */
+    for (i=0, inc = 0; i<ndeps; i++) {
+        Dep *dep = deps[i];
+
+        if (options->rar == 0 && IS_RAR(dep->type)) {
+            continue;
+        }
+
+        if (!pluto_stmt_is_member_of(dep->src, stmts, nstmts)
+                || !pluto_stmt_is_member_of(dep->dest, stmts, nstmts)) {
+            continue;
+        }
+
+        fcst_d = get_feautrier_schedule_constraints_dep(dep, prog);
+
+        IF_DEBUG(fprintf(stdout, "\tFor dep: %d; num_constraints: %d\n",
+                    i+1, fcst_d->nrows));
+        IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+        IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, fcst_d));
+
+        pluto_constraints_add(fcst, fcst_d);
+        pluto_constraints_free(fcst_d);
+
+        if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+                fcst->nrows - fcst_d->nrows < 
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+            pluto_constraints_simplify(fcst);
+            IF_DEBUG(fprintf(stdout,
+                        "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
+                        fcst->nrows));
+            if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                inc++;
+            }
+        }
+    }
+    pluto_constraints_simplify(fcst);
+
+    IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
+                fcst->nrows, fcst->ncols - 1));
+    IF_DEBUG2(pluto_constraints_pretty_print(stdout, fcst));
+
+    return fcst;
+}
+
 
 /*
  * Returns linear independence constraints for a single statement.

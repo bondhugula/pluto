@@ -77,11 +77,13 @@ void usage_message(void)
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (disabled by default)\n");
-    fprintf(stdout, "       --islsolve             Use ISL as ilp solver\n");
-    fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
+    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
+    fprintf(stdout, "       --isldep               Use ISL-based dependence tester\n");
+    fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
+    fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver\n");
+    fprintf(stdout, "       --readscop             Read input from a .scop file\n");
     fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "                                     (disabled by default)\n");
+    fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
     fprintf(stdout, "       --bee                  Generate pragmas for Bee+Cl@k\n\n");
     fprintf(stdout, "       --indent  | -i         Indent generated code (disabled by default)\n");
     fprintf(stdout, "       --silent  | -q         Silent mode; no output as long as everything goes fine (disabled by default)\n");
@@ -199,6 +201,7 @@ int main(int argc, char *argv[])
         {"isldepstmtwise", no_argument, &options->isldepaccesswise, 0},
         {"noisldepcoalesce", no_argument, &options->isldepcoalesce, 0},
         {"readscop", no_argument, &options->readscop, 1},
+        {"pipsolve", no_argument, &options->pipsolve, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
         {0, 0, 0, 0}

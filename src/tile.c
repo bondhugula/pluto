@@ -91,7 +91,7 @@ int pluto_diamond_tile_reschedule(PlutoProg *prog)
 
     for (i=0; i<prog->nstmts; i++){
         if (prog->stmts[i]->evicted_hyp) {
-            int evicted_hyp_pos = prog->evicted_hyp_pos;
+            int evicted_hyp_pos = prog->stmts[i]->evicted_hyp_pos;
             int fl = prog->stmts[i]->dim - prog->stmts[i]->dim_orig;
             PlutoMatrix *evicted_hyp = prog->stmts[i]->evicted_hyp;
             assert(fl + evicted_hyp->ncols == prog->stmts[i]->trans->ncols);
