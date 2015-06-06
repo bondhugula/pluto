@@ -71,7 +71,7 @@ void graph_print_sccs(Graph *g)
     assert(g->num_sccs != -1);
 
     for (i=0; i<g->num_sccs; i++)  {
-        IF_DEBUG(printf("SCC_id %d: size: %d: max stmt dim: %d\n", 
+        IF_DEBUG(printf("\tSCC %d: size: %d: max stmt dim: %d\n",
                 g->sccs[i].id, g->sccs[i].size, g->sccs[i].max_dim));
     }
 }

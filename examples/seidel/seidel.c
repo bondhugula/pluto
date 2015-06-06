@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 #include <assert.h>
 
@@ -11,7 +13,48 @@
 double a[N][N];
 #pragma enddeclarations
 
-#include "util.h"
+#ifdef TIME
+#define IF_TIME(foo) foo;
+#else
+#define IF_TIME(foo)
+#endif
+
+void init_array()
+{
+    int i, j;
+
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
+            a[i][j] = i*i+j*j;
+        }
+    }
+}
+
+
+void print_array()
+{
+    int i, j;
+
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
+            fprintf(stderr, "%0.2lf ", a[i][j]);
+            if (j%80 == 20) fprintf(stderr, "\n");
+        }
+    }
+    fprintf(stderr, "\n");
+}
+
+double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
+}
+
+#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
 
 int main()
 {

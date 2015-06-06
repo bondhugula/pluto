@@ -41,7 +41,9 @@ test/tricky2.c \
 test/tricky3.c \
 test/tricky4.c \
 test/ludcmp.c \
-test/tce-4index-transform.c"
+test/tce-4index-transform.c \
+test/noloop.c \
+test/deep.c"
 
 PET_TESTS="test/jacobi-2d-mod.c \
     test/jacobi-2d-periodic.c \

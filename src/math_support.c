@@ -617,7 +617,7 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat)
  * Pretty prints a one-dimensional affine function
  * ndims: number of variables
  * func should have ndims+1 elements (affine function)
- * vars: names of the variables; if NULL, x0, x1, ... are used
+ * vars: names of the ndims variables; if NULL, x0, x1, ... are used
  */
 void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars)
 {

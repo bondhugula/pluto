@@ -59,7 +59,6 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     dest_stmt = dep->dest;
     src_stmt = dep->src;
 
-    /* Convert everything to >= 0 form */
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
 
     if (src_stmt != dest_stmt) {
@@ -364,7 +363,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     pluto_constraints_simplify(globcst);
 
-    IF_DEBUG(fprintf(stdout, "After all dependences: num constraints: %d, num variables: %d\n",
+    IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
     IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 

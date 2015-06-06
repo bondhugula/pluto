@@ -60,9 +60,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             stmtids[j] = stmt->id+1;
         }
 
-        // IF_DEBUG(printf("Looking for loop\n"););
-        // IF_DEBUG(pluto_loop_print(ploops[i]););
-        // IF_DEBUG(printf("%s in \n", iter););
+        IF_DEBUG(printf("\tLooking for loop\n"););
+        IF_DEBUG(pluto_loop_print(ploops[i]););
         // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
         ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
@@ -145,11 +144,11 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
             /* Sometimes loops may disappear (1) tile size larger than trip count
              * 2) it's a scalar dimension but can't be determined from the
              * trans matrix */
-            printf("Warning: parallel poly loop not found in AST\n");
+            printf("[pluto] pluto_mark_vector: WARNING: vectorizable poly loop not found in AST\n");
             continue;
         }
         for (j=0; j<nloops; j++) {
-            // printf("Marking %s ivdep\n", loops[j]->iterator);
+            // printf("\tMarking %s ivdep\n", loops[j]->iterator);
             loops[j]->parallel += CLAST_PARALLEL_VEC;
         }
         free(stmtids);

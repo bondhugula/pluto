@@ -52,6 +52,10 @@ int pluto_diamond_tile(PlutoProg *prog);
 
 /*
  * Returns the number of (new) satisfied dependences at this level
+ *
+ * NOTE: for every unsatisfied dependence, this function tests if the entire
+ * dependence has been satisfied at 'level'
+ *
  */
 int dep_satisfaction_update(PlutoProg *prog, int level)
 {
@@ -63,7 +67,7 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
 
     num_new_carried = 0;
 
-    IF_DEBUG(printf("[pluto] dep_satisfaction_update\n"););
+    IF_DEBUG(printf("[pluto] dep_satisfaction_update (level %d)\n", level););
 
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
@@ -76,59 +80,74 @@ int dep_satisfaction_update(PlutoProg *prog, int level)
             }
         }
     }
+    IF_DEBUG(printf("\t %d dep(s) satisfied\n", num_new_carried););
 
     return num_new_carried;
 }
 
 /* Check whether all deps are satisfied */
-int deps_satisfaction_check(Dep **deps, int ndeps)
+int deps_satisfaction_check(PlutoProg *prog)
 {
     int i;
 
-    for (i=0; i<ndeps; i++) {
-        if (IS_RAR(deps[i]->type)) continue;
-        if (!dep_is_satisfied(deps[i])) {
+    for (i=0; i<prog->ndeps; i++) {
+        if (IS_RAR(prog->deps[i]->type)) continue;
+        if (!dep_is_satisfied(prog->deps[i])) {
             return false;
         }
     }
     return true;
 }
 
-void pluto_compute_dep_satisfaction(PlutoProg *prog)
+void pluto_dep_satisfaction_reset(PlutoProg *prog)
 {
     int i;
 
-    for (i=0; i<prog->ndeps; i++) {
-        prog->deps[i]->satisfied =  false;
-        prog->deps[i]->satisfaction_level =  prog->num_hyperplanes-1;
-    }
+    IF_DEBUG(printf("[pluto] pluto_dep_satisfaction_reset\n"););
 
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i]->satisfied = false;
+        prog->deps[i]->satisfaction_level = -1;
+    }
+}
+
+/*
+ * Conservative but powerful enough: until a dependence has been completely
+ * satisfied (a level at which it is completely satisifed), a non-zero
+ * dependence component would set satvec for that level to one
+ */
+void pluto_compute_dep_satisfaction(PlutoProg *prog)
+{
+    int i, level;
+
+    IF_DEBUG(printf("[pluto] pluto_compute_dep_satisfaction\n"););
+
+    pluto_dep_satisfaction_reset(prog);
+    
     for (i=0; i<prog->num_hyperplanes; i++) {
         dep_satisfaction_update(prog, i);
     }
 
     /* Create and set satisfaction vectors */
     for (i=0; i<prog->ndeps; i++) {
-        int level;
         Dep *dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
 
-        /* Dep satisfaction level should have been set */
-        assert(dep->satisfaction_level >= 0);
-        if (dep->satvec != NULL) free(dep->satvec);
-        dep->satvec = (int *)malloc(prog->num_hyperplanes * sizeof(int));
 
+        if (dep->satvec) free(dep->satvec);
+        dep->satvec = (int *) malloc(prog->num_hyperplanes*sizeof(int));
+
+        /* Direction vectors should be available */
         assert(dep->dirvec != NULL);
 
         for (level=0; level<prog->num_hyperplanes; level++) {
-            if (dep->dirvec[level] != DEP_ZERO && dep->satisfaction_level >= level) {
+            if (dep->dirvec[level] != DEP_ZERO &&
+                    (dep->satisfaction_level >= level || dep->satisfaction_level == -1)) {
                 dep->satvec[level] = 1;
             }else{
                 dep->satvec[level] = 0;
             }
         }
-
-        dep->satvec[dep->satisfaction_level] = 1;
     }
 }
 
@@ -442,14 +461,14 @@ void get_non_zero_constraints(int64 **val, int stmt_row_offset, int stmt_col_off
 
 /* PlutoConstraints to avoid trivial solutions (all zeros)
  *
- * loop_search_mode = EAGER: If a statement's transformation is not full-ranked,
+ * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked, 
  * a hyperplane, if found, will be a loop hyperplane.
  *                 = LAZY: at least one of the hyperplanes for non-full
  *statements
  *  should be a loop hyperplane as opposed to all
  */
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
-        bool loop_search_mode)
+        bool hyp_search_mode)
 {
     PlutoConstraints *nzcst;
     int i, j, stmt_offset, nvar, npar, nstmts,rows_per_stmt, stmt_row_offset;
@@ -467,9 +486,8 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     nzcst = pluto_constraints_alloc(nstmts*rows_per_stmt, CST_WIDTH);
     nzcst->ncols = CST_WIDTH;
 
-    if (loop_search_mode == EAGER) {
-        for (i = 0; i < nstmts; i++) {
-
+    if (hyp_search_mode == EAGER) {
+        for (i=0; i<nstmts; i++) {
             /* Don't add the constraint if enough solutions have been found */
             if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
                 IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
@@ -498,8 +516,8 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         }
     }else{
         /* LAZY mode */
-        assert(loop_search_mode == LAZY);
-        for (i = 0; i < nstmts; i++) {
+        assert(hyp_search_mode == LAZY);
+        for (i=0; i<nstmts; i++) {
             /* Don't add the constraint if enough solutions have been found */
             if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
                 IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
@@ -576,8 +594,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             del_count++;
         }
     }
-    IF_DEBUG2(printf("Constraints after reductions\n"));
-    IF_DEBUG2(pluto_constraints_pretty_print(stdout,newcst));
+    // IF_DEBUG2(printf("Constraints after reductions\n"));
+    // IF_DEBUG2(pluto_constraints_pretty_print(stdout,newcst));
 
     /* Negate coefficients so that positive solutions 
      * are preferred if all else is the same */
@@ -891,6 +909,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
     }
     num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
     if (num_satisfied >= 1) {
+        IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
         ddg_update(ddg, prog);
     }else{
         for (i = 0; i < nstmts; i++) {
@@ -915,7 +934,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg) {
     IF_DEBUG(printf("[pluto] Cutting between all SCCs\n"));
 
     if (ddg->num_sccs == 1) {
-        IF_DEBUG(printf("\t only one SCC\n"));
+        IF_DEBUG(printf("\tonly one SCC\n"));
         return 0;
     }
 
@@ -929,7 +948,8 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg) {
         stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] =
             stmts[i]->scc_id;
     }
-    num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
+    IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
+    num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
     ddg_update(ddg, prog);
 
     return num_satisfied;
@@ -978,7 +998,8 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
     int num_new_carried =
         dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
 
-    if (num_new_carried >= 1) {
+    if (num_new_carried >= 1)   {
+        IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
         ddg_update(ddg, prog);
     }else{
         for (i = 0; i < prog->nstmts; i++) {
@@ -1253,15 +1274,15 @@ PlutoConstraints* get_coeff_bounding_constraints(PlutoProg *prog,
 
 /* Find all linearly independent permutable band of hyperplanes at a level.
  *
- * See sub-functions for loop_search_mode and lin_ind_mode
+ * See sub-functions for hyp_search_mode and lin_ind_mode
  *
  * If all statements already have enough linearly independent solutions, no
  * independence constraints will be generated, and since no non-trivial
  * solution constraints are added in such a case, the trivial zero solution will
  * end up being returned.
  * */
-int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
-        bool loop_search_mode, int max_sols, int band_depth)
+int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode, 
+        int max_sols, int band_depth)
 {
     int num_sols_found, j, k;
     int64 *bestsol;
@@ -1301,15 +1322,12 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
         IF_DEBUG2(printf("Base Constraints\n"));
         IF_DEBUG2(pluto_constraints_compact_print(stdout,basecst));
         pluto_constraints_copy(currcst, basecst);
-        nzcst = get_non_trivial_sol_constraints(prog, loop_search_mode);
+        nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
         pluto_constraints_add(currcst, nzcst);
         pluto_constraints_free(nzcst);
         // print_polylib_visual_sets("curr", currcst);
 
-        PlutoConstraints *indcst =
-            get_linear_ind_constraints(prog, currcst, lin_ind_mode);
-        // printf("linear ind Constraints\n");
-        // pluto_constraints_compact_print(stdout,indcst);
+        PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, hyp_search_mode);
         // print_polylib_visual_sets("ind", indcst);
         IF_DEBUG2(printf("linear independence constraints\n"));
         IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
@@ -1348,6 +1366,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
                     : H_LOOP;
             }
             free(bestsol);
+            IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
         }else{
             IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: No hyperplane found\n"));
         }
@@ -1472,7 +1491,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     fscanf(precut, "%d", &ignore);
                     assert(ignore == 0);
 
-                    pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+                    pluto_stmt_add_hyperplane(stmts[i], H_UNKNOWN, stmts[i]->trans->nrows);
 
                     for (j=0; j<nvar; j++)    {
                         if (stmts[i]->is_orig_loop[j])  {
@@ -1483,20 +1502,23 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     }
                     for (j = 0; j < npar; j++) {
                         fscanf(precut, "%d", &ignore);
-                        stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar] = 0;
+                        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+j] = 0;
                     }
                     /* Constant part */
-                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
+                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar]);
+                    if (get_loop_type(stmts[i], stmts[i]->trans->nrows-1)
+                            == H_LOOP)  {
+                        stmts[i]->hyp_types[stmts[i]->trans->nrows-1] = H_LOOP;
+                    }else{
+                        stmts[i]->hyp_types[stmts[i]->trans->nrows-1] = H_SCALAR;
+                    }
 
-                    // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] =
-                    // (get_loop_type(stmts[i], stmts[i]->trans->nrows)
-                    // == H_SCALAR)? SCALAR:LOOP;
                 }
 
-                /* Number of levels */
+                /* Number of tiling levels */
                 fscanf(precut, "%d", &ignore);
 
-                /* FIX this: to tile or not is specified depth-wise, why? Just
+                /* FIXME: to tile or not is specified depth-wise, why? Just
                  * specify once */
                 for (j = 0; j < tiling_depth; j++) {
                     fscanf(precut, "%d", &tile);
@@ -1507,18 +1529,15 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
             /* Set hProps correctly and update satisfied dependences */
             for (k = 0; k < rows; k++) {
                 pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_UNKNOWN);
-                for (i = 0; i < nstmts; i++) {
-                    if (get_loop_type(stmts[i], stmts[0]->trans->nrows - rows + k) ==
-                            H_LOOP) {
-                        stmts[i]->hyp_types[prog->num_hyperplanes - 1] = H_LOOP;
-                        prog->hProps[prog->num_hyperplanes - 1].type = H_LOOP;
+                for (i=0; i<nstmts; i++)    {
+                    if (get_loop_type(stmts[i], stmts[0]->trans->nrows-rows+k)
+                            == H_LOOP)  {
+                        prog->hProps[prog->num_hyperplanes-1].type = H_LOOP;
                     }else{
-                        stmts[i]->hyp_types[prog->num_hyperplanes - 1] = H_SCALAR;
-                        prog->hProps[prog->num_hyperplanes - 1].type = H_SCALAR;
+                        prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
                     }
                 }
-
-                dep_satisfaction_update(prog, prog->num_hyperplanes - 1);
+                dep_satisfaction_update(prog, prog->num_hyperplanes-1);
                 ddg_update(ddg, prog);
             }
             return true;
@@ -1596,12 +1615,11 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     pluto_compute_dep_satisfaction(prog);
 
     band = 0;
-    level = 0;
     num_loops_in_band = 0;
     int bandStart = 0;
 
-    do {
-        for (i = 0; i < prog->ndeps; i++) {
+    for (level=0; level < prog->num_hyperplanes; ) {
+        for (i=0; i<prog->ndeps; i++)   {
             if (IS_RAR(deps[i]->type)) continue;
             if (deps[i]->satisfaction_level < level &&
                     hProps[deps[i]->satisfaction_level].type == H_SCALAR)
@@ -1620,17 +1638,19 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
             hProps[level].band_num = band;
             if (hProps[level].type != H_SCALAR) num_loops_in_band++;
             level++;
-
         }else{
 
             for (i = 0; i < prog->ndeps; i++) {
                 if (IS_RAR(deps[i]->type)) continue;
-                if (deps[i]->satisfaction_level < level &&
-                        hProps[deps[i]->satisfaction_level].type == H_SCALAR)
-                    continue;
-                if (deps[i]->satisfaction_level >= bandStart &&
-                        (deps[i]->dirvec[level] == DEP_MINUS ||
-                         deps[i]->dirvec[level] == DEP_STAR))
+                /* Dependences satisfied at scalar dimensions earlier are fine (even 
+                 * if at dimensions in the same band */
+                if (deps[i]->satisfaction_level < level && 
+                        hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
+                /* Dependences satisfied within the band or not satisfied yet
+                 * should have non-negative components */
+                if (deps[i]->satisfaction_level >= bandStart 
+                        && (deps[i]->dirvec[level] == DEP_MINUS 
+                            || deps[i]->dirvec[level] == DEP_STAR))
                     break;
             }
             if (i == prog->ndeps) {
@@ -1645,12 +1665,13 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * components for some unsatisfied dependence
                  */
                 if (num_loops_in_band == 0) {
-                    fprintf(stderr, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
-                    fprintf(stderr, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
-                    fprintf(stderr, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
-                    fprintf(stderr, "\tor a bug in Pluto's auto transformation.\n");
-                    fprintf(stderr, "\tPlease send this input file to the author if possible.\n");
+                    fprintf(stdout, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
+                    fprintf(stdout, "\tPlease make sure there is no inconsistent/illegal .fst file in your working directory.\n");
+                    fprintf(stdout, "\tIf not, this usually is a result of a bug in the dependence tester,\n");
+                    fprintf(stdout, "\tor a bug in Pluto's auto transformation.\n");
+                    fprintf(stdout, "\tPlease send this input file to the author if possible.\n");
                     pluto_transformations_pretty_print(prog);
+                    pluto_print_hyperplane_properties(prog);
                     pluto_compute_dep_directions(prog);
                     pluto_print_dep_directions(prog);
                     assert(0);
@@ -1665,16 +1686,17 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                 num_loops_in_band = 0;
             }
         }
-    } while (level < prog->num_hyperplanes);
+    }
 
     if (num_loops_in_band == 1) {
         if (hProps[level - 1].dep_prop == PIPE_PARALLEL)
             hProps[level - 1].dep_prop = SEQ;
     }
 
-    /* Permutable bands of loops could have inner parallel loops; they
-     * all have been detected as fwd_dep (except the outer parallel one of a
-     * band);
+    /* 
+     * This functionality is obsolete since Ploop based functions are now used
+     * Permutable bands of loops could have inner parallel loops; they 
+     * all have been detected as fwd_dep (except the outer parallel one of a band); 
      * we just modify those to parallel */
     for (i = 0; i < prog->num_hyperplanes; i++) {
         for (j = 0; j < prog->ndeps; j++) {
@@ -1683,10 +1705,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                 break;
         }
 
-        if (j == prog->ndeps) {
-            // couldn't have been marked sequential
-            assert(hProps[i].dep_prop != SEQ);
-            if (hProps[i].dep_prop == PIPE_PARALLEL) {
+        if (j==prog->ndeps)   {
+            if (hProps[i].dep_prop == PIPE_PARALLEL)    {
                 hProps[i].dep_prop = PARALLEL;
             }
         }
@@ -1717,11 +1737,12 @@ void pluto_print_depsat_vectors(PlutoProg *prog, int levels)
 
 void pluto_print_dep_directions(PlutoProg *prog)
 {
-    int i, j;
-
-    Dep **deps = prog->deps;
-    int ndeps = prog->ndeps;
-    int nlevels = prog->num_hyperplanes;
+    int i, j, ndeps, nlevels;
+    Dep **deps;
+   
+    deps = prog->deps;
+    ndeps = prog->ndeps;
+    nlevels = prog->num_hyperplanes;
 
     printf("\nDirection vectors for transformed program\n");
 
@@ -1734,16 +1755,18 @@ void pluto_print_dep_directions(PlutoProg *prog)
         }
         assert(deps[i]->satvec != NULL);
         printf(") satisfied: %s, satvec: (", 
-                deps[i]->satisfied? "yes":"no");
+                deps[i]->satisfied? "yes":" no");
         for (j=0; j<nlevels; j++) {
             printf("%d, ", deps[i]->satvec[j]);
         }
-        printf(")\n");
+        printf("), sat level: %d", deps[i]->satisfaction_level);
 
         for (j = 0; j < nlevels; j++) {
             if (deps[i]->dirvec[j] > 0) {
                 break;
             }
+            /* Just because this is not printed does not mean a dependence has
+             * not been violated; it could still be */
             if (deps[i]->dirvec[j] < 0) {
                 printf("Dep %d violated: S%d to S%d\n", i, deps[i]->src + 1,
                         deps[i]->dest + 1);
@@ -1810,10 +1833,8 @@ void normalize_domains(PlutoProg *prog)
             }
         }
         pluto_constraints_simplify(context);
-        if (options->debug) {
-            printf("[pluto] parameter context from domains\n");
-            pluto_constraints_compact_print(stdout, context);
-        }
+        IF_DEBUG(printf("[pluto] parameter context from domains\n"););
+        IF_DEBUG(pluto_constraints_compact_print(stdout, context););
 
         /* Add context to every dep polyhedron */
         for (i = 0; i < prog->ndeps; i++) {
@@ -1835,7 +1856,7 @@ void normalize_domains(PlutoProg *prog)
         }
         pluto_constraints_free(context);
     }else{
-        IF_DEBUG(printf("No global context\n"));
+        IF_DEBUG(printf("\tNo global context\n"));
     }
 
     /* Add padding dimensions to statement domains */
@@ -1983,7 +2004,7 @@ int find_cone_complement_hyperplane(int evict_pos,
     int npar = prog->npar;
     Stmt **stmts = prog->stmts;
 
-    IF_DEBUG(printf("[pluto] finding cone complement hyperplane\n"););
+    IF_DEBUG(printf("[pluto] find_cone_complement_hyperplane\n"););
 
     int64 *bestsol;
     PlutoConstraints *con_start_cst, *lastcst, *boundcst, *modsumcst;
@@ -2173,11 +2194,16 @@ int is_access_scalar(PlutoAccess *access)
  */
 int pluto_auto_transform(PlutoProg *prog) 
 {
-    int nsols, i, j, conc_start_found, depth;
-    /* The maximum number of independent solutions needed across all stmts */
-    int num_ind_sols;
-    bool lin_ind_mode;
-    bool loop_search_mode;
+    int i, j, s, nsols, conc_start_found, depth;
+    /* The maximum number of linearly independent solutions needed across all
+     * statements */
+    int num_ind_sols_req;
+
+    /* The number of linearly independent solutions found (max across all
+     * statements) */
+    int num_ind_sols_found;
+    /* Pluto algo mode -- LAZY or EAGER */
+    bool hyp_search_mode;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -2216,17 +2242,16 @@ int pluto_auto_transform(PlutoProg *prog)
 
     normalize_domains(prog);
 
-    lin_ind_mode = EAGER;
-    loop_search_mode = EAGER;
+    hyp_search_mode = EAGER;
 
     prog->num_hyperplanes = 0;
     prog->hProps = NULL;
 
     /* The number of independent solutions required for the deepest
      * statement */
-    nsols = 0;
-    for (i = 0; i < nstmts; i++) {
-        nsols = PLMAX(nsols, stmts[i]->dim);
+    num_ind_sols_req = 0;
+    for (i=0; i<nstmts; i++)    {
+        num_ind_sols_req = PLMAX(num_ind_sols_req, stmts[i]->dim);
     }
 
     depth = 0;
@@ -2234,58 +2259,65 @@ int pluto_auto_transform(PlutoProg *prog)
     if (precut(prog, ddg, depth)) {
         /* Distributed based on .fst or .precut file (customized user-supplied
          * fusion structure */
-        num_ind_sols = pluto_get_max_ind_hyps(prog);
-        printf("[Pluto] Forced custom fusion structure from .fst/.precut\n");
-        IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", num_ind_sols));
+        num_ind_sols_found = pluto_get_max_ind_hyps(prog);
+        printf("[pluto] Forced custom fusion structure from .fst/.precut\n");
+        IF_DEBUG(fprintf(stdout, "%d ind solns in .precut file\n", 
+                    num_ind_sols_found));
     }else{
-        num_ind_sols = 0;
+        num_ind_sols_found = 0;
         if (options->fuse == SMART_FUSE)    {
             cut_scc_dim_based(prog,ddg);
         }
     }
 
-    /* Diamond tiling */
+    /* For diamond tiling */
     conc_start_found = 0;
-    
-    do{
-        int num_sols_found, num_sols_left, s;
 
-        if (options->fuse == NO_FUSE) {
+    do{
+        /* Number of linearly independent solutions remaining to be found
+         * (maximum across all statements) */
+        int num_sols_left;
+
+        if (options->fuse == NO_FUSE)   {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
 
-        /*
-         * nsols - num_ind_sols is not the number of remaining hyperplanes
-         * to be found in the LAZY mode (it is for the EAGER
-         * mode). In LAZY mode, there may be more to be found for *some*
-         * statements
-         */
         num_sols_left = 0;
         for (s=0; s<nstmts; s++) {
+            /* Num linearly independent hyperplanes remaining to be
+             * found for a statement; take max across all */
             num_sols_left = PLMAX(num_sols_left, stmts[s]->dim_orig
                     - pluto_stmt_get_num_ind_hyps(stmts[s]));
         }
-        assert(lin_ind_mode == LAZY || num_sols_left == nsols - num_ind_sols);
+        /* Progress in the EAGER mode is made every time a solution is found;
+         * thus, the maximum number of linearly independent solutions
+         * remaining to be found is the difference between the number required
+         * for the deepest statement and the number found so far for the
+         * deepest statement (since in EAGER mode, if there was a statement
+         * that had fewer than num_ind_sols_found linearly independent hyperplanes,
+         * it means it didn't need that many hyperplanes and all of its
+         * linearly independent solutions had been found */
+        assert(hyp_search_mode == LAZY || num_sols_left == num_ind_sols_req - num_ind_sols_found);
 
-        num_sols_found = find_permutable_hyperplanes(prog, lin_ind_mode,
-                loop_search_mode, num_sols_left, depth);
+        nsols = find_permutable_hyperplanes(prog, hyp_search_mode,
+                num_sols_left, depth);
 
         IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
-                    depth, num_sols_found));
+                    depth, nsols));
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
-        num_ind_sols = pluto_get_max_ind_hyps(prog);
 
-        /* Diamond tiling: done for the first band of permutable loops */
-        if (options->lbtile && num_ind_sols >= 2 && !conc_start_found) {
-            conc_start_found = pluto_diamond_tile(prog);
-        }
+        num_ind_sols_found = pluto_get_max_ind_hyps(prog);
         
-        if (num_sols_found >= 1) {
-            for (j=0; j<num_sols_found; j++)      {
+        if (nsols >= 1) {
+            /* Diamond tiling: done for the first band of permutable loops */
+            if (options->lbtile && nsols >= 2 && !conc_start_found) {
+                conc_start_found = pluto_diamond_tile(prog);
+            }
+
+            for (j=0; j<nsols; j++)      {
                 /* Mark dependences satisfied by this solution */
-                dep_satisfaction_update(prog,
-                        stmts[0]->trans->nrows-num_sols_found+j);
+                dep_satisfaction_update(prog, stmts[0]->trans->nrows - nsols + j);
                 ddg_update(ddg, prog);
             }
         }else{
@@ -2311,25 +2343,28 @@ int pluto_auto_transform(PlutoProg *prog)
             }else{
                 /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
                  * deps, and no solutions found  */
-                if (lin_ind_mode == EAGER)   {
-                    IF_DEBUG(printf("Switching to LAZY mode\n"););
-                    lin_ind_mode = LAZY;
-                    /* loop_search_mode = LAZY; */
-                }else{
-                    /* LAZY mode */
-                    assert(lin_ind_mode == LAZY);
-                    /* There is a problem; solutions should have been found */
+                if (hyp_search_mode == EAGER)   {
+                    IF_DEBUG(printf("[pluto] Switching to LAZY mode\n"););
+                    hyp_search_mode = LAZY;
+                }else if (!deps_satisfaction_check(prog)) {
+                    assert(hyp_search_mode == LAZY);
+                    /* There is a problem; solutions should have been found if
+                     * there were no inter-scc deps, and some unsatisfied deps
+                     * existed */
                     if (options->debug || options->moredebug) {
-                        printf("Number of unsatisfied deps: %d\n", 
+                        printf("\tNumber of unsatisfied deps: %d\n",
                                 get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-                        printf("Number of unsatisfied inter-scc deps: %d\n", 
+                        printf("\tNumber of unsatisfied inter-scc deps: %d\n",
                                 get_num_unsatisfied_inter_scc_deps(prog));
-                        fprintf(stderr, "[pluto] Unfortunately, pluto cannot find any more hyperplanes.\n");
-                        fprintf(stderr, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
-                        fprintf(stderr, "\tor (2) a bug in Pluto's auto transformation,\n");
-                        fprintf(stderr, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
-                        fprintf(stderr, "\tTransformation found so far:\n");
+                        fprintf(stdout, "[pluto] WARNING: Unfortunately, pluto cannot find any more hyperplanes.\n");
+                        fprintf(stdout, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
+                        fprintf(stdout, "\tor (2) a bug in Pluto's auto transformation,\n");
+                        fprintf(stdout, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
+                        fprintf(stdout, "\tTransformation found so far:\n");
                         pluto_transformations_pretty_print(prog);
+                        pluto_compute_dep_directions(prog);
+                        pluto_compute_dep_satisfaction(prog);
+                        pluto_print_dep_directions(prog);
                     }
                     denormalize_domains(prog);
                     printf("[pluto] WARNING: working with original (identity) transformation (if they exist)\n");
@@ -2346,8 +2381,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
         depth++;
     }while (!pluto_transformations_full_ranked(prog) || 
-            !deps_satisfaction_check(prog->deps, prog->ndeps));
-
+            !deps_satisfaction_check(prog));
 
     if (options->lbtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
@@ -2363,6 +2397,8 @@ int pluto_auto_transform(PlutoProg *prog)
     free(orig_hyp_types);
     free(orig_hProps);
 
+    IF_DEBUG(printf("[pluto] pluto_auto_transform: successful, done\n"););
+
     return 0;
 }
 
@@ -2371,11 +2407,10 @@ int get_num_unsatisfied_deps(Dep **deps, int ndeps)
     int i, count;
 
     count = 0;
-    for (i = 0; i < ndeps; i++) {
-        if (IS_RAR(deps[i]->type))
-            continue;
-        if (!deps[i]->satisfied) {
-            IF_DEBUG(printf("Unsatisfied dep %d\n", i + 1));
+    for (i=0; i<ndeps; i++) {
+        if (IS_RAR(deps[i]->type))   continue;
+        if (!deps[i]->satisfied)  {
+            IF_DEBUG(printf("\tUnsatisfied dep %d\n", i+1));
             count++;
         }
     }
@@ -2800,7 +2835,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
 
 
 /* 
- * For diamond tiling
+ * Diamond Tiling
  */
 int pluto_diamond_tile(PlutoProg *prog)
 {
