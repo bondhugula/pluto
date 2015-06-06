@@ -996,7 +996,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     fscanf(precut, "%d", &ignore);
                     assert(ignore == 0);
 
-                    pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+                    pluto_stmt_add_hyperplane(stmts[i], H_UNKNOWN, stmts[i]->trans->nrows);
 
                     for (j=0; j<nvar; j++)    {
                         if (stmts[i]->is_orig_loop[j])  {
@@ -1007,17 +1007,20 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                     }
                     for (j=0; j<npar; j++)    {
                         fscanf(precut, "%d", &ignore);
-                        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar] = 0;
+                        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+j] = 0;
                     }
                     /* Constant part */
-                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar]);
+                    fscanf(precut, "%lld", &stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar]);
+                    if (get_loop_type(stmts[i], stmts[i]->trans->nrows-1)
+                            == H_LOOP)  {
+                        stmts[i]->hyp_types[stmts[i]->trans->nrows-1] = H_LOOP;
+                    }else{
+                        stmts[i]->hyp_types[stmts[i]->trans->nrows-1] = H_SCALAR;
+                    }
 
-                    // stmts[i]->trans_loop_type[stmts[i]->trans->nrows] = 
-                    // (get_loop_type(stmts[i], stmts[i]->trans->nrows) 
-                    // == H_SCALAR)? SCALAR:LOOP;
                 }
 
-                /* Number of levels */
+                /* Number of tiling levels */
                 fscanf(precut, "%d", &ignore);
 
                 /* FIXME: to tile or not is specified depth-wise, why? Just
@@ -1034,14 +1037,11 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth)
                 for (i=0; i<nstmts; i++)    {
                     if (get_loop_type(stmts[i], stmts[0]->trans->nrows-rows+k)
                             == H_LOOP)  {
-                        stmts[i]->hyp_types[prog->num_hyperplanes-1] = H_LOOP;
                         prog->hProps[prog->num_hyperplanes-1].type = H_LOOP;
                     }else{
-                        stmts[i]->hyp_types[prog->num_hyperplanes-1] = H_SCALAR;
                         prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
                     }
                 }
-
                 dep_satisfaction_update(prog, prog->num_hyperplanes-1);
                 ddg_update(ddg, prog);
             }
