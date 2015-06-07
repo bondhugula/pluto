@@ -70,6 +70,7 @@ PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup_single(const PlutoConstraints *src);
 
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
+void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, int pos);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat);
 PlutoConstraints *pluto_constraints_to_pure_inequalities_single(const PlutoConstraints *cst);
