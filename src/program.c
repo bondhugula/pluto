@@ -3452,10 +3452,6 @@ Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatr
         stmt->iterators[i] = strdup(iterators[i]);
     }
 
-    pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
-
-    /* TODO: Set names for parameters */
-
     return stmt;
 }
 
@@ -3647,9 +3643,6 @@ Dep *pluto_dep_dup(Dep *d)
 
     return dep;
 }
-
-
-
 
 /*
  * Only very essential information is needed to allocate; rest can be
@@ -4678,7 +4671,6 @@ PlutoAccess **pluto_get_accs(Stmt **stmts, int nstmts, int *num)
     }
     return accs;
 }
-
 
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
 {
