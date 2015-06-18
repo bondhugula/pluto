@@ -1,17 +1,11 @@
 
-/* pluto start (n) */
+#pragma scop
+for (i = 4 - n; i <= n + 2; i++) 
+for (j = 4 - n; j <= n + 2; j++) 
+a[i][j] = a[i-1][j] + 2;
 
-do i = 4 -n, n + 2
-do j = 4 -n, n + 2
- a[i,j] = a[i-1,j] + 2
+for (i = 4 -n; i <= n + 2; i++) 
+for (j = 4 -n; j <= n + 2; j++) 
+a[i][j] = a[i][j] + 1;
 
-end do
-end do
-
-do i = 4 -n, n + 2
-do j = 4 -n, n + 2
-  a[i,j] = a[i,j] + 1
-end do
-end do
-
-/* pluto end */
+#pragma endscop

@@ -39,7 +39,7 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
 
     if (!tsfile)    return 0;
 
-    IF_DEBUG(printf("Reading %d tile sizes\n", num_tile_dims););
+    IF_DEBUG(printf("[pluto] Reading %d tile sizes\n", num_tile_dims););
 
     if (options->ft >= 0 && options->lt >= 0)   {
         num_tile_dims = options->lt - options->ft + 1;
@@ -91,7 +91,7 @@ int pluto_diamond_tile_reschedule(PlutoProg *prog)
 
     for (i=0; i<prog->nstmts; i++){
         if (prog->stmts[i]->evicted_hyp) {
-            int evicted_hyp_pos = prog->evicted_hyp_pos;
+            int evicted_hyp_pos = prog->stmts[i]->evicted_hyp_pos;
             int fl = prog->stmts[i]->dim - prog->stmts[i]->dim_orig;
             PlutoMatrix *evicted_hyp = prog->stmts[i]->evicted_hyp;
             assert(fl + evicted_hyp->ncols == prog->stmts[i]->trans->ncols);
@@ -1132,7 +1132,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
  *  */
 void pluto_tile(PlutoProg *prog)
 {
-    int nbands, i, j, n_ibands;
+    int nbands, i, j, n_ibands, num_tiled_levels, nloops;
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
@@ -1141,12 +1141,12 @@ void pluto_tile(PlutoProg *prog)
     IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
     IF_DEBUG(pluto_bands_print(ibands, n_ibands););
 
+    num_tiled_levels = 0;
+
     /*
-     * Create bands for innermost parallel loops to be 1-D tiled
+     * Create bands for innermost parallel loops to be 1-d tiled
      * if they are not dominated by any band
      */
-    int nloops;
-
     Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
     for (i=0; i<nloops; i++) {
         if (pluto_is_loop_innermost(loops[i], prog)) {
@@ -1171,16 +1171,20 @@ void pluto_tile(PlutoProg *prog)
 
         /* L1 tiling */
         pluto_tile_scattering_dims(prog, bands, nbands, 0);
+        num_tiled_levels++;
 
         if (options->l2tile)    {
             pluto_tile_scattering_dims(prog, bands, nbands, 1);
+            num_tiled_levels++;
         }
     }else{
         /* L1 tiling */
         pluto_tile_scattering_dims(prog, bands, nbands, 0);
+        num_tiled_levels++;
         if (options->l2tile)    {
             /* L2 tiling */
             pluto_tile_scattering_dims(prog, bands, nbands, 1);
+            num_tiled_levels++;
         }
     }
 
@@ -1210,7 +1214,7 @@ void pluto_tile(PlutoProg *prog)
     if (options->intratileopt) {
         int retval = 0;
         for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize_band(bands[i], 1, prog); 
+            retval |= pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);
         }
         if (retval) {
             pluto_detect_transformation_properties(prog);

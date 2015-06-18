@@ -62,9 +62,10 @@ void usage_message(void)
     fprintf(stdout, "       --tile                    Tile for locality\n");
     fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP)\n");
-    fprintf(stdout, "     | --parallelize\n");
-    fprintf(stdout, "       --lbtile | --diamond-tile Enables full dimensional concurrent start\n");
+    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas)\n");
+    fprintf(stdout, "    or --parallelize\n");
+    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
+    fprintf(stdout, "    or --diamond-tile\n");
     fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
     fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
@@ -93,15 +94,16 @@ void usage_message(void)
     fprintf(stdout, "       --commopt_foifi           Generate communication code using Flow-Out Intersection Flow-In (FOIFI) scheme\n");
     fprintf(stdout, "       --commopt_fop             Generate communication code using Flow-Out Partitioning (FOP) scheme (multicast pack by default)\n");
     fprintf(stdout, "       --fop_unicast_runtime     FOP: generate code to choose between unicast and multicast pack at runtime\n\n");
-    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
-    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
+    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
+    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
     fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (enabled by default)\n");
-    fprintf(stdout, "       --islsolve                Use ISL as ilp solver\n");
-    fprintf(stdout, "       --glpk                    Use GLPK as ilp solver\n");
-    fprintf(stdout, "       --readscoplib             Read input from a scoplib file\n");
+    fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
+    fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
+    fprintf(stdout, "       --readscop             Read input from a .scop file\n");
     fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
     fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
     fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
@@ -118,10 +120,10 @@ void usage_message(void)
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
-    fprintf(stdout, "       --codegen-context=<context>       Parameters are at least as much as <context>\n");
+    fprintf(stdout, "       --codegen-context=<value> Parameters are at least as much as <value>\n");
     fprintf(stdout, "\n   Debugging\n");
-    fprintf(stdout, "       --debug                   Verbose output\n");
-    fprintf(stdout, "       --moredebug               More verbose output\n");
+    fprintf(stdout, "       --debug                   Verbose/debug output\n");
+    fprintf(stdout, "       --moredebug               More verbose/debug output\n");
     fprintf(stdout, "\nTo report bugs, please email <pluto-development@googlegroups.com>\n\n");
 }
 
@@ -237,8 +239,11 @@ int main(int argc, char *argv[])
         {"scalpriv", no_argument, &options->scalpriv, 1},
         {"isldep", no_argument, &options->isldep, 1},
         {"candldep", no_argument, &options->candldep, 1},
-        {"isldepcompact", no_argument, &options->isldepcompact, 1},
+        {"isldepaccesswise", no_argument, &options->isldepaccesswise, 1},
+        {"isldepstmtwise", no_argument, &options->isldepaccesswise, 0},
+        {"noisldepcoalesce", no_argument, &options->isldepcoalesce, 0},
         {"readscop", no_argument, &options->readscop, 1},
+        {"pipsolve", no_argument, &options->pipsolve, 1},
         {"islsolve", no_argument, &options->islsolve, 1},
         {"fusesends", no_argument, &options->fusesends, 1},
         {"data_dist", no_argument, &options->data_dist, 1},
@@ -354,18 +359,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->fusesends && options->mpiomp) {
-        fprintf(stderr, "Error: fusesends should not be used with mpiomp\n");
+        fprintf(stderr, "[pluto] Error: fusesends should not be used with mpiomp\n");
         return 7;
     }
 
-    if (options->isldepcompact && options->distmem) {
-        fprintf(stderr, "Error: shouldn't compact deps for distmem parallelization\n");
+    if (!options->isldepaccesswise && options->distmem) {
+        fprintf(stderr, "[pluto] Error: --isldepstmtwise can't be used for distmem parallelization\n");
         return 7;
     }
 
     /* Make options consistent */
     if (options->isldep && options->candldep) {
-        printf("[pluto] ERROR: only one of isldep and candldep should be specified)\n");
+        printf("[pluto] Error: only one of isldep and candldep should be specified)\n");
         pluto_options_free(options);
         usage_message();
         return 1;
@@ -479,7 +484,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If code will not be tiled, pre-vectorization does not make
          * sense */
         if (!options->silent)   {
-            IF_DEBUG(fprintf(stdout, "[Pluto] Turning off pre-vectorization (--tile is off)\n"););
+            IF_DEBUG(fprintf(stdout, "[pluto] Turning off pre-vectorization (--tile is off)\n"););
         }
         options->prevector = 0;
     }
@@ -583,11 +588,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     
    
     if (!options->silent)   {
-        fprintf(stdout, "[Pluto] Number of statements: %d\n", prog->nstmts);
-        fprintf(stdout, "[Pluto] Total number of loops: %d\n", dim_sum);
-        fprintf(stdout, "[Pluto] Number of deps: %d\n", prog->ndeps);
-        fprintf(stdout, "[Pluto] Maximum domain dimensionality: %d\n", prog->nvar);
-        fprintf(stdout, "[Pluto] Number of parameters: %d\n", prog->npar);
+        fprintf(stdout, "[pluto] Number of statements: %d\n", prog->nstmts);
+        fprintf(stdout, "[pluto] Total number of loops: %d\n", dim_sum);
+        fprintf(stdout, "[pluto] Number of deps: %d\n", prog->ndeps);
+        fprintf(stdout, "[pluto] Maximum domain dimensionality: %d\n", prog->nvar);
+        fprintf(stdout, "[pluto] Number of parameters: %d\n", prog->npar);
     }
 
     if (options->iss) {
@@ -621,7 +626,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {
-        fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
+        fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
@@ -647,9 +652,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         /* If the user hasn't supplied --tile and there is only pipelined
          * parallelism, we will warn the user */
         if (retval)   {
-            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("use --tile for better parallelization \n");
-            IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
+            IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
             IF_DEBUG(pluto_transformations_pretty_print(prog););
             IF_DEBUG(pluto_print_hyperplane_properties(prog););
         }

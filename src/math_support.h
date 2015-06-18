@@ -76,8 +76,8 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-inline int64 lcm(int64 a, int64 b);
-inline int64 gcd(int64 a, int64 b);
+int64 lcm(int64 a, int64 b);
+int64 gcd(int64 a, int64 b);
 int64 *min_lexical(int64 *a, int64 *b, int64 num);
 
 char *concat(const char *prefix, const char *suffix);
@@ -85,6 +85,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
+
+int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
+int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
 
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
 int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff, void *user);

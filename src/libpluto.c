@@ -17,6 +17,13 @@
  * `LICENSE.LGPL2' in the top-level directory of this distribution.
  *
  */
+
+#include <assert.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <sys/time.h>
+
 #include "pluto.h"
 #include "constraints.h"
 #include "candl/candl.h"
@@ -27,6 +34,119 @@
 #include "candl/scop.h"
 
 PlutoOptions *options;
+
+static double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday(&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
+}
+
+/* Temporary data structure used inside extra_stmt_domains
+ *
+ * stmts points to the array of Stmts being constructed
+ * index is the index of the next stmt in the array
+ */
+struct pluto_extra_stmt_info {
+    Stmt **stmts;
+    int index;
+};
+
+static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
+{
+    Stmt **stmts;
+    Stmt *stmt;
+    PlutoConstraints *bcst;
+    struct pluto_extra_stmt_info *info;
+
+    info = (struct pluto_extra_stmt_info *)user;
+
+    stmts = info->stmts;
+    stmt = stmts[info->index];
+
+    bcst = isl_basic_set_to_pluto_constraints(bset);
+    if (stmt->domain) {
+        stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
+        pluto_constraints_free(bcst);
+    }else{
+        stmt->domain = bcst;
+    }
+
+    isl_basic_set_free(bset);
+    return 0;
+}
+
+/* Used by libpluto interface */
+static int extract_stmt(__isl_take isl_set *set, void *user)
+{
+    int r;
+    Stmt **stmts;
+    int id, i;
+
+    stmts = (Stmt **) user;
+
+    int dim = isl_set_dim(set, isl_dim_all);
+    int npar = isl_set_dim(set, isl_dim_param);
+    PlutoMatrix *trans = pluto_matrix_alloc(dim-npar, dim+1);
+    pluto_matrix_set(trans, 0);
+    trans->nrows = 0;
+
+    /* A statement's domain (isl_set) should be named S_%d */
+    const char *name = isl_set_get_tuple_name(set);
+    assert(name);
+    assert(strlen(name) >= 3);
+    assert(name[0] == 'S');
+    assert(name[1] == '_');
+    assert(isdigit(name[2]));
+    id = atoi(isl_set_get_tuple_name(set)+2);
+
+    stmts[id] = pluto_stmt_alloc(dim-npar, NULL, trans);
+
+    Stmt *stmt = stmts[id];
+    stmt->type = ORIG;
+    stmt->id = id;
+
+    for (i=0; i<stmt->dim; i++) {
+        char *iter = malloc(5);
+        sprintf(iter, "i%d",  i);
+        stmt->iterators[i] = iter;
+    }
+
+    struct pluto_extra_stmt_info info = {stmts, id};
+    r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
+
+    pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
+
+    for (i=0; i<npar; i++) {
+        char *param = malloc(5);
+        sprintf(param, "p%d", i);
+        stmt->domain->names[stmt->dim+i] = param;
+    }
+
+    pluto_matrix_free(trans);
+
+    int j;
+    for (j=0; j<stmt->dim; j++)  {
+        stmt->is_orig_loop[j] = true;
+    }
+
+    isl_set_free(set);
+
+    return r;
+}
+
+/* Used by libpluto interface */
+static int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
+{
+    isl_union_set_foreach_set(domains, &extract_stmt, stmts);
+
+    return 0;
+}
+
+
 
 /*
  * Pluto tiling modifies the domain; move the information from the
@@ -81,6 +201,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     int i, j, nbands, n_ibands, retval;
     isl_ctx *ctx;
     isl_space *space;
+    double t_t, t_all, t_start;
 
     ctx = isl_union_set_get_ctx(domains);
     space = isl_union_set_get_space(domains);
@@ -88,9 +209,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     // isl_union_set_dump(domains);
     // isl_union_map_dump(dependences);
 
+    PlutoProg *prog = pluto_prog_alloc();
+    prog->options = options_l;
+
+    /* global var */
     options = options_l;
 
-    PlutoProg *prog = pluto_prog_alloc();
 
     prog->nvar = -1;
     prog->nstmts = isl_union_set_n_set(domains);
@@ -118,7 +242,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
-        prog->params[i] = NULL;
+        char *param = malloc(5);
+        sprintf(param, "p%d", i);
+        prog->params[i] = param;
     }
 
     prog->ndeps = 0;
@@ -133,7 +259,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     IF_DEBUG(pluto_prog_print(stdout, prog););
 
+    t_start = rtclock();
     retval = pluto_auto_transform(prog);
+    t_t = rtclock() - t_start;
 
     if (retval) {
         /* Failure */
@@ -150,7 +278,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent) {
-        pluto_transformations_print(prog);
+        pluto_transformations_pretty_print(prog);
         pluto_print_hyperplane_properties(prog);
     }
 
@@ -254,6 +382,15 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     pluto_prog_free(prog);
     isl_space_free(space);
+
+    t_all = rtclock() - t_start;
+
+    if (options->time && !options->silent) {
+        printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+        printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_t);
+        printf("[pluto] Total time: %0.6lfs\n", t_all);
+    }
+
 
     return schedules;
 }

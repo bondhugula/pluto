@@ -78,7 +78,7 @@ dirname=`dirname  $SOURCEFILE`
 basename=`basename $SOURCEFILE`
 prefix=`basename $SOURCEFILE .c`
 
-CLOOGFILE=$prefix.pluto.cloog
+CLOOGFILE=`basename $OUTFILE`.pluto.cloog
 PLUTOOUT=$OUTFILE
 
 # generate and insert unrolling annotations, run ancc on it,
@@ -195,7 +195,7 @@ cleanup()
 	fi
 if [ "$DEBUG" != 1 ]; then
     rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized\
-        $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
+    $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
         packunpack.cloog *.sysloog .appendfilename .sigmafilename .headerfilename
 fi
 }

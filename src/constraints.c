@@ -44,7 +44,9 @@ PipMatrix *pip_matrix_populate(int64 **cst, int nrows, int ncols);
  * Allocate with a max size of max_rows and max_cols;
  * initialized all to zero and is_eq to 0
  *
- * nrows set to 0, and ncols to max_cols;
+ * nrows set to 0, and ncols to max_cols, i.e., the initially allocated
+ * constraints correspond to the universe (no constraints)
+ *
  * As rows are added, increase nrows
  */
 PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
@@ -58,7 +60,7 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols)
     cst->buf = (int64 *) malloc(size);
 
     if (cst->buf == NULL) {
-        fprintf(stderr, "[pluto] Not enough memory for allocating constraints\n");
+        fprintf(stderr, "[pluto] ERROR: Not enough memory to allocate constraints\n");
         fprintf(stderr, "[pluto] %zd bytes needed\n", size);
         exit(1);
     }
@@ -182,6 +184,126 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows, int ncols
     free(newCst);
 }
 
+/*
+ * The affine form of the Farkas lemma
+ *
+ * cst is the domain on which the affine form described in phi is non-negative
+ *
+ * Returns: constraints on the variables that correspond to the columns of 
+ * \phi (each row of phi is an affine function of these variables). The output 
+ * is thus a  constraint set with phi->ncols-1 variables. Farkas multipliers 
+ * are eliminated  by Fourier-Motzkin elimination. In effect, this allows one 
+ * to linearize the constraint describing \phi.
+ *
+ * The rows of phi correspond to coefficients of variables in 'dom' in
+ * that order with the last row of phi representing the translation part of
+ * the affine form. The number of rows in phi is thus the same as the number
+ * of columns in dom (number of dom dimensions + 1).
+ *
+ * Each row of phi itself is an affine function of a set of variables
+ * (phi->ncols-1 variables); the last column corresponds to the constant.
+ *
+ * Eg:
+ * (c_1 + c_2)*i + (c_2 - c3)*j + (c1 + c2 + c3 + 1) >= 0 over a domain (dom) on
+ * (i,j), say {(i,j)| 0 <= i <= N-1 and j = i+1 }
+ *
+ * Here, phi would be
+ *
+ * [1 1 0  0] <-- i
+ * [0 1 -1 0] <-- j
+ * [1 1 1  1] <-- 1
+ *
+ * Let cst have faces (inequalities representing non-negative half-spaces) f1,
+ * f2, ..., fn
+ *
+ * The affine form of the Farkas lemma states that
+ *
+ * (c_1 + c_2)*i + (c_2 - c3)*j + (c1 + c2 + c3 + 1) = \lambda_1*f1 +
+ * \lambda_2*f2 + ... + \lambda_n*fn + \lambda_0,
+ * with all \lambda_i >= 0
+ *
+ * Eliminate Farkas multipliers by FM and return constraints in c_1, c_2, ...
+ *
+ * */
+PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi)
+{
+    int i, j;
+
+    /* Only for a convex constraint set */
+    assert(dom->next == NULL);
+
+    assert(phi->nrows == dom->ncols);
+
+    IF_MORE_DEBUG(printf("[farkas_lemma_affine]\n"););
+
+    /* Convert everything into inequalities of >= 0 form */
+    PlutoConstraints *idom = pluto_constraints_to_pure_inequalities_single(dom);
+
+    // printf("Initial constraints\n");
+    // pluto_constraints_pretty_print(stdout, idom);
+
+    // printf("phi matrix\n");
+    // pluto_matrix_print(stdout, phi);
+    
+    /* Add a trivial row (1 >= 0) for the translation Farkas
+     * multiplier (\lambda_0) so that the non-negative linear
+     * combination of the faces is modeled naturally below */
+    pluto_constraints_add_inequality(idom);
+    idom->val[idom->nrows-1][idom->ncols-1] = 1;
+
+    /*
+     * Farkas space
+     * idom->ncols equalities (one for each of the idom->ncols-1 variables)
+     * and one for the constant part, followed by idom->nrows constraints for
+     * the farkas multipliers *
+     * idom->nrows is the number of Farkas multipliers
+     * format: [phi->ncols-1 vars, idom->nrows farkas multipliers, const]
+     * the translation farkas multiplier appears last
+     *
+     *    Eg: [c_1, c_2, c_3, l_1, l_2, ..., l_n, l_0, 1]
+     */
+    PlutoConstraints *farkas = pluto_constraints_alloc(
+            idom->ncols+idom->nrows, phi->ncols+idom->nrows);
+    farkas->nrows = idom->ncols+idom->nrows;
+
+    int farkas_offset = phi->ncols-1;
+
+    /* First idom->ncols equalities */
+    for (i=0; i<idom->ncols; i++) {
+        farkas->is_eq[i] = 1;
+        for (j=0; j<phi->ncols-1; j++) {
+            farkas->val[i][j] = phi->val[i][j];
+        }
+        for (j=0; j<idom->nrows; j++) {
+            farkas->val[i][farkas_offset+j] = -idom->val[j][i];
+        }
+        farkas->val[i][farkas_offset + idom->nrows] = phi->val[i][phi->ncols-1];
+    }
+
+    /* All farkas multipliers are non-negative */
+    for (j=0; j<idom->nrows; j++) {
+        farkas->is_eq[idom->ncols+j] = 0;
+        farkas->val[idom->ncols+j][farkas_offset + j] = 1;
+    }
+
+    for (i=0; i<idom->nrows; i++) {
+        int best_elim = pluto_constraints_best_elim_candidate(farkas, idom->nrows-i);
+        IF_MORE_DEBUG(printf("[farkas_lemma_affine] eliminating multiplier %d (c_%c) from %d constraints\n", i, 'i'+best_elim, farkas->nrows));
+        fourier_motzkin_eliminate_smart(farkas, best_elim);
+        // printf("After eliminating c_%c\n", 'i'+best_elim);
+        // printf("%d rows\n", farkas->nrows);
+        // pluto_constraints_compact_print(stdout, farkas);
+    }
+    assert(farkas->ncols == phi->ncols);
+    
+    // printf("After farkas multiplier elimination\n");
+    // pluto_constraints_pretty_print(stdout, farkas);
+
+    pluto_constraints_free(idom);
+
+    return farkas;
+}
+
 
 /* Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself; only for
  * single element list. Multiple elements doesn't make sense; you may want to
@@ -240,9 +362,10 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
     return cst1;
 }
 
-/* Temporary data structure to compare two rows */
+/* Temporary structure to compare two rows */
 struct row_info {
     int64 *row;
+    short is_eq;
     int ncols;
 };
 
@@ -263,8 +386,11 @@ static int row_compar(const void *e1, const void *e2)
         if (row1[i] != row2[i]) break;
     }
 
-    if (i==ncols) return 0;
-    else if (row1[i] < row2[i])    {
+    if (i==ncols) {
+        /* Equal if both are inequalities or both are equalities;
+         * otherwise, equalities will be sorted ahead of (>=0) inequalities */
+        return u2->is_eq - u1->is_eq;
+    }else if (row1[i] < row2[i])    {
         return -1;
     }else{
         return 1;
@@ -278,8 +404,7 @@ static int row_compar(const void *e1, const void *e2)
 /* 
  * Eliminates duplicate constraints; the simplified constraints
  * are still at the same memory location but the number of constraints 
- * in it will decrease
- * FIXME: for equalities
+ * will decrease
  */
 void pluto_constraints_simplify(PlutoConstraints *const cst)
 {
@@ -290,8 +415,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
         return;
     }
 
-    PlutoConstraints *tmpcst = pluto_constraints_dup_single(cst);
-    pluto_constraints_zero(tmpcst);
+    PlutoConstraints *tmpcst = pluto_constraints_alloc(cst->nrows, cst->ncols);
     tmpcst->nrows = 0;
 
     int *is_redun = (int *) malloc(sizeof(int)*cst->nrows);
@@ -299,17 +423,16 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 
     /* Normalize cst - will help find redundancy */
     for (i=0; i<cst->nrows; i++)   {
-        assert(cst->is_eq[i] == 0);
-        _gcd = -1;
         for (j=0; j<cst->ncols; j++)  {
-            if (cst->val[i][j] != 0)   {
-                if (_gcd == -1) _gcd = PLABS(cst->val[i][j]);
-                else _gcd = gcd(PLABS(cst->val[i][j]), _gcd);
-            }
+            if (cst->val[i][j] != 0)    break;
         }
 
-        assert(_gcd != 0);
-        if (_gcd != -1 && _gcd != 1) {
+        if (j<cst->ncols) {
+            _gcd = PLABS(cst->val[i][j]);
+            for (; j<cst->ncols; j++) {
+                _gcd = gcd(PLABS(cst->val[i][j]), _gcd);
+            }
+
             /* Normalize by gcd */
             for (j=0; j< cst->ncols; j++)   {
                 cst->val[i][j] /= _gcd;
@@ -322,26 +445,20 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
     for (i=0; i<cst->nrows; i++) {
         rows[i] = (struct row_info *) malloc(sizeof(struct row_info));
         rows[i]->row = cst->val[i];
+        rows[i]->is_eq = cst->is_eq[i];
         rows[i]->ncols = cst->ncols;
     }
     qsort(rows, cst->nrows, sizeof(struct row_info *), row_compar);
 
     for (i=0; i<cst->nrows; i++) {
         cst->val[i] = rows[i]->row;
+        cst->is_eq[i] = rows[i]->is_eq;
         free(rows[i]);
     }
     free(rows);
 
     is_redun[0] = 0;
     for (i=1; i<cst->nrows; i++)    {
-        is_redun[i] = 0;
-
-        for (j=0; j<cst->ncols; j++)    {
-            if (cst->val[i-1][j] != cst->val[i][j]) break;
-        }
-
-        if (j==cst->ncols) is_redun[i] = 1;
-
         for (j=0; j<cst->ncols; j++)    {
             if (cst->val[i][j] != 0) break;
         }
@@ -349,7 +466,17 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
         if (j==cst->ncols)  {
             /* All zeros */
             is_redun[i] = 1;
+            continue;
         }
+
+        for (j=0; j<cst->ncols; j++)    {
+            if (cst->val[i-1][j] != cst->val[i][j]) break;
+        }
+
+        if (j==cst->ncols && cst->is_eq[i-1] == cst->is_eq[i]) {
+            /* Same as cst(i-1) */
+            is_redun[i] = 1;
+        }else is_redun[i] = 0;
     }
 
     p = 0;
@@ -361,6 +488,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
             }
             */
             memcpy(tmpcst->val[p], cst->val[i], cst->ncols*sizeof(int64));
+            tmpcst->is_eq[p] = cst->is_eq[i];
             p++;
         }
     }
@@ -376,9 +504,9 @@ void pluto_constraints_simplify(PlutoConstraints *const cst)
 }
 
 
-/* 
+/*
  * Eliminates the pos^th variable, where pos has to be between 0 and cst->ncols-2;
- * Remember that the last column is for the constant. The implementation does not 
+ * Remember that the last column is for the constant. The implementation does not
  * have a redundancy check; it just  eliminates duplicates after gcd normalization
  * cst will be resized if necessary
  */
@@ -470,7 +598,6 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         }
         assert(p <= lb*ub + nb);
         newcst->nrows = p;
-        newcst->ncols = cst->ncols-1;
         free(bound);
     }
 
@@ -652,6 +779,28 @@ PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst)
 
 
 /* Create pluto_constraints from polylib-style matrix  */
+PlutoConstraints *pluto_constraints_from_mixed_matrix(const PlutoMatrix *mat, int *is_eq)
+{
+    int i, j;
+    PlutoConstraints *cst;
+
+    cst = pluto_constraints_alloc(mat->nrows, mat->ncols);
+
+    cst->nrows = mat->nrows;
+
+    for (i=0; i<cst->nrows; i++)    {
+        cst->is_eq[i] = is_eq[i];
+        for (j=0; j<cst->ncols; j++)    {
+            cst->val[i][j] = mat->val[i][j];
+        }
+    }
+
+    return cst;
+}
+
+
+
+/* Create pluto_constraints from polylib-style matrix  */
 PlutoConstraints *pluto_constraints_from_matrix(const PlutoMatrix *mat)
 {
     int i, j;
@@ -729,18 +878,26 @@ PlutoConstraints *pluto_constraints_read(FILE *fp)
 }
 
 
-void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
+void pluto_constraints_compact_print_single(FILE *fp, 
+        const PlutoConstraints *cst, int set_num)
 {
-    int i, j;
+    int i, j, nrows, ncols;
 
-    int nrows = cst->nrows;
-    int ncols = cst->ncols;
+    if (cst == NULL) {
+        return;
+    }
 
-    assert(cst->next == NULL);
+    nrows = cst->nrows;
+    ncols = cst->ncols;
+
+    printf("Set #%d\n", set_num+1);
 
     if (nrows == 0) {
-        printf("No constraints (%d dimensions)!\n", cst->ncols-1);
+        printf("Universal polyhedron -- No constraints (%d dims)!\n", cst->ncols-1);
+        return;
     }
+
+    fprintf(fp, "[%d dims; %d constraints]\n", cst->ncols-1, cst->nrows);
 
     for (i=0; i<nrows; i++) {
         int first = 1;
@@ -749,7 +906,7 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
                 /* constant */
                 if (cst->val[i][j] == 0 && !first) fprintf(fp, " ");
                 else fprintf(fp, "%s%lld ", 
-                        (cst->val[i][j]>=0)?"+":"", cst->val[i][j]);
+                        (cst->val[i][j]>=0 && !first)?"+":"", cst->val[i][j]);
             }else{
                 char var[6];
                 var[5] = '\0';
@@ -774,8 +931,18 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
         fprintf(fp, "%s 0\n", cst->is_eq[i]? "=": ">=");
     }
     fprintf(fp, "\n");
+
+    if (cst->next != NULL) {
+        pluto_constraints_compact_print_single(fp, cst->next, set_num+1);
+    }
 }
 
+
+void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst)
+{
+    assert(cst != NULL);
+    pluto_constraints_compact_print_single(fp, cst, 0);
+}
 
 
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
@@ -788,8 +955,11 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
     assert(cst->next == NULL);
 
     if (nrows == 0) {
-        printf("No constraints!\n");
+        printf("Universal polyhedron -- no constraints (%d dims)!\n", cst->ncols-1);
+        return;
     }
+
+    fprintf(fp, "[%d dims; %d constraints]\n", cst->ncols-1, cst->nrows);
 
     for (i=0; i<nrows; i++) {
         /* Is it first non-zero entry */
@@ -1049,6 +1219,16 @@ void pluto_constraints_add_equality(PlutoConstraints *cst)
         pluto_constraints_add_equality(cst->next);
     }
 }
+
+
+/* Add a constraint; initialize it to all zero */
+void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq)
+{
+    if (is_eq) pluto_constraints_add_equality(cst);
+    else pluto_constraints_add_inequality(cst);
+}
+
+
 
 
 
@@ -1865,6 +2045,8 @@ void pluto_constraints_set_names(PlutoConstraints *cst, char **names)
         cst->names = malloc((cst->ncols-1)*sizeof(char *));
     }
 
+    assert(names);
+
     for (i=0; i<cst->ncols-1; i++) {
         cst->names[i] = names[i]? strdup(names[i]): NULL;
     }
@@ -1892,8 +2074,11 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
     }
 
     for (i=0; i<num; i++) {
-        assert(names[src_offset+i] != NULL);
-        cst->names[dest_offset+i] = strdup(names[src_offset+i]);
+        if (names[src_offset+i] != NULL) {
+            cst->names[dest_offset+i] = strdup(names[src_offset+i]);
+        }else{
+            cst->names[dest_offset+i] = NULL;
+        }
     }
 }
 
@@ -1906,7 +2091,8 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
  */
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim)
 {
-    int64 **csm, i, j, ub, lb, cost;
+    int64 **csm;
+    int64 i, j, ub, lb, nb, num_eq, cost;
 
     int min_cost = cst->nrows*cst->nrows/4;
     int best_candidate = cst->ncols-2;
@@ -1916,12 +2102,16 @@ int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_e
     for (j=cst->ncols-2; j > cst->ncols-2-max_elim; j--)    {
         ub=0;
         lb=0;
+        nb=0;
+        num_eq = 0;
         for (i=0; i < cst->nrows; i++)    {
-            if (csm[i][j] > 0) ub++;
+            if (cst->is_eq[i] && csm[i][j] != 0) num_eq++;
+            else if (csm[i][j] > 0) ub++;
             else if (csm[i][j] < 0) lb++;
+            else nb++;
         }
-        /* cost = MIN(lb, ub); */
-        cost = lb*ub;
+        if (num_eq >= 1) cost = cst->nrows-1;
+        else cost = lb*ub + nb;
         if (cost < min_cost)    {
             min_cost = cost;
             best_candidate = j;
@@ -1995,4 +2185,158 @@ void pluto_constraints_remove_const_ub(PlutoConstraints *cst, int pos)
             }else i++;
         }
     }
+}
+
+/*
+ * Eliminates the pos^th variable, where pos has to be between 0 and cst->ncols-2;
+ * Remember that the last column is for the constant. The implementation does not
+ * have a complex redundancy check; it just uses pluto_constraints_simplify which
+ * eliminates duplicates after a gcd normalization and eliminates all zero
+ * constraints
+ *
+ * Uses Gaussian elimination if there is an equality involving the variable
+ */
+void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, int pos)
+{
+    int i, r, k, l, p, q;
+    int64 lb, ub, nb;
+    int *bound;
+
+    // At least one variable
+    assert(cst->ncols >= 2);
+    assert(pos >= 0);
+    assert(pos <= cst->ncols-2);
+
+    for (i=0; i<cst->nrows; i++) {
+        if (cst->is_eq[i] && cst->val[i][pos] != 0) {
+            pluto_constraints_gaussian_eliminate(cst, pos);
+            pluto_constraints_simplify(cst);
+            return;
+        }
+    }
+
+    PlutoConstraints *newcst;
+
+    for (i=0; i<cst->nrows; i++)    {
+        if (cst->val[i][pos] != 0) break;
+    }
+
+    if (i==cst->nrows) {
+        newcst = pluto_constraints_dup_single(cst);
+        pluto_constraints_remove_dim(newcst, pos);
+    }else{
+        bound = (int *) malloc(cst->nrows*sizeof(int));
+
+        lb=0;
+        ub=0;
+        nb=0;
+        /* Variable does appear */
+        for (r=0; r<cst->nrows; r++)    {
+            if (cst->val[r][pos] == 0) {
+                bound[r] = NB;
+                nb++;
+            }else if (cst->val[r][pos] >= 1) {
+                bound[r] = LB;
+                lb++;
+            }else{
+                bound[r] = UB;
+                ub++;
+            }
+        }
+        newcst = pluto_constraints_alloc(lb*ub+nb, cst->ncols-1);
+        newcst->nrows = 0;
+
+        p=0;
+        for (r=0; r<cst->nrows; r++)    {
+            if (bound[r] == UB) {
+                for (k=0; k<cst->nrows; k++)    {
+                    if (bound[k] == LB) {
+                        q = 0;
+                        for(l=0; l < cst->ncols; l++)  {
+                            if (l!=pos)   {
+                                newcst->val[p][q] =
+                                    cst->val[r][l]*(lcm(cst->val[k][pos],
+                                                -cst->val[r][pos])/(-cst->val[r][pos]))
+                                    + cst->val[k][l]*(lcm(-cst->val[r][pos],
+                                                cst->val[k][pos])/cst->val[k][pos]);
+                                q++;
+                            }
+                        }
+                        newcst->is_eq[p] = 0;
+                        p++;
+                    }
+                }
+            }else if (bound[r] == NB)   {
+                q = 0;
+                for (l=0; l<cst->ncols; l++)    {
+                    if (l!=pos)   {
+                        newcst->val[p][q] = cst->val[r][l];
+                        q++;
+                    }
+                }
+                newcst->is_eq[p] = cst->is_eq[r];
+                p++;
+            }
+        }
+        assert(p == lb*ub + nb);
+        newcst->nrows = p;
+        free(bound);
+    }
+
+    pluto_constraints_simplify(newcst);
+    pluto_constraints_copy_single(cst, newcst);
+    pluto_constraints_free(newcst);
+
+    if (cst->next != NULL) fourier_motzkin_eliminate(cst->next,pos);
+}
+
+
+void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos)
+{
+    int r, r2, c;
+    int factor1, factor2;
+
+    assert(pos >= 0);
+    assert(pos <= cst->ncols-2);
+
+    // printf("Before gaussian eliminate\n");
+    // pluto_constraints_compact_print(stdout, cst);
+    // printf("eliminate: c_%c\n", 'i'+pos);
+
+    for (r=0; r<cst->nrows; r++)    {
+        if (cst->is_eq[r] && cst->val[r][pos] != 0) {
+            break;
+        }
+    }
+
+    if (r == cst->nrows) {
+        printf("Can't eliminate dimension via GE\n");
+        assert(0);
+    }
+
+    /* cst->val[r] is an equality */
+    for (r2=0; r2<cst->nrows; r2++) {
+        if (r2 == r || cst->val[r2][pos] == 0) continue;
+        if (cst->val[r2][pos] >= 1) {
+            factor1 = lcm(llabs(cst->val[r][pos]),
+                    llabs(cst->val[r2][pos]))/cst->val[r2][pos];
+            factor2 = lcm(llabs(cst->val[r][pos]),llabs(cst->val[r2][pos]))/cst->val[r][pos];
+        }else if (cst->val[r2][pos] <= -1) {
+            factor1 = -lcm(llabs(cst->val[r][pos]),
+                    llabs(cst->val[r2][pos]))/cst->val[r2][pos];
+            factor2 = -lcm(llabs(cst->val[r][pos]),llabs(cst->val[r2][pos]))/cst->val[r][pos];
+        }
+        for (c=0; c<cst->ncols; c++) {
+            cst->val[r2][c] = cst->val[r2][c]*factor1
+                - cst->val[r][c]*factor2;
+        }
+    }
+    pluto_constraints_remove_row(cst, r);
+
+    // printf("After gaussian eliminate\n");
+    // pluto_constraints_compact_print(stdout, cst);
+
+    pluto_constraints_remove_dim(cst, pos);
+
+    if (cst->next != NULL) pluto_constraints_gaussian_eliminate(cst->next, pos);
 }

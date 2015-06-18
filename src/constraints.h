@@ -70,6 +70,7 @@ PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup_single(const PlutoConstraints *src);
 
 void fourier_motzkin_eliminate(PlutoConstraints *, int n);
+void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, int pos);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst, PlutoMatrix *pmat);
 PlutoConstraints *pluto_constraints_to_pure_inequalities_single(const PlutoConstraints *cst);
@@ -85,6 +86,7 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
 int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
 void pluto_constraints_add_inequality(PlutoConstraints *cst);
 void pluto_constraints_add_equality(PlutoConstraints *cst);
+void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos, const char *name);
 void pluto_constraints_remove_row(PlutoConstraints *, int);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
@@ -108,6 +110,7 @@ void pluto_constraints_compact_print(FILE *fp, const PlutoConstraints *cst);
 void pluto_constraints_print_polylib(FILE *fp, const PlutoConstraints *cst);
 PlutoMatrix *pluto_constraints_to_matrix(const PlutoConstraints *cst);
 PlutoConstraints *pluto_constraints_from_matrix(const PlutoMatrix *mat);
+PlutoConstraints *pluto_constraints_from_mixed_matrix(const PlutoMatrix *mat, int *is_eq);
 PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func);
 void pluto_constraints_project_out(PlutoConstraints *cst, int start, int end);
 
@@ -180,4 +183,7 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
+PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
+void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
+
 #endif
