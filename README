@@ -26,7 +26,8 @@ Pluto includes all libraries that it depends on.  autoconf/automake
 system will take care of automatically building everything. Nothing else 
 needs to be downloaded and installed separately.  The pet library has its 
 own pre-requisites (please see pet/README); its best to have LLVM/Clang 3.4 
-or higher.
+or higher. The pet submodule that Pluto git points to has been verified to 
+work with clang-3.4.
 
 
 BUILDING PLUTO
@@ -48,6 +49,7 @@ $ git clone git://repo.or.cz/pluto.git
 $ cd pluto/
 $ git submodule init 
 $ git submodule update
+$ ./apply_patches.sh
 $ ./autogen.sh
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make

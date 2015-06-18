@@ -4899,9 +4899,11 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
         }
     }
 
-    dep_raw = isl_union_map_coalesce(dep_raw);
-    dep_war = isl_union_map_coalesce(dep_war);
-    dep_waw = isl_union_map_coalesce(dep_waw);
+    if (options->isldepcoalesce) {
+        dep_raw = isl_union_map_coalesce(dep_raw);
+        dep_war = isl_union_map_coalesce(dep_war);
+        dep_waw = isl_union_map_coalesce(dep_waw);
+    }
 
     if (options->lastwriter && options->distmem) {
         trans_dep_war = isl_union_map_coalesce(trans_dep_war);
