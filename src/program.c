@@ -3495,10 +3495,6 @@ Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level,
         newstmt->trans->val[i][i] = 1;
     }
 
-    /* Set domain names */
-    pluto_constraints_set_names_range(newstmt->domain, iterators, 0, 0, newstmt->dim);
-
-    /* TODO: set parameter names */
 
     for (i=0; i<level; i++) {
         free(iterators[i]);
@@ -3851,6 +3847,26 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
     // IF_DEBUG(pluto_constraints_print(stdout, newdom););
 
     pluto_constraints_free(sched);
+
+    if (stmt->domain->names) {
+        /* Set names for the new domain */
+        char **iterators = (char **) malloc(sizeof(char *)*stmt->trans->nrows);
+        for (i=0; i<stmt->trans->nrows; i++) {
+            char *tmpstr = malloc(5);
+            sprintf(tmpstr, "t%d", i+1);
+            iterators[i] = tmpstr;
+        }
+
+        pluto_constraints_set_names_range(newdom, iterators, 0, 0, stmt->trans->nrows);
+        /* Set parameter names */
+        pluto_constraints_set_names_range(newdom, stmt->domain->names, 
+                stmt->trans->nrows, stmt->dim, stmt->domain->ncols-stmt->dim-1);
+
+        for (i=0; i<stmt->trans->nrows; i++) {
+            free(iterators[i]);
+        }
+        free(iterators);
+    }
 
     return newdom;
 }
