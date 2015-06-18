@@ -910,8 +910,10 @@ void pluto_constraints_compact_print_single(FILE *fp,
             }else{
                 char var[6];
                 var[5] = '\0';
-                if (cst->names) strncpy(var, cst->names[j], 5);
-                else sprintf(var, "c_%c", 'i'+j);
+                if (cst->names) {
+                    assert(cst->names[j]);
+                    strncpy(var, cst->names[j], 5);
+                }else sprintf(var, "c_%c", 'i'+j);
 
                 if (cst->val[i][j] == 1) {
                     fprintf(fp, "%s%s", first?"":"+", var);
@@ -2059,7 +2061,7 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
 
     if (num == 0) return;
 
-    assert(names != NULL);
+    assert(names);
     assert(dest_offset+num <= cst->ncols-1);
 
     if (!cst->names) {
