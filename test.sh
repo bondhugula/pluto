@@ -49,8 +49,9 @@ for file in $TESTS; do
 	echo -e "$file"
 	./polycc $file $*  -o test_temp_out.pluto.c
     if [ $? -ne 0 ]; then
-        echo Failed test case "$file"!
-        break
+        echo -e "\e[31mFailed\e[0m" " $file"!
+    else
+        echo -e "\e[32mPassed\e[0m"
     fi
 done
 
