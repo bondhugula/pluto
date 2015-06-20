@@ -20,17 +20,17 @@ This is the chain of the entire source-to-source system that polycc will
 run. 
 
 C code --> Polyhedral extraction -->  Dependence analysis
-           (libclan)                    (libcandl)
+           (clan or PET)                (ISL or candl)
 
 -->    Pluto transformer
-      (Core framework, automatic transformation)
+      (core Pluto algorithm + post transformation)
 
- --> CLooG       -->  Pluto post-processing        -->           C 
-   (libcloog)    (ploog, plorc, vloog, Orio)  
-               (OpenMP pragma insertion, annotation-driven unrolling,
-                  pre-vectorization)
+ --> CLooG                     -->       C (with OpenMP, ivdep pragmas)
+ (cloog + clast processing 
+ to mark loops parallel, ivdep)
 
-Using PLUTO
+
+USING PLUTO
 
 - Use '#pragma scop' and '#pragma endscop' around the section of code 
   you want to parallelize/optimize.
@@ -39,39 +39,14 @@ Using PLUTO
     
     ./polycc <C source file> --parallel --tile
 
-    <C source file> should have a '.c' extension
-
     The output file will be named <original prefix>.pluto.c unless '-o 
     <filename>" is supplied. When --debug is used, the .cloog used to 
-    generate code is not deleted and is named in a similar way.
+    generate code is not deleted and is named similarly.
 
-
-The following describe the kind of code you can put '#pragma scop' and 
-'#pragma endscop' around, though the polyhedral model is not restricted 
-to these. Most of the time, even though your program may not satisfy 
-these, it may be possible to workaround these. These are all supported 
-by the Clan frontend used by Pluto.
-
-1. All accesses should be to arrays or scalars, and accesses to arrays 
-   should be linear combinations of outer loop variables and other 
-   parameters that are not modified within that portion.
-
-2. All 'if' conditionals' conditions should be affine functions of outer 
-   loop variables and parameters that are not modified in the SCoP.
-
-3. All function call are assumed to be pure. 
-
-4. Ternary operator '?' is supported. 
-
-	var = condition? x: y;
-
-	Single depth dynamic or data-dependent 'if' conditionals can be 
-	rewritten using these, and will seamlessly be extracted.
-
-5. All loop bounds should be affine functions of outer loop variables 
-   and parameters that are not modified in the SCoP.
-
-For more details, see clan-0.5.0/doc/. Do a 'make pdf' and see clan.pdf.
+Please refer to the documentation of Clan or PET for information on the 
+kind of code around which one can put '#pragma scop' and '#pragma 
+endscop'.  Most of the time, although your program may not satisfy the 
+constraints, it may be possible to work around them.
 
 
 COMMAND-LINE OPTIONS
@@ -93,13 +68,13 @@ COMMAND-LINE OPTIONS
     also allows extraction of coarse-grained pipelined parallelism with 
     the Pluto model.
 
-    --intratileopt 
+    --intratileopt  [enabled by default]
     Optimize a tile's execution order for locality (spatial and temporal
     reuse); the right loop permutation for a tile will be chosen, in particular,
     the right innermost loop. Spatial locality is not otherwise captured 
     by Pluto's cost function.
 
-    --parallel [--multipipe]
+    --parallel
     Parallelize code with OpenMP (usually useful when used with --tile) 
 
     --parallelize
@@ -110,11 +85,10 @@ COMMAND-LINE OPTIONS
     via skewing whenever both exist
 
     --multipipe 
-    Will enable extraction of multiple degrees of parallelism (upto 2 as 
-    of now). Disabled by default. By default, only one degree of outer 
-    parallelism or coarse-grained pipelined parallelism is extracted if 
-    it exists. In this case, the generated file will have a ".par2d.c" 
-    suffixed to the basename of the input program.
+    Will enable extraction of multiple degrees of parallelism (from all 
+    parallel loops).  Disabled by default. By default, only one degree of 
+    outer parallelism or coarse-grained pipelined parallelism is extracted 
+    if it exists.
 
     --smartfuse [default]
     This is the default fusion heuristic. Will try to fuse between SCCs 
@@ -191,11 +165,13 @@ COMMAND-LINE OPTIONS
 
 SPECIFYING CUSTOM TILE SIZES THROUGH 'tile.sizes'
 
-Use a file tile.sizes in your current working directory if you want to 
-manually specify tile sizes.  First specify L1 tile sizes, then L2:L1 
-tile size ratios.  See examples/matmul/tile.sizes for an example. If 
-8x128x8 is the L1 tile size, and 128x256x128 L2, the tile.sizes file 
-will be
+A 'tile.sizes' file in the current working directory can be used to manually 
+specify tile sizes. Specify one tile size on each line and as many tile 
+sizes are there are hyperplanes in the outermost non-trivial permutable 
+band. When specifying tile sizes for multiple levels (with --l2tile), first 
+specify L1 tile sizes, then L2:L1 tile size ratios.  See 
+examples/matmul/tile.sizes as an example.  If 8x128x8 is the L1 tile size, 
+and 128x256x128 L2, the tile.sizes file will be
 
 # L1 tile size 8x128x8
 8
@@ -207,7 +183,23 @@ will be
 16
 
 The default tile size in the absence of a tile.sizes file is 32 (along all 
-dimensions), and the default L2/L1 ratio is 8.
+dimensions), and the default L2/L1 ratio is 8 (when using --l2tile). The 
+sizes specified correspond to transformed loops in that order.  For eg., for 
+heat-3d, you'll see this output when you run Pluto
+
+$ ../../polycc 3d7pt.c
+
+[...]
+
+[pluto] Affine transformations [<iter coeff's> <param> <const>]
+
+T(S1): (t, t+i, t+j, t+k)
+loop types (loop, loop, loop, loop)
+
+[...]
+
+Hence, the tile sizes specified correspond to t, t+i, t+j, and t+k.
+
 
 SETTING GOOD TILE SIZES
 
@@ -225,11 +217,18 @@ exploited, increasing tile size beyond 32 often provides diminishing returns
 time tile.sizes is changed, code has to be regenerated (rm -f *.tiled.c; 
 make tiled; ./tiled).
 
-*TILE SIZES FOR DIAMOND TILING OF STENCILS*: for 'lbpar', which is 
-diamond-tiled along the outer two dimensions (with --partlbtile), the same 
-tile size should be chosen along the first two dimensions; otherwise, the 
-tile wavefront will no longer be parallel to the concurrent start face and 
-tile-wise concurrent start will be lost.
+If one wishes to carefully tune tile sizes, it may be good to first run 
+Pluto without tiling (without --tile/--partlbtile/--lbtile) and check the 
+number of iterations in each of the loops in the tilable band of the 
+generated code, and then determine tile sizes.
+
+TILE SIZES FOR DIAMOND TILING OF STENCILS 
+
+For 'lbpar' (generated with --partlbtile --parallel), which is code 
+diamond-tiled along the outermost two dimensions, the same tile size should 
+be chosen along the first two dimensions; otherwise, the tile wavefront will 
+no longer be parallel to the concurrent start face and tile-wise concurrent 
+start will be lost.
 
 
 
