@@ -11,16 +11,15 @@ Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
 
 INSTALLING PLUTO
 
-Requirements: A Linux distribution. Pluto has been tested on x86 and 
-x86-64 machines running Fedora Core {4,5,7,8,9}, Ubuntu, and RedHat  
-Enterprise Server 5.x. Solaris should also be fine if you have GNU 
-utilities. In order to use the development version from Pluto's git 
-repository, automatic build system tools including autoconf, automake, 
-and libtool are needed. GMP (GNU multi precision arithmetic library) is 
-needed by ISL (one of the included libraries). If it's not already on 
-your system, it can be installed easily with, for eg., 
-'sudo yum -y install gmp gmp-devel' on a Fedora, or 
-'sudo apt-get install libgmp3-dev' on an Ubuntu. 
+PREREQUISITES
+A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
+running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also 
+be fine if you have GNU utilities. In order to use the development version 
+from Pluto's git repository, automatic build system tools including 
+autoconf, automake, and libtool are needed. GMP (GNU multi precision 
+arithmetic library) is needed by ISL (one of the included libraries). If 
+it's not already on your system, it can be installed easily with, for eg., 
+eg., 'sudo yum -y install gmp gmp-devel' on a Fedora. 
 
 Pluto includes all libraries that it depends on.  autoconf/automake 
 system will take care of automatically building everything. Nothing else 
@@ -135,12 +134,8 @@ seidel.par.c: This is Pluto parallelized code optimized for locality and
 parallelism  with tiling and other transformations. This code has OpenMP 
 pragmas. 'par' is the corresponding executable.
 
-seidel.par2d.c: In this case, since we have two degrees of pipelined 
-parallelism, so the .par2d.c is the code with nested parallel OpenMP 
-pragmas.
-
-- To change any of the flags used for an example, edit the top section 
-  of examples/common.mk or the Makefile in the example directory
+- To change any of the flags used for an example, edit the top section of 
+  examples/common.mk or the Makefile in the example directory
 
 - To manually specify tile sizes, create tile.sizes; see examples/matmul/ 
    for example or doc/DOC.txt for more information on setting tile sizes. 
