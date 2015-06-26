@@ -349,16 +349,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
-    /* Disable pre-vectorization if tile is not on */
-    if (options->tile == 0 && options->prevector == 1) {
-        /* If code will not be tiled, pre-vectorization does not make
-         * sense */
-        if (!options->silent)   {
-            IF_DEBUG(fprintf(stdout, "[pluto] Turning off pre-vectorization (--tile is off)\n"););
-        }
-        options->prevector = 0;
-    }
-
 
     /* Extract polyhedral representation from osl scop */
     PlutoProg *prog = NULL; 
