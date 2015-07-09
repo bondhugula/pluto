@@ -185,5 +185,6 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
 PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
 void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
+void pluto_constraints_multiply_matrices(PlutoConstraints *mat1, PlutoMatrix *mat2, PlutoConstraints *prod);
 
 #endif

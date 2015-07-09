@@ -627,16 +627,14 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Constant part */
     coeff_trans_mat->val[j][j] = 1;
 
-    PlutoConstraints *newcst_sel_negated = pluto_constraints_dup(newcst);
-    int64 **nsn_mat = newcst_sel_negated->val;
-    for (i = 0; i < newcst->nrows; i++) {
-        for (j = 0; j < newcst->ncols; j++) {
-            nsn_mat[i][j] = 0;
-            for (k = 0; k < newcst->ncols; k++) {
-                nsn_mat[i][j] += newcst->val[i][k] * coeff_trans_mat->val[k][j];
-            }
-        }
+    PlutoConstraints *newcst_sel_negated = pluto_constraints_alloc(newcst->nrows, newcst->ncols);
+
+    pluto_constraints_multiply_matrices(newcst, coeff_trans_mat, newcst_sel_negated);
+
+    for (i=0; i<newcst->nrows; i++) {
+        newcst_sel_negated->is_eq[i] = newcst->is_eq[i];
     }
+
     /* pluto_matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
     /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
 

@@ -2342,3 +2342,36 @@ void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos)
 
     if (cst->next != NULL) pluto_constraints_gaussian_eliminate(cst->next, pos);
 }
+
+/*
+ * Multiply the constraint matrices of mat1 and mat2, and set the product
+ * as the constraint matrix of prod
+ */
+void pluto_constraints_multiply_matrices(PlutoConstraints *mat1, PlutoMatrix *mat2, PlutoConstraints *prod)
+{
+    int i, j, k;
+
+    assert(prod->alloc_nrows == mat1->nrows);
+    assert(mat1->ncols == mat2->nrows);
+    assert(prod->alloc_ncols == mat2->ncols);
+
+    pluto_constraints_zero(prod);
+
+    prod->nrows = mat1->nrows;
+    prod->ncols = mat2->ncols;
+
+    for (i = 0; i < prod->nrows; i++) {
+        for (j = 0; j < prod->ncols; j++) {
+            prod->val[i][j] = 0;
+        }
+    }
+
+    for (i = 0; i < prod->nrows; i++) {
+        for (k = 0; k < mat1->ncols; k++) {
+            int64 tmp = mat1->val[i][k];
+            for (j = 0; j < prod->ncols; j++) {
+                prod->val[i][j] += tmp*mat2->val[k][j];
+            }
+        }
+    }
+}
