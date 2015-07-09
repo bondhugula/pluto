@@ -113,10 +113,9 @@ int pluto_diamond_tile_reschedule(PlutoProg *prog)
  * dimensions from firstD to lastD */
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 {
-    int i, j, s;
+    int j, s;
     int depth, npar;
 
-    Stmt **stmts = prog->stmts;
     npar = prog->npar;
 
     int firstD = band->loop->depth;
