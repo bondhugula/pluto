@@ -1260,10 +1260,13 @@ void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos)
 
     if (cst->names) free(cst->names[pos]);
 
-    for (j=pos; j<cst->ncols-1; j++) {
-        for (i=0; i<cst->nrows; i++) {
+    for (i=0; i<cst->nrows; i++) {
+        for (j=pos; j<cst->ncols-1; j++) {
             cst->val[i][j] = cst->val[i][j+1];
         }
+    }
+
+    for (j=pos; j<cst->ncols-1; j++) {
         if (cst->names && j < cst->ncols-2 && cst->names[j+1]) {
             cst->names[j] = cst->names[j+1];
         }
