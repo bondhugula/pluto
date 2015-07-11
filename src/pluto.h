@@ -520,11 +520,9 @@ Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
         const Stmt *stmt);
-int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
-        const Ploop *loop);
+int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop, int depth);
 int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
-        const Ploop *loop);
-int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
         const Ploop *loop);
 void pluto_bands_free(Band **bands, int nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);

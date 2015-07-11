@@ -318,8 +318,7 @@ void pluto_tile(PlutoProg *prog)
     }
 
     /* Late distribution */
-    pluto_post_tile_distribute(prog, bands, nbands);
-
+    pluto_post_tile_distribute(prog, bands, nbands, num_tiled_levels);
 
     /* DEPRECATED: now taken care of in intra_tile_optimize */
 #if 0
