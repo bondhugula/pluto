@@ -460,7 +460,7 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
-int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog);
+int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 
 PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *dest);
 
