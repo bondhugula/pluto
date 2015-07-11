@@ -829,7 +829,7 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
     return dbands;
 }
 
-int pluto_is_loop_innermost(const Ploop *loop, const PlutoProg *prog)
+int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog)
 {
     int num=-1;
     Ploop **loops;
@@ -867,7 +867,7 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops)
     iloops = NULL;
 
     for (i=0; i<num; i++) {
-        if (pluto_is_loop_innermost(loops[i], prog)) {
+        if (pluto_loop_is_innermost(loops[i], prog)) {
             Ploop *loop = pluto_loop_dup(loops[i]);
             iloops = pluto_loops_cat(iloops, (*nloops)++, 
                     &loop, 1);
