@@ -166,7 +166,7 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog)
 /* Vectorize first loop in band that meets criteria */
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 {
-    int num, l;
+    int nloops, l;
 
     /* Band has to be the innermost band as well */
     if (!pluto_is_band_innermost(band, num_tiling_levels)) return 0;
@@ -174,21 +174,21 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
     Ploop **loops;
 
     loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-            band->loop->depth + num_tiling_levels*band->width, prog, &num);
+            band->loop->depth + num_tiling_levels*band->width, prog, &nloops);
 
-    for (l=0; l<num; l++) {
+    for (l=0; l<nloops; l++) {
         if (pluto_loop_is_vectorizable(loops[l], prog)) break;
     }
 
-    if (l < num) {
+    if (l < nloops) {
         pluto_make_innermost_loop(loops[l], prog);
         IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
         IF_DEBUG(pluto_loop_print(loops[l]););
-        pluto_loops_free(loops, num);
+        pluto_loops_free(loops, nloops);
         return 1;
     }
 
-    pluto_loops_free(loops, num);
+    pluto_loops_free(loops, nloops);
     return 0;
 }
 
@@ -315,8 +315,8 @@ int gen_unroll_file(PlutoProg *prog)
  */
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *prog)
 {
-    int num, l, max_score;
-    Ploop *maxloc;
+    int nloops, l, max_score;
+    Ploop *best_loop;
 
     /* Band has to be the innermost band as well */
     if (!pluto_is_band_innermost(band, num_tiled_levels)) {
@@ -326,42 +326,42 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *
     Ploop **loops;
 
     loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts, 
-            band->loop->depth + num_tiled_levels*band->width, prog, &num);
+            band->loop->depth + num_tiled_levels*band->width, prog, &nloops);
 
     max_score = 0;
-    maxloc = NULL;
-    for (l=0; l<num; l++) {
+    best_loop = NULL;
+    for (l=0; l<nloops; l++) {
         int a, s, t, v, score;
         a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
         v = pluto_loop_is_vectorizable(loops[l], prog);
         /*
-         * Penalize accesses which will have neither spatial, nor temporal
-         * reuse (i.e., non contiguous ones); high priority for vectorization 
-         * since if it's vectorizable, everything in it has either spatial 
-         * or temporal reuse;
+         * Penalize accesses which will have neither spatial nor temporal
+         * reuse (i.e., non-contiguous ones); high priority for vectorization
+         * (if it's vectorizable it also means everything in it has
+         * either spatial or temporal reuse, so there is no big tradeoff)
          * TODO: tune this further
          */
         score = (2*s + 4*t + 8*v - 16*(a-s-t))*loops[l]->nstmts;
         /* Using >= since we'll take the last one if all else is the same */
         if (score >= max_score) {
             max_score = score;
-            maxloc = loops[l];
+            best_loop = loops[l];
         }
         IF_DEBUG(printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
         IF_DEBUG(pluto_loop_print(loops[l]));
     }
 
-    if (max_score >= 1) {
-        IF_DEBUG(printf("[pluto-intra-tile-opt] loop to be made innermost: "););
-        IF_DEBUG(pluto_loop_print(maxloc););
-        pluto_make_innermost_loop(maxloc, prog);
-        pluto_loops_free(loops, num);
+    if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
+        IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
+        IF_DEBUG(pluto_loop_print(best_loop););
+        pluto_make_innermost_loop(best_loop, prog);
+        pluto_loops_free(loops, nloops);
         return 1;
     }
 
-    pluto_loops_free(loops, num);
+    pluto_loops_free(loops, nloops);
     return 0;
 }
 
