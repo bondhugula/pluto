@@ -41,7 +41,7 @@ void pluto_constraints_project_out_isl(
 }
 
 /* start: 0-indexed */
-void pluto_constraints_project_out_single_isl(
+void pluto_constraints_project_out_isl_single(
         PlutoConstraints **cst, 
         int start, 
         int num)
@@ -49,7 +49,7 @@ void pluto_constraints_project_out_single_isl(
     int end;
     isl_basic_set *bset;
 
-    assert(num>= 0);
+    assert(num >= 0);
     if (num == 0)   return;
 
     end = start + num - 1;
@@ -140,7 +140,9 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset, void *u
 
     if (*cst == NULL) *cst = bcst;
     else{
-        pluto_constraints_unionize(*cst, bcst);
+        /* Careful - not to use pluto_constraints_union_isl (will lead to a
+         * cyclic dependence */
+        pluto_constraints_unionize_simple(*cst, bcst);
         pluto_constraints_free(bcst);
     }
 
@@ -208,7 +210,10 @@ __isl_give isl_basic_map *isl_basic_map_from_pluto_constraints(
 }
 
 
-/* Convert an isl_basic_set to PlutoConstraints */
+/* 
+ * Convert an isl_basic_set to PlutoConstraints; drop any
+ * existentially quantified variables (leads to an overapproximation in some
+ * cases */
 PlutoConstraints *isl_basic_set_to_pluto_constraints(
         __isl_keep isl_basic_set *bset)
 {
@@ -437,4 +442,38 @@ int isl_map_count(__isl_take isl_map *map, void *user)
     r = isl_map_foreach_basic_map(map, &basic_map_count, user);
     isl_map_free(map);
     return r;
+}
+
+
+PlutoConstraints *pluto_constraints_intersection_isl(const PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    isl_set *iset1, *iset2, *iset3;
+    PlutoConstraints *icst;
+
+    isl_ctx *ctx = isl_ctx_alloc();
+
+    iset1 = isl_set_from_pluto_constraints(cst1, ctx);
+    iset2 = isl_set_from_pluto_constraints(cst2, ctx);
+
+    iset3 = isl_set_intersect(iset1, iset2);
+
+    icst = isl_set_to_pluto_constraints(iset3);
+    isl_set_free(iset3);
+
+    isl_ctx_free(ctx);
+
+    return icst;
+}
+
+
+/* In-place intersection: first argument is modified */
+PlutoConstraints *pluto_constraints_intersect_isl(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    PlutoConstraints *icst = pluto_constraints_intersection_isl(cst1, cst2);
+    pluto_constraints_copy(cst1, icst);
+    pluto_constraints_free(icst);
+
+    return cst1;
 }
