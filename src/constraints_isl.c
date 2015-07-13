@@ -16,7 +16,7 @@
 
 #include "isl/map.h"
 #include "isl/set.h"
-#include <isl/deprecated/mat_int.h>
+#include "isl/val_gmp.h"
 
 /* start: 0-indexed */
 void pluto_constraints_project_out_isl(
@@ -102,7 +102,15 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
         }
 
         for (j = 0; j < cst->ncols; ++j) {
-            *m = isl_mat_set_element_si(*m, row, j, cst->val[i][j]);
+            mpz_t tmp, one;
+            mpz_init(tmp);
+            mpz_init(one);
+            mpz_set_ui(one, 1);
+            mpz_set_sll(tmp, cst->val[i][j]);
+            isl_val *v = isl_val_from_gmp(ctx, tmp, one);
+            *m = isl_mat_set_element_val(*m, row, j, v);
+            mpz_clear(tmp);
+            mpz_clear(one);
         }
     }
 
@@ -244,7 +252,7 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
         cons->is_eq[i] = 1;
         for (j = 0; j < n_col; ++j) {
             isl_val *v = isl_mat_get_element_val(eq, i, j);
-            cons->val[i][j] = isl_val_get_num_si(v);
+            cons->val[i][j] = isl_val_get_num_ll(v);
             isl_val_free(v);
         }
     }
@@ -253,7 +261,7 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
         cons->is_eq[eq_row+i] = 0;
         for (j = 0; j < n_col; ++j) {
             isl_val *v = isl_mat_get_element_val(ineq, i, j);
-            cons->val[eq_row + i][j] = isl_val_get_num_si(v);
+            cons->val[eq_row + i][j] = isl_val_get_num_ll(v);
             isl_val_free(v);
         }
     }
@@ -303,7 +311,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
         cons->is_eq[i] = 1;
         for (j = 0; j < n_col; ++j) {
             isl_val *v = isl_mat_get_element_val(eq, i, j);
-            cons->val[i][j] = isl_val_get_num_si(v);
+            cons->val[i][j] = isl_val_get_num_ll(v);
             isl_val_free(v);
         }
     }
@@ -312,7 +320,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(
         cons->is_eq[eq_row+i] = 0;
         for (j = 0; j < n_col; ++j) {
             isl_val *v = isl_mat_get_element_val(ineq, i, j);
-            cons->val[eq_row + i][j] = isl_val_get_num_si(v);
+            cons->val[eq_row + i][j] = isl_val_get_num_ll(v);
             isl_val_free(v);
         }
     }
@@ -369,7 +377,7 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar)
     for (i = 0; i < num_dimensions; i++) {
         isl_val *v;
         v = isl_point_get_coordinate_val(p, isl_dim_set, i);
-        sol[i] = isl_val_get_num_si(v);
+        sol[i] = isl_val_get_num_ll(v);
         isl_val_free(v);
     }
 
