@@ -28,6 +28,10 @@
 #include "math_support.h"
 #include "constraints.h"
 
+#include "isl/val.h"
+#include "isl/val_gmp.h"
+#include "isl/deprecated/int.h"
+
 /*
  * Allocated; not initialized
  *
@@ -760,4 +764,105 @@ int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2)
     }
 
     return (dot == 0);
+}
+
+/* Convert from mpz to signed long long */
+void mpz_set_sll(mpz_t n, long long sll)
+{   
+    /* n = (int)sll >> 32 */
+    mpz_set_si(n, (int)(sll >> 32));  
+    /* n <<= 32 */
+    mpz_mul_2exp(n, n, 32 );
+    /* n += (unsigned int)sll */
+    mpz_add_ui(n, n, (unsigned int)sll); 
+}
+
+/* Convert from mpz to unsigned long long */
+void mpz_set_ull(mpz_t n, unsigned long long ull)
+{
+    /* n = (unsigned int)(ull >> 32) */
+    mpz_set_ui(n, (unsigned int)(ull >> 32)); 
+    /* n <<= 32 */
+    mpz_mul_2exp(n, n, 32);                   
+    /* n += (unsigned int)ull */
+    mpz_add_ui(n, n, (unsigned int)ull);      
+}
+
+
+/* Does the mpz value fit in a long long? */
+static int mpz_fits_ll(mpz_t z)
+{
+    int sign;
+
+    mpz_t tmp;
+    mpz_init(tmp);
+    /* tmp = (upper bits of r) */
+    if (mpz_sgn(z) > 0) {
+        mpz_tdiv_q_2exp(tmp, z, 63);
+    }else{
+        mpz_add_ui(tmp, z, 1);
+        mpz_tdiv_q_2exp(tmp, tmp, 63);
+    }
+    sign = mpz_sgn(tmp);
+    mpz_clear(tmp);
+    return sign == 0;
+
+}
+
+/* Extract the numerator of a rational value "v" as a long long int.
+ *
+ * If "v" is not a rational value, then the result is undefined.
+ */
+long long isl_val_get_num_ll(__isl_keep isl_val *v)
+{
+    unsigned lo, hi;
+    mpz_t z, tmp;
+    int sign;
+    long long result;
+
+    mpz_init(tmp);
+    // isl_val_get_num_gmp(v, tmp);
+    // gmp_printf("isl_int: %Zd\n", tmp );
+    // gmp_printf("isl_int hex: %Zx\n", tmp);
+    
+    if (!v)
+        return 0;
+    if (!isl_val_is_rat(v))
+        isl_die(isl_val_get_ctx(v), isl_error_invalid,
+                "expecting rational value", return 0);
+
+    mpz_init(z);
+    isl_val_get_num_gmp(v, z);
+
+    if (!mpz_fits_ll(z)) {
+        // gmp_printf("isl_int: %Zd\n", z);
+        // gmp_printf("isl_int hex: %Zx\n", z);
+        printf("[pluto_math_support] numerator too large; returning largest/smallest signed 64-bit number\n");
+        sign = mpz_sgn(z);
+        mpz_clear(z);
+
+        /* 2^63-1 is the largest positive signed number for 64-bit */
+        /* -2^63 is the largest negative signed number for 64-bit */
+        return sign? (long long) ((1ULL<<63) -1): (long long) ((1ULL << 63));
+    }
+
+    /* tmp = (lower 64 bits of r) */
+    mpz_mod_2exp(tmp, z, 64);
+    mpz_clear(z);
+
+    /* lo = tmp & 0xffffffff */
+    lo = mpz_get_ui(tmp);
+
+    /* tmp >>= 32 */
+    mpz_div_2exp(tmp, tmp, 32);
+
+    /* hi = tmp & 0xffffffff */
+    hi = mpz_get_ui(tmp);
+
+    mpz_clear(tmp);
+    result = (long long)( (((unsigned long long)hi) << 32) + lo);
+
+    // printf("result: %lld\n", result);
+
+    return result;
 }
