@@ -1026,6 +1026,7 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog)
 
         //candl_matrix_print(stdout, candl_dep->domain);
         dep->dpolytope = osl_dep_domain_to_pluto_constraints(candl_dep);
+        dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
 
         pluto_constraints_set_names_range(dep->dpolytope,
                stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
@@ -1441,6 +1442,7 @@ void pluto_prog_print(FILE *fp, PlutoProg *prog)
 void pluto_dep_free(Dep *dep)
 {
     pluto_constraints_free(dep->dpolytope);
+    pluto_constraints_free(dep->bounding_poly);
     pluto_constraints_free(dep->depsat_poly);
     if (dep->dirvec) {
         free(dep->dirvec);
@@ -1901,6 +1903,7 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
 
     dep->id = info->index;
     dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
+    dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
     dep->dirvec = NULL;
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
@@ -2890,12 +2893,16 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
         pluto_matrix_add_col(stmt->reads[i]->mat, pos);
     }
 
+    /* Update dependences */
     for (i=0; i<prog->ndeps; i++) {
         if (prog->deps[i]->src == stmt->id) {
             pluto_constraints_add_dim(prog->deps[i]->dpolytope, pos, NULL);
+            pluto_constraints_add_dim(prog->deps[i]->bounding_poly, pos, NULL);
         }
         if (prog->deps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->deps[i]->dpolytope, 
+                    prog->stmts[prog->deps[i]->src]->dim+pos, NULL);
+            pluto_constraints_add_dim(prog->deps[i]->bounding_poly, 
                     prog->stmts[prog->deps[i]->src]->dim+pos, NULL);
         }
     }
@@ -2904,9 +2911,12 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
         assert(prog->transdeps[i] != NULL);
         if (prog->transdeps[i]->src == stmt->id) {
             pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, pos, NULL);
+            pluto_constraints_add_dim(prog->transdeps[i]->bounding_poly, pos, NULL);
         }
         if (prog->transdeps[i]->dest == stmt->id) {
             pluto_constraints_add_dim(prog->transdeps[i]->dpolytope, 
+                    prog->stmts[prog->transdeps[i]->src]->dim+pos, NULL);
+            pluto_constraints_add_dim(prog->transdeps[i]->bounding_poly, 
                     prog->stmts[prog->transdeps[i]->src]->dim+pos, NULL);
         }
     }
@@ -3038,7 +3048,6 @@ Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain, const PlutoMatr
     return stmt;
 }
 
-        
 /* Pad statement transformations so that they all equal number
  * of rows */
 void pluto_pad_stmt_transformations(PlutoProg *prog)
@@ -3137,6 +3146,7 @@ Dep *pluto_dep_alloc()
     dep->id = -1;
     dep->satvec = NULL;
     dep->dpolytope = NULL;
+    dep->bounding_poly = NULL;
     dep->depsat_poly = NULL;
     dep->satisfied = false;
     dep->satisfaction_level = -1;
@@ -3161,6 +3171,7 @@ Dep *pluto_dep_dup(Dep *d)
     dep->src_acc = d->src_acc;
     dep->dest_acc = d->dest_acc;
     dep->dpolytope = pluto_constraints_dup(d->dpolytope);
+    dep->bounding_poly = pluto_constraints_dup(d->bounding_poly);
 
     dep->src_unique_dpolytope = 
         d->src_unique_dpolytope? pluto_constraints_dup(
@@ -3178,9 +3189,6 @@ Dep *pluto_dep_dup(Dep *d)
 
     return dep;
 }
-
-
-
 
 /*
  * Only very essential information is needed to allocate; rest can be

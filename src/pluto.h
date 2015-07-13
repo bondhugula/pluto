@@ -190,6 +190,9 @@ struct dependence{
      */
     PlutoConstraints *dpolytope;
 
+    /* Used for bounding function constraints */
+    PlutoConstraints *bounding_poly;
+
     /*
      * Polyhedra used to store source unique dependence polyhedra
      * in FOP scheme
