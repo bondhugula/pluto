@@ -223,11 +223,15 @@ PlutoConstraints *isl_basic_set_to_pluto_constraints(
     int n_col;
     isl_mat *eq, *ineq;
     PlutoConstraints *cons;
+    isl_basic_set *bset_c;
 
-    eq = isl_basic_set_equalities_matrix(bset,
+    bset_c = isl_basic_set_remove_divs(isl_basic_set_copy(bset));
+
+    eq = isl_basic_set_equalities_matrix(bset_c,
             isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
-    ineq = isl_basic_set_inequalities_matrix(bset,
+    ineq = isl_basic_set_inequalities_matrix(bset_c,
             isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
+    isl_basic_set_free(bset_c);
 
     eq_row = isl_mat_rows(eq);
     ineq_row = isl_mat_rows(ineq);
