@@ -159,7 +159,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     }
 
     /* Apply Farkas lemma for bounding function constraints */
-    bounding_func_cst = farkas_lemma_affine(dpoly, phi);
+    bounding_func_cst = farkas_lemma_affine(dep->bounding_poly, phi);
 
     pluto_matrix_free(phi);
     pluto_constraints_free(dpoly);
@@ -283,8 +283,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             IF_DEBUG(fprintf(stdout, "\tFor dep: %d; num_constraints: %d\n",
                         i+1, dep->cst->nrows));
             total_cst_rows += dep->cst->nrows;
-            IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
-            IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
+            // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+            // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
         }
     }
 
@@ -362,7 +362,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
-    IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
+    // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
     return globcst;
 }
