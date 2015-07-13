@@ -374,24 +374,20 @@ int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog,
 
 
 /*
- * Does the loop satisfy an inter-stmt dependence?
+ * Does depth and anything below satisfy an inter-stmt dependence?
  */
-int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog, 
-        const Ploop *loop)
+int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog, 
+        const Ploop *loop, int depth)
 {
-    int satisfies, i;
+    int satisfies, i, d;
 
     /* All statements under a parallel loop should be of type orig */
     for (i=0; i<loop->nstmts; i++) {
-        if (loop->stmts[i]->type != ORIG) break;
+        if ((loop->stmts[i]->type != ORIG)) break; 
     }
     if (i<loop->nstmts) {
         /* conservative */
         return 1;
-    }
-
-    if (prog->hProps[loop->depth].dep_prop == PARALLEL) {
-        return 0;
     }
 
     satisfies = 0;
@@ -400,14 +396,20 @@ int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog,
         Dep *dep = prog->deps[i];
         if (IS_RAR(dep->type)) continue;
         assert(dep->satvec != NULL);
-        if (dep->satvec[loop->depth]
-                && dep->src != dep->dest
-                && pluto_stmt_is_member_of(dep->src, loop->stmts, loop->nstmts)
-                && pluto_stmt_is_member_of(dep->dest, loop->stmts, loop->nstmts)
-           ) {
-            satisfies = 1;
-            break;
+
+        if (dep->src == dep->dest
+                || !pluto_stmt_is_member_of(dep->src, loop->stmts, loop->nstmts)
+                || !pluto_stmt_is_member_of(dep->dest, loop->stmts, loop->nstmts)) {
+            continue;
         }
+
+        for (d=depth; d<prog->num_hyperplanes; d++) {
+            if (dep->satvec[d]) {
+                satisfies = 1;
+                break;
+            }
+        }
+        if (satisfies) break;
     }
 
     return satisfies;
