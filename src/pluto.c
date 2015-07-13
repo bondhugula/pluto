@@ -1341,8 +1341,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
         }else{
             pluto_constraints_add(currcst, indcst);
             IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
-            IF_DEBUG2(printf("Constraints after addition of non zero constraints and linear ind constraints\n"));
-            IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
+            // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
         }
         pluto_constraints_free(indcst);
@@ -1837,22 +1836,23 @@ void normalize_domains(PlutoProg *prog)
         IF_DEBUG(pluto_constraints_compact_print(stdout, context););
 
         /* Add context to every dep polyhedron */
-        for (i = 0; i < prog->ndeps; i++) {
-            PlutoConstraints *dpolytope = prog->deps[i]->dpolytope;
+        for (i=0; i<prog->ndeps; i++) {
+            PlutoConstraints *bounding_poly = 
+                pluto_constraints_dup(prog->deps[i]->dpolytope);
 
-            for (k = 0; k < context->nrows; k++) {
-                pluto_constraints_add_inequality(dpolytope);
+            for (k=0; k<context->nrows; k++) {
+                pluto_constraints_add_inequality(bounding_poly);
 
                 /* Already initialized to zero */
 
-                for (j = 0; j < npar + 1; j++) {
-                    dpolytope
-                        ->val[dpolytope->nrows - 1][j + dpolytope->ncols - (npar + 1)] =
+                for (j=0; j<npar+1; j++){
+                    bounding_poly->val[bounding_poly->nrows-1][j+bounding_poly->ncols-(npar+1)] = 
                         context->val[k][j];
                 }
             }
             /* Update reference, add_row can resize */
-            prog->deps[i]->dpolytope = dpolytope;
+            pluto_constraints_free(prog->deps[i]->bounding_poly);
+            prog->deps[i]->bounding_poly = bounding_poly;
         }
         pluto_constraints_free(context);
     }else{
@@ -1897,9 +1897,9 @@ void normalize_domains(PlutoProg *prog)
 #endif
 
     /* Avoid the need for bounding function coefficients to take negative
-     * values (TODO: should do this only for the bounding function constraints) */
-    bool *neg = malloc(sizeof(bool) * npar);
-    for (k = 0; k < prog->ndeps; k++) {
+     * values */
+    bool *neg = malloc(sizeof(bool)*npar);
+    for (k=0; k<prog->ndeps; k++) {
         Dep *dep = prog->deps[k];
         PlutoConstraints *dpoly = dep->dpolytope;
 
@@ -1915,18 +1915,18 @@ void normalize_domains(PlutoProg *prog)
                 max = PLMAX(dpoly->val[i][j], max);
             }
 
-            if (min < 0 && max <= 0) {
-                neg[j - 2 * nvar] = true;
-                IF_DEBUG(printf("Dep %d has negative coeff's for parameter %d\n",
-                            dep->id, j - 2 * nvar + 1));
+            if (min < 0 && max <= 0)    {
+                neg[j-2*nvar] = true;
+                IF_DEBUG(printf("Dep %d has negative coeff's for parameter %s\n",
+                            dep->id, prog->params[j-2*nvar]));
             }
         }
 
         /* For parameters appearing with negative coefficients in upper bounds */
         for (j=0; j<npar; j++)  {
             if (neg[j])   {
-                pluto_constraints_add_inequality(dpoly);
-                dpoly->val[dpoly->nrows - 1][2 * nvar + j] = 1;
+                pluto_constraints_add_inequality(dep->bounding_poly);
+                dep->bounding_poly->val[dep->bounding_poly->nrows-1][2*nvar+j] = 1;
             }
         }
     }

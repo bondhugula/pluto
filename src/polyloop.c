@@ -383,8 +383,7 @@ int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog,
 
     /* All statements under a parallel loop should be of type orig */
     for (i=0; i<loop->nstmts; i++) {
-        if ((loop->stmts[i]->type != ORIG) 
-                && (loop->stmts[i]->type != ORIG_IN_FUNCTION)) break;
+        if ((loop->stmts[i]->type != ORIG)) break; 
     }
     if (i<loop->nstmts) {
         /* conservative */
