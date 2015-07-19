@@ -24,6 +24,7 @@
 
 #include "isl/mat.h"
 #include "isl/aff.h"
+
 #include "gmp.h"
 
 #define PLMAX(a,b) ((a>=b)?(a):(b))

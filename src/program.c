@@ -5484,6 +5484,9 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
 
     pluto_constraints_free(prog->context);
     prog->context = isl_set_to_pluto_constraints(pscop->context);
+    IF_DEBUG(printf("[pluto] Pet SCoP context\n"));
+    IF_DEBUG(isl_set_dump(pscop->context););
+    IF_DEBUG(pluto_constraints_compact_print(stdout, prog->context));
 
     // isl_set_dump(pscop->context);
 
