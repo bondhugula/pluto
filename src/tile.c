@@ -998,10 +998,9 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band, int *tile_sizes)
  * dimensions from firstD to lastD */
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 {
-    int i, j, s;
+    int j, s;
     int depth, npar;
 
-    Stmt **stmts = prog->stmts;
     npar = prog->npar;
 
     int firstD = band->loop->depth;
@@ -1013,7 +1012,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
         num_domain_supernodes[s] = 0;
     }
 
-    for (depth=firstD; depth<=lastD; depth++)    {
+    for (depth=firstD; depth<=lastD; depth++) {
         for (s=0; s<band->loop->nstmts; s++) {
             Stmt *stmt = band->loop->stmts[s];
             /* 1. Specify tiles in the original domain. 
@@ -1097,28 +1096,6 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
             stmt->last_tile_dim = lastD;
         } /* all statements */
     } /* all scats to be tiled */
-
-    int max = 0, curr;
-    for (i=0; i<prog->nstmts; i++) {
-        max = PLMAX(stmts[i]->trans->nrows, max);
-    }
-    for (i=0; i<prog->nstmts; i++) {
-        curr = stmts[i]->trans->nrows;
-        for (j=curr; j < max; j++) {
-            pluto_sink_transformation(stmts[i], stmts[i]->trans->nrows, prog);
-        }
-    }
-
-    // print_hyperplane_properties(prog);
-    curr = prog->num_hyperplanes;
-    for (depth=curr; depth<max; depth++)    {
-        pluto_prog_add_hyperplane(prog, depth, H_UNKNOWN);
-    }
-    /* Re-detect hyperplane types (H_SCALAR, H_LOOP) */
-    pluto_detect_hyperplane_types(prog);
-
-    // print_hyperplane_properties(prog);
-    // pluto_transformations_pretty_print(prog);
 }
 
 
@@ -1149,7 +1126,7 @@ void pluto_tile(PlutoProg *prog)
      */
     Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
     for (i=0; i<nloops; i++) {
-        if (pluto_is_loop_innermost(loops[i], prog)) {
+        if (pluto_loop_is_innermost(loops[i], prog)) {
             for (j=0; j<nbands; j++) {
                 if (is_loop_dominated(loops[i], bands[j]->loop, prog)) break;
             }

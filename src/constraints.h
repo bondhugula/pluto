@@ -55,6 +55,7 @@ struct pluto_constraints {
 
 typedef struct pluto_constraints PlutoConstraints;
 
+/* A constraint with one equality */
 typedef PlutoConstraints PlutoEquality;
 typedef PlutoConstraints Hyperplane;
 
@@ -114,6 +115,11 @@ PlutoConstraints *pluto_constraints_from_mixed_matrix(const PlutoMatrix *mat, in
 PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func);
 void pluto_constraints_project_out(PlutoConstraints *cst, int start, int end);
 
+void pluto_constraints_project_out_isl_single(
+        PlutoConstraints **cst, 
+        int start, 
+        int num);
+
 
 int pluto_constraints_num_in_list(const PlutoConstraints *const cst);
 
@@ -130,6 +136,9 @@ PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
 PlutoConstraints *pluto_constraints_unionize(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2);
 PlutoConstraints *pluto_constraints_unionize_simple(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2);
+
+PlutoConstraints *pluto_constraints_intersect_isl(PlutoConstraints *cst1, 
         const PlutoConstraints *cst2);
 
 int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int depth, int64 *ub);

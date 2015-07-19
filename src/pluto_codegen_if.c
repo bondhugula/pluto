@@ -89,7 +89,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
     /* Context: setting conditions on parameters */
     PlutoConstraints *ctx = pluto_constraints_dup(prog->context);
-    pluto_constraints_intersect(ctx, prog->codegen_context);
+    pluto_constraints_intersect_isl(ctx, prog->codegen_context);
     pluto_constraints_print_polylib(fp, ctx);
     pluto_constraints_free(ctx);
 
@@ -113,7 +113,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     fprintf(fp, "# we want cloog to set the iterator names\n");
     fprintf(fp, "0\n\n");
 
-    fprintf(fp, "# of scattering functions\n");
+    fprintf(fp, "# Number of scattering functions\n");
     if (nstmts >= 1 && stmts[0]->trans != NULL) {
         fprintf(fp, "%d\n\n", nstmts);
 
