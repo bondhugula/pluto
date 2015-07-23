@@ -241,7 +241,7 @@ void pluto_tile(PlutoProg *prog)
      */
     Ploop **loops = pluto_get_parallel_loops(prog, &nloops);
     for (i=0; i<nloops; i++) {
-        if (pluto_is_loop_innermost(loops[i], prog)) {
+        if (pluto_loop_is_innermost(loops[i], prog)) {
             for (j=0; j<nbands; j++) {
                 if (is_loop_dominated(loops[i], bands[j]->loop, prog)) break;
             }
