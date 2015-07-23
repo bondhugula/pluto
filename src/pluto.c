@@ -1924,6 +1924,9 @@ int pluto_auto_transform(PlutoProg *prog)
                 }
             }
         }
+        /* Under LAZY mode, do a complex dep satisfaction check to take 
+         * care of partial satisfaction (rarely needed) */
+        if (hyp_search_mode == LAZY) pluto_compute_dep_satisfaction_complex(prog);
         depth++;
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog));
