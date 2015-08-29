@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007-2012 Uday Bondhugula
+ * Copyright (C) 2007-2015 Uday Bondhugula
  *
  * This file is part of Pluto.
  *
@@ -55,35 +55,28 @@ void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
-    fprintf(stdout, "       --tile                    Tile for locality\n");
-    fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
-    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas)\n");
-    fprintf(stdout, "    or --parallelize\n");
-    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
-    fprintf(stdout, "    or --diamond-tile\n");
-    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
-    fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
-    fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
-    fprintf(stdout, "       --multipipe               Extract two or more degrees of pipelined parallelism if possible;\n");
-    fprintf(stdout, "                                     by default one degree is extracted (if it exists)\n");
-    fprintf(stdout, "       --rar                  Consider RAR dependences too (disabled by default)\n");
-    fprintf(stdout, "       --[no]unroll           Unroll-jam (disabled by default)\n");
-    fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
-    fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
-    fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
-    fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (enabled by default)\n");
+    fprintf(stdout, "       --isldep                  Use ISL-based dependence tester (enabled by default)\n");
+    fprintf(stdout, "       --candldep                Use Candl as the dependence tester\n");
+    fprintf(stdout, "       --[no]lastwriter          Remove transitive dependences (last conflicting access is computed for RAW/WAW)\n");
+    fprintf(stdout, "                                 (disabled by default)\n");
     fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
-    fprintf(stdout, "       --readscop             Read input from a .scop file\n");
-    fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
-    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
-    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
-    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
-    fprintf(stdout, "       --help    | -h            Print this help menu\n");
-    fprintf(stdout, "       --version | -v            Display version number\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+    fprintf(stdout, "\n");
+    fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
+    fprintf(stdout, "       --tile                    Tile for locality [disabled by default]\n");
+    fprintf(stdout, "       --[no]intratileopt        Optimize intra-tile execution order for locality [enabled by default]\n");
+    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) [disabled by default] \n");
+    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas) [disabled by default]\n");
+    fprintf(stdout, "    or --parallelize\n");
+    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start (recommended)\n");
+    fprintf(stdout, "    or --part-diamond-tile\n");
+    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
+    fprintf(stdout, "    or --diamond-tile\n");
+    fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) vectorization (enabled by default)\n");
+    fprintf(stdout, "       --multipar                Extract all degrees of parallelism [disabled by default];\n");
+    fprintf(stdout, "                                    by default one degree is extracted within any schedule sub-tree (if it exists)\n");
+    fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism [disabled by default]\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
@@ -94,6 +87,17 @@ void usage_message(void)
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
     fprintf(stdout, "       --codegen-context=<value> Parameters are at least as much as <value>\n");
+    fprintf(stdout, "\n   Miscellaneous\n");
+    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
+    fprintf(stdout, "       --readscop                Read input from a scoplib file\n");
+    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
+    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
+    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
+    fprintf(stdout, "       --help    | -h            Print this help menu\n");
+    fprintf(stdout, "       --version | -v            Display version number\n");
     fprintf(stdout, "\n   Debugging\n");
     fprintf(stdout, "       --debug                   Verbose/debug output\n");
     fprintf(stdout, "       --moredebug               More verbose/debug output\n");
