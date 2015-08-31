@@ -70,18 +70,15 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
+
 lbpar: $(SRC).lbpar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 mlbpar: $(SRC).mlbpar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
 
-
-par: $(SRC).par.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
-
-lbpar: $(SRC).lbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
