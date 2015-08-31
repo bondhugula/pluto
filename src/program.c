@@ -2599,7 +2599,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->cloogbacktrack = 1;
 
-    options->multipipe = 0;
+    options->multipar = 0;
     options->l2tile = 0;
     options->prevector = 1;
     options->fuse = SMART_FUSE;

@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
         {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
-        {"multipipe", no_argument, &options->multipipe, 1},
+        {"multipar", no_argument, &options->multipar, 1},
         {"l2tile", no_argument, &options->l2tile, 1},
         {"version", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
@@ -330,13 +330,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->tile = 1;
     }
 
-    if (options->multipipe == 1 && options->parallel == 0)    {
-        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+    if (options->multipar == 1 && options->parallel == 0)    {
+        fprintf(stdout, "Warning: multipar needs parallel to be on; turning on parallel\n");
         options->parallel = 1;
     }
 
-    if (options->multipipe == 1 && options->parallel == 0)    {
-        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+    if (options->multipar == 1 && options->parallel == 0)    {
+        fprintf(stdout, "Warning: multipar needs parallel to be on; turning on parallel\n");
         options->parallel = 1;
     }
 
