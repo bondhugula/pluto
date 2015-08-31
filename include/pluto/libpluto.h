@@ -79,7 +79,7 @@ struct plutoOptions{
     int forceparallel;
 
     /* multiple (currently two) degrees of pipelined parallelism */
-    int multipipe;
+    int multipar;
 
     /* Tile for L2 too */
     /* By default, only L1 tiling is done; under parallel execution, every
