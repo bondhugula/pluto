@@ -319,7 +319,7 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
     }
     generate_declarations(prog, outfp);
 
-    if (options->multipipe) {
+    if (options->multipar) {
         fprintf(outfp, "\tomp_set_nested(1);\n");
         fprintf(outfp, "\tomp_set_num_threads(2);\n");
     }
@@ -356,7 +356,7 @@ int pluto_omp_parallelize(PlutoProg *prog)
      * PIPE_PARALLEL properties
      */
     /* Detect the outermost sync-free parallel loop - find upto two of them if
-     * the multipipe option is set */
+     * the multipar option is set */
     int num_parallel_loops = 0;
     for (loop=0; loop<prog->num_hyperplanes; loop++) {
         if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
@@ -381,7 +381,7 @@ int pluto_omp_parallelize(PlutoProg *prog)
             /* Lower and upper scalars for parallel loops yet to be marked */
             /* NOTE: we extract up to 2 degrees of parallelism
             */
-            if (options->multipipe) {
+            if (options->multipar) {
                 for (i=num_parallel_loops+1; i<2; i++) {
                     fprintf(outfp,  "lb%d,ub%d,", i+1, i+1);
                 }
@@ -395,7 +395,7 @@ int pluto_omp_parallelize(PlutoProg *prog)
 
             num_parallel_loops++;
 
-            if (!options->multipipe || num_parallel_loops == 2)   {
+            if (!options->multipar || num_parallel_loops == 2)   {
                 break;
             }
         }
