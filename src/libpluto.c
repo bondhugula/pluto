@@ -432,8 +432,8 @@ int pluto_schedule_osl(osl_scop_p scop,
   }
 
   /* Make options consistent */
-  if (options->multipipe == 1 && options->parallel == 0)    {
-      fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
+  if (options->multipar == 1 && options->parallel == 0)    {
+      fprintf(stdout, "Warning: multipar needs parallel to be on; turning on parallel\n");
       options->parallel = 1;
   }
 
