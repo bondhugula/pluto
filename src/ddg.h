@@ -24,7 +24,7 @@ struct scc{
 
     /* Id of this SCC */
     int id;
-
+bool chaste;
 };
 typedef struct scc Scc;
 
@@ -38,6 +38,8 @@ struct graph{
 
     /* Adjacency matrix */
     PlutoMatrix *adj;
+
+PlutoMatrix* rar_adj;
 
     Scc *sccs;
     int num_sccs;

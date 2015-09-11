@@ -357,6 +357,10 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
                 ub++;
             }
         }
+if(lb*ub+nb > 5000)
+bug("Careful");
+bug("Pos, Rows, Columns: %d, %d, %d",pos,lb*ub+nb,cst->ncols);
+max_rows_fme = max(max_rows_fme,(lb*ub+nb));
         newcst = pluto_constraints_alloc(lb*ub+nb, cst->ncols);
         int **newcsm = newcst->val;
 
@@ -369,10 +373,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
                         for(l=0; l < cst->ncols; l++)  {
                             if (l!=pos)   {
                                 newcsm[p][q] = 
-                                    csm[j][l]*(lcm(csm[k][pos], 
-                                                -csm[j][pos])/(-csm[j][pos])) 
-                                    + csm[k][l]*(lcm(-csm[j][pos], 
-                                                csm[k][pos])/csm[k][pos]); 
+                                    csm[j][l]*(lcm(csm[k][pos],-csm[j][pos])/(-csm[j][pos])) 
+                                    + csm[k][l]*(lcm(-csm[j][pos],csm[k][pos])/csm[k][pos]); 
                                 q++;
                             }
                         }
@@ -394,6 +396,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         newcst->ncols = cst->ncols-1;
         free(bound);
     }
+
+//pluto_constraints_print(stdout,newcst);
 
     pluto_constraints_simplify(newcst);
     pluto_constraints_copy(cst, newcst);

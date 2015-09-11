@@ -44,11 +44,18 @@ Graph *graph_alloc(int nVertices)
     g->adj->nrows = nVertices;
     g->adj->ncols = nVertices;
 
+    g->rar_adj = pluto_matrix_alloc(nVertices, nVertices);
+    g->rar_adj->nrows = nVertices;
+    g->rar_adj->ncols = nVertices;
+
     for (i=0; i<nVertices; i++) {
         g->vertices[i].vn = -1;
         g->vertices[i].fn = -1;
         for (j=0; j<nVertices; j++)
+{
             g->adj->val[i][j] = 0;
+g->rar_adj->val[i][j]=0;
+}
     }
 
     g->sccs = (Scc *) malloc(nVertices*sizeof(Scc));

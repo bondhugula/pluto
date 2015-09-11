@@ -45,7 +45,7 @@ void usage_message();
 
 int main(int argc, char *argv[])
 {
-    int i;
+    int i,count,j,k;
 
     FILE *src_fp;
 
@@ -217,8 +217,22 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         
     /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
 
+double t_start,t_end;
+
+bug1("before 'start'");
+t_start = rtclock();
     /* Convert clan scop to Pluto program */
     PlutoProg *prog = scop_to_pluto_prog(scop, options);
+
+cutAllSccs=0;
+
+prog->stmts_dim = (int*)malloc(prog->nstmts*sizeof(int));
+max_dim=0;
+for(i=0;i<prog->nstmts;i++)
+{
+max_dim=max(max_dim,prog->stmts[i]->dim);
+prog->stmts_dim[i]=prog->stmts[i]->dim;
+}
 
     clan_options_free(clanOptions);
 
@@ -234,6 +248,377 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);
     ddg_compute_scc(prog);
+//pluto_deps_print(stdout, prog->deps, prog->ndeps);
+
+
+/* Code for part (c) starts ... */
+
+for(i=0;i<prog->nstmts;i++)
+prog->stmts[i]->orig_scc_id = prog->stmts[i]->scc_id;
+
+int nrdeps=0;
+
+for(i=prog->ndeps-1;i>=0;i--)
+{
+count = 0;
+for(j=0;j<prog->deps[i]->src_acc->mat->nrows;j++)
+{
+for(k=0;k<prog->nvar;k++)
+{
+if(prog->deps[i]->src_acc->mat->val[j][k])
+count++;
+}
+}
+if(i==prog->ndeps-1 || !(pluto_domain_equality1(prog->deps[i]->src_acc->mat,prog->deps[i+1]->src_acc->mat) && pluto_domain_equality1(prog->deps[i]->dest_acc->mat,prog->deps[i+1]->dest_acc->mat) && (prog->deps[i]->src == prog->deps[i+1]->src) && (prog->deps[i]->dest == prog->deps[i+1]->dest) && (count < prog->stmts[prog->deps[i]->src]->dim) /*&& !strcmp(prog->deps[i]->src_acc->name,prog->deps[i+1]->src_acc->name)*/))
+{
+//if(prog->deps[i]->src <= prog->deps[i]->dest)
+nrdeps++;
+}
+}
+
+prog->nrdeps = nrdeps;
+prog->rdeps = (int*)malloc(sizeof(int)*nrdeps); 
+
+bug("%d",nrdeps);
+
+for(i=prog->ndeps-1;i>=0;i--)
+{
+count=0;
+for(j=0;j<prog->deps[i]->src_acc->mat->nrows;j++)
+{
+for(k=0;k<prog->nvar;k++)
+{
+if(prog->deps[i]->src_acc->mat->val[j][k])
+count++;
+}
+}
+//if(count < prog->stmts[prog->deps[i]->src]->dim) // that is if the source of the dep is an incomplete array
+//{
+if(i==prog->ndeps-1 || !(pluto_domain_equality1(prog->deps[i]->src_acc->mat,prog->deps[i+1]->src_acc->mat) && pluto_domain_equality1(prog->deps[i]->dest_acc->mat,prog->deps[i+1]->dest_acc->mat) && (prog->deps[i]->src == prog->deps[i+1]->src) && (prog->deps[i]->dest == prog->deps[i+1]->dest) && (count < prog->stmts[prog->deps[i]->src]->dim) /*&& !strcmp(prog->deps[i]->src_acc->name,prog->deps[i+1]->src_acc->name)*/))
+{
+//if(prog->deps[i]->src <= prog->deps[i]->dest)
+prog->rdeps[--nrdeps]=i;
+}
+//}
+}
+
+/* Code for part (c) ends ...*/
+
+
+count=1;
+for(i=0;i<prog->nstmts-1;i++)
+{
+//pluto_constraints_print(stdout,prog->stmts[i]->domain);
+
+/* counting the number of loops */
+if(!pluto_domain_equality(prog->stmts[i]->domain,prog->stmts[i+1]->domain))
+count++;
+
+}
+
+
+prog->nloops = count;
+
+prog->loops = (int*) malloc(sizeof(int)*count); // loops[i] contains the ending location of each loop
+count=0;
+
+for(i=0;i<prog->nstmts-1;i++)
+{
+
+if(!pluto_domain_equality(prog->stmts[i]->domain,prog->stmts[i+1]->domain))
+prog->loops[count++]=i;
+
+}
+
+prog->loops[count]=i;
+
+/* printing loops */
+for(i=0;i<prog->nloops;i++)
+{
+bug("loop %d: Statements: %d - %d",i,(i==0?0:prog->loops[i-1]+1),prog->loops[i]);
+}
+
+prog->distr = (int*) malloc(prog->nloops*sizeof(int));
+for(i=0;i<prog->nloops;i++)
+{
+prog->distr[i]=0;
+}
+
+
+
+struct dist* d;
+int count1,count2,num,num1=-1;
+dist_ = (struct dist***) malloc(sizeof(struct dist**)*prog->nloops);
+for(i=0;i<prog->nloops;i++)
+{
+dist_[i]=(struct dist**)malloc(sizeof(struct dist*)*prog->nloops);
+for(j=0;j<prog->nloops;j++)
+dist_[i][j]=NULL;
+}
+
+for(i=0;i<prog->ndeps;i++)
+{
+if(prog->deps[i]->src==prog->deps[i]->dest && prog->deps[i]->type==CANDL_WAW)
+continue;
+d = dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+
+if(d==NULL)
+{
+
+dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)] = (struct dist*) malloc(sizeof(struct dist));
+d=dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+d->dep=i;
+d->next=NULL;
+
+count2=0;
+for(j=0;j<prog->deps[i]->dpolytope->nrows;j++)
+{
+count1=0;
+for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++)
+{
+if(prog->deps[i]->dpolytope->val[j][k])
+count1++;
+}
+if((count1>1) || prog->deps[i]->dpolytope->is_eq[j])
+count2++;
+}
+
+d->value = pluto_constraints_alloc(count2,prog->deps[i]->dpolytope->ncols);
+d->value->nrows=count2;
+
+count2=0;
+for(j=0;j<prog->deps[i]->dpolytope->nrows;j++)
+{
+count1=0;
+for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++)
+{
+if(prog->deps[i]->dpolytope->val[j][k])
+count1++;
+}
+if((count1>1) || prog->deps[i]->dpolytope->is_eq[j])
+{
+for(k=0;k<prog->deps[i]->dpolytope->ncols;k++)
+d->value->val[count2][k]=prog->deps[i]->dpolytope->val[j][k];
+count2++;
+}
+}
+
+bug("dep: %d (%d, %d)",i,prog->deps[i]->src,prog->deps[i]->dest);
+//pluto_constraints_print(stdout, d->value);
+} // end if
+
+else
+{
+
+while(d->next!=NULL)
+d=d->next;
+
+d->next = (struct dist*) malloc(sizeof(struct dist));
+d->next->dep = i;
+d->next->next = NULL;
+
+count2=0;
+for(j=0;j<prog->deps[i]->dpolytope->nrows;j++)
+{
+count1=0;
+for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++)
+{
+if(prog->deps[i]->dpolytope->val[j][k])
+count1++;
+}
+if((count1>1) || prog->deps[i]->dpolytope->is_eq[j])
+count2++;
+}
+
+d->next->value = pluto_constraints_alloc(count2,prog->deps[i]->dpolytope->ncols);
+d->next->value->nrows=count2;
+
+count2=0;
+for(j=0;j<prog->deps[i]->dpolytope->nrows;j++)
+{
+count1=0;
+for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++)
+{
+if(prog->deps[i]->dpolytope->val[j][k])
+count1++;
+}
+if((count1>1) || prog->deps[i]->dpolytope->is_eq[j])
+{
+for(k=0;k<prog->deps[i]->dpolytope->ncols;k++)
+d->next->value->val[count2][k]=prog->deps[i]->dpolytope->val[j][k];
+count2++;
+}
+}
+
+struct dist* d1 = dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+
+while(d1!=d->next)
+{
+if(pluto_domain_equality(d1->value,d->next->value) /*&& pluto_domain_equality1(prog->stmts[prog->deps[d1->dep]->src]->writes[0]->mat,prog->stmts[prog->deps[d->next->dep]->src]->writes[0]->mat)*/)
+break;
+d1=d1->next;
+}
+
+
+if(d1!=d->next)
+{
+free(d->next);  
+d->next=NULL;
+}
+
+} // else
+
+}
+
+//for(i=0;i<prog->nstmts;i++)
+//pluto_constraints_print(stdout, prog->stmts[i]->domain);
+bug("Original");
+//pluto_deps_print(stdout, prog->deps,prog->ndeps);
+
+marker = fopen("marker","w");
+keys = fopen("keys","w");
+skipdeps = fopen("skipdeps.txt","w");
+FILE* marker2;
+prog->nrstmts=0;
+
+for(i=0;i<prog->nloops;i++)
+{
+for(j=0;j<prog->nloops;j++)
+{
+d = dist_[i][j];
+while(d!=NULL)
+{
+fprintf(marker,"%d\n",d->dep);
+
+//// removing inter-scc deps on scalars and 1Ds
+//if(prog->stmts[prog->deps[d->dep]->src]->scc_id!=prog->stmts[prog->deps[d->dep]->dest]->scc_id && prog->deps[d->dep]->src_acc->mat->nrows<=(max_dim-2))
+//{
+//if(pluto_domain_equality2(prog->stmts[prog->deps[d->dep]->src]->domain,prog->stmts[prog->deps[d->dep]->dest]->domain,2,prog->stmts[prog->deps[d->dep]->src]->dim,prog->stmts[prog->deps[d->dep]->dest]->dim))
+//{
+//bug("cutting inter-scc dep: %d",d->dep);
+//pluto_constraints_add_equality(prog->deps[d->dep]->dpolytope,prog->deps[d->dep]->dpolytope->nrows);
+//prog->deps[d->dep]->dpolytope->val[prog->deps[d->dep]->dpolytope->nrows-1][0]=1;
+//prog->deps[d->dep]->dpolytope->val[prog->deps[d->dep]->dpolytope->nrows-1][prog->stmts[prog->deps[d->dep]->src]->dim]=-1;
+//}
+//else
+//{
+//bug("cutting between sccs containing same scalar: %d",d->dep);
+//cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[d->dep]->src]->scc_id,prog->stmts[prog->deps[d->dep]->dest]->scc_id);
+//}
+//}
+
+bug("dep-stmts: %d - %d",prog->deps[d->dep]->src,prog->deps[d->dep]->dest);
+d=d->next;
+}
+}
+}
+fclose(marker);
+
+
+//marker = fopen("marker","r");
+//
+//fscanf(marker, "%d",&num);
+//marker2 = fopen("rstmts","w");
+//fprintf(marker2,"%d\n",prog->deps[num]->src);
+//prog->nrstmts++;
+//fclose(marker2);
+//
+//while(!feof(marker)) {
+//fscanf(marker, "%d", &num);
+//
+//marker2 = fopen("rstmts","r");
+//
+//while(!feof(marker2)) {
+//fscanf(marker2, "%d", &num1);
+//if(prog->deps[num]->src==num1)
+//break;
+//}
+//
+//fclose(marker2);
+//
+//if(prog->deps[num]->src!=num1)
+//{
+//marker2 = fopen("rstmts","a");
+//fprintf(marker2, "%d\n",prog->deps[num]->src);
+//fclose(marker2);
+//prog->nrstmts++;
+//}
+//
+//marker2 = fopen("rstmts","r");
+//
+//while(!feof(marker2)) {
+//fscanf(marker2, "%d", &num1);
+//if(prog->deps[num]->dest==num1)
+//break;
+//}
+//
+//fclose(marker2);
+//
+//if(prog->deps[num]->dest!=num1)
+//{
+//marker2 = fopen("rstmts","a");
+//fprintf(marker2, "%d\n",prog->deps[num]->dest);
+//fclose(marker2);
+//prog->nrstmts++;
+//}
+//
+//}
+//fclose(marker);
+
+//bug("nrstmts: %d",prog->nrstmts);
+
+prog->keys_ = (int* ) malloc(prog->nloops*sizeof(int));
+
+for(i=0;i<prog->nloops;i++)
+{
+marker = fopen("marker","r");
+while(!feof(marker)) {
+fscanf(marker, "%d", &num);
+if(which_loop(prog,prog->deps[num]->src)==i)
+{
+bug("%d",num);
+prog->keys_[i]=prog->deps[num]->src;
+fprintf(keys,"%d\n",prog->deps[num]->src);
+break;
+}
+}
+fclose(marker);
+}
+
+fclose(keys);
+
+CST_WIDTH= prog->npar+1+prog->nloops*(prog->nvar+1)+1;
+
+for(i=0;i<prog->ndeps;i++)
+{
+marker = fopen("marker","r");
+
+while(!feof(marker)) {
+fscanf(marker, "%d", &num);
+if(num==i)
+break;
+}
+
+if(feof(marker))
+fprintf(skipdeps,"%d\n",i);
+fclose(marker);
+}
+
+i=0;j=0;
+
+while(i<prog->ndeps)
+{
+while(i<prog->rdeps[j])
+{
+fprintf(skipdeps,"%d\n",i);
+i++;
+}
+j++;
+i++;
+}
+
+
+fclose(skipdeps);
 
     int dim_sum=0;
     for (i=0; i<prog->nstmts; i++) {
@@ -266,7 +651,33 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Auto transformation */
     if (!options->identity) {
+noOuterLoop = 0;
         pluto_auto_transform(prog);
+t_end = rtclock();
+bug1("after 'end';\n Time taken: %0.6lfs\n", t_end - t_start);
+bug("Max_rows_fme: %d",max_rows_fme);
+pluto_constraints_set_var(prog->context,0,102);
+pluto_constraints_set_var(prog->context,1,102);
+pluto_constraints_set_var(prog->context,2,102);
+
+count = 0;
+
+for(i=0;i<prog->ndeps;i++)
+{
+bug("%d",i);
+skipdeps = fopen("skipdeps.txt","r");
+while(!feof(skipdeps))
+{
+fscanf(skipdeps,"%d",&num);
+if(num==i)
+break;
+}
+if(feof(skipdeps))
+count++;
+fclose(skipdeps);
+}
+
+bug1("The number of dependences analyzed, molecules: %d %d",count, prog->nloops);
     }
     pluto_detect_transformation_properties(prog);
 

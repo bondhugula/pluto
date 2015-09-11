@@ -56,8 +56,8 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_initialize(PlutoMatrix *mat, int val);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 
-inline int lcm(int a, int b);
-inline int gcd(int a, int b);
+int lcm(int a, int b);
+int gcd(int a, int b);
 int *min_lexical(int *a, int *b, int num);
 
 #endif

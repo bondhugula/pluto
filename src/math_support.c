@@ -25,6 +25,34 @@
 #include "math_support.h"
 #include "constraints.h"
 
+PlutoMatrix *pluto_matrix_zero_alloc(int alloc_nrows, int alloc_ncols)
+{
+    int i,j;
+    PlutoMatrix *mat;
+
+    mat = (PlutoMatrix *) malloc(sizeof(PlutoMatrix));
+
+    mat->val = (int **) malloc(alloc_nrows*sizeof(int *));
+
+    for (i=0; i<alloc_nrows; i++) {
+        mat->val[i] = (int *) malloc(alloc_ncols*sizeof(int));
+    }
+
+
+    mat->alloc_nrows = alloc_nrows;
+    mat->alloc_ncols = alloc_ncols;
+
+    mat->nrows = alloc_nrows;
+    mat->ncols = alloc_ncols;
+
+    for (i=0;i<alloc_nrows;i++) {
+        for (j=0;j<alloc_ncols;j++) {
+            mat->val[i][j]=0;
+        }
+    }
+
+    return mat;
+}
 /*
  * Allocated; not initialized
  *

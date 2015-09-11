@@ -27,10 +27,16 @@
 #include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
+#include <sys/time.h>
+#include <unistd.h>
 
+#define max(x,y)    ((x) > (y)? (x) : (y))
+#define min(x,y)    ((x) < (y)? (x) : (y))
 #define IF_DEBUG(foo) {if (options->debug || options->moredebug) { foo; }}
 #define IF_DEBUG2(foo) {if (options->moredebug) {foo; }}
-
+#define bug(...) {/* printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
+#define bug1(...) {/* printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
+#define bug2(...) {/* printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
 /* Do not fuse across SCCs */
 #define NO_FUSE 0
 /* Geared towards maximal fusion, but not really maximal fusion */
@@ -38,14 +44,14 @@
 /* Something in between the above two */
 #define SMART_FUSE 2
 
-#define MAX_CONSTRAINTS 10000
-#define MAX_FARKAS_CST  2000
+#define MAX_CONSTRAINTS 100000
+#define MAX_FARKAS_CST  100000
 
 #define MAX_TILING_LEVELS 2
 
 #define DEFAULT_L1_TILE_SIZE 32
 
-#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
+//#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
@@ -58,6 +64,23 @@ typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*
 #define IS_UNIFORM(type) (0)
 #define IS_RAR(type) (type == CANDL_RAR)
 
+struct dist{
+PlutoConstraints* value;
+int dep;
+struct dist* next;
+};
+
+int hyp1,max_dim,max_rows_fme;
+int *intra_scc_deps;
+int num_intra_scc_deps;
+int noOuterLoop;
+struct dist*** dist_;
+
+int* iarrays, cutAllSccs;
+
+int CST_WIDTH;
+
+FILE* marker,*skipdeps, *keys;
 
 struct plutoOptions{
 
@@ -142,7 +165,7 @@ struct plutoOptions{
     /* Compute lastwriter for dependences */
     int lastwriter;
 
-    /* DEV: Don't use cost function */
+    ///* DEV: Don't use cost function */
     int nobound;
 
     /* Ask candl to privatize */
@@ -226,6 +249,8 @@ struct statement{
 
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
+int pseudo_scc_id;
+int orig_scc_id;
 
 };
 typedef struct statement Stmt;
@@ -303,9 +328,14 @@ struct plutoProg{
     Stmt **stmts;
     int nstmts;
 
+int nrstmts;
+
     /* Array of dependences */
     Dep **deps;
     int ndeps;
+
+int* rdeps;
+int nrdeps;
 
     /* Parameters */
     char **params;
@@ -332,9 +362,37 @@ struct plutoProg{
     /* Param context */
     PlutoConstraints *context;
 
+    int* stmts_dim;
+
+int* loops;
+
+int nloops;
+
+int* keys_;
+//int* dep-remove0;
+//int ndep-remove0;
+
+//int* dep-remove1;
+//int ndep-remove1;
+
+//int** stmts_const;   
+
+int* distr;
+
+//struct path* shortest_cycle;
+
 };
 typedef struct plutoProg PlutoProg;
 
+struct node{
+int value;
+struct node* next;
+};
+
+struct path{
+struct node* ongoing;
+struct node* returning;
+};
 
 /* Globally visible, easily accessible data */
 extern PlutoOptions *options;
@@ -389,4 +447,13 @@ int pluto_gen_cloog_code(const PlutoProg *prog, FILE *cloogfp, FILE *outfp);
 
 int gen_vecloop_file(PlutoProg *prog);
 
+bool pluto_domain_equality(PlutoConstraints* mat1, PlutoConstraints* mat2);
+bool pluto_domain_equality1(PlutoMatrix* mat1, PlutoMatrix* mat2);
+bool pluto_domain_equality2(PlutoConstraints* mat1, PlutoConstraints* mat2,int, int, int);
+
+bool sccs_in_same_loop(PlutoProg*, int , int);
+
+int which_loop(PlutoProg* prog,int i);
+
+double rtclock();
 #endif
