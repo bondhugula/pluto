@@ -8,9 +8,37 @@
 #include <papi.h>
 #endif
 
-#include "decls.h"
+#define N 2000000
+#define T 1000
 
-#include "util.h"
+#pragma declarations
+double a[N];
+double b[N];
+#pragma enddeclarations
+
+double t_start, t_end;
+
+void init_array()
+{
+    int j;
+
+    for (j=0; j<N; j++) {
+        a[j] = ((double)j)/N;
+    }
+}
+
+
+void print_array()
+{
+    int j;
+
+    for (j=0; j<N; j++) {
+        fprintf(stdout, "%lf ", a[j]);
+        if (j%80 == 20) fprintf(stdout, "\n");
+    }
+    fprintf(stdout, "\n");
+}
+
 
 #define ceild(n,d)  ceil(((double)(n))/((double)(d)))
 #define floord(n,d) floor(((double)(n))/((double)(d)))

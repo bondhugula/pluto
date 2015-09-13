@@ -10,8 +10,8 @@
 #endif
 
 #define tmax 128
-#define nx 4000
-#define ny 4000
+#define nx 3000
+#define ny 3000
 
 #pragma declarations
 double ex[nx][ny+1];

@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #define N 2000
-#define T 2000
+#define T 1000
 
 #pragma declarations
 double a[N][N];

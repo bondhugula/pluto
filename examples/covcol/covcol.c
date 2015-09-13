@@ -7,8 +7,8 @@
 
 #define my_sqrt_array(x,j) sqrt(x[j])
 
-#define N 1000
-#define M 1000
+#define N 1500
+#define M 1500
 
 float float_n = (float) N;
 float eps = 0.005;

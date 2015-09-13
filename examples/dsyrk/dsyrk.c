@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define NMAX 3000
+#define NMAX 2000
 #pragma declarations
 double a[NMAX][NMAX], c[NMAX][NMAX];
 #pragma enddeclarations

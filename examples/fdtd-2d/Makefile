@@ -1,6 +1,6 @@
 SRC=fdtd-2d
 
-PLCFLAGS += #--context=32  #--unroll
+PLCFLAGS += #--context=32  --unroll
 TILEFLAGS = #--l2tile
 
 include ../common.mk

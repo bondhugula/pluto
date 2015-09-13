@@ -1,6 +1,6 @@
 SRC= dsyr2k
 
-PLCFLAGS = --context=100 #--unroll --ufactor=2
+PLCFLAGS = --unroll --ufactor=4
 TILEFLAGS = #--l2tile
 
 include ../common.mk

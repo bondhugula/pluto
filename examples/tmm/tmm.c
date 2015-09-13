@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 
-#define NMAX 1000
+#define NMAX 2000
 
 #define A_SIZE NMAX
 #define B_SIZE NMAX
