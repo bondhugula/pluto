@@ -1,6 +1,6 @@
 #! /bin/sh
 
-autoreconf -i
+autoreconf -vfi
 
 cd candl-0.4.0/
 ./autogen.sh

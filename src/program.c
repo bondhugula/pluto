@@ -267,6 +267,7 @@ void pluto_dep_print(FILE *fp, Dep *dep)
     }
 
     fprintf(fp, "\n");
+    fprintf(fp, "Var: %s\n", dep->src_acc->name);
 
     fprintf(fp, "Dependence polyhedron\n");
     pluto_constraints_print(fp, dep->dpolytope);
@@ -379,10 +380,11 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
             if (wlist->elt->symbol != NULL) {
                 stmt->writes[count]->name = strdup(wlist->elt->symbol->identifier);
                 stmt->writes[count]->symbol = scoplib_symbol_copy(wlist->elt->symbol);
+                //scoplib_symbol_print(stdout, stmt->writes[count]->symbol);
             }else{
+                stmt->writes[count]->name = NULL;
                 stmt->writes[count]->symbol = NULL;
             }
-            //scoplib_symbol_print(stdout, stmt->writes[count]->symbol);
             count++;
             wlist = wlist->next;
         }
@@ -397,6 +399,7 @@ static Stmt **scoplib_to_pluto_stmts(const scoplib_scop_p scop)
                 stmt->reads[count]->symbol = scoplib_symbol_copy(rlist->elt->symbol);
             }
             else{
+                stmt->reads[count]->name = NULL;
                 stmt->reads[count]->symbol = NULL;
             }
             //scoplib_symbol_print(stdout, stmt->reads[count]->symbol);

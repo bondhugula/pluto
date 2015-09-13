@@ -45,15 +45,26 @@ void pluto_matrix_read(FILE *, const PlutoMatrix *);
 PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
 void pluto_matrix_free(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src);
+PlutoMatrix *pluto_matrix_identity(int size);
+void pluto_matrix_initialize(PlutoMatrix *mat, int val);
+
+PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
+PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1, 
+        const PlutoMatrix *mat2);
+
 void pluto_matrix_add_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add_col(PlutoMatrix *mat, int pos);
 void pluto_matrix_remove_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_remove_col(PlutoMatrix *, int);
 void pluto_matrix_zero_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_zero_col(PlutoMatrix *mat, int pos);
+
+void pluto_matrix_move_col(PlutoMatrix *mat, int r1, int r2);
+void pluto_matrix_interchange_cols(PlutoMatrix *mat, int c1, int c2);
+void pluto_matrix_interchange_rows(PlutoMatrix *mat, int r1, int r2);
+
 void pluto_matrix_normalize_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
-void pluto_matrix_initialize(PlutoMatrix *mat, int val);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 
 int lcm(int a, int b);

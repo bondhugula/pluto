@@ -79,9 +79,10 @@ clan_scop_extract(FILE * input, clan_options_p options)
  * - 02/05/2008: first version.
  */
 void
-clan_scop_compact(scoplib_scop_p scop)
+clan_scop_compact(scoplib_scop_p scop,int clan_max_depth)
 {
   clan_statement_compact(scop->statement,scop->nb_parameters);
+  scoplib_symbol_table_compact(scop->symbol_table,scop->nb_parameters,clan_max_depth);
 }
 
 

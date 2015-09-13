@@ -70,6 +70,12 @@ int main(int argc, char * argv[])
     sopt |= SCOPLIB_SCOP_PRINT_CASTLE;
   if (options->arraystag)
     sopt |= SCOPLIB_SCOP_PRINT_ARRAYSTAG;
+    
+  /* Adding the option of symbol table for printing*/
+  if(options->symboltable)
+    sopt |= SCOPLIB_SCOP_PRINT_SYMBOLTABLE;
+    
+    
   scoplib_scop_print_dot_scop_options(output,scop,sopt);
 
   /* Save the planet. */

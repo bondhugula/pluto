@@ -117,5 +117,5 @@ parsetab.py
 polycc.sh
 polycc
 libtool
-m4
 getversion.sh
+missing
