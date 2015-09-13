@@ -421,11 +421,8 @@ PlutoConstraints *get_permutability_constraints(Dep **deps, int ndeps,
 // #pragma omp parallel for reduction(+:total_cst_rows)
     for (i=0; i<ndeps; i++) {
         Dep *dep;
-        int dest_stmt, src_stmt;
 
         dep = deps[i];
-        dest_stmt = dep->dest;
-        src_stmt = dep->src;
 
         if (options->rar == 0 && IS_RAR(dep->type))  {
             continue;
