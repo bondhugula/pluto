@@ -2508,6 +2508,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
         /* Print scattering functions */
         for (i=0; i<nstmts; i++) {
+            fprintf(fp, "# T(S%d)\n", i+1);
             PlutoConstraints *sched = pluto_stmt_get_schedule(stmts[i]);
             pluto_constraints_print_polylib(fp, sched);
             fprintf(fp, "\n");

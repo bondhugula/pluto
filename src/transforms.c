@@ -45,9 +45,6 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg
 
     PlutoConstraints *domain = stmt->domain;
 
-    int pos;
-
-    pos = domain->nrows;
     pluto_constraints_add_inequality(domain, domain->nrows);
     domain->val[domain->nrows-1][0] = -factor;
     assert(stmt->trans->ncols == domain->ncols);

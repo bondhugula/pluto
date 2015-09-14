@@ -1927,7 +1927,7 @@ yyreduce:
 #line 261 "parser.y"
     {     
     
-    (yyval.symbol_table) = scoplib_symbol_add(&parser_scop_symbol,(yyvsp[(1) - (1)].symbol),SCOPLIB_TYPE_ARRAY,NULL,0); 
+    scoplib_symbol_add(&parser_scop_symbol,(yyvsp[(1) - (1)].symbol),SCOPLIB_TYPE_ARRAY,NULL,0); 
     parser_scop_symbol->data_type = parser_symbol_datatype;
     
     }
@@ -1941,7 +1941,7 @@ yyreduce:
        
       scoplib_matrix_p dimensions_bounds = (yyvsp[(2) - (2)].setex);     
       
-      (yyval.symbol_table) = scoplib_symbol_add(&parser_scop_symbol,(yyvsp[(1) - (2)].symbol),SCOPLIB_TYPE_ARRAY,
+      scoplib_symbol_add(&parser_scop_symbol,(yyvsp[(1) - (2)].symbol),SCOPLIB_TYPE_ARRAY,
                               dimensions_bounds,(yyvsp[(2) - (2)].setex)->NbRows); 
       parser_scop_symbol->data_type = parser_symbol_datatype;                              
                             
@@ -3182,7 +3182,7 @@ clan_parser_get_symbols_from_clan_symbol_table(scoplib_symbol_p* parser_scop_sym
                                                
   clan_symbol_p clan_symbol = parser_clan_symbol;
   while(clan_symbol != NULL ) {
-    char* symbol_name = strdup(clan_symbol->identifier);
+    char* symbol_name = clan_symbol->identifier;
     if(scoplib_symbol_lookup(*parser_scop_symbol,symbol_name) == NULL ) {
       scoplib_symbol_add(parser_scop_symbol,symbol_name,clan_symbol->type,NULL,0);
     } 
