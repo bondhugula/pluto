@@ -240,8 +240,6 @@ prog->stmts_dim[i]=prog->stmts[i]->dim;
     char* irroption = scoplib_scop_tag_content(scop, "<irregular>",
             "</irregular>");
 
-    scoplib_scop_free(scop);
-
     IF_DEBUG2(pluto_deps_print(stdout, prog->deps, prog->ndeps));
     IF_DEBUG2(pluto_stmts_print(stdout, prog->stmts, prog->nstmts));
 
@@ -845,6 +843,8 @@ bug1("The number of dependences analyzed, molecules: %d %d",count, prog->nloops)
     pluto_options_free(options);
 
     pluto_prog_free(prog);
+
+    scoplib_scop_free(scop);
 
     return 0;
 }

@@ -2036,6 +2036,8 @@ int pluto_auto_transform(PlutoProg *prog)
 
     HyperplaneProperties *hProps = prog->hProps;
 
+    if (nstmts == 0)  return 0;
+
     normalize_domains(prog);
 
     PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
@@ -2215,6 +2217,7 @@ if(src_acc_dim(prog, prog->deps, i) < prog->stmts_dim[prog->deps[i]->src])
 {
 
 bug2("i, %d %d ",i,prog->deps[i]->src_acc->mat->nrows);
+>>>>>>> 464042e386f1dbbc92771de06c39674e5a78af9e
 
 for(j=0;j<prog->deps[i]->dpolytope->nrows;j++)
 {
@@ -2377,8 +2380,9 @@ satisfied=1;
     //pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
 
     for (i=0; i<nstmts; i++)    {
-        if (orig_trans[i] != NULL)  pluto_matrix_free(orig_trans[i]);
+        pluto_matrix_free(orig_trans[i]);
     }
+    free(orig_trans);
     free(orig_hProps);
 
     return 0;
