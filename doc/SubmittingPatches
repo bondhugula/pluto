@@ -2,23 +2,31 @@
 - Please make sure your code is indented the same way as surrounding code
 
 - Use spaces instead of tabs for indenting (for vim, set expandtab). All of
-  Pluto uses a 4-space indent, please try using the same.
+  Pluto uses a 4-space indent, please try using the same. For vim, it should
+  be  "set ts=4 sw=4 expandtab"
 
-- For if/else that have their blocks on a separate line, use braces, 
-  i.e., even if the block has a single line. 
+- For for/while loops, place the opening brace on the same line.
 
-if (...) {
-   code;
-}else{
-   code;
-}
+    for (i=0; i<N; i++) {
 
-No need of braces if the then/else block appears on the same line
 
-if (...) code;
-else more code;
+    }
 
-- Please generate patch against the git version, i.e., use 
+- For if/else that have their blocks on a separate line, use braces (if the
+  block is a single line).
+
+    if (...) {
+        code;
+    }else{
+        code;
+    }
+
+  No need of braces if the then/else block appears on the same line
+
+    if (...) code;
+    else more code;
+
+- Please generate a patch against the git version, i.e., use 
 
 'git format-patch -M origin' 
 
