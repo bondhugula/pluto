@@ -48,7 +48,9 @@
 
 #define DEFAULT_L1_TILE_SIZE 32
 
-#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
+//#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
+
+int CST_WIDTH;
 
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
@@ -66,6 +68,10 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
+#define bug(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
+#define max(x,y)    ((x) > (y)? (x) : (y))
+#define min(x,y)    ((x) < (y)? (x) : (y))
+
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
     PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
 
@@ -81,6 +87,11 @@ typedef struct pluto_access{
 } PlutoAccess;
 
 
+struct dist{
+PlutoConstraints* value;
+int dep;
+struct dist* next;
+};
 
 
 struct statement{
@@ -142,6 +153,8 @@ struct statement{
 
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
+    int pseudo_scc_id;
+    int orig_scc_id;
 
     int first_tile_dim;
     int last_tile_dim;
@@ -285,6 +298,15 @@ struct plutoProg{
      * stmt->trans->nrows */
     int num_hyperplanes;
 
+    /* Number of loops in the SCoP */
+    int nloops;
+
+    /* Each entry of the array loops holds the id of the last statement in that loop */
+    int* loops;
+
+    /* dist_[i][j] points to the list of all unique dependences between loops (O-molecules) i and j */
+    struct dist*** dist_;
+
     /* Data dependence graph of the program */
     Graph *ddg;
 
@@ -390,6 +412,10 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 
 int pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
+
+bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2);
+bool pluto_domain_equality1(PlutoConstraints* mat1, PlutoConstraints* mat2);
+int which_loop(PlutoProg* prog,int i);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
         int max_sols, int band_depth);

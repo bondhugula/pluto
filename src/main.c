@@ -116,7 +116,8 @@ static double rtclock()
 
 int main(int argc, char *argv[])
 {
-    int i;
+    int i, j, k, count;
+    FILE* marker,* skipdeps;
 
     double t_start, t_c, t_d, t_t, t_all, t_start_all;
 
@@ -269,9 +270,9 @@ int main(int argc, char *argv[])
                 break;
             case 'v':
                 printf("PLUTO %s - An automatic parallelizer and locality optimizer\n\
-Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
-This is free software; see the source for copying conditions.  There is NO\n\
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n", PLUTO_VERSION);
+                        Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
+                        This is free software; see the source for copying conditions.  There is NO\n\
+                        warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n", PLUTO_VERSION);
                 pluto_options_free(options);
                 return 3;
             default:
@@ -356,42 +357,42 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         t_d = rtclock() - t_start;
     }else{  // read from regular file
 
-      src_fp  = fopen(srcFileName, "r");
+        src_fp  = fopen(srcFileName, "r");
 
-      if (!src_fp)   {
-          fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
-          pluto_options_free(options);
-          return 6;
-      }
+        if (!src_fp)   {
+            fprintf(stderr, "pluto: error opening source file: '%s'\n", srcFileName);
+            pluto_options_free(options);
+            return 6;
+        }
 
-      clan_options_p clanOptions = clan_options_malloc();
+        clan_options_p clanOptions = clan_options_malloc();
 
-      if (options->readscop){
-          osl_interface_p registry = osl_interface_get_default_registry();
-          t_start = rtclock();
-          scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
-          t_d = rtclock() - t_start;
-      }else{
-          t_start = rtclock();
-          scop = clan_scop_extract(src_fp, clanOptions);
-          t_d = rtclock() - t_start;
-      }
+        if (options->readscop){
+            osl_interface_p registry = osl_interface_get_default_registry();
+            t_start = rtclock();
+            scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
+            t_d = rtclock() - t_start;
+        }else{
+            t_start = rtclock();
+            scop = clan_scop_extract(src_fp, clanOptions);
+            t_d = rtclock() - t_start;
+        }
 
-      if (!scop || !scop->statement)   {
-          fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
-                  srcFileName);
-          pluto_options_free(options);
-          return 8;
-      }
-      FILE *srcfp = fopen(".srcfilename", "w");
-      if (srcfp)    {
-          fprintf(srcfp, "%s\n", srcFileName);
-          fclose(srcfp);
-      }
+        if (!scop || !scop->statement)   {
+            fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
+                    srcFileName);
+            pluto_options_free(options);
+            return 8;
+        }
+        FILE *srcfp = fopen(".srcfilename", "w");
+        if (srcfp)    {
+            fprintf(srcfp, "%s\n", srcFileName);
+            fclose(srcfp);
+        }
 
-      clan_options_free(clanOptions);
+        clan_options_free(clanOptions);
 
-      /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
+        /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
     }
 
     /* Convert clan scop to Pluto program */
@@ -401,7 +402,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     osl_irregular_p irreg_ext = NULL;
     irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if(irreg_ext!=NULL)
-      irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
+        irroption = osl_irregular_sprint(irreg_ext);  //TODO: test it
     osl_irregular_free(irreg_ext);
 
     IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
@@ -411,7 +412,184 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         dim_sum += prog->stmts[i]->dim;
     }
 
-   
+    for(i=0;i<prog->nstmts;i++)
+    prog->stmts[i]->orig_scc_id = prog->stmts[i]->scc_id;
+
+    /* counting the number of loops */
+    count=1;
+    for(i=0;i<prog->nstmts-1;i++) {
+        if(!pluto_domain_equality(prog->stmts[i],prog->stmts[i+1]))  count++;
+    }
+
+    prog->nloops = count;
+
+    prog->loops = (int*) malloc(sizeof(int)*count); // loops[i] contains the ending location of each loop
+    count=0;
+
+    for(i=0;i<prog->nstmts-1;i++) {
+        if(!pluto_domain_equality(prog->stmts[i],prog->stmts[i+1]))  prog->loops[count++]=i;
+    }
+
+    prog->loops[count]=i;
+
+    /* printing loops */
+    for(i=0;i<prog->nloops;i++) {
+        bug("loop %d: Statements: %d - %d",i,(i==0?0:prog->loops[i-1]+1),prog->loops[i]);
+    }
+
+
+    struct dist* d;
+    int count1,count2,num;
+    prog->dist_ = (struct dist***) malloc(sizeof(struct dist**)*prog->nloops);
+
+    for(i=0;i<prog->nloops;i++) {
+        prog->dist_[i]=(struct dist**)malloc(sizeof(struct dist*)*prog->nloops);
+        for(j=0;j<prog->nloops;j++) prog->dist_[i][j]=NULL;
+    }
+
+    for(i=0;i<prog->ndeps;i++) {
+        if(prog->deps[i]->src==prog->deps[i]->dest && IS_WAW(prog->deps[i]->type)) continue;
+        d = prog->dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+
+        if(d==NULL) {
+
+            prog->dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)] = (struct dist*) malloc(sizeof(struct dist));
+            d=prog->dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+            d->dep=i;
+            d->next=NULL;
+
+            count2=0;
+            for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+                count1=0;
+                for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++) {
+                    if(prog->deps[i]->dpolytope->val[j][k]) count1++;
+                }
+                if((count1>1) || prog->deps[i]->dpolytope->is_eq[j]) count2++;
+            }
+
+            d->value = pluto_constraints_alloc(count2,prog->deps[i]->dpolytope->ncols);
+            d->value->nrows = count2;
+
+            count2=0;
+            for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+                count1=0;
+                for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++) {
+                    if(prog->deps[i]->dpolytope->val[j][k]) count1++;
+                }
+                if((count1>1) || prog->deps[i]->dpolytope->is_eq[j]) {
+                    for(k=0;k<prog->deps[i]->dpolytope->ncols;k++) d->value->val[count2][k]=prog->deps[i]->dpolytope->val[j][k];
+                    count2++;
+                }
+            }
+
+            bug("dep: %d (%d, %d)",i,prog->deps[i]->src,prog->deps[i]->dest);
+            //pluto_constraints_print(stdout, d->value);
+        } // end if
+
+        else
+        {
+
+            while(d->next!=NULL) d=d->next;
+
+            d->next = (struct dist*) malloc(sizeof(struct dist));
+            d->next->dep = i;
+            d->next->next = NULL;
+
+            count2=0;
+            for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+                count1=0;
+                for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++) {
+                    if(prog->deps[i]->dpolytope->val[j][k]) count1++;
+                }
+                if((count1>1) || prog->deps[i]->dpolytope->is_eq[j]) count2++;
+            }
+
+            d->next->value = pluto_constraints_alloc(count2,prog->deps[i]->dpolytope->ncols);
+            d->next->value->nrows=count2;
+
+            count2=0;
+            for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+                count1=0;
+                for(k=0;k<prog->deps[i]->dpolytope->ncols-prog->npar-1;k++) {
+                    if(prog->deps[i]->dpolytope->val[j][k]) count1++;
+                }
+                if((count1>1) || prog->deps[i]->dpolytope->is_eq[j]) {
+                    for(k=0;k<prog->deps[i]->dpolytope->ncols;k++) d->next->value->val[count2][k]=prog->deps[i]->dpolytope->val[j][k];
+                    count2++;
+                }
+            }
+
+            struct dist* d1 = prog->dist_[which_loop(prog,prog->deps[i]->src)][which_loop(prog,prog->deps[i]->dest)];
+
+            while(d1!=d->next) {
+                if(pluto_domain_equality1(d1->value,d->next->value)) break;
+                d1=d1->next;
+            }
+
+
+            if(d1!=d->next) {
+                free(d->next);
+                d->next=NULL;
+            }
+
+        } // else
+
+    }
+
+
+    marker = fopen("marker","w");
+    skipdeps = fopen("skipdeps.txt","w");
+
+    for(i=0;i<prog->nloops;i++)
+    {
+        for(j=0;j<prog->nloops;j++)
+        {
+            d = prog->dist_[i][j];
+            while(d!=NULL)
+            {
+                fprintf(marker,"%d\n",d->dep);
+
+                bug("dep-stmts: %d - %d",prog->deps[d->dep]->src,prog->deps[d->dep]->dest);
+                d=d->next;
+            }
+        }
+    }
+    fclose(marker);
+
+    for(i=0;i<prog->ndeps;i++)
+    {
+        marker = fopen("marker","r");
+
+        while(!feof(marker)) {
+            fscanf(marker, "%d", &num);
+            if(num==i)
+                break;
+        }
+
+        if(feof(marker))
+            fprintf(skipdeps,"%d\n",i);
+        fclose(marker);
+    }
+
+    /*
+       i=0;j=0;
+
+       while(i<prog->ndeps)
+       {
+       while(i<prog->rdeps[j])
+       {
+       fprintf(skipdeps,"%d\n",i);
+       i++;
+       }
+       j++;
+       i++;
+       }
+    */
+
+    fclose(skipdeps);
+
+    CST_WIDTH= prog->npar+1+prog->nloops*(prog->nvar+1)+1;
+
     if (!options->silent)   {
         fprintf(stdout, "[pluto] Number of statements: %d\n", prog->nstmts);
         fprintf(stdout, "[pluto] Total number of loops: %d\n", dim_sum);
@@ -508,86 +686,86 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_populate_scop(scop, prog, options);
         osl_scop_print(stdout, scop);
     }else{  // do the usual Pluto stuff
-  
-      /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-      /* Since meta info about loops
-       * is printed to be processed by scripts - if transformations are
-       * performed, changed loop order/iterator names will be missed  */
-      gen_unroll_file(prog);
-  
-      char *outFileName;
-      char *cloogFileName;
-      if (options->out_file == NULL)  {
-          /* Get basename, remove .c extension and append a new one */
-          char *basec, *bname;
-          basec = strdup(srcFileName);
-          bname = basename(basec);
-  
-          /* max size when tiled.* */
-          outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
-          cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
-  
-          if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-              strncpy(outFileName, bname, strlen(bname)-2);
-              strncpy(cloogFileName, bname, strlen(bname)-2);
-              outFileName[strlen(bname)-2] = '\0';
-              cloogFileName[strlen(bname)-2] = '\0';
-          }else{
-              strcpy(outFileName, bname);
-              strcpy(cloogFileName, bname);
-          }
-          strcat(outFileName, ".pluto.c");
-          free(basec);
-      }else{
-          outFileName = options->out_file;
-          cloogFileName = alloca(strlen(options->out_file)+1);
-          strcpy(cloogFileName, options->out_file);
-      }
-  
-      strcat(cloogFileName, ".pluto.cloog");
-  
-      cloogfp = fopen(cloogFileName, "w+");
-      if (!cloogfp)   {
-          fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
-          pluto_options_free(options);
-          pluto_prog_free(prog);
-          return 9;
-      }
-  
-      outfp = fopen(outFileName, "w");
-      if (!outfp) {
-          fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
-          pluto_options_free(options);
-          pluto_prog_free(prog);
-          fclose(cloogfp);
-          return 10;
-      }
-  
-      /* Generate .cloog file */
-      pluto_gen_cloog_file(cloogfp, prog);
-      /* Add the <irregular> tag from clan, if any */
-      if (irroption != NULL) {
-          fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-          free(irroption);
-      }
-  
-      rewind(cloogfp);
-  
-  
-      /* Generate code using Cloog and add necessary stuff before/after code */
-      t_start = rtclock();
-      pluto_multicore_codegen(cloogfp, outfp, prog);
-      t_c = rtclock() - t_start;
-  
-      FILE *tmpfp = fopen(".outfilename", "w");
-      if (tmpfp)    {
-          fprintf(tmpfp, "%s\n", outFileName);
-          fclose(tmpfp);
-          PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
-      }
-  
-      fclose(cloogfp);
-      fclose(outfp);
+
+        /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+        /* Since meta info about loops
+         * is printed to be processed by scripts - if transformations are
+         * performed, changed loop order/iterator names will be missed  */
+        gen_unroll_file(prog);
+
+        char *outFileName;
+        char *cloogFileName;
+        if (options->out_file == NULL)  {
+            /* Get basename, remove .c extension and append a new one */
+            char *basec, *bname;
+            basec = strdup(srcFileName);
+            bname = basename(basec);
+
+            /* max size when tiled.* */
+            outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
+            cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
+
+            if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+                strncpy(outFileName, bname, strlen(bname)-2);
+                strncpy(cloogFileName, bname, strlen(bname)-2);
+                outFileName[strlen(bname)-2] = '\0';
+                cloogFileName[strlen(bname)-2] = '\0';
+            }else{
+                strcpy(outFileName, bname);
+                strcpy(cloogFileName, bname);
+            }
+            strcat(outFileName, ".pluto.c");
+            free(basec);
+        }else{
+            outFileName = options->out_file;
+            cloogFileName = alloca(strlen(options->out_file)+1);
+            strcpy(cloogFileName, options->out_file);
+        }
+
+        strcat(cloogFileName, ".pluto.cloog");
+
+        cloogfp = fopen(cloogFileName, "w+");
+        if (!cloogfp)   {
+            fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            return 9;
+        }
+
+        outfp = fopen(outFileName, "w");
+        if (!outfp) {
+            fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            fclose(cloogfp);
+            return 10;
+        }
+
+        /* Generate .cloog file */
+        pluto_gen_cloog_file(cloogfp, prog);
+        /* Add the <irregular> tag from clan, if any */
+        if (irroption != NULL) {
+            fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
+            free(irroption);
+        }
+
+        rewind(cloogfp);
+
+
+        /* Generate code using Cloog and add necessary stuff before/after code */
+        t_start = rtclock();
+        pluto_multicore_codegen(cloogfp, outfp, prog);
+        t_c = rtclock() - t_start;
+
+        FILE *tmpfp = fopen(".outfilename", "w");
+        if (tmpfp)    {
+            fprintf(tmpfp, "%s\n", outFileName);
+            fclose(tmpfp);
+            PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
+        }
+
+        fclose(cloogfp);
+        fclose(outfp);
 
     }
 
@@ -601,7 +779,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
         printf("[pluto] All times: %0.6lf %0.6lf %.6lf %.6lf\n", t_d, t_t, t_c,
-             t_all-t_c-t_t-t_d);
+                t_all-t_c-t_t-t_d);
     }
 
     pluto_prog_free(prog);

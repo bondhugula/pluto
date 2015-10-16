@@ -70,10 +70,12 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     dest_stmt = dep->dest;
     src_stmt = dep->src;
+    src_offset = npar+1+which_loop(prog,src_stmt)*(nvar+1);
+    dest_offset = npar+1+which_loop(prog,dest_stmt)*(nvar+1);
 
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
 
-    if (src_stmt != dest_stmt) {
+    if (src_offset != dest_offset) {
         phi = pluto_matrix_alloc(2*nvar+npar+1, 2*(nvar+1)+1);
         pluto_matrix_set(phi, 0);
 
@@ -113,7 +115,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     
     pluto_matrix_free(phi);
 
-    if (src_stmt != dest_stmt) {
+    if (src_offset != dest_offset) {
         phi = pluto_matrix_alloc(2*nvar+npar+1, npar+1+2*(nvar+1)+1);
         pluto_matrix_set(phi, 0);
 
@@ -173,8 +175,11 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     cst->nrows = 0;
     cst->ncols = CST_WIDTH;
 
-    src_offset = npar+1+src_stmt*(nvar+1);
-    dest_offset = npar+1+dest_stmt*(nvar+1);
+//    src_offset = npar+1+src_stmt*(nvar+1);
+//    dest_offset = npar+1+dest_stmt*(nvar+1);
+
+    src_offset = npar+1+which_loop(prog,src_stmt)*(nvar+1);
+    dest_offset = npar+1+which_loop(prog,dest_stmt)*(nvar+1);
 
     /* Permutability constraints */
     if (!IS_RAR(dep->type)) {
@@ -183,12 +188,12 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
             pluto_constraints_add_constraint(cst, tiling_valid_cst->is_eq[k]);
             for (j=0; j<nvar+1; j++)  {
                 cst->val[cst->nrows-1][src_offset+j] = tiling_valid_cst->val[k][j];
-                if (src_stmt != dest_stmt) {
+                if (src_offset != dest_offset) {
                     cst->val[cst->nrows-1][dest_offset+j] = tiling_valid_cst->val[k][nvar+1+j];
                 }
             }
             /* constant part */
-            if (src_stmt == dest_stmt) {
+            if (src_offset == dest_offset) {
                 cst->val[cst->nrows-1][cst->ncols-1] = tiling_valid_cst->val[k][nvar+1];
             }else{
                 cst->val[cst->nrows-1][cst->ncols-1] = tiling_valid_cst->val[k][2*nvar+2];
@@ -201,8 +206,11 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         /* Bounding function constraints in global format */
         PlutoConstraints *bcst_g;
 
-        src_offset = npar+1+src_stmt*(nvar+1);
-        dest_offset = npar+1+dest_stmt*(nvar+1);
+//        src_offset = npar+1+src_stmt*(nvar+1);
+//        dest_offset = npar+1+dest_stmt*(nvar+1);
+
+	src_offset = npar+1+which_loop(prog,src_stmt)*(nvar+1);
+        dest_offset = npar+1+which_loop(prog,dest_stmt)*(nvar+1);
 
         bcst_g = pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH);
 
@@ -213,12 +221,12 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
             }
             for (j=0; j<nvar+1; j++)  {
                 bcst_g->val[bcst_g->nrows-1][src_offset+j] = bounding_func_cst->val[k][npar+1+j];
-                if (src_stmt != dest_stmt) {
+                if (src_offset != dest_offset) {
                     bcst_g->val[bcst_g->nrows-1][dest_offset+j] = bounding_func_cst->val[k][npar+1+nvar+1+j];
                 }
             }
             /* constant part */
-            if (src_stmt == dest_stmt) {
+            if (src_offset == dest_offset) {
                 bcst_g->val[bcst_g->nrows-1][bcst_g->ncols-1] = bounding_func_cst->val[k][npar+1+nvar+1];
             }else{
                 bcst_g->val[bcst_g->nrows-1][bcst_g->ncols-1] = bounding_func_cst->val[k][npar+1+2*nvar+2];
@@ -232,6 +240,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     /* Coefficients of those dimensions that were added for padding
      * are of no utility */
+/*
     for (k=0; k<nvar; k++)    {
         if (!stmts[src_stmt]->is_orig_loop[k]) {
             for (j=0; j < cst->nrows; j++)   {
@@ -244,7 +253,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
             }
         }
     }
-
+*/
     pluto_constraints_free(dep->cst);
     dep->cst = cst;
 
@@ -274,6 +283,28 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
         if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
+        }
+
+        FILE *fp = fopen("skipdeps.txt", "r");
+        if (fp) {
+            int num;
+            int found = 0;
+            while (!feof(fp)) {
+                fscanf(fp, "%d", &num);
+                if (i == num-1) {
+                    found = 1;
+                    break;
+                }
+            }
+            fclose(fp);
+            if (found) {
+                printf("Skipping dep %d\n", num);
+                continue;
+            }
+        }
+
+        if (dep_is_satisfied(dep)) {
+			continue;
         }
 
         if (dep->cst == NULL) {
@@ -590,6 +621,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     int nvar = prog->nvar;
     int npar = prog->npar;
     int nstmts = prog->nstmts;
+    int nloops = prog->nloops;
     HyperplaneProperties *hProps = prog->hProps;
 
     /* Transformation has full column rank already */
@@ -685,7 +717,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         j=0;
         for (q=0; q<nvar; q++) {
             if (stmt->is_orig_loop[q])    {
-                orthcst[p]->val[0][npar+1+(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
+                orthcst[p]->val[0][npar+1+which_loop(prog,stmt->id)*(nvar+1)+q] = ortho->val[j][i];
                 j++;
             }
         }

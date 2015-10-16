@@ -48,6 +48,60 @@ int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
 int pluto_diamond_tile(PlutoProg *prog);
 
+/* 
+ * Returns true if the two domains of different statements are the same
+ * This is useful to determine if the statements are in the same loop, especially if they are consecutive
+ */
+
+bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2)
+{
+
+    PlutoConstraints* mat1 = stmt1->domain,* mat2 = stmt2->domain;
+
+    if(stmt1->dim_orig != stmt2->dim_orig) return false;
+
+    int i,j;
+
+    for(i=0;i<min(mat1->nrows,mat2->nrows);i++) {
+        for(j=0;j<min(mat1->ncols,mat2->ncols);j++) {
+            if(mat1->val[i][j]!=mat2->val[i][j]) return false;
+        }
+    }
+    return true;
+}
+
+
+/* 
+ * Returns true if the two domains are the same
+ */
+
+bool pluto_domain_equality1(PlutoConstraints* mat1, PlutoConstraints* mat2)
+{
+
+    if(mat1->nrows!=mat2->nrows || mat1->ncols!=mat2->ncols) return false;
+
+    int i,j;
+
+    for(i=0;i<mat1->nrows;i++) {
+        for(j=0;j<mat2->ncols;j++) {
+            if(mat1->val[i][j]!=mat2->val[i][j]) return false;
+        }
+    }
+    return true;
+}
+
+/* 
+ * Returns the loop number to which Statement s belongs
+ */
+
+int which_loop(PlutoProg* prog, int s)
+{
+    int i;
+    for(i=0;i<prog->nloops;i++) {
+        if(s<=prog->loops[i] && s > (i==0?-1:prog->loops[i-1])) return i;
+    }
+}
+
 /*
  * Returns the number of (new) satisfied dependences at this level
  *
@@ -55,6 +109,7 @@ int pluto_diamond_tile(PlutoProg *prog);
  * dependence has been satisfied at 'level'
  *
  */
+
 int dep_satisfaction_update(PlutoProg *prog, int level)
 {
     int i;
@@ -212,26 +267,27 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         bool hyp_search_mode)
 {
     PlutoConstraints *nzcst;
-    int i, j, stmt_offset, nvar, npar, nstmts;
+    int i, j, stmt_offset, nvar, npar, nstmts, nloops;
 
     Stmt **stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    nloops = prog->nloops;
 
     nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
     nzcst->ncols = CST_WIDTH;
 
     if (hyp_search_mode == EAGER) {
-        for (i=0; i<nstmts; i++) {
+        for (i=0; i<nloops; i++) {
             /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
                 continue;
             }
             stmt_offset = npar+1+i*(nvar+1);
             for (j=0; j<nvar; j++)  {
-                if (stmts[i]->is_orig_loop[j] == 1) {
+                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
                     nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
                 }
             }
@@ -240,15 +296,15 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         }
     }else{
         assert(hyp_search_mode == LAZY);
-        for (i=0; i<nstmts; i++) {
+        for (i=0; i<nloops; i++) {
             /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
                 continue;
             }
             stmt_offset = npar+1+i*(nvar+1);
             for (j=0; j<nvar; j++)  {
-                if (stmts[i]->is_orig_loop[j] == 1) {
+                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
                     nzcst->val[0][stmt_offset+j] = 1;
                 }
             }
@@ -265,12 +321,10 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  */
 static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
 {
-    int i, npar, nstmts, nvar;
+    int i, npar;
     PlutoConstraints *cst;
 
     npar = prog->npar;
-    nstmts = prog->nstmts;
-    nvar = prog->nvar;
 
     cst = pluto_constraints_alloc(1, CST_WIDTH);
 
@@ -355,15 +409,16 @@ static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(Plut
 int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
-    int nstmts, nvar, npar;
+    int nstmts, nvar, npar, nloops;
 
     stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    nloops = prog->nloops;
 
     /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[npar+1+nstmts*(nvar+1)+1];
+    int redun[npar+1+nloops*(nvar+1)+1];
     int i, j, k, q;
     int64 *sol, *fsol;
     PlutoConstraints *newcst;
@@ -374,9 +429,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         redun[i] = 0;
     }
 
-    for (i=0; i<nstmts; i++)    {
+    for (i=0; i<nloops; i++)    {
         for (j=0; j<nvar; j++)    {
-            redun[npar+1+i*(nvar+1)+j] = !stmts[i]->is_orig_loop[j];
+            redun[npar+1+i*(nvar+1)+j] = !stmts[prog->loops[i]]->is_orig_loop[j];
         }
         redun[npar+1+i*(nvar+1)+nvar] = 0;
     }
@@ -405,12 +460,12 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     }
 
     j=npar+1;
-    for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+stmts[i]->dim_orig; k++) {
-            perm_mat->val[k][2*j+stmts[i]->dim_orig-k-1] = 1;
+    for (i=0; i<nloops; i++)    {
+        for (k=j; k<j+stmts[prog->loops[i]]->dim_orig; k++) {
+            perm_mat->val[k][2*j+stmts[prog->loops[i]]->dim_orig-k-1] = 1;
         }
         perm_mat->val[k][k] = 1;
-        j += stmts[i]->dim_orig+1;
+        j += stmts[prog->loops[i]]->dim_orig+1;
     }
     perm_mat->val[j][j] = 1;
 
@@ -540,6 +595,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 /*
  * Cut dependences between all SCCs 
  */
+
 int cut_all_sccs(PlutoProg *prog, Graph *ddg)
 {
     int i, j, num_satisfied;
@@ -572,6 +628,141 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
     return num_satisfied;
 }
 
+
+/* This assigns the same pseudo_id to all statements in the loop */
+void LOOP(PlutoProg* prog, int loop, int pseudo_id)
+{
+    bug("In LOOP: %d", loop);
+    int i,j,num_sccs=0;
+    int* sccs = (int*)malloc(sizeof(int)*prog->ddg->num_sccs);
+    for(i=(loop==0?0:prog->loops[loop-1]+1);i<=prog->loops[loop];i++)
+    {
+        prog->stmts[i]->pseudo_scc_id=pseudo_id;
+        for(j=0;j<num_sccs;j++)
+        {
+            if(prog->stmts[i]->scc_id==sccs[j])
+                break;
+        }
+        if(j==num_sccs) // new SCC
+        {
+            num_sccs++;
+            sccs[j]=prog->stmts[i]->scc_id;
+            SCC(prog,loop,sccs[j],pseudo_id);
+        }
+    }
+}
+
+/* This assigns the same pseudo_id to statements in the same SCC at the current loop level even though those SCCs may be across different loops (as they appear in the original program */
+void SCC(PlutoProg* prog, int loop, int scc_id, int pseudo_id)
+{
+    bug("In SCC: %d %d", loop, scc_id);
+    int i;
+    for(i=0;i<prog->nstmts;i++)
+    {
+        if(prog->stmts[i]->scc_id==scc_id && prog->stmts[i]->pseudo_scc_id==-1)
+        {
+            prog->stmts[i]->pseudo_scc_id=pseudo_id;
+            if(which_loop(prog, i)!=loop)
+                LOOP(prog, which_loop(prog, i), pseudo_id);
+        }
+    }
+}
+
+
+/*
+ * Cut dependences between all O-molecules
+ */
+
+int cut_all_molecules(PlutoProg *prog, Graph *ddg)
+{
+
+    int i, j, num_satisfied,k,l;
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+
+    bug("Cutting between all molecules\n");
+
+    if (ddg->num_sccs == 1) {
+        IF_DEBUG(printf("\t only one SCC\n"));
+        return 0;
+    }
+
+    pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
+    //    prog->hProps[prog->num_hyperplanes-1].type = H_SCALAR;
+
+    for (i=0; i<nstmts; i++)    {
+        pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
+        //        pluto_matrix_add_row(stmts[i]->trans, stmts[i]->trans->nrows);
+        for (j=0; j<nvar+npar; j++)  {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
+        }
+        stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = -1; //stmts[i]->scc_id;
+
+    }
+
+
+    for(i=0;i<nstmts;i++)
+        stmts[i]->pseudo_scc_id=-1;
+
+
+    int loop,pseudo_id=0;
+    for(loop=0;loop<prog->nloops;loop++)
+    {
+
+        if(stmts[(loop==0)?0:prog->loops[loop-1]+1]->pseudo_scc_id!=-1)
+            continue;
+
+        bug("In cut_all_molecules");
+
+        LOOP(prog, loop, pseudo_id);
+
+        pseudo_id++;
+
+    }
+
+/* 
+ * The following code makes sure that no source statement gets scheduled later than its destination statement 
+ * This may otherwise happen when assigning SCC IDs to SCCs using our modified algorithm
+ */
+
+    for(i=0;i<pseudo_id;i++)
+    {
+        for(j=0;j<pseudo_id;j++)
+        {
+            for(k=0;k<nstmts;k++)
+            {
+                if(stmts[k]->pseudo_scc_id==j && stmts[k]->trans->val[stmts[k]->trans->nrows-1][nvar+npar]!=-1)
+                    break;
+                for(l=0;l<nstmts;l++)
+                {
+                    if(stmts[k]->pseudo_scc_id==j && stmts[l]->pseudo_scc_id!=stmts[k]->pseudo_scc_id && prog->ddg->adj->val[l][k] && stmts[l]->trans->val[stmts[l]->trans->nrows-1][nvar+npar]==-1)
+                        break;
+                }
+                if(l!=nstmts)
+                    break;
+            }
+            if(k==nstmts)
+            {
+                for(k=0;k<nstmts;k++)
+                    if(stmts[k]->pseudo_scc_id==j)
+                        stmts[k]->trans->val[stmts[k]->trans->nrows-1][nvar+npar] = i;
+                break;
+            }
+        }
+    }
+
+    for(i=0;i<nstmts;i++)
+        bug("%d %d",stmts[i]->scc_id,stmts[i]->pseudo_scc_id);
+
+    num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
+    ddg_update(ddg, prog);
+
+    return num_satisfied;
+
+
+}
 
 /* 
  * Cut based on dimensionalities of SCCs; if two SCCs are of different 
@@ -634,42 +825,8 @@ void cut_smart(PlutoProg *prog, Graph *ddg)
 {
     if (ddg->num_sccs == 0) return;
 
-    if (pluto_transformations_full_ranked(prog)) {
-        /* Enough linearly independent solutions have been found */
-        cut_all_sccs(prog, ddg);
-        return;
-    }
+        cut_all_molecules(prog, ddg);
 
-    int i, j;
-
-    int num_new_carried = 0;
-
-    /* First time, cut between SCCs of different dimensionalities */
-    if (cut_scc_dim_based(prog, ddg)) {
-        return;
-    }
-
-    /* Cut in the center */
-    if (cut_between_sccs(prog,ddg,ceil(ddg->num_sccs/2.0)-1, 
-                ceil(ddg->num_sccs/2.0))) {
-        return;
-    }
-
-    /* Cut between SCCs that are far away */
-    for (i=0; i<ddg->num_sccs-1; i++) {
-        for (j=ddg->num_sccs-1; j>=i+1; j--) {
-            if (prog->stmts[0]->trans->nrows <= 4*prog->nvar+2)   {
-                if (ddg_sccs_direct_connected(ddg, prog, i, j))    {
-                    // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
-                    num_new_carried += cut_between_sccs(prog,ddg,i,j);
-                    // }
-                }
-            }else{
-                cut_all_sccs(prog, ddg);
-                return;
-            }
-        }
-    }
 }
 
 
@@ -715,25 +872,23 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
 PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog, 
         const PlutoConstraints *cst, bool lin_ind_mode)
 {
-    int npar, nvar, nstmts, i, j, k, orthosum;
-    int orthonum[prog->nstmts];
+    int nloops, i, j, k, orthosum;
+    int orthonum[prog->nloops];
     PlutoConstraints ***orthcst;
     Stmt **stmts;
 
     IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
 
-    npar = prog->npar;
-    nvar = prog->nvar;
-    nstmts = prog->nstmts;
     stmts = prog->stmts;
+    nloops = prog->nloops;
 
-    orthcst = (PlutoConstraints ***) malloc(nstmts*sizeof(PlutoConstraints **));
+    orthcst = (PlutoConstraints ***) malloc(nloops*sizeof(PlutoConstraints **));
 
     orthosum = 0;
 
     /* Get orthogonality constraints for each statement */
-    for (j=0; j<nstmts; j++)    {
-        orthcst[j] = get_stmt_ortho_constraints(stmts[j], 
+    for (j=0; j<nloops; j++)    {
+        orthcst[j] = get_stmt_ortho_constraints(stmts[prog->loops[j]], 
                 prog, cst, &orthonum[j]);
         orthosum += orthonum[j];
     }
@@ -743,7 +898,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     if (orthosum >= 1) {
         if (lin_ind_mode == EAGER) {
             /* Look for linearly independent hyperplanes for all stmts */
-            for (j=0; j<nstmts; j++)    {
+            for (j=0; j<nloops; j++)    {
                 if (orthonum[j] >= 1)   {
                     IF_DEBUG2(printf("Added ortho constraints for S%d\n", j+1););
                     pluto_constraints_add(indcst, orthcst[j][orthonum[j]-1]);
@@ -752,7 +907,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
         }else{
             assert(lin_ind_mode == LAZY);
             /* At least one stmt should have a linearly independent hyperplane */
-            for (i=0; i<prog->nstmts; i++) {
+            for (i=0; i<prog->nloops; i++) {
                 /* Everything was initialized to zero */
                 if (orthonum[i] >= 1) {
                     for (j=0; j<CST_WIDTH-1; j++) {
@@ -767,7 +922,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
         }
     }
 
-    for (j=0; j<nstmts; j++)    {
+    for (j=0; j<nloops; j++)    {
         for (k=0; k<orthonum[j]; k++)   {
             pluto_constraints_free(orthcst[j][k]);
         }
@@ -797,6 +952,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     PlutoConstraints *currcst;
 
     int nstmts = prog->nstmts;
+    int nloops = prog->nloops;
     Stmt **stmts = prog->stmts;
     int nvar = prog->nvar;
     int npar = prog->npar;
@@ -818,7 +974,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     /* We don't expect to add a lot to basecst - just ortho constraints
      * and trivial soln avoidance constraints; instead of duplicating basecst,
      * we will just allocate once and copy each time */
-    currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, 
+    currcst = pluto_constraints_alloc(basecst->nrows+nloops+nvar*nloops, 
             CST_WIDTH);
 
     do{
@@ -847,6 +1003,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
         pluto_constraints_free(indcst);
 
         if (bestsol != NULL)    {
+            bug("Sols left to be found: # %d",max_sols-num_sols_found-1);
             IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
             num_sols_found++;
 
@@ -857,14 +1014,14 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                 pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
                 for (k=0; k<nvar; k++)    {
                     stmt->trans->val[stmt->trans->nrows-1][k] = 
-                        bestsol[npar+1+j*(nvar+1)+k];
+                        bestsol[npar+1+which_loop(prog,j)*(nvar+1)+k];
                 }
                 /* No parameteric shifts */
                 for (k=nvar; k<nvar+npar; k++)    {
                     stmt->trans->val[stmt->trans->nrows-1][k] = 0;
                 }
                 stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = 
-                    bestsol[npar+1+j*(nvar+1)+nvar];
+                    bestsol[npar+1+which_loop(prog,j)*(nvar+1)+nvar];
 
                 stmt->hyp_types[stmt->trans->nrows-1] =  
                     pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
@@ -1114,8 +1271,6 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
     assert(prog->num_hyperplanes == stmts[0]->trans->nrows);
 
-    // pluto_deps_print(stdout, prog);
-
     /* First compute satisfaction levels */
     pluto_compute_dep_directions(prog);
     pluto_compute_dep_satisfaction(prog);
@@ -1127,11 +1282,14 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     for (level=0; level < prog->num_hyperplanes; ) {
         for (i=0; i<prog->ndeps; i++)   {
             if (IS_RAR(deps[i]->type)) continue;
+
             if (deps[i]->satisfaction_level < level && 
                     hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
             if (deps[i]->satisfaction_level >= bandStart 
-                    && deps[i]->dirvec[level] != DEP_ZERO) 
+                    && deps[i]->dirvec[level] != DEP_ZERO) {
+                bug("level, fwd-dep, sat-level: %d %d %d", level, i, deps[i]->satisfaction_level);
                 break;
+            }
         }
 
         if (i==prog->ndeps) {
@@ -1147,6 +1305,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
             for (i=0; i<prog->ndeps; i++)   {
                 if (IS_RAR(deps[i]->type)) continue;
+
                 /* Dependences satisfied at scalar dimensions earlier are fine (even 
                  * if at dimensions in the same band */
                 if (deps[i]->satisfaction_level < level && 
@@ -1155,8 +1314,10 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                  * should have non-negative components */
                 if (deps[i]->satisfaction_level >= bandStart 
                         && (deps[i]->dirvec[level] == DEP_MINUS 
-                            || deps[i]->dirvec[level] == DEP_STAR))
+                            || deps[i]->dirvec[level] == DEP_STAR)) {
+                    bug("%d %d %d %d %d %d %d", i, deps[i]->src,deps[i]->dest,deps[i]->dirvec[level],DEP_MINUS,DEP_STAR, level);
                     break;
+                }
             }
             if (i==prog->ndeps) {
                 hProps[level].dep_prop = PIPE_PARALLEL;
@@ -1743,7 +1904,7 @@ static void swap_hyperplanes(int64 *h1, int64 *h2, int ncols)
  */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
-    int i, j, s, nsols, conc_start_found, depth;
+    int i, j, s, nsols, conc_start_found, depth, satisfied = 0;
     /* The maximum number of linearly independent solutions needed across all
      * statements */
     int num_ind_sols_req;
@@ -1818,6 +1979,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
     }
 
+    pluto_deps_print(stdout, prog);
 
     /* For diamond tiling */
     conc_start_found = 0;
@@ -1852,12 +2014,12 @@ int pluto_auto_transform(PlutoProg *prog)
         nsols = find_permutable_hyperplanes(prog, hyp_search_mode,
                 num_sols_left, depth);
 
-        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
-                    depth, nsols));
+        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n", depth, nsols));
+        bug("[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n", depth, nsols);
         IF_DEBUG2(pluto_transformations_pretty_print(prog));
 
         num_ind_sols_found = pluto_get_max_ind_hyps(prog);
-        
+
         if (nsols >= 1) {
             /* Diamond tiling: done for the first band of permutable loops */
             if (options->lbtile && nsols >= 2 && !conc_start_found) {
@@ -1892,6 +2054,7 @@ int pluto_auto_transform(PlutoProg *prog)
                  * deps, and no solutions found  */
                 if (hyp_search_mode == EAGER)   {
                     IF_DEBUG(printf("[pluto] Switching to LAZY mode\n"););
+                    bug("[pluto] Switching to LAZY mode; unsatisfied deps: %d\n",get_num_unsatisfied_inter_scc_deps(prog));
                     hyp_search_mode = LAZY;
                 }else if (!deps_satisfaction_check(prog)) {
                     assert(hyp_search_mode == LAZY);
@@ -1930,8 +2093,35 @@ int pluto_auto_transform(PlutoProg *prog)
          * care of partial satisfaction (rarely needed) */
         if (hyp_search_mode == LAZY) pluto_compute_dep_satisfaction_complex(prog);
         depth++;
-    }while (!pluto_transformations_full_ranked(prog) || 
-            !deps_satisfaction_check(prog));
+
+        if(!num_sols_left)
+        {
+
+            for (i=0; i<prog->ndeps; i++) {
+                if (IS_RAR(prog->deps[i]->type)) continue;
+                if (!dep_is_satisfied(prog->deps[i]) && which_loop(prog,prog->deps[i]->src)==which_loop(prog,prog->deps[i]->dest))    {
+                    bug("Intra-scc: i: %d; satisfaction_level: %d",i,prog->deps[i]->satisfaction_level);
+                }
+            }
+
+            for (i=0; i<prog->ndeps; i++) {
+                if (IS_RAR(prog->deps[i]->type)) continue;
+                if (!dep_is_satisfied(prog->deps[i]) && which_loop(prog,prog->deps[i]->src)!=which_loop(prog,prog->deps[i]->dest))    {
+                    bug("Inter-scc: i: %d; satisfaction_level: %d",i,prog->deps[i]->satisfaction_level);
+                }
+            }
+
+            for (i=0; i<prog->ndeps; i++) {
+                if (IS_RAR(prog->deps[i]->type)) continue;
+                if (!dep_is_satisfied(prog->deps[i]) && which_loop(prog,prog->deps[i]->src)!=which_loop(prog,prog->deps[i]->dest))    {
+                    break;
+                }
+            }
+            if(i==prog->ndeps) satisfied=1;
+        }
+
+
+    }while (!pluto_transformations_full_ranked(prog) || !satisfied /*|| !deps_satisfaction_check(prog)*/);
 
     if (options->lbtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
@@ -2093,9 +2283,136 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
     return num;
 }
 
+/* schedSCCs is called from within the (new) ddg_compute_scc subroutine */
+bool* schedSCCs(PlutoProg* prog, Graph* gT, int* scheduled_sccs, int num_scheduled)
+{
+    int i,j,k;
+    PlutoMatrix* adj = prog->ddg->adj;
+    bool* schedsccs = (bool* ) malloc(sizeof(bool)*gT->num_sccs);
+
+    for(i=0;i<gT->num_sccs;i++)
+    {
+        schedsccs[i]=true;
+    }
+
+    /*
+       for(j=0;j<num_scheduled;j++)
+       {
+       bug("%d",scheduled_sccs[j]);
+       }
+     */
+
+    for(j=0;j<num_scheduled;j++)
+    {
+        schedsccs[scheduled_sccs[j]]=false;
+    }
+
+    for(i=0;i<prog->nstmts;i++)
+    {
+        for(j=0;j<i;j++)
+        {
+
+            for(k=0;k<num_scheduled;k++) {
+                if(gT->vertices[j].scc_id==scheduled_sccs[k]) break;
+            }
+
+            if(num_scheduled && k!=num_scheduled) continue;
+
+            if(adj->val[j][i] && (gT->vertices[i].scc_id!=gT->vertices[j].scc_id)) {
+                schedsccs[gT->vertices[i].scc_id]=false;
+            }
+        }
+    }
+
+    return schedsccs;
+
+}
+
+
+/* Compute the SCCs of a graph according to the pre-fusion schedule in wisefuse (PPoPP '15) */
+void ddg_compute_scc(PlutoProg *prog)
+{
+    int i,j;
+
+    Graph *g = prog->ddg;
+
+    dfs(g);
+
+    Graph *gT = graph_transpose(g);
+
+    dfs_for_scc(gT);
+
+    int* scheduled_sccs = (int* )malloc(sizeof(int)*gT->num_sccs);
+    int num_scheduled=0;
+    bool* schedulable_sccs;
+
+    while(num_scheduled < gT->num_sccs)
+    {
+        schedulable_sccs = schedSCCs(prog, gT, scheduled_sccs, num_scheduled);
+
+/*
+        for(i=0;i<gT->num_sccs;i++)
+        {
+            bug("SCC::schedulable : %d::%d, %d",i,schedulable_sccs[i],num_scheduled);
+        }
+*/
+
+        for(i=0;i<gT->num_sccs;i++)
+        {
+            if(schedulable_sccs[i] && (num_scheduled==0 || (get_max_orig_dim_in_scc(prog, i)==get_max_orig_dim_in_scc(prog, scheduled_sccs[num_scheduled-1]))))
+            {
+                scheduled_sccs[num_scheduled]=i;
+                break;
+            }
+        }
+
+        if(i==gT->num_sccs)
+            for(i=0;i<gT->num_sccs;i++)
+            {
+                if(schedulable_sccs[i])
+                {
+                    scheduled_sccs[num_scheduled]=i;
+                    break;
+                }
+            }
+
+        for(j=0;j<gT->nVertices;j++)
+        {
+            if(gT->vertices[j].scc_id==i)
+            {
+                prog->stmts[j]->scc_id=num_scheduled;
+                g->vertices[j].scc_id=num_scheduled;
+            }
+        }
+
+        g->sccs[num_scheduled].id = num_scheduled;
+        num_scheduled++;
+
+    }
+
+    g->num_sccs=num_scheduled;
+
+/*
+    for(i=0;i<prog->nstmts;i++)
+    {
+        bug("%d %d %d %d",i,prog->stmts[i]->dim_orig,prog->stmts[i]->scc_id,gT->vertices[i].scc_id);
+    }
+*/
+
+    for (i=0; i<g->num_sccs; i++)  {
+        g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
+        g->sccs[i].size = get_scc_size (prog, i);
+//        bug("%d %d %d",g->sccs[i].id,g->sccs[i].max_dim,g->sccs[i].size);
+    }
+
+    graph_free(gT);
+
+    graph_print_sccs(g);
+}
+
 
 /* Compute the SCCs of a graph */
-void ddg_compute_scc(PlutoProg *prog)
+void ddg_compute_scc_original(PlutoProg *prog)
 {
     int i;
 
