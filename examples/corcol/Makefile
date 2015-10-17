@@ -1,6 +1,6 @@
 SRC= corcol
 
-PLCFLAGS = --codegen-context=100 --unroll --ufactor=8
+PLCFLAGS = --codegen-context=100 #--unroll --ufactor=8
 TILEFLAGS = #--l2tile
 
 include ../common.mk
