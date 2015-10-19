@@ -298,7 +298,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             }
             fclose(fp);
             if (found) {
-                printf("Skipping dep %d\n", num);
+                bug("Skipping dep %d\n", num);
                 continue;
             }
         }
@@ -350,7 +350,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             }
             fclose(fp);
             if (found) {
-                printf("Skipping dep %d\n", num);
+                bug("Skipping dep %d\n", num);
                 continue;
             }
         }
