@@ -54,15 +54,12 @@
 static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 {
     PlutoConstraints *cst, *tiling_valid_cst, *bounding_func_cst;
-    int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
+    int nvar, npar, src_stmt, dest_stmt, j, k, r;
     int src_offset, dest_offset;
     PlutoMatrix *phi;
-    Stmt **stmts;
 
     nvar = prog->nvar;
     npar = prog->npar;
-    stmts = prog->stmts;
-    nstmts = prog->nstmts;
 
     /* IMPORTANT: It's assumed that all statements are of dimensionality nvar */
 
@@ -265,15 +262,12 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 {
-    int i, inc, nstmts, nvar, npar, ndeps;
+    int i, inc, ndeps;
     PlutoConstraints *globcst;
     Dep **deps;
 
-    nstmts = prog->nstmts;
     ndeps = prog->ndeps;
     deps = prog->deps;
-    nvar = prog->nvar;
-    npar = prog->npar;
 
     int total_cst_rows = 0;
 
@@ -291,7 +285,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             int found = 0;
             while (!feof(fp)) {
                 fscanf(fp, "%d", &num);
-                if (i == num-1) {
+                if (i == num) {
                     found = 1;
                     break;
                 }
@@ -343,7 +337,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             int found = 0;
             while (!feof(fp)) {
                 fscanf(fp, "%d", &num);
-                if (i == num-1) {
+                if (i == num) {
                     found = 1;
                     break;
                 }
@@ -402,7 +396,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *prog)
 {
     PlutoConstraints *cst, *sched_valid_cst;
-    int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
+    int nvar, npar, src_stmt, dest_stmt, j, k, r;
     int src_offset, dest_offset;
     PlutoMatrix *phi;
     Stmt **stmts;
@@ -410,7 +404,6 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
     nvar = prog->nvar;
     npar = prog->npar;
     stmts = prog->stmts;
-    nstmts = prog->nstmts;
 
     /* IMPORTANT: It's assumed that all statements are of dimensionality nvar */
 
@@ -620,8 +613,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     int nvar = prog->nvar;
     int npar = prog->npar;
-    int nstmts = prog->nstmts;
-    int nloops = prog->nloops;
     HyperplaneProperties *hProps = prog->hProps;
 
     /* Transformation has full column rank already */

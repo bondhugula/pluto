@@ -48,22 +48,25 @@ int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
 int pluto_diamond_tile(PlutoProg *prog);
 
+void LOOP(PlutoProg* prog, int loop, int pseudo_id);
+void SCC(PlutoProg* prog, int loop, int scc_id, int pseudo_id);
+
 /* 
- * Returns true if the two domains of different statements are the same
- * This is useful to determine if the statements are in the same loop, especially if they are consecutive
+ * Returns true if the two statements have the same transformation
+ * This is useful to determine if the statements are in the same loop (i.e. they have the same original transformation)
  */
 
 bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2)
 {
 
-    PlutoConstraints* mat1 = stmt1->domain,* mat2 = stmt2->domain;
+    PlutoMatrix* mat1 = stmt1->trans,* mat2 = stmt2->trans;
 
-    if(stmt1->dim_orig != stmt2->dim_orig) return false;
+    if(stmt1->dim_orig != stmt2->dim_orig || mat1->nrows!=mat2->nrows || mat1->ncols!=mat2->ncols) return false;
 
     int i,j;
 
-    for(i=0;i<min(mat1->nrows,mat2->nrows);i++) {
-        for(j=0;j<min(mat1->ncols,mat2->ncols);j++) {
+    for(i=0;i<mat1->nrows;i++) {
+        for(j=0;j<mat1->ncols;j++) {
             if(mat1->val[i][j]!=mat2->val[i][j]) return false;
         }
     }
@@ -100,6 +103,7 @@ int which_loop(PlutoProg* prog, int s)
     for(i=0;i<prog->nloops;i++) {
         if(s<=prog->loops[i] && s > (i==0?-1:prog->loops[i-1])) return i;
     }
+    return -1;
 }
 
 /*
@@ -1979,7 +1983,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
     }
 
-    pluto_deps_print(stdout, prog);
+//    pluto_deps_print(stdout, prog);
 
     /* For diamond tiling */
     conc_start_found = 0;

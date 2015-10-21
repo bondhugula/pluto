@@ -43,7 +43,7 @@ test/tricky4.c \
 test/ludcmp.c \
 test/tce-4index-transform.c \
 test/noloop.c \
-test/deep.c"
+#test/deep.c"
 
 for file in $TESTS; do
 	echo -e "$file"
