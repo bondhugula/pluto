@@ -283,12 +283,13 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         if (fp) {
             int num;
             int found = 0;
+            fscanf(fp, "%d", &num);
             while (!feof(fp)) {
-                fscanf(fp, "%d", &num);
                 if (i == num) {
                     found = 1;
                     break;
                 }
+                fscanf(fp, "%d", &num);
             }
             fclose(fp);
             if (found) {
@@ -335,12 +336,13 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         if (fp) {
             int num;
             int found = 0;
+            fscanf(fp, "%d", &num);
             while (!feof(fp)) {
-                fscanf(fp, "%d", &num);
                 if (i == num) {
                     found = 1;
                     break;
                 }
+                fscanf(fp, "%d", &num);
             }
             fclose(fp);
             if (found) {
