@@ -1,24 +1,31 @@
-0.11.3
+version 0.11.3
 
-Diamond tiling code update 
+date: 2015-02-08 01:10:21 -0800
 
-Minor bug fixes. See git history for all changes
+- Diamond tiling code update 
+- Minor bug fixes. See git history for all changes
 
 
-0.11.2
+version 0.11.2
 
-Minor fixes. See git history for all changes
+date: 2014-12-22 18:01:30 +0530
 
-0.11.1
+- Minor fixes. See git history for all changes
 
-Clean up command-line options, better debug and progress output
+version 0.11.1
 
-Misc minor fixes and changes
+date: 2014-12-01 09:52:37 +0530
+
+- Clean up command-line options, better debug and progress output
+
+- Misc minor fixes and changes
 
 See git history for all changes
 http://repo.or.cz/w/pluto.git/shortlog
 
-0.11.0
+version 0.11.0
+
+date: 2014-05-30 13:39:20 +0530
 
 - add all inner loop iterators in private vars of omp parallel pragma
 
@@ -27,7 +34,7 @@ http://repo.or.cz/w/pluto.git/shortlog
 - see git history for remaining changes
 
 
-0.10.1
+version 0.10.1
 
 - add all inner loop iterators in private vars of omp parallel pragma
 
@@ -36,50 +43,63 @@ http://repo.or.cz/w/pluto.git/shortlog
 - see git history for remaining changes
 
 
-0.10.0
+version 0.10.0
 
-Pluto algorithm update (extended), and bug fixes.
+date: 2013-12-28 00:09:17 +0530
 
-See git history for all changes.
+- Pluto algorithm update (extended), and bug fixes.
 
-0.9.0
+- See git history for all changes.
 
-Making parallelization, tiling, and other transformations work with bands
-and poly scattering tree prefixes as opposed to depths. Mark parallel and 
-vectorizable loops via clast processing instead of scripts. All of this 
-gets rid of a long-standing limitation. 
+version 0.9.0
 
-See git history for all changes.
+date: 2012-08-23 15:29:14 +0530
 
-0.8.1
+- Making parallelization, tiling, and other transformations work with bands 
+  and poly scattering tree prefixes as opposed to depths. Mark parallel and 
+  vectorizable loops via clast processing instead of scripts. All of this 
+  gets rid of a long-standing limitation. 
 
-Minor bug fixes; see git log. Bail out with identity transformation on a
-failure.
+- See git history for all changes.
 
-0.8.0
+version 0.8.1
 
-Make it easier for users to apply their own transformations. Separate 
-transformation porperty detection from pluto_auto_transform. See git history
-for all changes.
+date: 2012-02-29 16:46:14 +0530
 
-0.7.0
+- Minor bug fixes; see git log. Bail out with identity transformation on a
+  failure.
 
-From git commit 'Update version to 0.7.0'
-8cce20118b895b0ea538df65894fc7c85806d1c9
-See git history for a log of changes. Bug fixes, better data structuring, more
-modular. 
+version 0.8.0
+
+date: 2012-02-24 17:32:14 +0530
+
+- Make it easier for users to apply their own transformations. Separate 
+  transformation porperty detection from pluto_auto_transform. See git history 
+  for all changes.
+
+version 0.7.0
+
+date: 2011-06-09 21:46:52 +0530
+
+- From git commit 'Update version to 0.7.0' 
+  8cce20118b895b0ea538df65894fc7c85806d1c9
+  See git history for a log of changes. Bug fixes, better data structuring, more
+  modular. 
 
 
-0.6.0 BETA
+version 0.6.0 BETA
+
+date: 2010-02-16
 
 1. Switch to Cloog-isl (from Cloog-polylib). ISL (Author: Sven Verdoolaege) is 
-integer-aware for its polyhedral operations unlike polylib, and relies on
-different algorithms/machinery for its operations. Cloog with ISL 
-as backend leads to better code generation and code. (1) Generated code is of much 
-better quality (simpler bounds, simpler conditionals, shorter cleanup code, no spurious 
-integer empty domains), (2) no value overflows when handling deep loop nests or large 
-tile sizes, and (3) faster code generation typically for complex cases (deep loop nests, 
-complex transformations, large tile sizes and with both L1 and L2 tiling). 
+   integer-aware for its polyhedral operations unlike polylib, and relies on
+   different algorithms/machinery for its operations. Cloog with ISL 
+   as backend leads to better code generation and code. (1) Generated code is of much 
+   better quality (simpler bounds, simpler conditionals, shorter cleanup code, 
+   no spurious integer empty domains), (2) no value overflows when handling 
+   deep loop nests or large tile sizes, and (3) faster code generation 
+   typically for complex cases (deep loop nests, complex transformations, 
+   large tile sizes and with both L1 and L2 tiling). 
 
 2. Pluto core bug fix (bounding function problem in certain cases)
 
@@ -91,7 +111,9 @@ for minimum value on parameters).
 5. Some new examples
 
 
-0.5.1 BETA
+version 0.5.1 BETA
+
+date: 2010-02-09
 
 1. Minor bug fix: Bug in generation of OpenMP pragma in some cases (when the first hyperplane
 is a parallel scalar dimension)
@@ -117,7 +139,9 @@ for minimum value on parameters).
 9. Minor bug fix in orthogonal subspace computation
 
 
-0.5.0 BETA
+version 0.5.0 BETA
+
+date: 2010-05-02
 
 1. New polyhedral frontend and dependence tester (Clan/Candl) integrated. 
 All LooPo components are out of Pluto now. Thanks to Clan, affine 
@@ -135,11 +159,15 @@ the file name
 
 4. Several minor bug fixes
 
-0.4.2 BETA
+version 0.4.2 BETA
+
+date: 2009-03-18
 
 * Minor bug fixes
 
-0.4.1 BETA
+version 0.4.1 BETA
+
+date: 2008-11-30
 
 * Build issues on Mac OS X resolved
 
@@ -148,7 +176,9 @@ the file name
 * Support for Bee+Cl@k tool with option --bee. Pragmas are inserted that the
 Bee tool can handle and optimize for storage.
 
-0.4.0 BETA
+version 0.4.0 BETA
+
+date: 2008-09-10
 
 * Computation of transformations is much faster now (up to 7x in some cases)
 due to optimizations in building the formulation, and better memory
@@ -172,7 +202,9 @@ command-line options for a code. Just run with "./plutune <source.c>"
 * Some register tiling bugs fixed (affected a few cases)
 
 
-0.3.0 BETA
+version 0.3.0 BETA
+
+date: 2008-07-09
 
 * GCC's preprocessor is now run on the Cloog code to replace statement text
 
@@ -197,7 +229,7 @@ default
 * Code cleanup (less worse now)
 
 
-0.2.0 BETA
+version 0.2.0 BETA
 
 * Added --smartfuse option (this is the default), --nofuse and --maxfuse 
 are the other two
@@ -220,6 +252,6 @@ if it is possible)
 * Lots of other minor fixes
 
 
-0.1.0 BETA
+version 0.1.0 BETA
 
 First release
