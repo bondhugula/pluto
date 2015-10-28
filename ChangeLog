@@ -1,3 +1,14 @@
+version 0.11.4
+
+date: Wed Oct 28 20:30:13 IST 2015
+
+- Update to intra-tile-opt cost model
+- Update diamond tiling implementation: automatically find 
+  concurrent start face + other generalization/fixes
+- Numerous other minor bug fixes and improvements
+- See git history for all changes
+
+
 version 0.11.3
 
 date: 2015-02-08 01:10:21 -0800
