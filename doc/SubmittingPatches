@@ -26,9 +26,15 @@
     if (...) code;
     else more code;
 
-- Please generate a patch against the git version, i.e., use 
+- Leave spaces in assignments for better readability. For eg.,  
+  'sol[j] = cst->val[i][j];' instead of 'sol[j]=cst->val[i][j]'
+
+- Any new functions added should at least have comments on what they do
+
+- Please sign your commits and generate patch against the git version, 
+  i.e., use 
 
 'git format-patch -M origin' 
 
-and send to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
+- Send patches to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
 

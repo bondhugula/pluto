@@ -146,6 +146,9 @@ struct plutoOptions{
 
     /* Polyhedral compile time stats */
     int time;
+
+    /* fast linear independence check */
+    int flic;
 };
 typedef struct plutoOptions PlutoOptions;
 

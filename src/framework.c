@@ -700,7 +700,10 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     // printf("Ortho matrix\n");
     // pluto_matrix_print(stdout, ortho); 
 
-    isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    /* Fast linear independence check */
+    if (!options->flic) {
+        isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    }else isl_currcst = NULL;
 
     assert(p == ortho->nrows);
     p=0;
@@ -716,16 +719,20 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         }
         orthcst[p]->nrows = 1;
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
-        orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        if (!options->flic) {
+            orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        }
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
 
-        orthcst_i = isl_basic_set_intersect(orthcst_i,
-                isl_basic_set_copy(isl_currcst));
-        if (isl_basic_set_fast_is_empty(orthcst_i) 
-                || isl_basic_set_is_empty(orthcst_i)) {
-            pluto_constraints_negate_row(orthcst[p], 0);
+        if (!options->flic) {
+            orthcst_i = isl_basic_set_intersect(orthcst_i,
+                    isl_basic_set_copy(isl_currcst));
+            if (isl_basic_set_fast_is_empty(orthcst_i)
+                    || isl_basic_set_is_empty(orthcst_i)) {
+                pluto_constraints_negate_row(orthcst[p], 0);
+            }
+            isl_basic_set_free(orthcst_i);
         }
-        isl_basic_set_free(orthcst_i);
         p++;
         /* assert(p<=nvar-1); */
     }
@@ -744,10 +751,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     *orthonum = p;
 
-    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n", stmt->id+1, *orthonum-1));
+    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n",
+                stmt->id+1, *orthonum-1));
     for (i=0; i<*orthonum; i++) {
         // print_polylib_visual_sets("li", orthcst[i]);
-        // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+        IF_DEBUG2(pluto_constraints_compact_print(stdout, orthcst[i]));
     }
 
     /* Free the unnecessary ones */
