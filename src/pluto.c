@@ -426,7 +426,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             j += stmts[i]->dim_orig+1;
         }
 
-        fsol = (int64 *)malloc(cst->ncols*sizeof(int64));
+        fsol = (int64 *) malloc((cst->ncols-1)*sizeof(int64));
 
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
