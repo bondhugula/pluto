@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
 
     const struct option pluto_options[] =
     {
+        {"fast-lin-ind-check", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
