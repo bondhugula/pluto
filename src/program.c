@@ -2713,6 +2713,7 @@ PlutoOptions *pluto_options_alloc()
     options  = (PlutoOptions *) malloc(sizeof(PlutoOptions));
 
     /* Initialize to default */
+    options->flic = 0;
     options->tile = 0;
     options->intratileopt = 1;
     options->dynschedule = 0;

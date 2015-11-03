@@ -355,21 +355,20 @@ static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(Plut
 int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
-    int nstmts, nvar, npar;
+    int i, j, k;
+    int nstmts, nvar, npar, del_count;
+    int64 *sol, *fsol;
+    PlutoConstraints *newcst;
 
     stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
 
-    /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[npar+1+nstmts*(nvar+1)+1];
-    int i, j, k, q;
-    int64 *sol, *fsol;
-    PlutoConstraints *newcst;
-
     assert(cst->ncols - 1 == CST_WIDTH - 1);
 
+    /* Remove redundant variables - that don't appear in your outer loops */
+    int redun[npar+1+nstmts*(nvar+1)+1];
     for (i=0; i<npar+1; i++)    {
         redun[i] = 0;
     }
@@ -382,7 +381,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     }
     redun[npar+1+nstmts*(nvar+1)] = 0;
 
-    int del_count = 0;
+    del_count = 0;
     newcst = pluto_constraints_dup(cst);
     for (j = 0; j < cst->ncols-1; j++) {
         if (redun[j]) {
@@ -390,80 +389,53 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             del_count++;
         }
     }
-    // IF_DEBUG2(printf("Constraints after reductions\n"));
-    // IF_DEBUG2(pluto_constraints_pretty_print(stdout,newcst));
 
-        
-    /* Reverse the variable order for stmts */
-    PlutoMatrix *perm_mat = pluto_matrix_alloc(newcst->ncols, newcst->ncols);
-    PlutoMatrix *newcstmat = pluto_matrix_alloc(newcst->nrows, newcst->ncols);
-
-    pluto_matrix_set(perm_mat, 0);
-
-    for (i=0; i<npar+1; i++) {
-        perm_mat->val[i][i] = 1;
-    }
-
-    j=npar+1;
+    /* Permute the constraints so that if all else is the same, the original
+     * hyperplane order is preserved (no strong reason to do this) */
+    j = npar + 1;
     for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+stmts[i]->dim_orig; k++) {
-            perm_mat->val[k][2*j+stmts[i]->dim_orig-k-1] = 1;
+        for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+            pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
+
         }
-        perm_mat->val[k][k] = 1;
         j += stmts[i]->dim_orig+1;
     }
-    perm_mat->val[j][j] = 1;
-
-    for (i=0; i<newcst->nrows; i++) {
-        for (j=0; j<newcst->ncols; j++) {
-            newcstmat->val[i][j] = 0;
-            for (k=0; k<newcst->ncols; k++) {
-                newcstmat->val[i][j] += newcst->val[i][k]*perm_mat->val[k][j];
-            }
-        }
-    }
-    /* pluto_matrix_print(stdout, newcst->val, newcst->nrows, newcst->ncols); */
-    /* pluto_matrix_print(stdout, newcstmat, newcst->nrows, newcst->ncols); */
-
-    PlutoConstraints *newcst_permuted;
-    newcst_permuted = pluto_constraints_from_mixed_matrix(newcstmat, newcst->is_eq);
-    pluto_matrix_free(newcstmat);
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
     /* Solve the constraints */
-    sol = pluto_constraints_lexmin(newcst_permuted, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
 
-    pluto_constraints_free(newcst_permuted);
 
     fsol = NULL;
-    if (sol != NULL)    {
-
-        PlutoMatrix *actual_sol = pluto_matrix_alloc(1, newcst->ncols-1);
-        for (j=0; j<newcst->ncols-1; j++) {
-            actual_sol->val[0][j] = 0;
-            for (k=0; k<newcst->ncols-1; k++) {
-                actual_sol->val[0][j] += sol[k]*perm_mat->val[k][j];
+    if (sol) {
+        int k1, k2, q;
+        int64 tmp;
+        /* Permute the solution in line with the permuted cst */
+        j = npar + 1;
+        for (i=0; i<nstmts; i++)    {
+            for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+                k1 = k;
+                k2 = j + (stmts[i]->dim_orig - 1 - (k-j));
+                tmp = sol[k1];
+                sol[k1] = sol[k2];
+                sol[k2] = tmp;
             }
+            j += stmts[i]->dim_orig+1;
         }
-        free(sol);
 
-        fsol = (int64 *)malloc(cst->ncols*sizeof(int64));
+        fsol = (int64 *) malloc((cst->ncols-1)*sizeof(int64));
+
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
         for (j=0; j<cst->ncols-1; j++) {
-            if (redun[j])  {
-                fsol[j] = 0;
-            }else{
-                fsol[j] = actual_sol->val[0][q++];
-            }
+            fsol[j] = redun[j]? 0: sol[q++];
         }
-        pluto_matrix_free(actual_sol);
+        free(sol);
     }
 
-    pluto_matrix_free(perm_mat);
     pluto_constraints_free(newcst);
 
     return fsol;
