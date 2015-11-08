@@ -63,12 +63,16 @@ bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2)
 
     if(stmt1->dim_orig != stmt2->dim_orig || mat1->nrows!=mat2->nrows || mat1->ncols!=mat2->ncols) return false;
 
-    int i,j;
+    int i,j,depth=0,scalar;
 
     for(i=0;i<mat1->nrows;i++) {
+	scalar = 1;
+	if(depth==stmt1->dim_orig) break;
         for(j=0;j<mat1->ncols;j++) {
+	    if(j<mat1->ncols-1 && mat1->val[i][j]) scalar = 0;
             if(mat1->val[i][j]!=mat2->val[i][j]) return false;
         }
+	if(scalar==0) depth++;
     }
     return true;
 }
@@ -414,12 +418,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
     int i, j, k;
-    int nstmts, nvar, npar, del_count, nloops;
+    int nvar, npar, del_count, nloops;
     int64 *sol, *fsol;
     PlutoConstraints *newcst;
 
     stmts = prog->stmts;
-    nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
     nloops = prog->nloops;
@@ -427,7 +430,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     assert(cst->ncols - 1 == CST_WIDTH - 1);
 
     /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[npar+1+nstmts*(nvar+1)+1];
+    int redun[npar+1+nloops*(nvar+1)+1];
     for (i=0; i<npar+1; i++)    {
         redun[i] = 0;
     }
@@ -438,7 +441,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         }
         redun[npar+1+i*(nvar+1)+nvar] = 0;
     }
-    redun[npar+1+nstmts*(nvar+1)] = 0;
+    redun[npar+1+nloops*(nvar+1)] = 0;
 
     del_count = 0;
     newcst = pluto_constraints_dup(cst);
@@ -452,11 +455,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     j = npar + 1;
-    for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
-            pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
+    for (i=0; i<nloops; i++)    {
+        for (k=j; k<j+(stmts[prog->loops[i]]->dim_orig)/2; k++) {
+            pluto_constraints_interchange_cols(newcst, k, j + (stmts[prog->loops[i]]->dim_orig - 1 - (k-j)));
         }
-        j += stmts[i]->dim_orig+1;
+        j += stmts[prog->loops[i]]->dim_orig+1;
     }
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
@@ -473,15 +476,15 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
         j = npar + 1;
-        for (i=0; i<nstmts; i++)    {
-            for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+        for (i=0; i<nloops; i++)    {
+            for (k=j; k<j+(stmts[prog->loops[i]]->dim_orig)/2; k++) {
                 k1 = k;
-                k2 = j + (stmts[i]->dim_orig - 1 - (k-j));
+                k2 = j + (stmts[prog->loops[i]]->dim_orig - 1 - (k-j));
                 tmp = sol[k1];
                 sol[k1] = sol[k2];
                 sol[k2] = tmp;
             }
-            j += stmts[i]->dim_orig+1;
+            j += stmts[prog->loops[i]]->dim_orig+1;
         }
 
         fsol = (int64 *) malloc((cst->ncols-1)*sizeof(int64));

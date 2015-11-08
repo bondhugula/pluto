@@ -345,12 +345,12 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
                 }
                 fscanf(skipdeps, "%d", &num);
             }
+            fclose(skipdeps);
             if (found) {
                 bug("Skipping dep %d\n", num);
                 continue;
             }
         }
-        fclose(skipdeps);
 
         /* Note that dependences would be marked satisfied (in
          * pluto_auto_transform) only after all possible independent solutions
@@ -359,7 +359,6 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         if (dep_is_satisfied(dep)) {
 			continue;
         }
-
         /* Subsequent calls can just use the old ones */
         pluto_constraints_add(globcst, dep->cst);
         /* print_polylib_visual_sets("global", dep->cst); */
@@ -606,7 +605,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum)
 {
-    int i, j, k, p, q, nvar, npar, nstmts;
+    int i, j, k, p, q, nvar, npar;
     PlutoConstraints **orthcst;
     HyperplaneProperties *hProps;
     isl_ctx *ctx;
@@ -618,7 +617,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     nvar = prog->nvar;
     npar = prog->npar;
-    nstmts = prog->nstmts;
     hProps = prog->hProps;
 
     IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
