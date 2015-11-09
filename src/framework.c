@@ -275,10 +275,11 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     /* For debugging (skip deps listed here) */
     if (skipfp) {
         int num;
+        fscanf(skipfp, "%d", &num);
         while (!feof(skipfp)) {
+            skipdeps[num] = 1;
+            IF_DEBUG(printf("\tskipping dep %d\n", num));
             fscanf(skipfp, "%d", &num);
-            skipdeps[num-1] = 1;
-            printf("\tskipping dep %d\n", num);
         }
     }
 
