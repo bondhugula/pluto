@@ -298,10 +298,10 @@ struct plutoProg{
      * stmt->trans->nrows */
     int num_hyperplanes;
 
-    /* Number of loops in the SCoP */
+    /* Number of molecules in the SCoP */
     int nloops;
 
-    /* Each entry of the array loops holds the id of the last statement in that loop */
+    /* Each entry of the array 'loops' holds the id of the last statement in that molecule */
     int* loops;
 
     /* dist_[i][j] points to the list of all unique dependences between loops (O-molecules) i and j */

@@ -35,8 +35,7 @@
 #include <isl/set.h>
 #include "candl/candl.h"
 
-
-#define CONSTRAINTS_SIMPLIFY_THRESHOLD 5000
+#define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
 #define MAX_FARKAS_CST  2000
 
 /**
@@ -323,6 +322,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
+    FILE *skipdeps = fopen("skipdeps.txt", "r");
+
     /* Add constraints to globcst */
     for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
@@ -332,19 +333,19 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         if (options->rar == 0 && IS_RAR(dep->type)) continue;
 
         /* For debugging (skip deps listed here) */
-        FILE *fp = fopen("skipdeps.txt", "r");
-        if (fp) {
+        FILE *skipdeps = fopen("skipdeps.txt", "r");
+        if (skipdeps) {
             int num;
             int found = 0;
-            fscanf(fp, "%d", &num);
-            while (!feof(fp)) {
+            fscanf(skipdeps, "%d", &num);
+            while (!feof(skipdeps)) {
                 if (i == num) {
                     found = 1;
                     break;
                 }
-                fscanf(fp, "%d", &num);
+                fscanf(skipdeps, "%d", &num);
             }
-            fclose(fp);
+            fclose(skipdeps);
             if (found) {
                 bug("Skipping dep %d\n", num);
                 continue;
@@ -358,7 +359,6 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         if (dep_is_satisfied(dep)) {
 			continue;
         }
-
         /* Subsequent calls can just use the old ones */
         pluto_constraints_add(globcst, dep->cst);
         /* print_polylib_visual_sets("global", dep->cst); */
@@ -372,20 +372,20 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
          * dependences. Not simplifying at all also leads to a slow down
          * because it leads to a large globcst and a number of constraits in
          * it are redundant */
-        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc) &&
                 globcst->nrows - dep->cst->nrows < 
-                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc)) {
             pluto_constraints_simplify(globcst);
+            inc++;
             IF_DEBUG(fprintf(stdout,
                         "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
                         globcst->nrows));
-            if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
-                inc++;
-            }
         }
     }
 
     pluto_constraints_simplify(globcst);
+
+    if (skipdeps) fclose(skipdeps);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
@@ -605,17 +605,21 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum)
 {
-    int i, j, k, p, q;
+    int i, j, k, p, q, nvar, npar;
     PlutoConstraints **orthcst;
+    HyperplaneProperties *hProps;
     isl_ctx *ctx;
     isl_mat *h;
     isl_basic_set *isl_currcst;
+    PlutoOptions *options;
+
+    options = prog->options;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    hProps = prog->hProps;
 
     IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
-
-    int nvar = prog->nvar;
-    int npar = prog->npar;
-    HyperplaneProperties *hProps = prog->hProps;
 
     /* Transformation has full column rank already */
     if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
@@ -700,7 +704,10 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     // printf("Ortho matrix\n");
     // pluto_matrix_print(stdout, ortho); 
 
-    isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    /* Fast linear independence check */
+    if (!options->flic) {
+        isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+    }else isl_currcst = NULL;
 
     assert(p == ortho->nrows);
     p=0;
@@ -716,16 +723,20 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         }
         orthcst[p]->nrows = 1;
         orthcst[p]->val[0][CST_WIDTH-1] = -1;
-        orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        if (!options->flic) {
+            orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+        }
         orthcst[p]->val[0][CST_WIDTH-1] = 0;
 
-        orthcst_i = isl_basic_set_intersect(orthcst_i,
-                isl_basic_set_copy(isl_currcst));
-        if (isl_basic_set_fast_is_empty(orthcst_i) 
-                || isl_basic_set_is_empty(orthcst_i)) {
-            pluto_constraints_negate_row(orthcst[p], 0);
+        if (!options->flic) {
+            orthcst_i = isl_basic_set_intersect(orthcst_i,
+                    isl_basic_set_copy(isl_currcst));
+            if (isl_basic_set_fast_is_empty(orthcst_i)
+                    || isl_basic_set_is_empty(orthcst_i)) {
+                pluto_constraints_negate_row(orthcst[p], 0);
+            }
+            isl_basic_set_free(orthcst_i);
         }
-        isl_basic_set_free(orthcst_i);
         p++;
         /* assert(p<=nvar-1); */
     }
@@ -744,10 +755,11 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     *orthonum = p;
 
-    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n", stmt->id+1, *orthonum-1));
+    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n",
+                stmt->id+1, *orthonum-1));
     for (i=0; i<*orthonum; i++) {
         // print_polylib_visual_sets("li", orthcst[i]);
-        // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+        IF_DEBUG2(pluto_constraints_compact_print(stdout, orthcst[i]));
     }
 
     /* Free the unnecessary ones */
