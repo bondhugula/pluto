@@ -261,40 +261,37 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 {
-    int i, inc, ndeps;
+    int i, inc, ndeps, total_cst_rows;
     PlutoConstraints *globcst;
     Dep **deps;
 
     ndeps = prog->ndeps;
     deps = prog->deps;
 
-    int total_cst_rows = 0;
+    FILE *skipfp = fopen("skipdeps.txt", "r");
+    int *skipdeps = malloc(ndeps*sizeof(int));
+    bzero(skipdeps, ndeps*sizeof(int));
 
-    /* Compute the constraints and store them */
+    /* For debugging (skip deps listed here) */
+    if (skipfp) {
+        int num;
+        while (!feof(skipfp)) {
+            fscanf(skipfp, "%d", &num);
+            skipdeps[num-1] = 1;
+            printf("\tskipping dep %d\n", num);
+        }
+    }
+
+    total_cst_rows = 0;
+
+    /* Compute the constraints and store them in dep->cst */
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
+        if (skipdeps[i]) continue;
+
         if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
-        }
-
-        FILE *fp = fopen("skipdeps.txt", "r");
-        if (fp) {
-            int num;
-            int found = 0;
-            fscanf(fp, "%d", &num);
-            while (!feof(fp)) {
-                if (i == num) {
-                    found = 1;
-                    break;
-                }
-                fscanf(fp, "%d", &num);
-            }
-            fclose(fp);
-            if (found) {
-                bug("Skipping dep %d\n", num);
-                continue;
-            }
         }
 
         if (dep_is_satisfied(dep)) {
@@ -322,35 +319,15 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 
-    FILE *skipdeps = fopen("skipdeps.txt", "r");
-
     /* Add constraints to globcst */
     for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
+        if (skipdeps[i]) continue;
+
 		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
         if (options->rar == 0 && IS_RAR(dep->type)) continue;
-
-        /* For debugging (skip deps listed here) */
-        FILE *skipdeps = fopen("skipdeps.txt", "r");
-        if (skipdeps) {
-            int num;
-            int found = 0;
-            fscanf(skipdeps, "%d", &num);
-            while (!feof(skipdeps)) {
-                if (i == num) {
-                    found = 1;
-                    break;
-                }
-                fscanf(skipdeps, "%d", &num);
-            }
-            fclose(skipdeps);
-            if (found) {
-                bug("Skipping dep %d\n", num);
-                continue;
-            }
-        }
 
         /* Note that dependences would be marked satisfied (in
          * pluto_auto_transform) only after all possible independent solutions
@@ -385,7 +362,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     pluto_constraints_simplify(globcst);
 
-    if (skipdeps) fclose(skipdeps);
+    free(skipdeps);
+    if (skipfp) fclose(skipfp);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
