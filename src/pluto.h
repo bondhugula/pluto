@@ -415,7 +415,7 @@ int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2);
 bool pluto_domain_equality1(PlutoConstraints* mat1, PlutoConstraints* mat2);
-int which_loop(PlutoProg* prog,int i);
+int which_loop(const PlutoProg* prog, int i);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
         int max_sols, int band_depth);

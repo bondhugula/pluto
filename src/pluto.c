@@ -101,7 +101,7 @@ bool pluto_domain_equality1(PlutoConstraints* mat1, PlutoConstraints* mat2)
  * Returns the loop number to which Statement s belongs
  */
 
-int which_loop(PlutoProg* prog, int s)
+int which_loop(const PlutoProg* prog, int s)
 {
     int i;
     for(i=0;i<prog->nloops;i++) {
