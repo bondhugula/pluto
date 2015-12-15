@@ -1,0 +1,73 @@
+From 267179ea9c1860153a764e825c2addc7d70dfecc Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 1 Sep 2015 12:25:17 +0530
+Subject: [PATCH] pet stmt collect accesses
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ include/pet.h |  4 ++++
+ scop.c        | 12 ++++++++++--
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/include/pet.h b/include/pet.h
+index fcbb659..c46f40b 100644
+--- a/include/pet.h
++++ b/include/pet.h
+@@ -178,6 +178,7 @@ struct pet_stmt {
+ 	isl_set *domain;
+ 	isl_map *schedule;
+ 	struct pet_expr *body;
++        char * stmt_text;
+ 
+ 	unsigned n_arg;
+ 	struct pet_expr **args;
+@@ -354,6 +355,9 @@ __isl_give isl_union_map *pet_scop_collect_must_kills(struct pet_scop *scop);
+ __isl_give isl_union_map *pet_scop_collect_tagged_must_kills(
+ 	struct pet_scop *scop);
+ __isl_give isl_union_map *pet_scop_collect_schedule(struct pet_scop *scop);
++__isl_give isl_union_map *pet_stmt_collect_accesses(struct pet_stmt *stmt,
++	int read, int write, int kill, int must, int tag,
++	__isl_take isl_space *dim);
+ 
+ #if defined(__cplusplus)
+ }
+diff --git a/scop.c b/scop.c
+index 021bc77..ef83d61 100644
+--- a/scop.c
++++ b/scop.c
+@@ -3673,7 +3673,7 @@ static __isl_give isl_union_map *scop_collect_accesses(struct pet_scop *scop,
+ 		accesses = isl_union_map_union(accesses, accesses_i);
+ 	}
+ 
+-	arrays = isl_union_set_empty(isl_union_map_get_space(accesses));
++	/*arrays = isl_union_set_empty(isl_union_map_get_space(accesses));
+ 	for (i = 0; i < scop->n_array; ++i) {
+ 		isl_set *extent = isl_set_copy(scop->arrays[i]->extent);
+ 		arrays = isl_union_set_add_set(arrays, extent);
+@@ -3681,7 +3681,7 @@ static __isl_give isl_union_map *scop_collect_accesses(struct pet_scop *scop,
+ 	accesses = isl_union_map_intersect_range(accesses, arrays);
+ 
+ 	to_inner = compute_to_inner(scop);
+-	accesses = isl_union_map_apply_range(accesses, to_inner);
++	accesses = isl_union_map_apply_range(accesses, to_inner);*/
+ 
+ 	return accesses;
+ }
+@@ -3714,6 +3714,14 @@ __isl_give isl_union_map *pet_scop_collect_must_kills(struct pet_scop *scop)
+ 	return scop_collect_accesses(scop, 0, 0, 1, 1, 0);
+ }
+ 
++/* Function for statement accesses required in pluto's program.c*/
++__isl_give isl_union_map *pet_stmt_collect_accesses(struct pet_stmt *stmt,
++	int read, int write, int kill, int must, int tag,
++	__isl_take isl_space *dim)
++{
++        return stmt_collect_accesses(stmt, read, write, kill, must, tag, dim);
++}
++
+ /* Collect all tagged potential read access relations.
+  */
+ __isl_give isl_union_map *pet_scop_collect_tagged_may_reads(
+-- 
+2.4.3
+
