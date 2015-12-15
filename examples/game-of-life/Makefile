@@ -1,7 +1,8 @@
-SRC= corcol
+SRC=life
 
-PLCFLAGS = --codegen-context=100 #--unroll --ufactor=8
+PLCFLAGS = --pet --nolastwriter #--unroll
 TILEFLAGS = #--l2tile
+DISTOPT_FLAGS +=
 
 include ../common.mk
 

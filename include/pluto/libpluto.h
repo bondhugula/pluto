@@ -76,7 +76,7 @@ struct plutoOptions{
     int forceparallel;
 
     /* multiple (currently two) degrees of pipelined parallelism */
-    int multipipe;
+    int multipar;
 
     /* Tile for L2 too */
     /* By default, only L1 tiling is done; under parallel execution, every
@@ -223,6 +223,9 @@ struct plutoOptions{
 
     /* Polyhedral compile time stats */
     int time;
+
+    /* fast linear independence check */
+    int flic;
 };
 typedef struct plutoOptions PlutoOptions;
 

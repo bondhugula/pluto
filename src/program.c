@@ -2141,7 +2141,7 @@ struct pluto_access_meta_info {
     int npar;
 };
 
-/* Extract Pluto access functions from isl_map */
+/* Extract a Pluto access function from isl_basic_map */
 static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
 {
     int i;
@@ -3101,6 +3101,7 @@ PlutoOptions *pluto_options_alloc()
     options  = (PlutoOptions *) malloc(sizeof(PlutoOptions));
 
     /* Initialize to default */
+    options->flic = 0;
     options->tile = 0;
     options->intratileopt = 1;
     options->dynschedule = 0;
@@ -3164,7 +3165,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->cloogbacktrack = 1;
 
-    options->multipipe = 0;
+    options->multipar = 0;
     options->l2tile = 0;
     options->prevector = 1;
     options->fuse = SMART_FUSE;

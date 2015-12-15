@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
- * Copyright (C) 2007-2012 Uday Bondhugula
+ * Copyright (C) 2007-2015 Uday Bondhugula
  *
  * This file is part of Pluto.
  *
@@ -58,19 +58,25 @@ void usage_message(void)
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
     fprintf(stdout, "\nOptions:\n");
     fprintf(stdout, "       --pet                     Use libpet for polyhedral extraction instead of clan [default - clan]\n");
+    fprintf(stdout, "       --isldep                  Use ISL-based dependence tester (enabled by default)\n");
+    fprintf(stdout, "       --candldep                Use Candl as the dependence tester\n");
+    fprintf(stdout, "       --[no]lastwriter          Remove transitive dependences (last conflicting access is computed for RAW/WAW)\n");
+    fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
+    fprintf(stdout, "                                 (disabled by default)\n");
+    fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
+    fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
     fprintf(stdout, "\n");
-    fprintf(stdout, "       --tile                    Tile for locality\n");
-    fprintf(stdout, "       --intratileopt            Optimize intra-tile execution order for locality\n");
-    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) - disabled by default \n");
-    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas)\n");
+    fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
+    fprintf(stdout, "       --tile                    Tile for locality [disabled by default]\n");
+    fprintf(stdout, "       --[no]intratileopt        Optimize intra-tile execution order for locality [enabled by default]\n");
+    fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) [disabled by default] \n");
+    fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas) [disabled by default]\n");
     fprintf(stdout, "    or --parallelize\n");
+    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start (recommended)\n");
+    fprintf(stdout, "    or --part-diamond-tile\n");
     fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
     fprintf(stdout, "    or --diamond-tile\n");
-    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start\n");
-    fprintf(stdout, "       --[no]prevector           Transform for and mark loops for (icc) vectorization (enabled by default)\n");
-    fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism\n");
-    fprintf(stdout, "       --multipipe               Extract two or more degrees of pipelined parallelism if possible;\n");
-    fprintf(stdout, "                                     by default one degree is extracted (if it exists)\n");
     fprintf(stdout, "       --variables_not_global    Variables not declared globally (if so, macros provide variable declarations)\n");
     fprintf(stdout, "\n   Runtime               Options related to compilation for a runtime\n");
     fprintf(stdout, "       --dynschedule             Dynamically schedule tasks on processors using Synthesized Runtime Interface\n");
@@ -99,18 +105,10 @@ void usage_message(void)
     fprintf(stdout, "       --ufactor=<factor>     Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --[no]prevector        Make code amenable to compiler auto-vectorization (with ICC) - enabled by default\n");
     fprintf(stdout, "       --context=<context>    Parameters are at least as much as <context>\n");
-    fprintf(stdout, "       --forceparallel=<depth>  Depth (1-indexed) to force parallel\n");
-    fprintf(stdout, "       --[no]isldep              Use ISL-based dependence tester (enabled by default)\n");
-    fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
-    fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
-    fprintf(stdout, "       --readscop             Read input from a .scop file\n");
-    fprintf(stdout, "       --[no]lastwriter          Work with refined dependences (last conflicting access is computed for RAW/WAW)\n");
-    fprintf(stdout, "                                 (enabled by default with --distmem; disabled otherwise)\n");
-    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
-    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
-    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
-    fprintf(stdout, "       --help    | -h            Print this help menu\n");
-    fprintf(stdout, "       --version | -v            Display version number\n");
+    fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) vectorization (enabled by default)\n");
+    fprintf(stdout, "       --multipar                Extract all degrees of parallelism [disabled by default];\n");
+    fprintf(stdout, "                                    by default one degree is extracted within any schedule sub-tree (if it exists)\n");
+    fprintf(stdout, "       --innerpar                Choose pure inner parallelism over pipelined/wavefront parallelism [disabled by default]\n");
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
@@ -121,6 +119,17 @@ void usage_message(void)
     fprintf(stdout, "       --nocloogbacktrack        Do not call Cloog with backtrack (default - backtrack)\n");
     fprintf(stdout, "       --cloogsh                 Ask Cloog to use simple convex hull (default - off)\n");
     fprintf(stdout, "       --codegen-context=<value> Parameters are at least as much as <value>\n");
+    fprintf(stdout, "\n   Miscellaneous\n");
+    fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
+    fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
+    fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
+    fprintf(stdout, "       --readscop                Read input from a scoplib file\n");
+    fprintf(stdout, "       --bee                     Generate pragmas for Bee+Cl@k\n\n");
+    fprintf(stdout, "       --indent  | -i            Indent generated code (disabled by default)\n");
+    fprintf(stdout, "       --silent  | -q            Silent mode; no output as long as everything goes fine (disabled by default)\n");
+    fprintf(stdout, "       --help    | -h            Print this help menu\n");
+    fprintf(stdout, "       --version | -v            Display version number\n");
     fprintf(stdout, "\n   Debugging\n");
     fprintf(stdout, "       --debug                   Verbose/debug output\n");
     fprintf(stdout, "       --moredebug               More verbose/debug output\n");
@@ -173,6 +182,7 @@ int main(int argc, char *argv[])
 
     const struct option pluto_options[] =
     {
+        {"fast-lin-ind-check", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
@@ -227,7 +237,7 @@ int main(int argc, char *argv[])
         {"forceparallel", required_argument, 0, 'p'},
         {"ft", required_argument, 0, 'f'},
         {"lt", required_argument, 0, 'l'},
-        {"multipipe", no_argument, &options->multipipe, 1},
+        {"multipar", no_argument, &options->multipar, 1},
         {"l2tile", no_argument, &options->l2tile, 1},
         {"version", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
@@ -433,27 +443,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->tile = 1;
     }
 
-    if (options->multipipe == 1 && options->parallel == 0)    {
-        fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
-        options->parallel = 1;
-    }
-
     if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && !options->tile)  {
         fprintf(stderr, "[Pluto] WARNING: dynschedule needs tile to be on; turning on tile\n");
         options->tile = 1;
     }
 
     if (options->distmem == 1 && options->multi_level_distribution == 1) {
-        options->multipipe = 1; // even for dynschedule
+        options->multipar = 1; // even for dynschedule
     }else{
-        if (options->multipipe == 1 && options->parallel == 0)    {
-            fprintf(stdout, "Warning: multipipe needs parallel to be on; turning on parallel\n");
-            options->parallel = 1;
-        }
-
-        if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && (options->multipipe))  {
-            fprintf(stderr, "[Pluto] WARNING: --multipipe option not needed with --dynschedule; turning off multipipe\n");
-            options->multipipe = 0;
+        if ((options->dynschedule || options->dynschedule_graph || options->dynschedule_graph_old) && (options->multipar))  {
+            fprintf(stderr, "[Pluto] WARNING: --multipar option not needed with --dynschedule; turning off multipar\n");
+            options->multipar = 0;
         }
     }
 
@@ -477,6 +477,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     if(options->data_dist){
     	options->verify_output = 1;
+    }
+
+    if (options->multipar == 1 && options->parallel == 0)    {
+        fprintf(stdout, "Warning: multipar needs parallel to be on; turning on parallel\n");
+        options->parallel = 1;
     }
 
 

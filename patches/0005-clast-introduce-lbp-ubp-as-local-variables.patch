@@ -1,0 +1,33 @@
+From 3e7b6545c93fb4735f632f6cd75f0b32af450b96 Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 1 Sep 2015 15:01:21 +0530
+Subject: [PATCH 5/5] clast introduce lbp ubp as local variables
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ source/pprint.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/source/pprint.c b/source/pprint.c
+index 48c3c70..b9913af 100644
+--- a/source/pprint.c
++++ b/source/pprint.c
+@@ -475,13 +475,13 @@ void pprint_for(struct cloogoptions *options, FILE *dst, int indent,
+         }
+         if ((f->parallel & CLAST_PARALLEL_OMP) && !(f->parallel & CLAST_PARALLEL_MPI)) {
+             if (f->LB) {
+-                fprintf(dst, "lbp%s=", f->suffix);
++                fprintf(dst, "int lbp%s=", f->suffix);
+                 pprint_expr(options, dst, f->LB);
+                 fprintf(dst, ";\n");
+             }
+             if (f->UB) {
+                 fprintf(dst, "%*s", indent, "");
+-                fprintf(dst, "ubp%s=", f->suffix);
++                fprintf(dst, "int ubp%s=", f->suffix);
+                 pprint_expr(options, dst, f->UB);
+                 fprintf(dst, ";\n");
+             }
+-- 
+2.4.3
+

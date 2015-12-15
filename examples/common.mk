@@ -210,6 +210,10 @@ $(SRC).dist_dynsched_idt.c: $(SRC).c
 $(SRC).dist_dynsched_foifi_idt.c: $(SRC).c
 	$(PLC) $(SRC).c --distmem --mpiomp --tile --commopt_foifi --dynschedule --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
 
+$(SRC).mlbpar.c:  $(SRC).c
+	$(PLC) $(SRC).c --tile --parallel --lbtile --multipar $(TILEFLAGS) $(PLCFLAGS) -o $@
+
+
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
@@ -222,9 +226,6 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
-lbpar: $(SRC).lbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
-
 idt: $(SRC).idt.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).idt.c -o $@  $(LDFLAGS)
 
@@ -233,6 +234,9 @@ idtcxx: $(SRC).idt.c
 
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
+
+lbpar: $(SRC).lbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 parcxx: $(SRC).par.c
 	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS) -ltbb
@@ -380,6 +384,10 @@ scalapack_run: scalapack
 	touch .test
 	rm -f .test
 
+mlbpar: $(SRC).mlbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
+
+
 perf: orig tiled par orig_par
 	rm -f .test
 	./orig
@@ -410,12 +418,14 @@ test: orig tiled par
 	diff -q out_orig out_par4
 	@echo Success!
 
-lbtest: par lbpar
+lbtest: par lbpar mlbpar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
 	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
+	OMP_NUM_THREADS=$(NTHREADS) ./mlbpar 2> out_mlbpar4
 	rm -f .test
 	diff -q out_par4 out_lbpar4
+	diff -q out_par4 out_mlbpar4
 	@echo Success!
 
 data_dist_test: par data_dist
@@ -977,7 +987,7 @@ dist_data_run: distopt_data_dist
 
 
 clean:
-	rm -f out_* *.lbpar.* *.tiled.* *.opt.* *.idt.* *.par.* *.dyn_graph_idt.* *.dyn_graph.* *.dyn_idt.* *.dyn.* *.*data_dist.* \
+	rm -f out_* *.lbpar.* *.tiled.* *.opt.* *.idt.* *.par.* *.mlbpar.c *.dyn_graph_idt.* *.dyn_graph.* *.dyn_idt.* *.dyn.* *.*data_dist.* \
 		*.dist.c *.distomp.c *.distopt.c *.distrecv.c *.distopt_foifi.c *.distopt_fop.c *.dhpf.c *_idt.c *_idnt.c \
 		*.dist_dynsched*.c \
 	   	orig opt tiled idt idtcxx par parcxx dyn_graph_idt dyn_graph dyn_graph_lib dyn_nopr_idt dyn_idt dyn_nopr dyn dist sched orig_par distomp dhpf lbpar \

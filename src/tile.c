@@ -1333,7 +1333,7 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band)
 
     /* loop_depths[0...nloops-1] are the depths for which a tile schedule
      * can be created */
-    if (prog->options->multipipe) {
+    if (prog->options->multipar) {
         /* Full multi-dimensional wavefront */
         nip_dims = nloops-1;
     }else{

@@ -12,18 +12,27 @@ check_and_apply_patch() {
   local path="$1"
   local patch="$2"
 
-  if [ \( -d $path \) -a \( ! -f $path/.`basename $patch` \)  ] ; then
+  if [ \( -d ${BASE}/$path \) -a \( ! -f ${BASE}/$path/.`basename $patch` \)  ] ; then
     echo -e "\nTrying to apply patch from directory: `pwd`"
     `git apply --check --directory=$path $patch`
     exit_status=$?
 
     if [ $exit_status -ne 0 ]; then
-      echo -e "Failed to apply patch $patch in directory $path"
+      echo -e "Failed to apply patch $patch in directory ${BASE}/$path"
       exit 1
     else
-      `git apply --directory=$path $patch`
-      touch $path/.`basename $patch`
-      echo -e "Successfully applied patch $patch in directory $path"
+      cd ${BASE}/$path; git am $patch
+      # it could have still failed (note that this is git-am, not git apply)
+      exit_status=$?
+      cd -
+
+      if [ $exit_status -ne 0 ]; then
+          echo -e "git-am failed on patch $patch in directory ${BASE}/$path"
+          exit 1
+      else
+          touch ${BASE}/$path/.`basename $patch`
+          echo -e "Successfully applied patch $patch in directory ${BASE}/$path"
+      fi
     fi
   fi
 }
@@ -31,10 +40,10 @@ check_and_apply_patch() {
 # ------------------------------------------------
 # Apply patches if any
 # ------------------------------------------------
-
-check_and_apply_patch "${BASE}/isl" "${BASE}/patches/0001-isl-dim-wise-single_valued-and-isl_pw_aff_map-functi.patch"
-check_and_apply_patch "${BASE}/isl" "${BASE}/patches/isl_ast_build_overwrite.patch"
-check_and_apply_patch "${BASE}/pet" "${BASE}/patches/pet_stmt_text.patch"
-check_and_apply_patch "${BASE}/cloog-isl" "${BASE}/patches/0001-cloog-clast-multi-level-mpi-parallel-patch.patch"
-check_and_apply_patch "${BASE}/cloog-isl" "${BASE}/patches/0002-clast-data-dist-decls-printing-support.patch"
-check_and_apply_patch "${BASE}/cloog-isl" "${BASE}/patches/0003-cloog-invariant-decls-printing-option.patch"
+# check_and_apply_patch "pet" "${BASE}/patches/pet_configure_ac.patch"
+check_and_apply_patch "pet" "${BASE}/patches/0001-pet-stmt-collect-accesses.patch"
+check_and_apply_patch "isl" "${BASE}/patches/0001-isl-ast-build-overwrite.patch"
+check_and_apply_patch "isl" "${BASE}/patches/0002-isl-dim-wise-single-valued-and-isl_pw_aff_map-functi.patch"
+check_and_apply_patch "cloog-isl" "${BASE}/patches/0001-cloog-clast-multi-level-mpi-parallel-patch.patch"
+check_and_apply_patch "cloog-isl" "${BASE}/patches/0002-clast-data-dist-decls-printing-support.patch"
+check_and_apply_patch "cloog-isl" "${BASE}/patches/0003-cloog-invariant-decls-printing-option.patch"
