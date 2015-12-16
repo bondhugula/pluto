@@ -106,7 +106,7 @@ int main()
 #endif
 
     if (fopen(".test", "r")) {
-#ifdef MPI
+#ifdef __MPI
         if (my_rank == 0) {
             print_array();
         }

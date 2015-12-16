@@ -58,7 +58,7 @@ int main()
   IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
   if (fopen(".test", "r"))  {
-#ifdef MPI
+#ifdef __MPI
       if (my_rank == 0) {
 #endif
           for (i = 0; i < NMAX; i++) {
@@ -67,7 +67,7 @@ int main()
               }
               fprintf(stderr, "\n");
           }
-#ifdef MPI
+#ifdef __MPI
       }
 #endif
   }

@@ -1,7 +1,7 @@
 SRC=matmul
 
 PLCFLAGS = 
-TILEFLAGS = --l2tile
+TILEFLAGS = #--l2tile
 EXTRA_CLEAN = atlas mkl netlib atlaspt goto
 
 include ../common.mk

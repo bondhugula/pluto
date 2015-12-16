@@ -89,7 +89,7 @@ int main()
 	IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
-#ifdef MPI
+#ifdef __MPI
         if (my_rank == 0) {
             print_array();
         }
