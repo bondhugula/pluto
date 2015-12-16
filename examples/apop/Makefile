@@ -1,7 +1,8 @@
-SRC= corcol
+SRC=apop
 
-PLCFLAGS = --codegen-context=100 #--unroll --ufactor=8
+PLCFLAGS = --pet #--unroll
 TILEFLAGS = #--l2tile
+DISTOPT_FLAGS +=
 
 include ../common.mk
 

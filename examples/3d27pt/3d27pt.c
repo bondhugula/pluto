@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-#define NUM_FP_OPS 8
-
 #define MAX(a,b) ((a) > (b) ? a : b)
 #define MIN(a,b) ((a) < (b) ? a : b)
 
@@ -66,6 +64,8 @@ int main(int argc, char *argv[])
   const int BASE = 1024;
   const double alpha = 0.0876;
   const double beta = 0.0765;
+  const double gamma = 0.0654;
+  const double delta = 0.0543;
   double total;
 
     printf("Number of points = %ld\t|Number of timesteps = %ld\t", N, T);
@@ -73,29 +73,45 @@ int main(int argc, char *argv[])
   // initialize variables
   //
   srand(42);
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            for (k = 1; k < N+1; k++) {
-                A[0][i][j][k] = 1.0 * (rand() % BASE);
-            }
-        }
-    }
+  for (i = 0; i <= N+1; i++) {
+      for (j = 0; j <= N+1; j++) {
+          for (k = 0; k <= N+1; k++) {
+              if (i == 0 || i == N+1
+                      || j== 0 || j == N+1
+                      || k == 0 || k == N+1) {
+                  A[0][i][j][k] = 0;
+                  A[1][i][j][k] = 0;
+              }else{
+                  A[0][i][j][k] = 1.0 * (rand() % BASE);
+              }
+          }
+      }
+  }
 
 
 #ifdef TIME
   gettimeofday(&start, 0);
 #endif
 
-  // serial execution - Addition: 6 && Multiplication: 2
 #pragma scop
-  for (t = 0; t < T-1; t++) {
+  for (t = 1; t < T+1; t++) {
       for (i = 1; i < N+1; i++) {
           for (j = 1; j < N+1; j++) {
               for (k = 1; k < N+1; k++) {
-
-                  A[(t+1)%2][i][j][k] = alpha * (A[t%2][i][j][k])
-                      + beta * (A[t%2][i - 1][j][k] + A[t%2][i][j - 1][k] + A[t%2][i][j][k - 1] +
-                              A[t%2][i + 1][j][k] + A[t%2][i][j + 1][k] + A[t%2][i][j][k + 1]);
+                  A[t%2][i][j][k] = alpha * (A[(t-1)%2][i][j][k])
+                      + beta * (A[(t-1)%2][i][j][k-1] + A[(t-1)%2][i][j-1][k] +
+                              A[(t-1)%2][i][j+1][k] + A[(t-1)%2][i][j][k+1] +
+                              A[(t-1)%2][i-1][j][k] + A[(t-1)%2][i+1][j][k])
+                      + gamma * (A[(t-1)%2][i-1][j][k-1] + A[(t-1)%2][i-1][j-1][k] +
+                              A[(t-1)%2][i-1][j+1][k] + A[(t-1)%2][i-1][j][k+1] +
+                              A[(t-1)%2][i][j-1][k-1] + A[(t-1)%2][i][j+1][k-1] +
+                              A[(t-1)%2][i][j-1][k+1] + A[(t-1)%2][i][j+1][k+1] +
+                              A[(t-1)%2][i+1][j][k-1] + A[(t-1)%2][i+1][j-1][k] +
+                              A[(t-1)%2][i+1][j+1][k] + A[(t-1)%2][i+1][j][k+1])
+                      + delta * (A[(t-1)%2][i-1][j-1][k-1] + A[(t-1)%2][i-1][j+1][k-1] +
+                              A[(t-1)%2][i-1][j-1][k+1] + A[(t-1)%2][i-1][j+1][k+1] +
+                              A[(t-1)%2][i+1][j-1][k-1] + A[(t-1)%2][i+1][j+1][k-1] +
+                              A[(t-1)%2][i+1][j-1][k+1] + A[(t-1)%2][i+1][j+1][k+1]);
 
               }
           }
@@ -109,19 +125,19 @@ int main(int argc, char *argv[])
   ts_return = timeval_subtract(&result, &end, &start);
   tdiff = (double) (result.tv_sec + result.tv_usec * 1.0e-6);
 
-  printf("Time taken: %7.5lfms\n", tdiff * 1.0e3);
-  printf("|MFLOPS: %f\t", ((((double)NUM_FP_OPS * N *N * N * (T-1)) / tdiff) / 1000000L));
+  printf("Time taken: %7.5lfms;\t ", tdiff * 1.0e3);
+  printf("GStencil/s: %f\t", ((((double)N *N * N * (T-1)) / tdiff) * 1.0e-9));
 #endif
 
 #ifdef VERIFY
   // display the initial setting
   total = 0.0;
   for (i = 0; i < N; ++i) {
-    for (j = 0; j < N; ++j) {
-      for (k = 0; k < N; ++k) {
-        total += A[T%2][i][j][k];
+      for (j = 0; j < N; ++j) {
+          for (k = 0; k < N; ++k) {
+              total += A[T%2][i][j][k];
+          }
       }
-    }
   }
   printf("Sum(final): %e\n", total);
 #endif
@@ -130,7 +146,4 @@ int main(int argc, char *argv[])
 }
 
 // icc -O3 -DTIME -DDEBUG 3d7pt.c -o op-3d7pt
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/master

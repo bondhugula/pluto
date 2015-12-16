@@ -36,7 +36,7 @@
 #include <isl/deprecated/int.h>
 #include "candl/candl.h"
 
-#define CONSTRAINTS_SIMPLIFY_THRESHOLD 5000
+#define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
 #define MAX_FARKAS_CST  2000
 
 /* Builds validity and bounding function constraints for a dependence */
@@ -259,7 +259,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 {
-    int i, inc, nstmts, nvar, npar, ndeps;
+    int i, inc, nstmts, nvar, npar, ndeps, total_cst_rows;
     PlutoConstraints *globcst;
     Dep **deps;
 
@@ -269,11 +269,27 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     nvar = prog->nvar;
     npar = prog->npar;
 
-    int total_cst_rows = 0;
+    FILE *skipfp = fopen("skipdeps.txt", "r");
+    int *skipdeps = malloc(ndeps*sizeof(int));
+    bzero(skipdeps, ndeps*sizeof(int));
 
-    /* Compute the constraints and store them */
+    /* For debugging (skip deps listed here) */
+    if (skipfp) {
+        int num;
+        while (!feof(skipfp)) {
+            fscanf(skipfp, "%d", &num);
+            skipdeps[num-1] = 1;
+            printf("\tskipping dep %d\n", num);
+        }
+    }
+
+    total_cst_rows = 0;
+
+    /* Compute the constraints and store them in dep->cst */
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
+
+        if (skipdeps[i]) continue;
 
         if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
@@ -304,28 +320,11 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
+        if (skipdeps[i]) continue;
+
 		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
         if (options->rar == 0 && IS_RAR(dep->type)) continue;
-
-        /* For debugging (skip deps listed here) */
-        FILE *fp = fopen("skipdeps.txt", "r");
-        if (fp) {
-            int num;
-            int found = 0;
-            while (!feof(fp)) {
-                fscanf(fp, "%d", &num);
-                if (i == num-1) {
-                    found = 1;
-                    break;
-                }
-            }
-            fclose(fp);
-            if (found) {
-                printf("Skipping dep %d\n", num);
-                continue;
-            }
-        }
 
         /* Note that dependences would be marked satisfied (in
          * pluto_auto_transform) only after all possible independent solutions
@@ -348,20 +347,21 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
          * dependences. Not simplifying at all also leads to a slow down
          * because it leads to a large globcst and a number of constraits in
          * it are redundant */
-        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
+        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc) &&
                 globcst->nrows - dep->cst->nrows < 
-                CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc)) {
             pluto_constraints_simplify(globcst);
+            inc++;
             IF_DEBUG(fprintf(stdout,
                         "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
                         globcst->nrows));
-            if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
-                inc++;
-            }
         }
     }
 
     pluto_constraints_simplify(globcst);
+
+    free(skipdeps);
+    if (skipfp) fclose(skipfp);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
                 globcst->nrows, globcst->ncols - 1));
@@ -585,19 +585,19 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
         const PlutoProg *prog,
         int *orthonum) 
 {
-    int i, j, k, p, q, stmt_col_offset;
+    int i, j, k, p, q, nvar, npar, nstmts, stmt_col_offset;
     PlutoConstraints **orthcst;
+    HyperplaneProperties *hProps;
     isl_ctx *ctx;
     isl_mat *h;
-    // isl_basic_set *isl_currcst;
-
-    IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
 
     int coeff_bound = prog->options->coeff_bound;
-    int nvar = prog->nvar;
-    int npar = prog->npar;
-    int nstmts = prog->nstmts;
-    HyperplaneProperties *hProps = prog->hProps;
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    hProps = prog->hProps;
+
+    IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
 
     /* Transformation has full column rank already */
     if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
@@ -762,7 +762,8 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
     *orthonum = p;
 
-    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n", stmt->id+1, *orthonum-1));
+    IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n",
+                stmt->id+1, *orthonum-1));
     for (i=0; i<*orthonum; i++) {
         // print_polylib_visual_sets("li", orthcst[i]);
         IF_DEBUG2(pluto_constraints_compact_print(stdout, orthcst[i]));
@@ -838,6 +839,125 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     pluto_constraints_free(cst);
 
     return is_empty;
+}
+
+
+/* Retval: true if some iterations are satisfied */
+static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int level)
+{
+    PlutoConstraints *cst;
+    int j, src, dest, src_dim, dest_dim, retval;
+
+    int npar = prog->npar;
+
+    Stmt **stmts = prog->stmts;
+
+    src = dep->src;
+    dest = dep->dest;
+
+    src_dim = prog->stmts[src]->dim;
+    dest_dim = prog->stmts[dest]->dim;
+
+    assert(level < stmts[src]->trans->nrows);
+    assert(level < stmts[dest]->trans->nrows);
+
+    cst = pluto_constraints_alloc(1+dep->dpolytope->nrows, src_dim+dest_dim+npar+1);
+
+    /*
+     * constraint format 
+     * \phi(dest) - \phi (src) >= 1
+     */
+
+    cst->is_eq[0] = 0;
+    for (j=0; j<src_dim; j++)    {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j];
+    }
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    }
+    for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar; j++)    {
+        cst->val[0][j] = 
+            -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim];
+    }
+    j=src_dim+dest_dim+npar;
+    cst->val[0][j] = 
+        -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim]-1;
+
+    cst->nrows = 1;
+
+    pluto_constraints_intersect(cst, dep->depsat_poly);
+    // pluto_constraints_print(stdout, cst);
+
+    retval = !pluto_constraints_is_empty(cst);
+    //printf("Constraints are empty: %d\n", !retval);
+
+    /* All solutions are those that are satisfied */
+    pluto_constraints_subtract(dep->depsat_poly,cst);
+    pluto_constraints_free(cst);
+
+    return retval;
+}
+
+
+
+/* 
+ * A more complex dep satisfaction test 
+ *
+ * Returns: number of dependences satisfied
+ */
+int pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
+{
+    int i, num_satisfied;
+
+    IF_DEBUG(printf("[pluto] computing_dep_satisfaction_complex\n"););
+
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i]->satisfied = false;
+        prog->deps[i]->satisfaction_level = -1;
+    }
+
+    num_satisfied = 0;
+
+    /* Piplib is not thread-safe (use multiple threads only with --islsolve) */
+    /* #pragma omp parallel for if (options->islsolve) */
+    for (i=0; i<prog->ndeps; i++) {
+        int level;
+        Dep *dep = prog->deps[i];
+
+        if (dep->depsat_poly != NULL)   {
+            pluto_constraints_free(dep->depsat_poly);
+        }
+        dep->depsat_poly = pluto_constraints_dup(dep->dpolytope);
+
+        if (dep->satvec != NULL) free(dep->satvec);
+        dep->satvec = (int *) malloc(prog->num_hyperplanes*sizeof(int));
+
+        dep->satisfaction_level = -1;
+
+        for (level=0; level<prog->num_hyperplanes; level++) {
+            dep->satvec[level] = pluto_remove_satisfied_iterations(dep, prog, level);
+            if (dep->satvec[level]) {
+                dep->satisfaction_level = PLMAX(dep->satisfaction_level, level);
+            }
+            if (pluto_constraints_is_empty(dep->depsat_poly)) {
+                dep->satisfied = true;
+                IF_MORE_DEBUG(printf("\tdep %d satisfied\n", dep->id+1););
+                if (!IS_RAR(dep->type)) num_satisfied++;
+                break;
+            }
+        }
+        if (level == prog->num_hyperplanes && !IS_RAR(dep->type)) {
+            /* Dep has not been satisfied fully */
+        }
+        level++;
+        for (;level<prog->num_hyperplanes; level++) {
+            dep->satvec[level] = 0;
+        }
+    }
+    // pluto_print_dep_directions(prog);
+    IF_DEBUG(printf("\t %d (out of %d) dep(s) satisfied\n", 
+                num_satisfied, prog->ndeps););
+    return num_satisfied;
 }
 
 /* Direction vector component at level 'level'

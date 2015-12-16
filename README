@@ -51,7 +51,13 @@ git submodule update --init
 $ ./configure [--enable-debug]
 make -j<num>
 
-* configure can be provided --with-isl-prefix=<isl install location> to 
+$ tar zxvf pluto-0.11.4.tar.gz
+$ cd pluto-0.11.4/
+$ ./configure
+$ make
+$ make test
+
+configure can be provided --with-isl-prefix=<isl install location> to 
 build with another isl, otherwise the bundled isl is used.
 
 Development version from Git

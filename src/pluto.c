@@ -546,7 +546,10 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
-    int nstmts, nvar, npar;
+    int i, j, k, q;
+    int nstmts, nvar, npar, del_count;
+    int64 *sol, *fsol;
+    PlutoConstraints *newcst;
 
     stmts = prog->stmts;
     nstmts = prog->nstmts;
@@ -555,12 +558,10 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     /* Remove redundant variables - that don't appear in your outer loops */
     int redun[npar + 1 + nstmts * (nvar + npar + 1 + 3) + 1];
-    int i, j, k, q;
-    int64 *sol, *fsol;
-    PlutoConstraints *newcst;
 
     assert(cst->ncols - 1 == CST_WIDTH - 1);
 
+    /* Remove redundant variables - that don't appear in your outer loops */
     for (i=0; i<npar+1; i++)    {
         redun[i] = 0;
     }
@@ -586,7 +587,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     }
     redun[npar + 1 + nstmts * (nvar + npar + 1 + 3)] = 0;
 
-    int del_count = 0;
+    del_count = 0;
     newcst = pluto_constraints_dup(cst);
     for (j = 0; j < cst->ncols-1; j++) {
         if (redun[j]) {
@@ -640,8 +641,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     /* Constraints obtained from selectively negating coefficients 
      * corresponding to stmt dimensions */
-    IF_DEBUG2(printf("Transformed constraints\n"));
-    IF_DEBUG2(pluto_constraints_compact_print(stdout,newcst_sel_negated));
+    // IF_DEBUG2(printf("Transformed constraints\n"));
+    // IF_DEBUG2(pluto_constraints_compact_print(stdout, newcst_sel_negated));
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
@@ -659,8 +660,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     pluto_constraints_free(newcst_sel_negated);
 
     fsol = NULL;
-    if (sol != NULL) {
 
+    if (sol != NULL) {
         PlutoMatrix *actual_sol = pluto_matrix_alloc(1, newcst->ncols - 1);
         for (j = 0; j < newcst->ncols - 1; j++) {
             actual_sol->val[0][j] = 0;
@@ -670,7 +671,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         }
         free(sol);
 
-        fsol = (int64 *)malloc(cst->ncols * sizeof(int64));
+        fsol = (int64 *)malloc((cst->ncols-1)*sizeof(int64));
         /* Fill the soln with zeros for the redundant variables */
         q = 0;
         for (j = 0; j < cst->ncols - 1; j++) {
@@ -2447,6 +2448,9 @@ int pluto_auto_transform(PlutoProg *prog)
                 }
             }
         }
+        /* Under LAZY mode, do a complex dep satisfaction check to take 
+         * care of partial satisfaction (rarely needed) */
+        if (hyp_search_mode == LAZY) pluto_compute_dep_satisfaction_complex(prog);
         depth++;
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog));

@@ -1,0 +1,148 @@
+From f220f2b94076abf6f0f7332d6058460e7339701b Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 1 Sep 2015 11:28:15 +0530
+Subject: [PATCH 2/2] isl dim-wise single valued and isl_pw_aff_map functions
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ doc/user.pod      |  6 +++++-
+ include/isl/aff.h |  1 +
+ include/isl/map.h |  1 +
+ isl_aff.c         | 30 ++++++++++++++++++++++++++++++
+ isl_map.c         | 24 ++++++++++++++++++++++++
+ 5 files changed, 61 insertions(+), 1 deletion(-)
+
+diff --git a/doc/user.pod b/doc/user.pod
+index 0438f7d..5eab654 100644
+--- a/doc/user.pod
++++ b/doc/user.pod
+@@ -1981,6 +1981,7 @@ is already known to be empty.
+ 	int isl_map_plain_is_single_valued(
+ 		__isl_keep isl_map *map);
+ 	int isl_map_is_single_valued(__isl_keep isl_map *map);
++	int isl_map_dim_is_single_valued(__isl_keep isl_map *map, int pos);
+ 	int isl_union_map_is_single_valued(__isl_keep isl_union_map *umap);
+ 
+ =item * Injectivity
+@@ -4218,7 +4219,8 @@ can be created using the following functions.
+ 
+ A piecewise multiple quasi affine expression can also be initialized
+ from an C<isl_set> or C<isl_map>, provided the C<isl_set> is a singleton
+-and the C<isl_map> is single-valued.
++and the C<isl_map> is single-valued. Similarly, a piecewise quasi affine
++expression can be extracted from a single-valued C<isl_map> dimension.
+ In case of a conversion from an C<isl_union_set> or an C<isl_union_map>
+ to an C<isl_union_pw_multi_aff>, these properties need to hold in each space.
+ 
+@@ -4226,6 +4228,8 @@ to an C<isl_union_pw_multi_aff>, these properties need to hold in each space.
+ 		__isl_take isl_set *set);
+ 	__isl_give isl_pw_multi_aff *isl_pw_multi_aff_from_map(
+ 		__isl_take isl_map *map);
++    __isl_give isl_pw_aff *isl_pw_aff_from_map_dim(
++        __isl_keep isl_map *map, int pos);
+ 
+ 	__isl_give isl_union_pw_multi_aff *
+ 	isl_union_pw_multi_aff_from_union_set(
+diff --git a/include/isl/aff.h b/include/isl/aff.h
+index f4ee1fe..7b050d6 100644
+--- a/include/isl/aff.h
++++ b/include/isl/aff.h
+@@ -461,6 +461,7 @@ __isl_give isl_printer *isl_printer_print_pw_multi_aff(__isl_take isl_printer *p
+ 
+ __isl_give isl_pw_multi_aff *isl_pw_multi_aff_from_set(__isl_take isl_set *set);
+ __isl_give isl_pw_multi_aff *isl_pw_multi_aff_from_map(__isl_take isl_map *map);
++__isl_give isl_pw_aff *isl_pw_aff_from_map_dim(__isl_keep isl_map *map, int pos);
+ 
+ __isl_give isl_pw_multi_aff *isl_pw_multi_aff_read_from_str(isl_ctx *ctx,
+ 	const char *str);
+diff --git a/include/isl/map.h b/include/isl/map.h
+index 709dce1..694d497 100644
+--- a/include/isl/map.h
++++ b/include/isl/map.h
+@@ -545,6 +545,7 @@ int isl_basic_map_is_single_valued(__isl_keep isl_basic_map *bmap);
+ int isl_map_plain_is_single_valued(__isl_keep isl_map *map);
+ __isl_export
+ int isl_map_is_single_valued(__isl_keep isl_map *map);
++int isl_map_dim_is_single_valued(__isl_keep isl_map *map, int pos);
+ int isl_map_plain_is_injective(__isl_keep isl_map *map);
+ __isl_export
+ int isl_map_is_injective(__isl_keep isl_map *map);
+diff --git a/isl_aff.c b/isl_aff.c
+index 97008b0..2fed6ab 100644
+--- a/isl_aff.c
++++ b/isl_aff.c
+@@ -4490,6 +4490,36 @@ error:
+ 	return NULL;
+ }
+ 
++
++/* Create a piecewise quasi affine expression equivalent to a particular
++ * dimension of an isl_map. Return NULL if that is not possible.
++ */
++__isl_give isl_pw_aff *isl_pw_aff_from_map_dim(__isl_keep isl_map *map, int pos)
++{
++    isl_map *tmap;
++    int n_out;
++
++    if (!map) return NULL;
++
++    n_out = isl_map_dim(map, isl_dim_out);
++
++    if (pos < 0 || pos >= n_out) {
++        isl_die(isl_map_get_ctx(map), isl_error_invalid,
++                "dim position out of bounds", return NULL);
++    }
++
++    tmap = isl_map_copy(map);
++    tmap = isl_map_project_out(tmap, isl_dim_out, pos+1, n_out-pos-1);
++    tmap = isl_map_project_out(tmap, isl_dim_out, 0, pos);
++
++    isl_pw_multi_aff *pw_m_aff =  isl_pw_multi_aff_from_map(tmap);
++    isl_pw_aff  *pw_aff = isl_pw_multi_aff_get_pw_aff(pw_m_aff, 0);
++
++    isl_pw_multi_aff_free(pw_m_aff);
++
++    return pw_aff;
++}
++
+ __isl_give isl_pw_multi_aff *isl_pw_multi_aff_from_set(__isl_take isl_set *set)
+ {
+ 	return isl_pw_multi_aff_from_map(set);
+diff --git a/isl_map.c b/isl_map.c
+index d383553..8b8658c 100644
+--- a/isl_map.c
++++ b/isl_map.c
+@@ -10124,6 +10124,30 @@ int isl_map_is_single_valued(__isl_keep isl_map *map)
+ 	return sv;
+ }
+ 
++
++/* Check if 'map' is single-valued along a particular dimension */
++int isl_map_dim_is_single_valued(__isl_keep isl_map *map, int pos)
++{
++    int sv, n_out;
++    isl_map *tmap;
++
++    n_out = isl_map_dim(map, isl_dim_out);
++
++    if (pos < 0 || pos >= n_out) {
++        isl_die(isl_map_get_ctx(map), isl_error_invalid,
++			"dim position out of bounds", return 0);
++    }
++
++    tmap = isl_map_project_out(isl_map_copy(map), isl_dim_out,
++            pos+1, n_out-pos-1);
++    tmap = isl_map_project_out(tmap, isl_dim_out, 0, pos);
++
++    sv = isl_map_is_single_valued(tmap);
++    isl_map_free(tmap);
++
++    return sv;
++}
++
+ int isl_map_is_injective(__isl_keep isl_map *map)
+ {
+ 	int in;
+-- 
+2.4.3
+

@@ -1,0 +1,29 @@
+From 3f699f98e8b3c714fd6ff385d4e432694f6c8738 Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 1 Sep 2015 11:26:36 +0530
+Subject: [PATCH 1/2] isl ast build overwrite
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ isl_ast_build.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/isl_ast_build.c b/isl_ast_build.c
+index 7a136a1..49216d5 100644
+--- a/isl_ast_build.c
++++ b/isl_ast_build.c
+@@ -312,9 +312,9 @@ __isl_give isl_ast_build *isl_ast_build_set_iterators(
+ 	if (n_it < dim)
+ 		isl_die(isl_ast_build_get_ctx(build), isl_error_internal,
+ 			"isl_ast_build in inconsistent state", goto error);
+-	if (n_it > dim)
++	if (n_it >= dim)
+ 		build->iterators = isl_id_list_drop(build->iterators,
+-							dim, n_it - dim);
++							0, n_it);
+ 	build->iterators = isl_id_list_concat(build->iterators, iterators);
+ 	if (!build->iterators)
+ 		return isl_ast_build_free(build);
+-- 
+2.4.3
+
