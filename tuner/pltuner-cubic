@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# for cubic tile sizes (all three tile sizes equal)
+# Usage: ./pltuner-cubic <source file with SCoP>
+# output will be in <file basename>.cubic.tune.log
+
+NTHREADS=4
+
+# flags to run Pluto with
+PLFLAGS="--pet --parallel --partlbtile --silent"
+
+# flags to compile the generated code
+CC=icc
+CFLAGS="-O3 -xHost -ansi-alias -ipo -openmp -fp-model precise -DTIME -DVERIFY"
+LDFLAGS="-lm"
+
+input=$1
+input_base=`basename $input`
+tune_log=${input_base}.cubic.tune.log
+
+rm -f $tune_log
+
+for t1 in 16 20 32 40 64 80 92 100 120 128 130 140 144 160 176 192 256 320 512 ; do
+    echo -n "Tile size: "
+    echo -ne "$t1 x $t1 x ${t1}\n" | tee -a ${tune_log}
+    echo -ne "${t1}\n${t1}\n${t1}" > tile.sizes
+    echo "Optimizing"
+    echo ../polycc ${PLFLAGS} $input -o out.c
+    ../polycc ${PLFLAGS} $input -o out.c
+    echo "Compiling..."
+    echo ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+    ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+    echo "Running on $NTHREADS threads..."
+    OMP_NUM_THREADS=$NTHREADS ./exec | tee -a $tune_log
+done
+
+rm -f out.c exec tile.sizes
