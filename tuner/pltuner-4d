@@ -1,0 +1,41 @@
+#!/bin/bash
+
+NTHREADS=4
+
+# flags to run Pluto with
+PLFLAGS="--partlbtile --parallel --pet --silent --nolastwriter"
+
+CC=icc
+CFLAGS="-O3 -xHost -ansi-alias -ipo -openmp -fp-model precise -DTIME -DVERIFY"
+LDFLAGS="-lm"
+
+input=$1
+input_base=`basename $input`
+tune_log=${input_base}.tune.log
+
+rm -f $tune_log
+
+echo "$CC flags: $CFLAGS" >> $tune_log
+echo "Pluto flags: $PLFLAGS" >> $tune_log
+
+for t1 in 8 16 32; do
+    for t2 in 8 16 32; do
+        for t3 in 8 16 32; do
+            for t4 in 64 1000 ; do
+                echo -n "Tile size: "
+                echo -ne "$t1 x $t2 x ${t3} x ${t4}\n" | tee -a ${tune_log}
+                echo -ne "${t1}\n${t2}\n${t3}\n${t4}" > tile.sizes
+                echo "Optimizing"
+                echo ../polycc ${PLFLAGS} $input -o out.c
+                ../polycc ${PLFLAGS} $input -o out.c
+                echo "Compiling..."
+                echo ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+                ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+                echo "Running on $NTHREADS threads..."
+                OMP_NUM_THREADS=$NTHREADS ./exec | tee -a $tune_log
+            done
+        done
+    done
+done
+
+rm -f out.c exec tile.sizes
