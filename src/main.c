@@ -114,9 +114,49 @@ static double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
+int src_acc_dim(PlutoProg* prog, PlutoMatrix* mat)
+{
+
+    int i,j,count=0;
+
+    for(i=0;i<mat->nrows;i++)
+    {
+        for(j=0;j<prog->nvar;j++)
+        {
+            if(mat->val[i][j])
+            {
+                count++;
+                break;
+            }
+        }
+    }
+
+    return count;
+}
+
+int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j)
+{
+    int i, count = 0;
+    for(i=0;i<prog->nvar;i++) {
+        if(dpolytope->val[j][i]) {
+            count++;
+            break;
+        }
+    }
+    for(i=prog->nvar;i<2*prog->nvar;i++) {
+        if(dpolytope->val[j][i]) {
+            count++;
+            break;
+        }
+    }
+
+    if(count==2) return true;
+    else return false;
+}
+
 int main(int argc, char *argv[])
 {
-    int i, j, k, count;
+    int i, j, k, count, m, n;
     FILE* marker,* skipdeps;
 
     double t_start, t_c, t_d, t_t, t_all, t_start_all;
@@ -408,13 +448,58 @@ int main(int argc, char *argv[])
 
     IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
+    prog->ddg = ddg_create(prog);
+    ddg_compute_scc(prog);
+
+    normalize_domains(prog);
+
+    lord = (int**) malloc(sizeof(int*)*prog->ddg->num_sccs);
+
+    for(i=0;i<prog->ddg->num_sccs;i++) {
+        lord[i] = (int*) malloc(sizeof(int)*prog->nvar);
+    }
+
+    for(i=0;i<prog->ddg->num_sccs;i++) {
+        for(j=0;j<prog->nvar;j++) {
+            lord[i][j]=-1;
+        }
+    }
+
+    for(i=0;i<prog->ddg->num_sccs;i++) {
+        int max_dim = -1;
+        PlutoMatrix* mat=NULL;
+        for(j=0;j<prog->nstmts;j++) {
+            if(prog->stmts[j]->scc_id==i) {
+		bug("Stmt in SCC %d: %d",i,j);
+                for(m=0;m<prog->stmts[j]->nreads;m++) {
+                    if(src_acc_dim(prog, prog->stmts[j]->reads[m]->mat)>max_dim) {
+                        max_dim=src_acc_dim(prog, prog->stmts[j]->reads[m]->mat);
+                        mat = prog->stmts[j]->reads[m]->mat;
+                    }
+                }
+                if(src_acc_dim(prog, prog->stmts[j]->writes[0]->mat)>max_dim) {
+                    max_dim=src_acc_dim(prog, prog->stmts[j]->writes[0]->mat);
+                    mat = prog->stmts[j]->writes[0]->mat;
+                }
+            }
+        }
+
+        for(m=0;m<mat->nrows;m++) {
+            for(n=0;n<prog->nvar;n++) {
+                if(mat->val[m][n]) lord[i][m]=n;
+            }
+        }
+pluto_matrix_print(stdout,mat);
+        bug("%d: %d %d %d %d", i, lord[i][0], lord[i][1], lord[i][2], lord[i][3]); 
+    }
+
     int dim_sum=0;
     for (i=0; i<prog->nstmts; i++) {
         dim_sum += prog->stmts[i]->dim;
     }
 
     for(i=0;i<prog->nstmts;i++)
-    prog->stmts[i]->orig_scc_id = prog->stmts[i]->scc_id;
+        prog->stmts[i]->orig_scc_id = prog->stmts[i]->scc_id;
 
     /* counting the number of loops */
     count=1;
@@ -437,7 +522,6 @@ int main(int argc, char *argv[])
     for(i=0;i<prog->nloops;i++) {
         bug("loop %d: Statements: %d - %d",i,(i==0?0:prog->loops[i-1]+1),prog->loops[i]);
     }
-
 
     struct dist* d;
     int count1,count2,num;
@@ -537,7 +621,7 @@ int main(int argc, char *argv[])
 
     }
 
-
+pluto_deps_print(stdout,prog);
     marker = fopen("marker","w");
     skipdeps = fopen("skipdeps.txt","w");
 
@@ -557,6 +641,7 @@ int main(int argc, char *argv[])
     }
     fclose(marker);
 
+    int* order = (int*) calloc(prog->nvar,sizeof(int));
     for(i=0;i<prog->ndeps;i++)
     {
         marker = fopen("marker","r");
@@ -567,27 +652,66 @@ int main(int argc, char *argv[])
                 break;
         }
 
-        if(feof(marker))
+        if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && (IS_WAR(prog->deps[i]->type) || IS_WAW(prog->deps[i]->type))))
             fprintf(skipdeps,"%d\n",i);
+        else if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id) {
+            PlutoConstraints* polytope;
+            for(j=0;j<prog->nvar;j++) order[j]=0;
+//            int max_dim=-1;
+//            for(j=0;j<prog->ndeps;j++) {
+//                if(prog->stmts[prog->deps[j]->src]->scc_id == prog->stmts[prog->deps[i]->src]->scc_id && 
+//                        prog->stmts[prog->deps[j]->dest]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) {
+//                    if(prog->deps[j]->src_acc->mat->nrows>max_dim) {
+//                        max_dim = prog->deps[j]->src_acc->mat->nrows;
+//                        polytope = prog->deps[j]->dpolytope;
+//                    }
+//                }
+//            }
+//            int n=0;
+//            for(j=0;j<polytope->nrows;j++) {
+//                if(!polytope->is_eq[j]) continue;
+//                int count = 0;
+//                for(k=0;k<prog->nvar+prog->nvar;k++) {
+//                    if(polytope->val[j][k]) count++;
+//                }
+//                if(count>=2) {
+//                    for(k=0;k<prog->nvar;k++) {
+//                        if(polytope->val[j][k]) n = k;
+//                    }
+//                    for(k=0;k<prog->nvar;k++) {
+//                        if(polytope->val[j][k+prog->nvar]) order[n]=k;
+//                    }
+//                }
+//            }
+            polytope = prog->deps[i]->dpolytope;
+            for(j=0;j<polytope->nrows;j++) {
+                if(!polytope->is_eq[j]) continue;
+                if(is_on_loop(prog,polytope,j)) {
+                    for(k=0;k<prog->nvar;k++) {
+                        if(polytope->val[j][k]) order[k] = -1;
+                    }
+                    for(k=0;k<prog->nvar;k++) {
+                        if(polytope->val[j][k+prog->nvar]) order[k] = -1;
+                    }
+                }
+                else {
+                    pluto_constraints_remove_row(polytope,j);
+                    j--;
+                }
+            }
+            for(k=0;k<prog->nvar && order[k]!=-1;k++) {
+                pluto_constraints_add_equality(polytope);
+                polytope->val[j][k]=1;
+                polytope->val[j][k+prog->nvar]=-1;
+                j++;
+            }
+        } // else if
         fclose(marker);
+	
     }
 
-    /*
-       i=0;j=0;
-
-       while(i<prog->ndeps)
-       {
-       while(i<prog->rdeps[j])
-       {
-       fprintf(skipdeps,"%d\n",i);
-       i++;
-       }
-       j++;
-       i++;
-       }
-    */
-
     fclose(skipdeps);
+pluto_deps_print(stdout,prog);
 
     CST_WIDTH= prog->npar+1+prog->nloops*(prog->nvar+1)+1;
 
@@ -610,7 +734,7 @@ int main(int argc, char *argv[])
         // pluto_constraints_print(stdout, dom);
         // pluto_matrix_print(stdout, mat);
         // PlutoConstraints *farkas = farkas_affine(dom, mat);
-        //pluto_constraints_pretty_print(stdout, farkas);
+        // pluto_constraints_pretty_print(stdout, farkas);
         // pluto_constraints_free(dom);
         // pluto_options_free(options);
         pluto_iss_dep(prog);
@@ -622,6 +746,9 @@ int main(int argc, char *argv[])
         pluto_auto_transform(prog);
     }
     t_t = rtclock() - t_start;
+pluto_constraints_set_var(prog->context,0,102);
+pluto_constraints_set_var(prog->context,1,102);
+pluto_constraints_set_var(prog->context,2,102);
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {

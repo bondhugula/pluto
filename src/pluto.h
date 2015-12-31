@@ -51,6 +51,7 @@
 //#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
 int CST_WIDTH;
+int** lord;
 
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
@@ -68,7 +69,7 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
-#define bug(...) {/* printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
+#define bug(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
 #define max(x,y)    ((x) > (y)? (x) : (y))
 #define min(x,y)    ((x) < (y)? (x) : (y))
 
@@ -500,6 +501,8 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
+void normalize_domains(PlutoProg *prog);
 
 
 #endif

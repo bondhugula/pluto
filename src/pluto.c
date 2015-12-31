@@ -539,10 +539,9 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
         return 0;
     }
 
-    IF_DEBUG(printf("[pluto] Cutting between SCC id %d and id %d\n", scc1, scc2));
+    bug("[pluto] Cutting between SCC id %d and id %d", scc1, scc2);
 
     pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
-
     for (i=0; i<nstmts; i++) {
         pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
         for (j=0; j<nvar+npar; j++)  {
@@ -556,8 +555,9 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 
     }
     num_satisfied =  dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
+bug("%d",num_satisfied);
     if (num_satisfied >= 1) {
-        IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
+        pluto_transformation_print_level(prog, prog->num_hyperplanes-1);
         ddg_update(ddg, prog);
     }else{
         for (i=0; i<nstmts; i++) {
@@ -582,7 +582,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
     int nvar = prog->nvar;
     int npar = prog->npar;
 
-    IF_DEBUG(printf("[pluto] Cutting between all SCCs\n"));
+    bug("[pluto] Cutting between all SCCs\n");
 
     if (ddg->num_sccs == 1) {
         IF_DEBUG(printf("\tonly one SCC\n"));
@@ -758,7 +758,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg)
 
     if (ddg->num_sccs == 1) return 0;
 
-    IF_DEBUG(printf("Cutting based on SCC dimensionalities\n"));
+    bug("Cutting based on SCC dimensionalities\n");
 
     count = 0;
 
@@ -1896,13 +1896,8 @@ int pluto_auto_transform(PlutoProg *prog)
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
 
-    for (i=0; i<prog->ndeps; i++) {
-        prog->deps[i]->satisfied = false;
-    }
-
-    /* Create the data dependence graph */
-    prog->ddg = ddg_create(prog);
     ddg_compute_scc(prog);
+bug("Number of SCCs: %d",prog->ddg->num_sccs);    
 
     Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
@@ -1910,10 +1905,11 @@ int pluto_auto_transform(PlutoProg *prog)
 
     if (nstmts == 0)  return 0;
 
-    PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
-    PlutoHypType **orig_hyp_types = malloc(nstmts*sizeof(PlutoHypType *));
     int orig_num_hyperplanes = prog->num_hyperplanes;
     HyperplaneProperties *orig_hProps = prog->hProps;
+
+    PlutoMatrix **orig_trans = malloc(nstmts*sizeof(PlutoMatrix *));
+    PlutoHypType **orig_hyp_types = malloc(nstmts*sizeof(PlutoHypType *));
 
     /* Get rid of any existing transformation */
     for (i=0; i<nstmts; i++) {
@@ -1927,7 +1923,7 @@ int pluto_auto_transform(PlutoProg *prog)
         stmt->hyp_types = NULL;
     }
 
-    normalize_domains(prog);
+    //    normalize_domains(prog);
 
     hyp_search_mode = EAGER;
 
@@ -1952,15 +1948,18 @@ int pluto_auto_transform(PlutoProg *prog)
                     num_ind_sols_found));
     }else{
         num_ind_sols_found = 0;
-        if (options->fuse == SMART_FUSE)    {
-            cut_scc_dim_based(prog,ddg);
-        }
+        //        if (options->fuse == SMART_FUSE)    {
+        //            cut_scc_dim_based(prog,ddg);
+        //        }
     }
-
-//    pluto_deps_print(stdout, prog);
 
     /* For diamond tiling */
     conc_start_found = 0;
+
+    for(i=0;i<prog->ndeps;i++) {
+        if(lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
+            cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+    }
 
     do{
         /* Number of linearly independent solutions remaining to be found
@@ -1999,6 +1998,7 @@ int pluto_auto_transform(PlutoProg *prog)
         num_ind_sols_found = pluto_get_max_ind_hyps(prog);
 
         if (nsols >= 1) {
+            pluto_transformations_pretty_print(prog);
             /* Diamond tiling: done for the first band of permutable loops */
             if (options->lbtile && nsols >= 2 && !conc_start_found) {
                 conc_start_found = pluto_diamond_tile(prog);
