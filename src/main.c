@@ -652,9 +652,9 @@ pluto_deps_print(stdout,prog);
                 break;
         }
 
-        if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && (IS_WAR(prog->deps[i]->type) || IS_WAW(prog->deps[i]->type))))
+        if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAW(prog->deps[i]->type)))
             fprintf(skipdeps,"%d\n",i);
-        else if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id) {
+        if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id) {
             PlutoConstraints* polytope;
             for(j=0;j<prog->nvar;j++) order[j]=0;
 //            int max_dim=-1;
@@ -685,7 +685,6 @@ pluto_deps_print(stdout,prog);
 //            }
             polytope = prog->deps[i]->dpolytope;
             for(j=0;j<polytope->nrows;j++) {
-                if(!polytope->is_eq[j]) continue;
                 if(is_on_loop(prog,polytope,j)) {
                     for(k=0;k<prog->nvar;k++) {
                         if(polytope->val[j][k]) order[k] = -1;
@@ -694,21 +693,35 @@ pluto_deps_print(stdout,prog);
                         if(polytope->val[j][k+prog->nvar]) order[k] = -1;
                     }
                 }
-                else {
-                    pluto_constraints_remove_row(polytope,j);
-                    j--;
-                }
             }
-            for(k=0;k<prog->nvar && order[k]!=-1;k++) {
+            for(k=0;k<min(prog->stmts[prog->deps[i]->src]->dim_orig,prog->stmts[prog->deps[i]->dest]->dim_orig) && order[k]!=-1;k++) {
                 pluto_constraints_add_equality(polytope);
                 polytope->val[j][k]=1;
                 polytope->val[j][k+prog->nvar]=-1;
                 j++;
             }
-        } // else if
+        } // if
         fclose(marker);
 	
     }
+
+    for(i=0;i<prog->ndeps;) {
+        if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && (IS_WAR(prog->deps[i]->type) || IS_RAW(prog->deps[i]->type))) {
+            char* acc = prog->deps[i]->src_acc->name;
+            int src = prog->deps[i]->src;
+            int dest = prog->deps[i]->dest;
+            while(!strcmp(prog->deps[i+1]->src_acc->name,acc) && prog->deps[i+1]->src==src && prog->deps[i+1]->dest==dest) {
+                fprintf(skipdeps,"%d\n",i);
+                i++;
+                acc = prog->deps[i]->src_acc->name;
+                src = prog->deps[i]->src;
+                dest = prog->deps[i]->dest;
+            }
+            i++;
+        }
+        else i++;
+    }               
+                
 
     fclose(skipdeps);
 pluto_deps_print(stdout,prog);
@@ -746,9 +759,9 @@ pluto_deps_print(stdout,prog);
         pluto_auto_transform(prog);
     }
     t_t = rtclock() - t_start;
-pluto_constraints_set_var(prog->context,0,102);
-pluto_constraints_set_var(prog->context,1,102);
-pluto_constraints_set_var(prog->context,2,102);
+//pluto_constraints_set_var(prog->context,0,102);
+//pluto_constraints_set_var(prog->context,1,102);
+//pluto_constraints_set_var(prog->context,2,102);
     pluto_detect_transformation_properties(prog);
 
     if (!options->silent)   {

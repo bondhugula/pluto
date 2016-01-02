@@ -1147,7 +1147,6 @@ void pluto_deps_print(FILE *fp, PlutoProg *prog)
     int i;
     if (prog->ndeps == 0)  printf("** No dependences **\n\n");
     for (i=0; i<prog->ndeps; i++) {
-bug("Dep from %d to %d",prog->deps[i]->src, prog->deps[i]->dest);
         pluto_dep_print(fp, prog->deps[i]);
     }
 }

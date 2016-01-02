@@ -541,6 +541,11 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 
     bug("[pluto] Cutting between SCC id %d and id %d", scc1, scc2);
 
+	for(i=scc1;i<scc2;i++) {
+        if(lord[i][0]!=lord[i+1][0])        
+        break;
+    }
+    scc2=i;
     pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
     for (i=0; i<nstmts; i++) {
         pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
@@ -555,7 +560,6 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 
     }
     num_satisfied =  dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
-bug("%d",num_satisfied);
     if (num_satisfied >= 1) {
         pluto_transformation_print_level(prog, prog->num_hyperplanes-1);
         ddg_update(ddg, prog);
@@ -1237,6 +1241,7 @@ void pluto_detect_hyperplane_types(PlutoProg *prog)
 void pluto_detect_transformation_properties(PlutoProg *prog)
 {
     int level, i, j;
+    FILE* skipdeps;	
     Stmt **stmts = prog->stmts;
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
@@ -1255,11 +1260,23 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
     band = 0;
     num_loops_in_band = 0;
-    int bandStart = 0;
+    int bandStart = 0, num;
 
     for (level=0; level < prog->num_hyperplanes; ) {
         for (i=0; i<prog->ndeps; i++)   {
             if (IS_RAR(deps[i]->type)) continue;
+
+            num=-1;
+            skipdeps=fopen("skipdeps.txt","r");
+            while(!feof(skipdeps)) {
+                fscanf(skipdeps,"%d",&num);
+                if(num==i) {
+                    num=-2;
+                    break;
+                }
+            }
+            fclose(skipdeps);    		
+            if(num==-2) continue;           
 
             if (deps[i]->satisfaction_level < level && 
                     hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
@@ -1283,6 +1300,18 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
 
             for (i=0; i<prog->ndeps; i++)   {
                 if (IS_RAR(deps[i]->type)) continue;
+
+            	num=-1;
+            	skipdeps=fopen("skipdeps.txt","r");
+            	while(!feof(skipdeps)) {
+            	    fscanf(skipdeps,"%d",&num);
+            	    if(num==i) {
+            	        num=-2;
+            	        break;
+            	    }
+            	}
+            	fclose(skipdeps);    		
+            	if(num==-2) continue;           
 
                 /* Dependences satisfied at scalar dimensions earlier are fine (even 
                  * if at dimensions in the same band */
@@ -1897,7 +1926,6 @@ int pluto_auto_transform(PlutoProg *prog)
     int nstmts = prog->nstmts;
 
     ddg_compute_scc(prog);
-bug("Number of SCCs: %d",prog->ddg->num_sccs);    
 
     Graph *ddg = prog->ddg;
     int nvar = prog->nvar;
@@ -1956,9 +1984,16 @@ bug("Number of SCCs: %d",prog->ddg->num_sccs);
     /* For diamond tiling */
     conc_start_found = 0;
 
+	/* This is only recommended if aggressive fusion is desired */
     for(i=0;i<prog->ndeps;i++) {
-        if(lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
+        if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
             cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+    	else {
+	        for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+                if(prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->dpolytope->val[j][0] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][2*prog->nvar+prog->npar])
+                    cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+            }
+        }            
     }
 
     do{

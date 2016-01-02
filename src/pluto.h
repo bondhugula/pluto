@@ -503,6 +503,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int n
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 void normalize_domains(PlutoProg *prog);
+int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j);
 
 
 #endif
