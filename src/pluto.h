@@ -235,6 +235,13 @@ struct dependence{
 
     /* Dependence direction in transformed space */
     DepDir *dirvec;
+
+    /* Whether this dependence is on a temporary variable and across SCCs */
+    bool temp_across;
+    
+    /* This is the dimensionality of dep's src/dest minus the dimensionality of the acc */
+    int fuse_depth;
+
 };
 typedef struct dependence Dep;
 
@@ -504,6 +511,7 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *pro
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 void normalize_domains(PlutoProg *prog);
 int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j);
+int src_acc_dim(PlutoProg* prog, PlutoMatrix* mat);
 
 
 #endif

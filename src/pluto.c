@@ -51,6 +51,47 @@ int pluto_diamond_tile(PlutoProg *prog);
 void LOOP(PlutoProg* prog, int loop, int pseudo_id);
 void SCC(PlutoProg* prog, int loop, int scc_id, int pseudo_id);
 
+
+int src_acc_dim(PlutoProg* prog, PlutoMatrix* mat)
+{
+
+    int i,j,count=0;
+
+    for(i=0;i<mat->nrows;i++)
+    {
+        for(j=0;j<prog->nvar;j++)
+        {
+            if(mat->val[i][j])
+            {
+                count++;
+                break;
+            }
+        }
+    }
+
+    return count;
+}
+
+int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j)
+{
+    int i, count = 0;
+    for(i=0;i<prog->nvar;i++) {
+        if(dpolytope->val[j][i]) {
+            count++;
+            break;
+        }
+    }
+    for(i=prog->nvar;i<2*prog->nvar;i++) {
+        if(dpolytope->val[j][i]) {
+            count++;
+            break;
+        }
+    }
+
+    if(count==2) return true;
+    else return false;
+}
+
 /* 
  * Returns true if the two statements have the same transformation
  * This is useful to determine if the statements are in the same loop (i.e. they have the same original transformation)
@@ -985,6 +1026,27 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
         pluto_constraints_free(indcst);
 
         if (bestsol != NULL)    {
+            
+            int cut=0;
+            for(j=0;j<prog->ndeps;j++) {
+                if(prog->deps[j]->temp_across && num_sols_found < prog->deps[j]->fuse_depth && pluto_domain_equality(prog->stmts[prog->deps[j]->src],prog->stmts[prog->deps[j]->dest])) {
+                    for(k=0;k<nvar;k++) {
+                        if(bestsol[npar+1+which_loop(prog,prog->deps[j]->src)*(nvar+1)+k] != bestsol[npar+1+which_loop(prog,prog->deps[j]->dest)*(nvar+1)+k])
+                            break;
+                    }
+                    if(k!=nvar || (bestsol[npar+1+which_loop(prog,prog->deps[j]->src)*(nvar+1)+nvar]!=bestsol[npar+1+which_loop(prog,prog->deps[j]->dest)*(nvar+1)+nvar])) {
+        		        bug("Cutting between SCCs to prevent illegal transformation with var-lib");
+                        cut=1;
+                        cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[j]->src]->scc_id,prog->stmts[prog->deps[j]->dest]->scc_id);
+                    }                        	
+                }
+            }
+            
+            if(cut) {
+                free(bestsol);
+                continue;     
+            }           
+
             bug("Sols left to be found: # %d",max_sols-num_sols_found-1);
             IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
             num_sols_found++;
@@ -1010,7 +1072,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                     H_SCALAR: H_LOOP;
 
             }
+
             free(bestsol);
+
             IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
         }else{
             IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: No hyperplane found\n"));
@@ -1986,9 +2050,9 @@ int pluto_auto_transform(PlutoProg *prog)
 
 	/* This is only recommended if aggressive fusion is desired */
     for(i=0;i<prog->ndeps;i++) {
-        if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
+        if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
             cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
-    	else {
+    	else { // this essentially avoids pipelined parallelism - this should ideally be performed after the hyperplane is found as implemented earlier
 	        for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
                 if(prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->dpolytope->val[j][0] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][2*prog->nvar+prog->npar])
                     cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);

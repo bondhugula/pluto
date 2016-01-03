@@ -114,45 +114,6 @@ static double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-int src_acc_dim(PlutoProg* prog, PlutoMatrix* mat)
-{
-
-    int i,j,count=0;
-
-    for(i=0;i<mat->nrows;i++)
-    {
-        for(j=0;j<prog->nvar;j++)
-        {
-            if(mat->val[i][j])
-            {
-                count++;
-                break;
-            }
-        }
-    }
-
-    return count;
-}
-
-int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j)
-{
-    int i, count = 0;
-    for(i=0;i<prog->nvar;i++) {
-        if(dpolytope->val[j][i]) {
-            count++;
-            break;
-        }
-    }
-    for(i=prog->nvar;i<2*prog->nvar;i++) {
-        if(dpolytope->val[j][i]) {
-            count++;
-            break;
-        }
-    }
-
-    if(count==2) return true;
-    else return false;
-}
 
 int main(int argc, char *argv[])
 {
@@ -645,6 +606,8 @@ pluto_deps_print(stdout,prog);
     for(i=0;i<prog->ndeps;i++)
     {
         marker = fopen("marker","r");
+        prog->deps[i]->temp_across=false;
+        prog->deps[i]->fuse_depth=0;
 
         while(!feof(marker)) {
             fscanf(marker, "%d", &num);
@@ -654,35 +617,9 @@ pluto_deps_print(stdout,prog);
 
         if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAW(prog->deps[i]->type)))
             fprintf(skipdeps,"%d\n",i);
-        if(prog->deps[i]->src_acc->mat->nrows < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id) {
+        if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id) {
             PlutoConstraints* polytope;
             for(j=0;j<prog->nvar;j++) order[j]=0;
-//            int max_dim=-1;
-//            for(j=0;j<prog->ndeps;j++) {
-//                if(prog->stmts[prog->deps[j]->src]->scc_id == prog->stmts[prog->deps[i]->src]->scc_id && 
-//                        prog->stmts[prog->deps[j]->dest]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) {
-//                    if(prog->deps[j]->src_acc->mat->nrows>max_dim) {
-//                        max_dim = prog->deps[j]->src_acc->mat->nrows;
-//                        polytope = prog->deps[j]->dpolytope;
-//                    }
-//                }
-//            }
-//            int n=0;
-//            for(j=0;j<polytope->nrows;j++) {
-//                if(!polytope->is_eq[j]) continue;
-//                int count = 0;
-//                for(k=0;k<prog->nvar+prog->nvar;k++) {
-//                    if(polytope->val[j][k]) count++;
-//                }
-//                if(count>=2) {
-//                    for(k=0;k<prog->nvar;k++) {
-//                        if(polytope->val[j][k]) n = k;
-//                    }
-//                    for(k=0;k<prog->nvar;k++) {
-//                        if(polytope->val[j][k+prog->nvar]) order[n]=k;
-//                    }
-//                }
-//            }
             polytope = prog->deps[i]->dpolytope;
             for(j=0;j<polytope->nrows;j++) {
                 if(is_on_loop(prog,polytope,j)) {
@@ -700,6 +637,8 @@ pluto_deps_print(stdout,prog);
                 polytope->val[j][k+prog->nvar]=-1;
                 j++;
             }
+	        prog->deps[i]->temp_across=true;	
+            prog->deps[i]->fuse_depth=k;
         } // if
         fclose(marker);
 	
