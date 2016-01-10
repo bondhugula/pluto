@@ -566,6 +566,58 @@ int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2)
 
 /* Cut dependences between two SCCs 
  * Returns: number of dependences cut  */
+int cut_between_sccs_initial(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
+{
+    Stmt **stmts = prog->stmts;
+    int nstmts = prog->nstmts;
+
+    int nvar = prog->nvar;
+    int npar = prog->npar;
+
+    int i, j, num_satisfied;
+
+    if (!ddg_sccs_direct_connected(ddg, prog, scc1, scc2))    {
+        return 0;
+    }
+
+    bug("[pluto] Cutting between SCC id %d and id %d", scc1, scc2);
+
+	for(i=scc1;i<scc2-1;i++) {
+        if(lord[i][0]!=lord[i+1][0])        
+        break;
+    }
+    scc2=i+1;
+
+    pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
+    for (i=0; i<nstmts; i++) {
+        pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
+        for (j=0; j<nvar+npar; j++)  {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
+        }
+        if (stmts[i]->scc_id < scc2)   {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 0;
+        }else{
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 1;
+        }
+
+    }
+    num_satisfied =  dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
+    if (num_satisfied >= 1) {
+        pluto_transformation_print_level(prog, prog->num_hyperplanes-1);
+        ddg_update(ddg, prog);
+    }else{
+        for (i=0; i<nstmts; i++) {
+            stmts[i]->trans->nrows--;
+        }
+        prog->num_hyperplanes--;
+    }
+
+    return num_satisfied;
+}
+
+
+/* Cut dependences between two SCCs 
+ * Returns: number of dependences cut  */
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 {
     Stmt **stmts = prog->stmts;
@@ -582,11 +634,6 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
 
     bug("[pluto] Cutting between SCC id %d and id %d", scc1, scc2);
 
-	for(i=scc1;i<scc2;i++) {
-        if(lord[i][0]!=lord[i+1][0])        
-        break;
-    }
-    scc2=i;
     pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
     for (i=0; i<nstmts; i++) {
         pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
@@ -2051,11 +2098,11 @@ int pluto_auto_transform(PlutoProg *prog)
 	/* This is only recommended if aggressive fusion is desired */
     for(i=0;i<prog->ndeps;i++) {
         if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])
-            cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+            cut_between_sccs_initial(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
     	else { // this essentially avoids pipelined parallelism - this should ideally be performed after the hyperplane is found as implemented earlier
 	        for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
                 if(prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->dpolytope->val[j][0] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][2*prog->nvar+prog->npar])
-                    cut_between_sccs(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+                    cut_between_sccs_initial(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
             }
         }            
     }

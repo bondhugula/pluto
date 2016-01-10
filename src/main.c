@@ -450,7 +450,6 @@ int main(int argc, char *argv[])
                 if(mat->val[m][n]) lord[i][m]=n;
             }
         }
-pluto_matrix_print(stdout,mat);
         bug("%d: %d %d %d %d", i, lord[i][0], lord[i][1], lord[i][2], lord[i][3]); 
     }
 
@@ -646,15 +645,9 @@ pluto_deps_print(stdout,prog);
 
     for(i=0;i<prog->ndeps;) {
         if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && (IS_WAR(prog->deps[i]->type) || IS_RAW(prog->deps[i]->type))) {
-            char* acc = prog->deps[i]->src_acc->name;
-            int src = prog->deps[i]->src;
-            int dest = prog->deps[i]->dest;
-            while(!strcmp(prog->deps[i+1]->src_acc->name,acc) && prog->deps[i+1]->src==src && prog->deps[i+1]->dest==dest) {
+            while(prog->deps[i+1]->src_acc==prog->deps[i]->src_acc && prog->deps[i+1]->dest_acc==prog->deps[i]->dest_acc) {
                 fprintf(skipdeps,"%d\n",i);
                 i++;
-                acc = prog->deps[i]->src_acc->name;
-                src = prog->deps[i]->src;
-                dest = prog->deps[i]->dest;
             }
             i++;
         }
