@@ -652,7 +652,7 @@ pluto_deps_print(stdout,prog);
             fclose(skipdeps);    		
             if(num==-2) continue;           
             for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
-                if(is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
+                if(is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->src < prog->deps[i]->dest && prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
                     iter_priv_sccs[k]=0;
                     break;
                 }
@@ -660,6 +660,9 @@ pluto_deps_print(stdout,prog);
             if(j!=prog->deps[i]->dpolytope->nrows) break;
         }
     }
+
+bug("Iter-priv SCCS");
+    for(k=0;k<prog->ddg->num_sccs;k++) bug("%d",iter_priv_sccs[k]);
 
     for(i=0;i<prog->ndeps;i++)
     {
