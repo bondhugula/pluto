@@ -1,3 +1,13 @@
+From e809c64c70c87aa9def89df0f85272506dfad23d Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 1 Sep 2015 10:43:02 +0530
+Subject: [PATCH 2/4] clast data dist decls print support
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ source/pprint.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
+
 diff --git a/source/pprint.c b/source/pprint.c
 index 7506c3f..ad432b2 100644
 --- a/source/pprint.c
@@ -70,4 +80,6 @@ index 7506c3f..ad432b2 100644
              fprintf(dst, "%*s#pragma ivdep\n", indent, "");
              fprintf(dst, "%*s#pragma vector always\n", indent, "");
              fprintf(dst, "%*s", indent, "");
+-- 
+2.4.3
 
