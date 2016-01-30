@@ -3212,6 +3212,7 @@ PlutoOptions *pluto_options_alloc()
     options->num_inital_partitions = 2;
 
     options->time = 0;
+    options->scopnum = 0;
 
     return options;
 }

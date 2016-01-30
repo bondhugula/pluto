@@ -76,7 +76,7 @@ static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog)
 /* Generate and print .cloog file from the transformations computed */
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 {
-    int i;
+    int i, j;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -130,7 +130,11 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
         fprintf(fp, "# we will set the scattering dimension names\n");
         fprintf(fp, "%d\n", stmts[0]->trans->nrows);
         for (i=0; i<stmts[0]->trans->nrows; i++) {
-            fprintf(fp, "t%d ", i+1);
+            fprintf(fp, "t%d", i+1);
+            for (j=0; j<options->scopnum; j++) {
+                fprintf(fp, "_");
+            }
+            fprintf(fp, " ");
         }
         fprintf(fp, "\n");
     }else{
@@ -791,7 +795,7 @@ char *pluto_dist_modify_stmt_text(char* stmt_text, int use_strides, PlutoProg *p
 /* Generate variable declarations and macros */
 int generate_declarations(PlutoProg *prog, FILE *outfp)
 {
-    int i;
+    int i, j;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -813,6 +817,12 @@ int generate_declarations(PlutoProg *prog, FILE *outfp)
     free(prog->vec_decls);
     prog->num_decl_indices = 0;
 
+    char *suffix = malloc((options->scopnum+1)*sizeof(char));
+    suffix[0] = '\0';
+    for (j=0; j<options->scopnum; j++) {
+        strncat(suffix, "_", 1);
+    }
+
     /* Insert "dynsched" specific code
      * Number of parameters to task_computation is fixed as 4 in the static code - scheduler.h
      * So hardcode the parameters to the function as t1, t2, t3, t4
@@ -833,9 +843,10 @@ int generate_declarations(PlutoProg *prog, FILE *outfp)
             int start = (prog->num_parameterized_loops > 0) ? prog->num_parameterized_loops : 0;
             for (i=start; i<prog->num_hyperplanes; i++)  {
                 if (i!=start) fprintf(outfp, ", ");
-                fprintf(outfp, "t%d", i+1);
+                fprintf(outfp, "t%d%s", i+1, suffix);
                 if (prog->hProps[i].unroll)   {
-                    fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+                    fprintf(outfp, ", t%dt%s, newlb_t%d%s, newub_t%d%s", i+1, suffix, 
+                            i+1, suffix, i+1, suffix);
                 }
             }
             fprintf(outfp, ";\n\n");
@@ -843,13 +854,16 @@ int generate_declarations(PlutoProg *prog, FILE *outfp)
     }
 
     if (options->parallel || options->distmem)   {
-        fprintf(outfp, "\tint lb, ub, lbp, ubp, lbd, ubd, lb2, ub2;\n");
+        fprintf(outfp, "\t\tint lb%s, ub%s, lbd%s, ubd%s, lb2%s, ub2%s;\n", 
+                suffix, suffix, suffix, suffix, suffix, suffix);
     } else if (options->dynschedule) {
         fprintf(outfp, "\tint lbp, ubp;\n");
     }
 
     /* For vectorizable loop bound replacement */
-    fprintf(outfp, "\tregister int lbv, ubv;\n\n");
+    fprintf(outfp, "\t\tregister int lbv%s, ubv%s;\n\n", suffix, suffix);
+
+    free(suffix);
 
     return 0;
 }
@@ -1066,10 +1080,11 @@ int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, PlutoProg *prog)
  * Returns: the number of parallel loops for which OpenMP pragmas were generated 
  *
  * Generate the #pragma comment -- will be used by a syntactic scanner
- * to put in place -- should implement this with CLast in future */
+ * to put in place -- should implement this with CLast in future 
+ **/
 int pluto_omp_parallelize(PlutoProg *prog)
 {
-    int i;
+    int i, j;
 
     FILE *outfp = fopen(".pragmas", "w");
 
@@ -1078,6 +1093,12 @@ int pluto_omp_parallelize(PlutoProg *prog)
     HyperplaneProperties *hProps = prog->hProps;
 
     int loop;
+
+    char *suffix = malloc((options->scopnum+1)*sizeof(char));
+    suffix[0] = '\0';
+    for (j=0; j<options->scopnum; j++) {
+        strncat(suffix, "_", 1);
+    }
 
     /* IMPORTANT: Note that by the time this function is called, pipelined
      * parallelism has already been converted to inner parallelism in
@@ -1090,21 +1111,21 @@ int pluto_omp_parallelize(PlutoProg *prog)
     for (loop=0; loop<prog->num_hyperplanes; loop++) {
         if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
             // Remember our loops are 1-indexed (t1, t2, ...)
-            fprintf(outfp, "t%d #pragma omp parallel for shared(", loop+1);
+            fprintf(outfp, "t%d%s #pragma omp parallel for shared(", loop+1, suffix);
 
             for (i=0; i<loop; i++)  {
-                fprintf(outfp, "t%d,", i+1);
+                fprintf(outfp, "t%d%s,", i+1, suffix);
             }
 
             for (i=0; i<num_parallel_loops+1; i++) {
                 if (i!=0) fprintf(outfp, ",");
-                fprintf(outfp,  "lb%d,ub%d", i+1, i+1);
+                fprintf(outfp,  "lb%d%s,ub%d%s", i+1, suffix, i+1, suffix);
             }
 
             fprintf(outfp,  ") private(");
 
             if (options->prevector) {
-                fprintf(outfp,  "ubv,lbv,");
+                fprintf(outfp,  "ubv%s,lbv%s,", suffix, suffix);
             }
 
             /* Lower and upper scalars for parallel loops yet to be marked */
@@ -1112,13 +1133,13 @@ int pluto_omp_parallelize(PlutoProg *prog)
             */
             if (options->multipar) {
                 for (i=num_parallel_loops+1; i<2; i++) {
-                    fprintf(outfp,  "lb%d,ub%d,", i+1, i+1);
+                    fprintf(outfp,  "lb%d%s,ub%d%s,", i+1, suffix, i+1, suffix);
                 }
             }
 
             for (i=loop; i<prog->num_hyperplanes; i++)  {
                 if (i!=loop) fprintf(outfp, ",");
-                fprintf(outfp, "t%d", i+1);
+                fprintf(outfp, "t%d%s", i+1, suffix);
             }
             fprintf(outfp, ")\n");
 
@@ -1132,6 +1153,8 @@ int pluto_omp_parallelize(PlutoProg *prog)
 
     IF_DEBUG(fprintf(stdout, "[pluto] marked %d loop(s) parallel\n",
                 num_parallel_loops));
+
+    free(suffix);
 
     fclose(outfp);
 

@@ -226,6 +226,9 @@ struct plutoOptions{
 
     /* fast linear independence check */
     int flic;
+
+    /* SCoP number when processing multiple SCoPs per file */
+    int scopnum;
 };
 typedef struct plutoOptions PlutoOptions;
 
