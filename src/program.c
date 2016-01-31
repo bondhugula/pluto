@@ -1874,16 +1874,21 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
             (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL)) {
         /* Extract access function information */
         int src_acc_num, dest_acc_num;
+        char src_type, dest_type;
         const char *name;
         name = isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2;
         while (*name != '\0' && *(name++) != '_');
-        if (*name != '\0') src_acc_num = atoi(name+1);
-        else assert(0); // access function num not encoded in dependence
+        if (*name != '\0'){
+            src_type = *name;
+            src_acc_num = atoi(name+1);
+        }else assert(0); // access function num not encoded in dependence
 
         name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
         while (*name != '\0' && *(name++) != '_');
-        if (*name != '\0') dest_acc_num = atoi(name+1);
-        else assert(0); // access function num not encoded in dependence
+        if (*name != '\0') {
+            dest_type = *name;
+            dest_acc_num = atoi(name+1);
+        }else assert(0); // access function num not encoded in dependence
 
         switch (info->type) {
             case OSL_DEPENDENCE_RAW: 
@@ -1894,9 +1899,21 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
                 dep->src_acc = stmts[dep->src]->writes[src_acc_num];
                 dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
                 break;
+                /*
+                 * Sometimes dep_war from isl are not WAR deps; there are WAW deps
+                 * included in the may deps and we can't assume that they are all WAR may
+                 * deps. Mark them correctly.
+                 */
             case OSL_DEPENDENCE_WAR: 
-                dep->src_acc = stmts[dep->src]->reads[src_acc_num];
                 dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                if (src_type == 'w' && dest_type == 'w') {
+                    /* Fix the type */
+                    dep->type = OSL_DEPENDENCE_WAW;
+                    /* This is really a WAW dep */
+                    dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                }else{
+                    dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                }
                 break;
             case OSL_DEPENDENCE_RAR: 
                 dep->src_acc = stmts[dep->src]->reads[src_acc_num];
