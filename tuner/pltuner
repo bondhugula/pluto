@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Usage ./pltuner <source file with SCoP>
+# output will be in <file basename>.tune.log
+
+NTHREADS=4
+
+# flags to run Pluto with
+PLFLAGS="--pet --parallel --partlbtile --pet --silent"
+
+# flags to compile the generated code
+CC=icc
+CFLAGS="-O3 -xHost -ansi-alias -ipo -openmp -fp-model precise -DTIME -DVERIFY"
+LDFLAGS="-lm"
+
+# tile size choices for each of the hyperplanes
+hyp1 = "16 32 64 92 128 192 256"
+hyp2 = "16 32 64 92 128 192 256"
+hyp3 = "64 92 128 192 256"
+
+input=$1
+input_base=`basename $input`
+tune_log=${input_base}.tune.log
+
+rm -f $tune_log
+
+echo "$CC flags: $CFLAGS" >> $tune_log
+echo "Pluto flags: $PLFLAGS" >> $tune_log
+
+for t1 in $hyp1 ; do
+    for t2 in $hyp2 ; do
+        for t3 in $hyp3 ; do
+            echo -n "Tile size: "
+            echo -ne "$t1 x $t2 x ${t3}\n" | tee -a ${tune_log}
+            echo -ne "${t1}\n${t2}\n${t3}" > tile.sizes
+            echo "Optimizing"
+            echo ../polycc ${PLFLAGS} $input -o out.c
+            ../polycc ${PLFLAGS} $input -o out.c
+            echo "Compiling..."
+            echo ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+            ${CC} ${CFLAGS} out.c -o exec $LDFLAGS
+            echo "Running on $NTHREADS threads..."
+            OMP_NUM_THREADS=$NTHREADS ./exec | tee -a $tune_log
+        done
+    done
+done
+
+rm -f out.c exec tile.sizes
