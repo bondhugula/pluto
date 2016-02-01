@@ -69,7 +69,7 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
-#define bug(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
+#define bug(...) { /*printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
 #define max(x,y)    ((x) > (y)? (x) : (y))
 #define min(x,y)    ((x) < (y)? (x) : (y))
 
@@ -89,9 +89,9 @@ typedef struct pluto_access{
 
 
 struct dist{
-PlutoConstraints* value;
-int dep;
-struct dist* next;
+    PlutoConstraints* value;
+    int dep;
+    struct dist* next;
 };
 
 

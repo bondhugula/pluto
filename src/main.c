@@ -581,7 +581,20 @@ int main(int argc, char *argv[])
 
     }
 
-pluto_deps_print(stdout,prog);
+    int* iter_priv_sccs = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
+    for(i=0;i<prog->ddg->num_sccs;i++) iter_priv_sccs[i] = 1;
+
+    for(i=0;i<prog->ndeps;i++) {
+        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && IS_RAW(prog->deps[i]->type)) {
+            iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] = 0;            
+        }
+    }
+
+    bug("Iter-priv SCCS");
+
+    for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs[i]);
+//    pluto_deps_print(stdout,prog);
+
     marker = fopen("marker","w");
     skipdeps = fopen("skipdeps.txt","w");
 
@@ -593,8 +606,6 @@ pluto_deps_print(stdout,prog);
             while(d!=NULL)
             {
                 fprintf(marker,"%d\n",d->dep);
-
-                bug("dep-stmts: %d - %d",prog->deps[d->dep]->src,prog->deps[d->dep]->dest);
                 d=d->next;
             }
         }
@@ -613,56 +624,19 @@ pluto_deps_print(stdout,prog);
             if(num==i)
                 break;
         }
-
+	/* We mark the redundant (for the purpose of computing transformation) dependences and the WAW deps that have the same source and destination SCCs */
         if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAW(prog->deps[i]->type)))
             fprintf(skipdeps,"%d\n",i);
         fclose(marker);
 	
     }
 
-    for(i=0;i<prog->ndeps;) {
-        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && (IS_WAR(prog->deps[i]->type) || IS_RAW(prog->deps[i]->type))) {
-            while(prog->deps[i+1]->src_acc==prog->deps[i]->src_acc && prog->deps[i+1]->dest_acc==prog->deps[i]->dest_acc) {
-                fprintf(skipdeps,"%d\n",i);
-                i++;
-            }
-            i++;
-        }
-        else i++;
-    }               
-                
-    fclose(skipdeps);
-
-    int* iter_priv_sccs = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
-
-    for(k=0;k<prog->ddg->num_sccs;k++) iter_priv_sccs[k]=1;
-
-    for(k=0;k<prog->ddg->num_sccs;k++) {
-        for(i=0;i<prog->ndeps;i++) {
-            if((prog->stmts[prog->deps[i]->src]->scc_id!=k) || (prog->stmts[prog->deps[i]->src]->scc_id!=prog->stmts[prog->deps[i]->dest]->scc_id) || (src_acc_dim(prog,prog->deps[i]->src_acc->mat) >= prog->stmts[prog->deps[i]->src]->dim_orig)) continue;
-            num=-1;
-            skipdeps=fopen("skipdeps.txt","r");
-            while(!feof(skipdeps)) {
-                fscanf(skipdeps,"%d",&num);
-                if(num==i) {
-                    num=-2;
-                    break;
-                }
-            }
-            fclose(skipdeps);    		
-            if(num==-2) continue;           
-            for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
-                if(is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->src < prog->deps[i]->dest && prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
-                    iter_priv_sccs[k]=0;
-                    break;
-                }
-            }
-            if(j!=prog->deps[i]->dpolytope->nrows) break;
-        }
+    for(i=0;i<prog->ndeps;i++) {
+        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type))
+            fprintf(skipdeps,"%d\n",i);
     }
-
-bug("Iter-priv SCCS");
-    for(k=0;k<prog->ddg->num_sccs;k++) bug("%d",iter_priv_sccs[k]);
+            	
+    fclose(skipdeps);
 
     for(i=0;i<prog->ndeps;i++)
     {
@@ -670,8 +644,15 @@ bug("Iter-priv SCCS");
         prog->deps[i]->fuse_depth=0;
         if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && iter_priv_sccs[prog->stmts[prog->deps[i]->dest]->scc_id]) {
             PlutoConstraints* polytope;
-            for(j=0;j<prog->nvar;j++) order[j]=0;
             polytope = prog->deps[i]->dpolytope;
+
+            for(j=0;j<polytope->nrows;j++) {
+                if(polytope->is_eq[j] && !is_on_loop(prog,polytope,j)) {
+                    pluto_constraints_remove_row(polytope,j);
+                }
+            }
+
+            for(j=0;j<prog->nvar;j++) order[j]=0;
             for(j=0;j<polytope->nrows;j++) {
                 if(is_on_loop(prog,polytope,j)) {
                     for(k=0;k<prog->nvar;k++) {
@@ -693,9 +674,7 @@ bug("Iter-priv SCCS");
         } // if
     }
 
-
-
-pluto_deps_print(stdout,prog);
+//    pluto_deps_print(stdout,prog);
 
     CST_WIDTH= prog->npar+1+prog->nloops*(prog->nvar+1)+1;
 

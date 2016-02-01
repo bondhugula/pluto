@@ -580,7 +580,9 @@ int cut_between_sccs_initial(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
         return 0;
     }
 
-    bug("[pluto] Cutting between SCC id %d and id %d", scc1, scc2);
+    if (scc1 == scc2) return 0;
+
+    bug("[pluto] -- initial: Cutting between SCC id %d and id %d", scc1, scc2);
 
 	for(i=scc1;i<scc2-1;i++) {
         if(lord[i][0]!=lord[i+1][0])        
@@ -2101,8 +2103,10 @@ int pluto_auto_transform(PlutoProg *prog)
             cut_between_sccs_initial(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
     	else { // this essentially avoids pipelined parallelism - this should ideally be performed after the hyperplane is found as implemented earlier
 	        for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
-                if(prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->dpolytope->val[j][0] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][2*prog->nvar+prog->npar])
+                if(prog->deps[i]->dpolytope->is_eq[j] && prog->deps[i]->dpolytope->val[j][0] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && prog->deps[i]->dpolytope->val[j][2*prog->nvar+prog->npar]) {
                     cut_between_sccs_initial(prog,prog->ddg,prog->stmts[prog->deps[i]->src]->scc_id,prog->stmts[prog->deps[i]->dest]->scc_id);
+                    bug("Culprit dep: %d",i);
+                }
             }
         }            
     }
@@ -2144,7 +2148,6 @@ int pluto_auto_transform(PlutoProg *prog)
         num_ind_sols_found = pluto_get_max_ind_hyps(prog);
 
         if (nsols >= 1) {
-            pluto_transformations_pretty_print(prog);
             /* Diamond tiling: done for the first band of permutable loops */
             if (options->lbtile && nsols >= 2 && !conc_start_found) {
                 conc_start_found = pluto_diamond_tile(prog);

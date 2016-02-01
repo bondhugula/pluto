@@ -2199,6 +2199,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(write),
+//                isl_union_map_copy(empty),
                 isl_union_map_copy(read),
                 isl_union_map_copy(schedule),
                 &dep_waw, &dep_war, NULL, NULL);
