@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
     const struct option pluto_options[] =
     {
         {"fast-lin-ind-check", no_argument, &options->flic, 1},
+        {"flic", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
@@ -270,7 +271,7 @@ int main(int argc, char *argv[])
                 break;
             case 'v':
                 printf("PLUTO %s - An automatic parallelizer and locality optimizer\n\
-Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
+Copyright (C) 2007--2015  Uday Bondhugula\n\
 This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n", PLUTO_VERSION);
                 pluto_options_free(options);
