@@ -1,7 +1,7 @@
-SRC=heat-2d
+SRC=heat-2d-alt
 
 include ../common.mk
 
-PLCFLAGS += --pet
+PLCFLAGS += 
 CFLAGS += -DTIME -DVERIFY
 LDFLAGS += -lm

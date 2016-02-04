@@ -1,4 +1,4 @@
-SRC=heat-1d
+SRC=heat-1d-alt
 
 
 CFLAGS += -DTIME -DVERIFY

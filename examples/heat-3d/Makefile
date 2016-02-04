@@ -1,4 +1,4 @@
-SRC=heat-3d
+SRC=heat-3d-alt
 
 include ../common.mk
 
