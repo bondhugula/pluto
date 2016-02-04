@@ -43,11 +43,11 @@ test/tricky4.c \
 test/ludcmp.c \
 test/tce-4index-transform.c \
 test/noloop.c \
-#test/deep.c"
+test/deep.c"
 
 for file in $TESTS; do
 	echo -e "$file"
-	./polycc $file $*  -o test_temp_out.pluto.c
+	./polycc --lastwriter $file $*  -o test_temp_out.pluto.c
     if [ $? -ne 0 ]; then
         echo -e "\e[31mFailed\e[0m" " $file"!
     else

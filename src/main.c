@@ -117,7 +117,7 @@ static double rtclock()
 
 int main(int argc, char *argv[])
 {
-    int i, j, k, count, m, n;
+    int i, j, k, count, m, n, max, dep;
     FILE* marker,* skipdeps;
 
     double t_start, t_c, t_d, t_t, t_all, t_start_all;
@@ -631,10 +631,37 @@ int main(int argc, char *argv[])
 	
     }
 
-    for(i=0;i<prog->ndeps;i++) {
-        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type))
-            fprintf(skipdeps,"%d\n",i);
+    for(i=0;i<prog->ndeps;) {
+        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type)) {
+            max=-1,dep=i;
+            k=i;
+            while((i < prog->ndeps-1) && prog->deps[i+1]->src_acc==prog->deps[i]->src_acc && prog->deps[i+1]->dest_acc==prog->deps[i]->dest_acc) {
+                count=0;
+	        	for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+			        if(is_on_loop(prog,prog->deps[i]->dpolytope,j)) count++;
+		        }
+		        if(count>max) {
+                    dep=i;
+                    max=count;
+                }
+            i++;
+            }
+            i++;
+            for(j=k;j<i;j++) {
+                if(j==dep) continue;
+                else
+                    fprintf(skipdeps,"%d\n",j);
+            }
+        }
+        else i++;
     }
+
+/* This is more aggressive and does not work for codes that may involve skewing such as the time-tiled stencils */
+
+//    for(i=0;i<prog->ndeps;i++) {
+//        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type))
+//            fprintf(skipdeps,"%d\n",i);
+//    }
             	
     fclose(skipdeps);
 

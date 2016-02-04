@@ -605,7 +605,6 @@ int cut_between_sccs_initial(PlutoProg *prog, Graph *ddg, int scc1, int scc2)
     }
     num_satisfied =  dep_satisfaction_update(prog, stmts[0]->trans->nrows-1);
     if (num_satisfied >= 1) {
-        pluto_transformation_print_level(prog, prog->num_hyperplanes-1);
         ddg_update(ddg, prog);
     }else{
         for (i=0; i<nstmts; i++) {
