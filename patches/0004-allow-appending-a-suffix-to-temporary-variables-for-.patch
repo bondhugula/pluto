@@ -34,7 +34,7 @@ index 0e86d3c..efbcc0c 100644
      if (f->private_vars) free(f->private_vars);
      if (f->reduction_vars) free(f->reduction_vars);
      if (f->time_var_name) free(f->time_var_name);
-+    free(f->suffix);
++    if (f->suffix) free(f->suffix);
      free(f);
  }
  

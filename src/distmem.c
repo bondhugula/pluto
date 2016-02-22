@@ -2021,7 +2021,7 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text), "_num_tasks_to_execute++;");
 		// initialize firing count of owned tasks
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
-				"tasks_loop%d%s = get_num_remote_src_tasks_%d(%s,%s,my_rank,nprocs) + \
+				"tasks_loop%d%s = get_num_remote_src_tasks_%d(%s%s,my_rank,nprocs) + \
                 get_num_local_src_tasks_%d(%s%s,my_rank,nprocs);",
                 loop_num, indices, loop_num, args, params, loop_num, args, params);
 		// enqueue if firing count is 0

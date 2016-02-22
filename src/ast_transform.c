@@ -534,10 +534,10 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root, const PlutoProg *p
             ClastFilter filter = {iter, stmtids, 1, exact};
             clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
             for (l=0; l<nloops; l++) {
-                // printf("Marking all_tasks %s parallel\n", loops[j]->iterator);
-                // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
+                // printf("Marking all_tasks %s parallel\n", loops[l]->iterator);
+                // clast_pprint(stdout, loops[l]->body, 0, cloogOptions);
                 loops[l]->parallel = CLAST_PARALLEL_OMP;
-                loops[j]->suffix = suffix;
+                loops[l]->suffix = strdup(suffix);
                 char *private_vars = malloc(512);
                 strcpy(private_vars, "");
                 if (options->distmem) {
