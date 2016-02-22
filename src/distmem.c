@@ -1383,7 +1383,7 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
 	char params[1024];
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
@@ -1407,7 +1407,7 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
 
 	char *lw_holder_text = malloc(512);
 	strcpy(lw_holder_text, "");
-	sprintf(lw_holder_text+strlen(lw_holder_text), "if (pi_%d(%s,%s,nprocs) == my_rank)",
+	sprintf(lw_holder_text+strlen(lw_holder_text), "if (pi_%d(%s%s,nprocs) == my_rank)",
 			loop_num, args, params);
 	sprintf(lw_holder_text+strlen(lw_holder_text), "%s = writeout_pack_%s_%d(%s,%s,%s",
 			lw_count_name, acc_name, loop_num, args, lwbufname, lw_count_name);
@@ -1841,19 +1841,19 @@ Stmt *gen_comm_code_count_recvs(struct stmt_access_pair ***wacc_stmts, int *num_
 	char params[1024];
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
 	}
 
 	char *count_recvs_stmt_text = malloc(8192);
-	sprintf(count_recvs_stmt_text, "proc = pi_%d(%s,%s, nprocs); ", loop_num, args, params);
+	sprintf(count_recvs_stmt_text, "proc = pi_%d(%s%s, nprocs); ", loop_num, args, params);
 	sprintf(count_recvs_stmt_text+strlen(count_recvs_stmt_text), "if (my_rank != proc) { ");
 	for (i=0; i<num_data; i++) {
 		char *acc_name = wacc_stmts[i][0]->acc->name;
 		sprintf(count_recvs_stmt_text+strlen(count_recvs_stmt_text),
-				"_num_recvs_%s += is_receiver_%s_%d(%s,%s,my_rank,nprocs);",
+				"_num_recvs_%s += is_receiver_%s_%d(%s%s,my_rank,nprocs);",
 				acc_name, acc_name, loop_num, args, params);
 	}
 	sprintf(count_recvs_stmt_text+strlen(count_recvs_stmt_text), "}");
@@ -1883,7 +1883,7 @@ Stmt *gen_comm_code_async_recv(struct stmt_access_pair ***wacc_stmts, int *num_s
 	char params[1024];
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
@@ -1981,7 +1981,7 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 	char *params = malloc (1024);
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
@@ -2014,7 +2014,7 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 
 	if (options->distmem) {
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
-				"if (pi_%d(%s,%s,nprocs) == my_rank) { ",
+				"if (pi_%d(%s%s,nprocs) == my_rank) { ",
 				loop_num, args, params);
 
 		// owned tasks
@@ -2022,15 +2022,15 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 		// initialize firing count of owned tasks
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"tasks_loop%d%s = get_num_remote_src_tasks_%d(%s,%s,my_rank,nprocs) + \
-                get_num_local_src_tasks_%d(%s,%s,my_rank,nprocs);",
+                get_num_local_src_tasks_%d(%s%s,my_rank,nprocs);",
                 loop_num, indices, loop_num, args, params, loop_num, args, params);
 		// enqueue if firing count is 0
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"if (tasks_loop%d%s == 0) { \
-                remote_dep_tasks = get_num_remote_dep_tasks_%d(%s,%s,my_rank,nprocs); \
-                local_dep_tasks = get_num_local_dep_tasks_%d(%s,%s,my_rank,nprocs); \
+                remote_dep_tasks = get_num_remote_dep_tasks_%d(%s%s,my_rank,nprocs); \
+                local_dep_tasks = get_num_local_dep_tasks_%d(%s%s,my_rank,nprocs); \
                 if (__is_multi_partitioned[%d] || __is_block_cyclic[%d]) affinity = -1; \
-                else affinity = pi_threads_%d(%s,%s,my_rank,nprocs,num_threads); \
+                else affinity = pi_threads_%d(%s%s,my_rank,nprocs,num_threads); \
                 __Task task(%d,%s,remote_dep_tasks,local_dep_tasks,affinity); \
                 pqueue.push(task); ",
                 loop_num, indices, loop_num, args, params, loop_num, args, params,
@@ -2049,7 +2049,7 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
                 args);
 
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
-				"} else if (is_receiver_%d(%s,%s,my_rank,nprocs)) { ",
+				"} else if (is_receiver_%d(%s%s,my_rank,nprocs)) { ",
 				loop_num, args, params);
 
 		// remote tasks
@@ -2057,7 +2057,7 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 		// initialize firing count of remote tasks (for unpack)
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"tasks_loop%d%s = %d + \
-                get_num_local_src_tasks_%d(%s,%s,my_rank,nprocs);",
+                get_num_local_src_tasks_%d(%s%s,my_rank,nprocs);",
                 loop_num, indices, num_data, loop_num, args, params);
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"IF_DYNSCHEDULER_MORE_DEBUG_PRINT(\
@@ -2090,13 +2090,13 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 		}
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text), "));");
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
-				"if (get_num_local_src_tasks_%d(%s,%s) == 0) \
+				"if (get_num_local_src_tasks_%d(%s%s) == 0) \
                 { tbb::flow::make_edge(*__start, *tasks_loop%d%s); }",
                 loop_num, args, params, loop_num, indices);
 
 		add_outgoing_edges_text = malloc(1024);
 		sprintf(add_outgoing_edges_text,
-				"add_outgoing_edges_%d(%s,%s%s,tasks_loop%d%s)",
+				"add_outgoing_edges_%d(%s%s%s,tasks_loop%d%s)",
 				loop_num, args, params, tasks_loops_args, loop_num, indices);
 
 		free(accs);
@@ -2106,13 +2106,13 @@ Stmt **gen_tasks_code(Stmt **loop_stmts, int nstmts, int *copy_level, PlutoProg 
 		// initialize firing count of owned tasks
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"tasks_loop%d%s = \
-                get_num_local_src_tasks_%d(%s,%s);",
+                get_num_local_src_tasks_%d(%s%s);",
                 loop_num, indices, loop_num, args, params);
 		// enqueue if firing count is 0
 		sprintf(init_all_tasks_text+strlen(init_all_tasks_text),
 				"if (tasks_loop%d%s == 0) { \
-                local_dep_tasks = get_num_local_dep_tasks_%d(%s,%s); \
-                affinity = pi_%d(%s,%s,num_threads); \
+                local_dep_tasks = get_num_local_dep_tasks_%d(%s%s); \
+                affinity = pi_%d(%s%s,num_threads); \
                 __Task task(%d,%s,local_dep_tasks,affinity); \
                 pqueue.push(task); ",
                 loop_num, indices, loop_num, args, params,
@@ -3322,7 +3322,7 @@ void gen_dynschedule_main_text_code(PlutoProg *prog, Ploop **loops, int nloops,
 	char *params = malloc(256);
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
@@ -3545,7 +3545,7 @@ void gen_dynschedule_main_text_code(PlutoProg *prog, Ploop **loops, int nloops,
 						for (ii=0; ii<num_write_data[l]; ii++) {
 							char *acc_name = wacc_stmts[l][ii][0]->acc->name;
 							fprintf(outfp, "\t\t\t\t\t\t\t\ttasks_loop%d%s -=\
-                                    !is_receiver_%s_%d(%s,%s,nprocs);\n",
+                                    !is_receiver_%s_%d(%s%s,nprocs);\n",
                                     l, indices, acc_name, l, args, params);
 						}
 						fprintf(outfp, "\t\t\t\t\t\t\t}\n");
@@ -4397,7 +4397,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 		char params[1024];
 		strcpy(params, "");
 		if (prog->npar>=1) {
-			sprintf(params+strlen(params), "%s", prog->params[0]);
+			sprintf(params+strlen(params), ",%s", prog->params[0]);
 			for (i=1; i<prog->npar; i++) {
 				sprintf(params+strlen(params), ",%s", prog->params[i]);
 			}
@@ -4515,15 +4515,19 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 			if (options->fop_unicast_runtime) {
 				sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "int __p = pi_%d(", loop_num);
 				for (i=0; i<src_copy_level; i++) {
+                    if (i!=0) {
+                        sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
+                                ",");
+                    }
 					sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
-							"(int)%s[%d],",
+							"(int)%s[%d]",
 							recvbufname, i+1);
 				}
 				sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "%s, nprocs); ", params);
 			}
 		}
 		else {
-			sprintf(unpack_stmt_text, "proc = pi_%d(%s,%s, nprocs); ", loop_num, args, params);
+			sprintf(unpack_stmt_text, "proc = pi_%d(%s%s, nprocs); ", loop_num, args, params);
 			sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "if ((my_rank != proc) && (%s[proc] > 0)) { ", recv_counts_name);
 		}
 		k = 0;
@@ -4579,14 +4583,18 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 				}
 				if (!broadcast) {
 					char sigma_check_text[1024];
-					sprintf(sigma_check_text, "distinct_recv = sigma_check_%s_%d(%s,%s", acc_name_k, loop_num, args, params);
+					sprintf(sigma_check_text, "distinct_recv = sigma_check_%s_%d(%s%s", acc_name_k, loop_num, args, params);
 
 					sprintf(pack_stmt_text+strlen(pack_stmt_text), "%s, my_rank, nprocs); if (distinct_recv == 1) {", sigma_check_text);
 					if (options->dynschedule) {
 						sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "distinct_recv = sigma_check_%s_%d(", acc_name_k, loop_num);
 						for (i=0; i<src_copy_level; i++) {
+                            if (i!=0) {
+                                sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
+                                        ",");
+                            }
 							sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
-									"(int)%s[%d],",
+									"(int)%s[%d]",
 									recvbufname, i+1);
 						}
 						sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "%s,", params);
@@ -4656,7 +4664,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 						}
 
 						char pi_text[1024];
-						sprintf(pi_text, "recv_proc = pi_%d(%s,%s, nprocs)", l, dest_args, params);
+						sprintf(pi_text, "recv_proc = pi_%d(%s%s, nprocs)", l, dest_args, params);
 
 						if (options->dynschedule) {
 							sprintf(pack_stmt_text+strlen(pack_stmt_text),
@@ -4846,7 +4854,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 			}
 
 			char sigma_text[1024];
-			sprintf(sigma_text, "sigma_%s_%d(%s,%s", acc_name_k, loop_num, args, params);
+			sprintf(sigma_text, "sigma_%s_%d(%s%s", acc_name_k, loop_num, args, params);
 
 			// !!!roshan should add the below keyword to parallelize per-receiver copy loop
 			// this currently leads to slow down; should be investigated
@@ -4936,8 +4944,12 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 						"if (is_receiver_%s_%d(",
 						acc_name_k, loop_num);
 				for (i=0; i<src_copy_level; i++) {
+                    if (i!=0) {
+                        sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
+                                ",");
+                    }
 					sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
-							"(int)%s[%d],",
+							"(int)%s[%d]",
 							recvbufname, i+1);
 				}
 				sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
@@ -4955,7 +4967,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts, 
 			}
 			else {
 				sprintf(unpack_stmt_text+strlen(unpack_stmt_text),
-						"if (is_receiver_%s_%d(%s,%s,my_rank,nprocs) != 0) { \
+						"if (is_receiver_%s_%d(%s%s,my_rank,nprocs) != 0) { \
 				%s[proc] = unpack_%s_%d(%s,%s,%s[proc]",
 				acc_name_k, loop_num, args, params, currdisplsname, acc_name_k, loop_num, args, recvbufname, currdisplsname);
 			}
@@ -5243,7 +5255,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 	char params[1024];
 	strcpy(params, "");
 	if (prog->npar>=1) {
-		sprintf(params+strlen(params), "%s", prog->params[0]);
+		sprintf(params+strlen(params), ",%s", prog->params[0]);
 		for (i=1; i<prog->npar; i++) {
 			sprintf(params+strlen(params), ",%s", prog->params[i]);
 		}
@@ -5373,7 +5385,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				"%s = %d; ", currdisplsname, max_copy_level + 1);
 	}
 	else {
-		sprintf(unpack_stmt_text, "proc = pi_%d(%s,%s, nprocs); ", loop_num, args, params);
+		sprintf(unpack_stmt_text, "proc = pi_%d(%s%s, nprocs); ", loop_num, args, params);
 		sprintf(unpack_stmt_text+strlen(unpack_stmt_text), "if ((my_rank != proc) && (%s[proc] > 0)) { ", recv_counts_name);
 	}
 	if (broadcast) {
@@ -5518,7 +5530,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				}
 
 				char pi_text[1024];
-				sprintf(pi_text, "recv_proc = pi_%d(%s,%s, nprocs)", l, dest_args, params);
+				sprintf(pi_text, "recv_proc = pi_%d(%s%s, nprocs)", l, dest_args, params);
 
 				if (options->dynschedule) {
 					sprintf(pack_stmt_text+strlen(pack_stmt_text),
@@ -5852,7 +5864,7 @@ Stmt **gen_comm_code_opt(int data_id, struct stmt_access_pair **wacc_stmts, int 
 		char params[1024];
 		strcpy(params, "");
 		if (prog->npar>=1) {
-			sprintf(params+strlen(params), "%s", prog->params[0]);
+			sprintf(params+strlen(params), ",%s", prog->params[0]);
 			for (i=1; i<prog->npar; i++) {
 				sprintf(params+strlen(params), ",%s", prog->params[i]);
 			}
@@ -5892,7 +5904,7 @@ Stmt **gen_comm_code_opt(int data_id, struct stmt_access_pair **wacc_stmts, int 
 		sprintf(flow_copy_text, "%s[%s++] = %s", sendbufname, send_count_name, access);
 
 		char *sigma_text = malloc(1024);
-		sprintf(sigma_text, "sigma_%s_%d(%s,%s", acc_name, loop_num, args, params);
+		sprintf(sigma_text, "sigma_%s_%d(%s%s", acc_name, loop_num, args, params);
 
 		char *sigma_sender_text = malloc(1024);
 		strcpy(sigma_sender_text, sigma_text);
@@ -6106,7 +6118,7 @@ Stmt **gen_comm_code_opt(int data_id, struct stmt_access_pair **wacc_stmts, int 
 				sprintf(proc_stmt_text+strlen(proc_stmt_text), ");");
 			}
 			else {
-				sprintf(proc_stmt_text+strlen(proc_stmt_text), "proc = pi_%d(%s,%s, nprocs); ", loop_num, args, params);
+				sprintf(proc_stmt_text+strlen(proc_stmt_text), "proc = pi_%d(%s%s, nprocs); ", loop_num, args, params);
 				sprintf(proc_stmt_text+strlen(proc_stmt_text),
 						"if ((proc != my_rank) && (%s[proc] > 0)) { \
 					for (__p=0; __p<nprocs; __p++) { receiver_list[__p] = 0; } \
