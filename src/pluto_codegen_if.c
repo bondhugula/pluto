@@ -1023,7 +1023,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
         int nloops, nstmts;
         ClastFilter filter = {iter, stmtids, prog->nstmts, exact};
         clast_filter(root, filter, &parameterized_loops, &nloops, &stmts, &nstmts);
-        assert(nloops==1);
+        assert(nloops==1 && "[Pluto] parallel poly loop not found in AST\n");
         clast_pprint(outfp, parameterized_loops[0]->body, 0, cloogOptions);
         free(parameterized_loops);
         free(stmts);

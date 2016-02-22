@@ -484,6 +484,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
+    if ((options->distmem || options->dynschedule) && (!options->variables_not_global)) {
+        printf("[pluto] Assuming data arrays are declared globally; turn on variables_not_global (and include macro definitions) otherwise\n");
+    }
 
     /* Extract polyhedral representation from osl scop */
     PlutoProg *prog = NULL; 

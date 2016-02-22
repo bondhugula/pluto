@@ -447,7 +447,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 /* Sometimes loops may disappear (1) tile size larger than trip count
                  * 2) it's a scalar dimension but can't be determined from the
                  * trans matrix */
-                PLUTO_MESSAGE(printf("Warning: parallel poly loop not found in AST\n"););
+                PLUTO_MESSAGE(printf("[Pluto] Warning: parallel poly loop not found in AST\n"););
             }else{
                 for (j=0; j<nloops; j++) {
                     loops[j]->parallel = CLAST_PARALLEL_NOT;
@@ -533,29 +533,36 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root, const PlutoProg *p
             /* Get all loops at that depth with exactly the all_tasks statement */
             ClastFilter filter = {iter, stmtids, 1, exact};
             clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
-            for (l=0; l<nloops; l++) {
-                // printf("Marking all_tasks %s parallel\n", loops[l]->iterator);
-                // clast_pprint(stdout, loops[l]->body, 0, cloogOptions);
-                loops[l]->parallel = CLAST_PARALLEL_OMP;
-                loops[l]->suffix = strdup(suffix);
-                char *private_vars = malloc(512);
-                strcpy(private_vars, "");
-                if (options->distmem) {
-                    sprintf(private_vars+strlen(private_vars), "remote_dep_tasks, ");
+            if (nloops==0) {
+                /* Sometimes loops may disappear (1) tile size larger than trip count
+                 * 2) it's a scalar dimension but can't be determined from the
+                 * trans matrix */
+                PLUTO_MESSAGE(printf("[Pluto] Warning: parallel poly loop not found in AST\n"););
+            }else{
+                for (l=0; l<nloops; l++) {
+                    // printf("Marking all_tasks %s parallel\n", loops[l]->iterator);
+                    // clast_pprint(stdout, loops[l]->body, 0, cloogOptions);
+                    loops[l]->parallel = CLAST_PARALLEL_OMP;
+                    loops[l]->suffix = strdup(suffix);
+                    char *private_vars = malloc(512);
+                    strcpy(private_vars, "");
+                    if (options->distmem) {
+                        sprintf(private_vars+strlen(private_vars), "remote_dep_tasks, ");
+                    }
+                    sprintf(private_vars+strlen(private_vars), "local_dep_tasks, affinity");
+                    for (depth++;depth<=stmt->trans->nrows;depth++) {
+                        sprintf(private_vars+strlen(private_vars), ", t%d", depth);
+                    }
+                    loops[l]->private_vars = strdup(private_vars);
+                    free(private_vars);
+                    char *reduction_vars = malloc(128);
+                    strcpy(reduction_vars, "+:_num_tasks_to_execute");
+                    if (options->distmem) {
+                        sprintf(reduction_vars+strlen(reduction_vars), ",_num_tasks_to_unpack");
+                    }
+                    loops[l]->reduction_vars = strdup(reduction_vars);
+                    free(reduction_vars);
                 }
-                sprintf(private_vars+strlen(private_vars), "local_dep_tasks, affinity");
-                for (depth++;depth<=stmt->trans->nrows;depth++) {
-                    sprintf(private_vars+strlen(private_vars), ", t%d", depth);
-                }
-                loops[l]->private_vars = strdup(private_vars);
-                free(private_vars);
-                char *reduction_vars = malloc(128);
-                strcpy(reduction_vars, "+:_num_tasks_to_execute");
-                if (options->distmem) {
-                    sprintf(reduction_vars+strlen(reduction_vars), ",_num_tasks_to_unpack");
-                }
-                loops[l]->reduction_vars = strdup(reduction_vars);
-                free(reduction_vars);
             }
 //            if ((nloops>0)) {
 //                assert(nloops == 1);
