@@ -5482,7 +5482,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 			add_data_dist_parm_decl(headerfp, acc_name, prog);
 			fprintf(headerfp,");\n");
 			generate_pack_or_unpack(packfp, prog, flow_out, flow_copyback_text, IN_FUNCTION, iters, src_copy_level, acc_nrows,
-					acc_name, "count");
+					acc_name, currdisplsname);
 		}
 	}
 	else {
@@ -5597,10 +5597,10 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				sprintf(flow_cg_text+strlen(flow_cg_text), "); }");
 
 				if (options->dynschedule) {
-					fprintf(packfp, "int pack_%s_%d_%d(%s,std::vector<double *>&%s,int *%s, \
+					fprintf(packfp, "void pack_%s_%d_%d(%s,std::vector<double *>&%s,int *%s, \
 						int my_rank, int nprocs, std::vector<MPI_Request>& send_reqs",
 						acc_name, loop_num, l, decl_args, sendbufname, send_counts_name);
-					fprintf(headerfp, "int pack_%s_%d_%d(%s,std::vector<double *>&%s,int *%s, \
+					fprintf(headerfp, "void pack_%s_%d_%d(%s,std::vector<double *>&%s,int *%s, \
 						int my_rank, int nprocs, std::vector<MPI_Request>& send_reqs",
 						acc_name, loop_num, l, decl_args, sendbufname, send_counts_name);
 					if (options->dynschedule) {
@@ -5609,10 +5609,10 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 					}
 				}
 				else {
-					fprintf(packfp, "int pack_%s_%d_%d(%s,double **%s,int *%s, \
+					fprintf(packfp, "void pack_%s_%d_%d(%s,double **%s,int *%s, \
 						int my_rank, int nprocs",
 						acc_name, loop_num, l, decl_args, sendbufname, send_counts_name);
-					fprintf(headerfp, "int pack_%s_%d_%d(%s,double **%s,int *%s, \
+					fprintf(headerfp, "void pack_%s_%d_%d(%s,double **%s,int *%s, \
 						int my_rank, int nprocs",
 						acc_name, loop_num, l, decl_args, sendbufname, send_counts_name);
 				}
@@ -5624,7 +5624,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				fprintf(headerfp,");\n");
 
 				generate_pack_or_unpack(packfp, prog, receiver_tiles, flow_cg_text, IN_FUNCTION, dest_iters, src_copy_level, dest_copy_level,
-						acc_name, send_counts_name);
+						acc_name, "");
 
 				fprintf(packfp, "int pack_recv_%s_%d_%d(%s,%s,double *%s,int %s",
 						acc_name, loop_num, l, decl_args, decl_dest_args, sendbufname, send_counts_name);
@@ -5681,9 +5681,8 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				}
 				add_data_dist_parm_decl(headerfp, acc_name, prog);
 				fprintf(headerfp,");\n");
-				fprintf(packfp, "\nint recv_proc;\n");
 				generate_pack_or_unpack(packfp, prog, receiver_tiles, flow_copyback_guard_text, IN_FUNCTION, dest_iters, src_copy_level, dest_copy_level,
-						acc_name, "count");
+						acc_name, currdisplsname);
 
 				fprintf(packfp, "int unpack_recv_%s_%d_%d(%s,%s,double *%s,int %s", acc_name, loop_num, l, decl_args, decl_dest_args, recvbufname, currdisplsname);
 				fprintf(headerfp, "int unpack_recv_%s_%d_%d(%s,%s,double *%s,int %s", acc_name, loop_num, l, decl_args, decl_dest_args, recvbufname, currdisplsname);
@@ -5694,7 +5693,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id, struct stmt_access_pair **wacc_stmts
 				add_data_dist_parm_decl(headerfp, acc_name, prog);
 				fprintf(headerfp,");\n");
 				generate_pack_or_unpack(packfp, prog, foifi, flow_copyback_text, IN_FUNCTION, iters, total_copy_level, acc_nrows,
-						acc_name, "count");
+						acc_name, currdisplsname);
 
 				for (i=0; i<dest_copy_level; i++) {
 					free(dest_iters[i]);
