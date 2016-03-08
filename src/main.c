@@ -445,7 +445,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_auto_transform(prog);
     }
     t_t = rtclock() - t_start;
-    pluto_detect_transformation_properties(prog);
+
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent)   {
         fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");

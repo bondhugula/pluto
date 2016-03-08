@@ -1078,6 +1078,9 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
     Dep **deps = prog->deps;
     int band, num_loops_in_band;
 
+    /* OUTDATED */
+    assert(0);
+
     IF_DEBUG(printf("[pluto] pluto_detect_transformation_properties\n"););
 
     if (prog->nstmts == 0) return;
@@ -1140,6 +1143,8 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                 /* Dependence violation if assertion fails: 
                  * basically, the current level has negative
                  * components for some unsatisfied dependence
+                 *
+                 * CORRECTION: under partial satisfaction, this can happen.
                  */
                 if (num_loops_in_band == 0) {
                     fprintf(stdout, "[pluto] Unfortunately, the transformation computed has violated a dependence.\n");
