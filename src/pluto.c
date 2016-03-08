@@ -1449,7 +1449,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
 {
     PlutoConstraints *bcst;
     int s, _s, j, nz, nvar, npar;
-    PlutoMatrix *fmat;
+    PlutoMatrix *conc_start_faces;
 
     IF_DEBUG(printf("[pluto] get_face_with_concurrent_start for band\n\t"););
     IF_DEBUG(pluto_band_print(band););
@@ -1471,24 +1471,24 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
         return NULL;
     }
 
-    fmat = pluto_matrix_alloc(band->loop->nstmts, nvar+npar+1);
-    pluto_matrix_set(fmat, 0);
+    conc_start_faces = pluto_matrix_alloc(band->loop->nstmts, nvar+npar+1);
+    pluto_matrix_set(conc_start_faces, 0);
 
     for (s=0, _s=0; s<prog->nstmts; s++) {
         if (!pluto_stmt_is_member_of(s, band->loop->stmts, 
                     band->loop->nstmts)) continue;
         assert(_s <= band->loop->nstmts-1);
         for (j=0; j<nvar; j++) {
-            fmat->val[_s][j] = sol[npar+1+s*(nvar+1)+j];
+            conc_start_faces->val[_s][j] = sol[npar+1+s*(nvar+1)+j];
         }
-        fmat->val[_s][nvar+npar] = sol[npar+1+s*(nvar+1)+nvar];
+        conc_start_faces->val[_s][nvar+npar] = sol[npar+1+s*(nvar+1)+nvar];
         _s++;
     }
 
     IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
     for (s=0; s<band->loop->nstmts; s++) {
         IF_DEBUG(printf("\tf(S%d) = ", band->loop->stmts[s]->id+1););
-        IF_DEBUG(pluto_affine_function_print(stdout, fmat->val[s], nvar+npar,
+        IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s], nvar+npar,
                     band->loop->stmts[s]->domain->names););
         IF_DEBUG(printf("\n"););
     }
@@ -1498,20 +1498,20 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
     for (s=0; s<band->loop->nstmts; s++) {
         nz = 0;
         for (j=0; j<nvar; j++) {
-            if (fmat->val[s][j]) nz++;
+            if (conc_start_faces->val[s][j]) nz++;
         }
         if (nz != 1) break;
     }
 
     if (s < band->loop->nstmts) {
-        pluto_matrix_free(fmat);
+        pluto_matrix_free(conc_start_faces);
         IF_DEBUG(printf("[pluto] No iteration space faces with concurrent start for all statements\n"););
         return NULL;
     }
 
     IF_DEBUG(printf("[pluto] faces with concurrent start found for all statements\n"););
 
-    return fmat;
+    return conc_start_faces;
 }
 
 
@@ -1519,7 +1519,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
  * Find hyperplane inside the cone  of previously found hyperplanes 
  * and the face allowing concurrent start
  *
- * fmat[i]: concurrent start face for statement $i$
+ * conc_start_faces[i]: concurrent start face for statement $i$
  *
  * evict_pos: position of the hyperplane to be evicted by the one that will
  * enable concurrent start
@@ -1530,7 +1530,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
  * cone_complement_hyps will set to the cone complement hyperplanes found
  * for statements in the band
  */
-int find_cone_complement_hyperplane(Band *band, PlutoMatrix *fmat, int evict_pos, 
+int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces, int evict_pos, 
         int cone_complement_pos, PlutoConstraints *basecst, PlutoProg *prog, 
         PlutoMatrix **cone_complement_hyps)
 {
@@ -1570,7 +1570,7 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *fmat, int evict_pos
             pluto_constraints_add_equality(lastcst);
             lastcst->val[lastcst->nrows-1][stmt_offset1+j] =1;
 
-            lastcst->val[lastcst->nrows-1][stmt_offset2] = -(fmat->val[s][j]);
+            lastcst->val[lastcst->nrows-1][stmt_offset2] = -(conc_start_faces->val[s][j]);
 
             if (options->partlbtile) {
                 lastcst->val[lastcst->nrows-1][stmt_offset2+1] = 
@@ -1579,7 +1579,7 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *fmat, int evict_pos
                 lambda_k = 0;
                 /* Just for the band depth hyperplanes */
                 for (k=band->loop->depth; k < band->loop->depth + band->width; k++){
-                    if (k != evict_pos && stmt->hyp_types[k]!= H_SCALAR) {
+                    if (k != evict_pos && stmt->hyp_types[k] != H_SCALAR) {
                         lastcst->val[lastcst->nrows-1][stmt_offset2+lambda_k+1] = stmt->trans->val[k][j];
                         lambda_k++;
                     }
@@ -1648,13 +1648,13 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *fmat, int evict_pos
  * Check if the d'th row for any statement in the band is parallel to the
  * face allowing concurrent start
  */
-int is_concurrent_start_face(Band *band, PlutoMatrix *fmat, int d)
+int is_concurrent_start_face(Band *band, PlutoMatrix *conc_start_faces, int d)
 {
     int s;
 
     for (s=0; s<band->loop->nstmts; s++){
         if (pluto_vector_is_parallel(band->loop->stmts[s]->trans, d,
-                fmat, s)) {
+                conc_start_faces, s)) {
             return 1;
         }
     }
@@ -1666,11 +1666,11 @@ int is_concurrent_start_face(Band *band, PlutoMatrix *fmat, int d)
  * that will be evicted; if there is none, return
  * the last hyperplane
  */
-int find_hyperplane_to_be_evicted(Band *band, PlutoMatrix *fmat, PlutoProg *prog)
+int find_hyperplane_to_be_evicted(Band *band, PlutoMatrix *conc_start_faces, PlutoProg *prog)
 {
     int d;
     for (d=band->loop->depth; d < band->loop->depth + band->width-1; d++){
-        if (is_concurrent_start_face(band, fmat, d)) return d;
+        if (is_concurrent_start_face(band, conc_start_faces, d)) return d;
     }
     /* Return the last one */
     return band->loop->depth + band->width - 1; 
@@ -1743,7 +1743,7 @@ int pluto_auto_transform(PlutoProg *prog)
     ddg_compute_scc(prog);
 
     Graph *ddg = prog->ddg;
-    int nvar = prog->nvar;
+     int nvar = prog->nvar;
     int npar = prog->npar;
 
     if (nstmts == 0)  return 0;
@@ -2257,16 +2257,16 @@ int pluto_diamond_tile(PlutoProg *prog)
         pluto_loops_free(iloops, ni);
         if (i<ni) continue;
 
-        /* Iteration space should have concurrent start */
-        PlutoMatrix *fmat = get_face_with_concurrent_start(prog, band);
-        if (!fmat) continue;
+        /* Domains should allows point-wise concurrent start */
+        PlutoMatrix *conc_start_faces = get_face_with_concurrent_start(prog, band);
+        if (!conc_start_faces) continue;
 
         /* face with concurrent start shouldn't be normal to all hyperplanes
          * of all statements in this band */
         for (s=0; s<band->loop->nstmts; s++) {
             for (d=band->loop->depth; d<band->loop->depth + band->width; d++) {
                 if (!pluto_vector_is_normal(band->loop->stmts[s]->trans, d,
-                        fmat, s)) break;
+                        conc_start_faces, s)) break;
             }
             if (d < band->loop->depth + band->width) break;
         }
@@ -2287,7 +2287,7 @@ int pluto_diamond_tile(PlutoProg *prog)
          * hyperplane
          * Concurrent start pertains to the first band alone
          */
-        evict_pos = find_hyperplane_to_be_evicted(band, fmat, prog);
+        evict_pos = find_hyperplane_to_be_evicted(band, conc_start_faces, prog);
 
         /* If we haven't yet found the cone_complement_pos, just 
          * choose the first one as the cone_complement_pos */
@@ -2296,9 +2296,9 @@ int pluto_diamond_tile(PlutoProg *prog)
         /* If first_loop_hyp hyperplane itself is to be replaced, 
          * choose the next one as cone_complement_pos */
         if (evict_pos == first_loop_hyp) cone_complement_pos++ ;
-        conc_start_enabled_band = find_cone_complement_hyperplane(band, fmat, evict_pos,
+        conc_start_enabled_band = find_cone_complement_hyperplane(band, conc_start_faces, evict_pos,
                 cone_complement_pos, basecst, prog, cone_complement_hyps);
-        pluto_matrix_free(fmat);
+        pluto_matrix_free(conc_start_faces);
 
         /* Re-arrange the transformation matrix if concurrent start
          * was found, store the replaced hyperplane so that it can be 
