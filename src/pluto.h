@@ -50,8 +50,8 @@
 
 //#define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
-int CST_WIDTH;
-int** lord;
+extern int CST_WIDTH;
+extern int** lord;
 
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 

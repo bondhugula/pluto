@@ -51,6 +51,9 @@
 
 PlutoOptions *options;
 
+int CST_WIDTH;
+int** lord;
+
 void usage_message(void)
 {
     fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
@@ -117,7 +120,7 @@ static double rtclock()
 
 int main(int argc, char *argv[])
 {
-    int i, j, k, count, m, n, max, dep;
+    int i, j, k, count, m, n;
     FILE* marker,* skipdeps;
 
     double t_start, t_c, t_d, t_t, t_all, t_start_all;
@@ -581,19 +584,33 @@ int main(int argc, char *argv[])
 
     }
 
-    int* iter_priv_sccs = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
-    for(i=0;i<prog->ddg->num_sccs;i++) iter_priv_sccs[i] = 1;
+    int* iter_priv_sccs_depth = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
+    for(i=0;i<prog->ddg->num_sccs;i++) iter_priv_sccs_depth[i] = -1;
 
-    for(i=0;i<prog->ndeps;i++) {
-        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && IS_RAW(prog->deps[i]->type)) {
-            iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] = 0;            
-        }
-    }
+	for(i=0;i<prog->ndeps;i++) {
+        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && IS_RAW(prog->deps[i]->type)) {
+			for(j=0,k=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
+					k++;
+					j=-1;
+					continue;
+				}
+			}
+			if((k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]!=-1))
+				iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id] = k;
+		}
+	}
+	
+//    for(i=0;i<prog->ndeps;i++) {
+//        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && IS_RAW(prog->deps[i]->type)) {
+//            iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] = 0;            
+//        }
+//    }
 
-    bug("Iter-priv SCCS");
+    bug("Depth of loops in SCCS that have iteration-private live ranges, a 0-depth means absence of temporaries or loops with iteration-private live ranges");
 
-    for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs[i]);
-//    pluto_deps_print(stdout,prog);
+    for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs_depth[i]);
+    pluto_deps_print(stdout,prog);
 
     marker = fopen("marker","w");
     skipdeps = fopen("skipdeps.txt","w");
@@ -631,30 +648,46 @@ int main(int argc, char *argv[])
 	
     }
 
-    for(i=0;i<prog->ndeps;) {
-        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type)) {
-            max=-1,dep=i;
-            k=i;
-            while((i < prog->ndeps-1) && prog->deps[i+1]->src_acc==prog->deps[i]->src_acc && prog->deps[i+1]->dest_acc==prog->deps[i]->dest_acc) {
-                count=0;
-	        	for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
-			        if(is_on_loop(prog,prog->deps[i]->dpolytope,j)) count++;
-		        }
-		        if(count>max) {
-                    dep=i;
-                    max=count;
-                }
-            i++;
-            }
-            i++;
-            for(j=k;j<i;j++) {
-                if(j==dep) continue;
-                else
-                    fprintf(skipdeps,"%d\n",j);
-            }
-        }
-        else i++;
-    }
+
+    for(i=0;i<prog->ndeps;i++) {
+        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAR(prog->deps[i]->type)) {
+			for(j=0,k=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j)) {
+					k++;
+					j=-1;
+					continue;
+				}
+			}
+			if((k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]!=-1))
+            	fprintf(skipdeps,"%d\n",i);
+		}
+	}
+			
+
+//    for(i=0;i<prog->ndeps;) {
+//        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type)) {
+//            max=-1,dep=i;
+//            k=i;
+//            while((i < prog->ndeps-1) && prog->deps[i+1]->src_acc==prog->deps[i]->src_acc && prog->deps[i+1]->dest_acc==prog->deps[i]->dest_acc) {
+//                count=0;
+//	        	for(j=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+//			        if(is_on_loop(prog,prog->deps[i]->dpolytope,j)) count++;
+//		        }
+//		        if(count>max) {
+//                    dep=i;
+//                    max=count;
+//                }
+//            i++;
+//            }
+//            i++;
+//            for(j=k;j<i;j++) {
+//                if(j==dep) continue;
+//                else
+//                    fprintf(skipdeps,"%d\n",j);
+//            }
+//        }
+//        else i++;
+//    }
 
 /* This is more aggressive and does not work for codes that may involve skewing such as the time-tiled stencils */
 
@@ -669,16 +702,16 @@ int main(int argc, char *argv[])
     {
         prog->deps[i]->temp_across=false;
         prog->deps[i]->fuse_depth=0;
-        if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && iter_priv_sccs[prog->stmts[prog->deps[i]->dest]->scc_id]) {
+        if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]>0) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->dest]->scc_id]>0)) {
             PlutoConstraints* polytope;
             polytope = prog->deps[i]->dpolytope;
 
             for(j=0;j<polytope->nrows;j++) {
                 if(polytope->is_eq[j] && !is_on_loop(prog,polytope,j)) {
-                    pluto_constraints_remove_row(polytope,j);
+                    pluto_constraints_remove_row(polytope,j); // absence of a row is fine; an equality may be inserted later to relax scheduling
                 }
             }
-
+/* The following is to particularly handle cases when the loop order in the candidate nests is different */
             for(j=0;j<prog->nvar;j++) order[j]=0;
             for(j=0;j<polytope->nrows;j++) {
                 if(is_on_loop(prog,polytope,j)) {
@@ -690,7 +723,8 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-            for(k=0;k<min(prog->stmts[prog->deps[i]->src]->dim_orig,prog->stmts[prog->deps[i]->dest]->dim_orig) && order[k]!=-1;k++) {
+
+            for(k=0;k<min(iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id],iter_priv_sccs_depth[prog->stmts[prog->deps[i]->dest]->scc_id]) && order[k]!=-1;k++) {
                 pluto_constraints_add_equality(polytope);
                 polytope->val[j][k]=1;
                 polytope->val[j][k+prog->nvar]=-1;
@@ -703,7 +737,7 @@ int main(int argc, char *argv[])
 
 //    pluto_deps_print(stdout,prog);
 
-    CST_WIDTH= prog->npar+1+prog->nloops*(prog->nvar+1)+1;
+    CST_WIDTH = prog->npar+1+prog->nloops*(prog->nvar+1)+1;
 
     if (!options->silent)   {
         fprintf(stdout, "[pluto] Number of statements: %d\n", prog->nstmts);
