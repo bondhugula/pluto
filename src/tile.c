@@ -282,12 +282,13 @@ void pluto_tile(PlutoProg *prog)
 
 
     /* Detect properties after tiling */
-    pluto_detect_transformation_properties(prog);
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent)  {
         fprintf(stdout, "[Pluto] After tiling:\n");
         pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
+        /* pluto_print_hyperplane_properties(prog); */
     }
 
     if (options->lbtile) {
@@ -295,7 +296,8 @@ void pluto_tile(PlutoProg *prog)
         retval = pluto_diamond_tile_reschedule(prog);
 
         if (retval) {
-            pluto_detect_transformation_properties(prog);
+            pluto_compute_dep_directions(prog);
+            pluto_compute_dep_satisfaction(prog);
             if (!options->silent) {
                 printf("[Pluto] After intra_tile reschedule\n");
                 pluto_transformations_pretty_print(prog);
@@ -309,7 +311,8 @@ void pluto_tile(PlutoProg *prog)
             retval |= pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);
         }
         if (retval) {
-            pluto_detect_transformation_properties(prog);
+            pluto_compute_dep_directions(prog);
+            pluto_compute_dep_satisfaction(prog);
             if (!options->silent) {
                 printf("[Pluto] After intra-tile optimize\n");
                 pluto_transformations_pretty_print(prog);

@@ -656,8 +656,7 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
             if (dep->satisfaction_level < loop->depth) continue;
             /* Dependences satisfied in previous scalar dimensions in the band
              * don't count as well (i.e., they can have negative components) */
-            if (dep->satisfaction_level < depth && 
-                    pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
+            if (pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
             /* Rest of the dependences need to have non-negative components */
             if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
                     && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 
@@ -673,9 +672,14 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
     /* Peel off scalar dimensions from the end */
     while (pluto_is_depth_scalar(loop, depth-1)) depth--;
 
+    /* depth will always be at least loop->depth + 1 at this stage */
+
     int width = depth - loop->depth;
 
+    assert(width >= 1);
+
     if (width == 1) {
+        /* Trivial (single loop in band) */
         return NULL;
     }else{
         return pluto_band_alloc(loop, width);

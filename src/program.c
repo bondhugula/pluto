@@ -2145,7 +2145,9 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     osl_statement_p stmt;
     osl_strings_p scop_params = NULL;
 
-    IF_DEBUG(printf("[pluto] compute_deps (isl%s)\n", options->lastwriter? " with lastwriter":""););
+    if (!options->silent) {
+        printf("[pluto] compute_deps (isl%s)\n", options->lastwriter? " with lastwriter":"");
+    }
 
     ctx = isl_ctx_alloc();
     assert(ctx);
