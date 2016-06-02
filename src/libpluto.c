@@ -275,11 +275,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         return NULL;
     }
 
-    pluto_detect_transformation_properties(prog);
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent) {
+        fprintf(stdout, "[pluto] Affine transformations\n\n");
+        /* Print out transformations */
         pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
     }
 
     Band **bands, **ibands;
@@ -292,31 +294,10 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     if (options->tile) {
         pluto_tile(prog);
-    }
-
-    /* Detect properties again after tiling */
-    pluto_detect_transformation_properties(prog);
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
-    /* Intra-tile optimization */
-    if (options->intratileopt) {
-        int nbands;
-        Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-        int retval = 0;
-        for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog); 
+    }else{
+        if (options->intratileopt) {
+            pluto_intra_tile_optimize(prog, 0);
         }
-        if (retval) pluto_detect_transformation_properties(prog);
-        if (retval & !options->silent) {
-            printf("[Pluto] after intra tile opt\n");
-            pluto_transformations_pretty_print(prog);
-        }
-        pluto_bands_free(bands, nbands);
     }
 
     if ((options->parallel) && !options->tile)   {
@@ -324,20 +305,20 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
          * necessary */
         int nbands;
         Band **bands;
+        pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
         bool retval = pluto_create_tile_schedule(prog, bands, nbands);
         pluto_bands_free(bands, nbands);
 
         /* If the user hasn't supplied --tile and there is only pipelined
          * parallelism, we will warn the user */
-        if (retval && !options->silent)   {
-            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
-            printf("use --tile for better parallelization \n");
-            fprintf(stdout, "[Pluto] After skewing:\n");
+        if (retval)   {
+            printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("[pluto] WARNING: use --tile for better parallelization \n");
+            fprintf(stdout, "[pluto] After skewing:\n");
             pluto_transformations_pretty_print(prog);
-            pluto_print_hyperplane_properties(prog);
+            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
-
     }
 
     if (options->parallel && !options->silent) {
@@ -390,7 +371,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_t);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
     }
-
 
     return schedules;
 }
@@ -453,37 +433,30 @@ int pluto_schedule_osl(osl_scop_p scop,
   if (!options->identity) {
       pluto_auto_transform(prog);
   }
-  pluto_detect_transformation_properties(prog);
+
+  pluto_compute_dep_directions(prog);
+  pluto_compute_dep_satisfaction(prog);
 
   if (!options->silent)   {
       fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
       /* Print out transformations */
       pluto_transformations_pretty_print(prog);
-      pluto_print_hyperplane_properties(prog);
   }
 
   if (options->tile)   {
       pluto_tile(prog);
   }else{
       if (options->intratileopt) {
-          int retval = pluto_intra_tile_optimize(prog, 0); 
-          if (retval) {
-              /* Detect properties again */
-              pluto_detect_transformation_properties(prog);
-              if (!options->silent) {
-                  printf("[Pluto] after intra tile opt\n");
-                  pluto_transformations_pretty_print(prog);
-              }
-          }
+          pluto_intra_tile_optimize(prog, 0); 
       }
   }
-
 
   if (options->parallel && !options->tile && !options->identity)   {
       /* Obtain wavefront/pipelined parallelization by skewing if
        * necessary */
       int nbands;
       Band **bands;
+      pluto_compute_dep_satisfaction(prog);
       bands = pluto_get_outermost_permutable_bands(prog, &nbands);
       bool retval = pluto_create_tile_schedule(prog, bands, nbands);
       pluto_bands_free(bands, nbands);
@@ -491,18 +464,12 @@ int pluto_schedule_osl(osl_scop_p scop,
       /* If the user hasn't supplied --tile and there is only pipelined
        * parallelism, we will warn the user */
       if (retval)   {
-          printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
-          printf("use --tile for better parallelization \n");
-          IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
-          IF_DEBUG(pluto_transformations_pretty_print(prog););
-          IF_DEBUG(pluto_print_hyperplane_properties(prog););
-      }
-  }
-
-  if (options->tile && !options->silent)  {
-      IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
-      IF_DEBUG(pluto_transformations_pretty_print(prog););
-      IF_DEBUG(pluto_print_hyperplane_properties(prog););
+          printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+          printf("[pluto] WARNING: use --tile for better parallelization \n");
+          fprintf(stdout, "[pluto] After skewing:\n");
+          pluto_transformations_pretty_print(prog);
+          /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
+}
   }
 
   if (options->unroll || options->polyunroll)    {

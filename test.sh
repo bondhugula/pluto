@@ -40,10 +40,10 @@ test/tricky1.c \
 test/tricky2.c \
 test/tricky3.c \
 test/tricky4.c \
+test/multi-stmt-lazy-lin-ind.c \
 test/ludcmp.c \
 test/tce-4index-transform.c \
-test/noloop.c \
-test/deep.c"
+test/noloop.c"
 
 for file in $TESTS; do
 	echo -e "$file"

@@ -23,3 +23,11 @@ PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
     assert(0);
     return NULL;
 }
+
+
+PlutoConstraints *pluto_constraints_subtract(PlutoConstraints *cst1, 
+        const PlutoConstraints *cst2)
+{
+    assert(0);
+    return NULL;
+}

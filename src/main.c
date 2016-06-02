@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
     const struct option pluto_options[] =
     {
         {"fast-lin-ind-check", no_argument, &options->flic, 1},
+        {"flic", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
@@ -346,7 +347,7 @@ int main(int argc, char *argv[])
                 break;
             case 'v':
                 printf("PLUTO %s - An automatic parallelizer and locality optimizer\n\
-Copyright (C) 2007--2008  Uday Kumar Bondhugula\n\
+Copyright (C) 2007--2015  Uday Bondhugula\n\
 This is free software; see the source for copying conditions.  There is NO\n\
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n", PLUTO_VERSION);
                 pluto_options_free(options);
@@ -621,13 +622,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     	pluto_data_dist_identity_trans(prog);
     }
 
-    pluto_detect_transformation_properties(prog);
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent)   {
         fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
+        /* pluto_print_hyperplane_properties(prog); */
     }
 
     if (options->tile)   {
@@ -654,7 +656,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             printf("use --tile for better parallelization \n");
             IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
             IF_DEBUG(pluto_transformations_pretty_print(prog););
-            IF_DEBUG(pluto_print_hyperplane_properties(prog););
+            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
     }
 
