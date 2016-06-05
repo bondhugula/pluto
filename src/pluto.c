@@ -1394,7 +1394,7 @@ void pluto_detect_transformation_properties(PlutoProg *prog)
                     hProps[deps[i]->satisfaction_level].type == H_SCALAR) continue;
             if (deps[i]->satisfaction_level >= bandStart 
                     && deps[i]->dirvec[level] != DEP_ZERO) {
-                bug("level, fwd-dep, sat-level: %d %d %d", level, i, deps[i]->satisfaction_level);
+                bug("level, fwd-dep, sat-level: %d %d %d %d", level, i, deps[i]->satisfaction_level,deps[i]->dirvec[level]);
                 break;
             }
         }

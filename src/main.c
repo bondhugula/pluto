@@ -589,14 +589,14 @@ int main(int argc, char *argv[])
 
 	for(i=0;i<prog->ndeps;i++) {
         if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && IS_RAW(prog->deps[i]->type)) {
-			for(j=0,k=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+			for(j=0,k=0;(j<prog->deps[i]->dpolytope->nrows && k<prog->nvar);j++) {
 				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
 					k++;
 					j=-1;
 					continue;
 				}
 			}
-			if((k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]!=-1))
+			if((k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) || (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]==-1))
 				iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id] = k;
 		}
 	}
@@ -607,7 +607,7 @@ int main(int argc, char *argv[])
 //        }
 //    }
 
-    bug("Depth of loops in SCCS that have iteration-private live ranges, a 0-depth means absence of temporaries or loops with iteration-private live ranges");
+    bug("Depth of loops in SCCS that have iteration-private live ranges");
 
     for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs_depth[i]);
     pluto_deps_print(stdout,prog);
@@ -651,14 +651,14 @@ int main(int argc, char *argv[])
 
     for(i=0;i<prog->ndeps;i++) {
         if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAR(prog->deps[i]->type)) {
-			for(j=0,k=0;j<prog->deps[i]->dpolytope->nrows;j++) {
+			for(j=0,k=0;(j<prog->deps[i]->dpolytope->nrows && k<prog->nvar);j++) {
 				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j)) {
 					k++;
 					j=-1;
 					continue;
 				}
 			}
-			if((k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]!=-1))
+			if(k<=iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id])
             	fprintf(skipdeps,"%d\n",i);
 		}
 	}
@@ -709,6 +709,8 @@ int main(int argc, char *argv[])
             for(j=0;j<polytope->nrows;j++) {
                 if(polytope->is_eq[j] && !is_on_loop(prog,polytope,j)) {
                     pluto_constraints_remove_row(polytope,j); // absence of a row is fine; an equality may be inserted later to relax scheduling
+					j=-1;
+					continue;
                 }
             }
 /* The following is to particularly handle cases when the loop order in the candidate nests is different */
@@ -735,7 +737,7 @@ int main(int argc, char *argv[])
         } // if
     }
 
-//    pluto_deps_print(stdout,prog);
+    pluto_deps_print(stdout,prog);
 
     CST_WIDTH = prog->npar+1+prog->nloops*(prog->nvar+1)+1;
 
