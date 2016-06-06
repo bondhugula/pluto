@@ -507,3 +507,35 @@ int pluto_schedule_osl(osl_scop_p scop,
 
   return EXIT_SUCCESS;
 }
+
+void pluto_schedule_str(const char *domains_str,
+        const char *dependences_str,
+        char** schedules_str_buffer_ptr,
+        PlutoOptions *options) {
+
+    isl_ctx *ctx = isl_ctx_alloc();
+    isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
+    isl_union_map *dependences = isl_union_map_read_from_str(ctx, 
+            dependences_str);
+
+    isl_union_map *schedule = pluto_schedule(domains, dependences, options);
+
+    isl_printer *printer = isl_printer_to_str(ctx);
+    isl_printer_print_union_map(printer, schedule);
+    
+    *schedules_str_buffer_ptr = isl_printer_get_str(printer);
+    assert(*schedules_str_buffer_ptr != NULL && "isl printer providing empty"
+                                               " string");
+   
+    isl_printer_free(printer);
+    isl_union_set_free(domains);
+    isl_union_map_free(dependences);
+    isl_union_map_free(schedule);
+
+    isl_ctx_free(ctx);
+
+}
+
+void pluto_schedules_strbuf_free(char *schedules_str_buffer) {
+  free(schedules_str_buffer);
+}
