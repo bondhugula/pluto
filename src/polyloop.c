@@ -641,6 +641,7 @@ int pluto_is_depth_scalar(Ploop *loop, int depth)
  * if the band is trivial (just the loop itself */
 Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
 {
+
     int i, depth;
 
     depth = loop->depth;
@@ -662,16 +663,22 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
             if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
                     && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 
                         loop->nstmts)) {
-                if (dep->dirvec[depth] == DEP_STAR || dep->dirvec[depth] == DEP_MINUS) 
+
+				if(skipdeps_[i]) continue;
+
+                if (dep->dirvec[depth] == DEP_STAR || dep->dirvec[depth] == DEP_MINUS) {
                     break;
+				}
             }
         }
         if (i<prog->ndeps) break;
         depth++;
     }while (depth < prog->num_hyperplanes);
 
+
     /* Peel off scalar dimensions from the end */
     while (pluto_is_depth_scalar(loop, depth-1)) depth--;
+
 
     int width = depth - loop->depth;
 

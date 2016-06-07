@@ -588,7 +588,7 @@ int main(int argc, char *argv[])
     for(i=0;i<prog->ddg->num_sccs;i++) iter_priv_sccs_depth[i] = -1;
 
 	for(i=0;i<prog->ndeps;i++) {
-        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && IS_RAW(prog->deps[i]->type)) {
+        if((prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && IS_RAW(prog->deps[i]->type)) {
 			for(j=0,k=0;(j<prog->deps[i]->dpolytope->nrows && k<prog->nvar);j++) {
 				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
 					k++;
@@ -600,14 +600,7 @@ int main(int argc, char *argv[])
 				iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id] = k;
 		}
 	}
-	
-//    for(i=0;i<prog->ndeps;i++) {
-//        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && IS_RAW(prog->deps[i]->type)) {
-//            iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] = 0;            
-//        }
-//    }
 
-    bug("Depth of loops in SCCS that have iteration-private live ranges");
 
     for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs_depth[i]);
     pluto_deps_print(stdout,prog);
@@ -641,8 +634,8 @@ int main(int argc, char *argv[])
             if(num==i)
                 break;
         }
-	/* We mark the redundant (for the purpose of computing transformation) dependences and the WAW deps that have the same source and destination SCCs */
-        if(feof(marker) || (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAW(prog->deps[i]->type)))
+	/* We mark the redundant (for the purpose of computing transformation) dependences */
+        if(feof(marker))
             fprintf(skipdeps,"%d\n",i);
         fclose(marker);
 	
@@ -650,15 +643,15 @@ int main(int argc, char *argv[])
 
 
     for(i=0;i<prog->ndeps;i++) {
-        if(src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAR(prog->deps[i]->type)) {
+        if(prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) {
 			for(j=0,k=0;(j<prog->deps[i]->dpolytope->nrows && k<prog->nvar);j++) {
-				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j)) {
+				if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j) && !prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) {
 					k++;
 					j=-1;
 					continue;
 				}
 			}
-			if(k<=iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id])
+			if(k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id])
             	fprintf(skipdeps,"%d\n",i);
 		}
 	}
@@ -689,20 +682,13 @@ int main(int argc, char *argv[])
 //        else i++;
 //    }
 
-/* This is more aggressive and does not work for codes that may involve skewing such as the time-tiled stencils */
-
-//    for(i=0;i<prog->ndeps;i++) {
-//        if((src_acc_dim(prog,prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig) && (prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && iter_priv_sccs[prog->stmts[prog->deps[i]->src]->scc_id] && IS_WAR(prog->deps[i]->type))
-//            fprintf(skipdeps,"%d\n",i);
-//    }
-            	
     fclose(skipdeps);
 
     for(i=0;i<prog->ndeps;i++)
     {
         prog->deps[i]->temp_across=false;
         prog->deps[i]->fuse_depth=0;
-        if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]>0) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->dest]->scc_id]>0)) {
+        if(prog->stmts[prog->deps[i]->src]->scc_id != prog->stmts[prog->deps[i]->dest]->scc_id && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]>0) && (iter_priv_sccs_depth[prog->stmts[prog->deps[i]->dest]->scc_id]>0)) {
             PlutoConstraints* polytope;
             polytope = prog->deps[i]->dpolytope;
 
@@ -938,6 +924,7 @@ int main(int argc, char *argv[])
 
     pluto_prog_free(prog);
     pluto_options_free(options);
+	free(skipdeps_);
 
     osl_scop_free(scop);
 

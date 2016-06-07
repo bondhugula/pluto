@@ -52,6 +52,7 @@
 
 extern int CST_WIDTH;
 extern int** lord;
+extern int* skipdeps_;
 
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 

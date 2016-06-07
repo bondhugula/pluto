@@ -38,6 +38,8 @@
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
 #define MAX_FARKAS_CST  2000
 
+int* skipdeps_;
+
 /**
  *
  * Each constraint row has the following format
@@ -269,15 +271,15 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     deps = prog->deps;
 
     FILE *skipfp = fopen("skipdeps.txt", "r");
-    int *skipdeps = malloc(ndeps*sizeof(int));
-    bzero(skipdeps, ndeps*sizeof(int));
+    skipdeps_ = malloc(ndeps*sizeof(int));
+    bzero(skipdeps_, ndeps*sizeof(int));
 
     /* For debugging (skip deps listed here) */
     if (skipfp) {
         int num;
         fscanf(skipfp, "%d", &num);
         while (!feof(skipfp)) {
-            skipdeps[num] = 1;
+            skipdeps_[num] = 1;
             IF_DEBUG(printf("\tskipping dep %d\n", num));
             fscanf(skipfp, "%d", &num);
         }
@@ -289,7 +291,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     for (i=0; i<ndeps; i++) {
         Dep *dep = deps[i];
 
-        if (skipdeps[i]) continue;
+        if (skipdeps_[i]) continue;
 
         if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
@@ -324,7 +326,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     for (i = 0, inc = 0; i < ndeps; i++) {
         Dep *dep = deps[i];
 
-        if (skipdeps[i]) continue;
+        if (skipdeps_[i]) continue;
 
 		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
@@ -363,7 +365,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
     pluto_constraints_simplify(globcst);
 
-    free(skipdeps);
+//    free(skipdeps_);
     if (skipfp) fclose(skipfp);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
