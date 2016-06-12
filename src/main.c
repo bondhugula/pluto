@@ -120,7 +120,7 @@ static double rtclock()
 
 int main(int argc, char *argv[])
 {
-    int i, j, k, count, m, n;
+    int i, j, k, count, m, n, max, depth, dep;
     FILE* marker,* skipdeps;
 
     double t_start, t_c, t_d, t_t, t_all, t_start_all;
@@ -585,7 +585,12 @@ int main(int argc, char *argv[])
     }
 
     int* iter_priv_sccs_depth = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
-    for(i=0;i<prog->ddg->num_sccs;i++) iter_priv_sccs_depth[i] = -1;
+    int* sccs_depth = (int*) malloc(sizeof(int)*prog->ddg->num_sccs);
+
+    for(i=0;i<prog->ddg->num_sccs;i++) {
+		iter_priv_sccs_depth[i] = -1;
+		sccs_depth[i] = -1;
+	}
 
 	for(i=0;i<prog->ndeps;i++) {
         if((prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id) && IS_RAW(prog->deps[i]->type)) {
@@ -601,8 +606,31 @@ int main(int argc, char *argv[])
 		}
 	}
 
+    for(i=0;i<prog->ndeps;) {
+        if(prog->stmts[prog->deps[i]->src]->scc_id == prog->stmts[prog->deps[i]->dest]->scc_id && IS_WAR(prog->deps[i]->type) && (prog->deps[i]->src > prog->deps[i]->dest)) {
+            max=-1;depth=-1;dep=i;
+            do {
+                for(j=0,k=0;(j<prog->deps[i]->dpolytope->nrows && k<prog->nvar);j++) {
+					if(prog->deps[i]->dpolytope->val[j][k] && is_on_loop(prog,prog->deps[i]->dpolytope,j)) {
+						k++;
+						if(prog->deps[i]->dpolytope->val[j][prog->deps[i]->dpolytope->ncols-1]) depth = k;
+						j=-1;
+						continue;
+					}
+                }
+                if(depth>max) max=depth;
+            	i++;
+            } while((i < prog->ndeps) && prog->deps[i]->src_acc==prog->deps[i-1]->src_acc && prog->deps[i]->dest_acc==prog->deps[i-1]->dest_acc);
+			if((max<sccs_depth[prog->stmts[prog->deps[dep]->src]->scc_id]) || (sccs_depth[prog->stmts[prog->deps[dep]->src]->scc_id]==-1))
+				sccs_depth[prog->stmts[prog->deps[dep]->src]->scc_id] = max;
+        }
+        else i++;
+    }
 
-    for(i=0;i<prog->ddg->num_sccs;i++) bug("%d",iter_priv_sccs_depth[i]);
+    for(i=0;i<prog->ddg->num_sccs;i++) {
+		bug("%d %d",iter_priv_sccs_depth[i],sccs_depth[i]);
+	}
+		
 //    pluto_deps_print(stdout,prog);
 
     marker = fopen("marker","w");
@@ -651,7 +679,7 @@ int main(int argc, char *argv[])
 					continue;
 				}
 			}
-			if(k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id])
+			if(k<min(iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id],sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]))
             	fprintf(skipdeps,"%d\n",i);
 		}
 	}
