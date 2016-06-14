@@ -135,7 +135,9 @@ void test_diamond_tiling()
     isl_ctx_free(ctx);
 }
 
-void test4() {
+void test5() 
+{
+    printf("\n\n*** TEST CASE 5 ***\n\n");
     isl_ctx *ctx = isl_ctx_alloc();
     isl_union_set *domains = isl_union_set_read_from_str(ctx,
             " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 <= i1 <= R - 1; S_1[i0, i1] : 0 <= i0 <= T and 0 <= i1 <= R - 1; }");
@@ -171,11 +173,13 @@ int main()
     options->islsolve = 1;
     options->partlbtile = 1;
     options->lbtile = 1;
+    options->debug = 1;
 
     test1();
     test2();
     test_diamond_tiling();
     crash_negative_dep_vector();
+    test5();
 
     pluto_options_free(options);
 }
