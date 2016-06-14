@@ -9,7 +9,7 @@ PlutoOptions *options;
  */
 int test2() 
 {
-    printf("TEST 2\n");
+    printf("\n\n*** TEST CASE 2 ***\n\n");
     isl_ctx *ctx = isl_ctx_alloc();
     isl_union_set *domains = isl_union_set_read_from_str(ctx,
             "[p_0, p_1, p_2, p_3, p_4, p_5, p_7] -> { S_1[i0, i1] : i0 >= 0 and i0 <= p_0 and i1 >= 0 and i1 <= p_3 and p_2 >= 0; S_0[i0] : i0 >= 0 and i0 <= p_0}");
@@ -39,9 +39,14 @@ int test2()
 void test1()
 {
     isl_ctx *ctx = isl_ctx_alloc();
-    isl_union_set *domains = isl_union_set_read_from_str(ctx,
+    isl_union_set *domains;
+    isl_union_map *deps; 
+
+    printf("\n\n*** TEST CASE 1 ***\n\n");
+  
+    domains = isl_union_set_read_from_str(ctx,
             "[n] -> {S_1[i0, i1] : i0 >= 0 and i0 <= 99 and i1 >= 0 and i1 <= 99; S_0[i0] : i0 >= 0 and i0 <= 99; S_2[i0] : i0 >= 0 and i0 <= 99 }");
-    isl_union_map *deps = isl_union_map_read_from_str(ctx, "[n] -> {S_1[i0, 99] -> S_0[1 + i0] : i0 >= 0 and i0 <= 98; S_1[i0, i1] -> S_1[i0, 1 + i1] : i0 >= 0 and i0 <= 99 and i1 >= 0 and i1 <= 98; S_1[i0, 99] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_1[i0, 0] : i0 >= 0 and i0 <= 99; S_2[i0] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_2[i0] : i0 >= 0 and i0 <= 99; S_1[i0, 99] -> S_2[i0] : i0 >= 0 and i0 <= 99 }");
+    deps = isl_union_map_read_from_str(ctx, "[n] -> {S_1[i0, 99] -> S_0[1 + i0] : i0 >= 0 and i0 <= 98; S_1[i0, i1] -> S_1[i0, 1 + i1] : i0 >= 0 and i0 <= 99 and i1 >= 0 and i1 <= 98; S_1[i0, 99] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_1[i0, 0] : i0 >= 0 and i0 <= 99; S_2[i0] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_2[i0] : i0 >= 0 and i0 <= 99; S_1[i0, 99] -> S_2[i0] : i0 >= 0 and i0 <= 99 }");
 
     isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
@@ -63,7 +68,10 @@ void test1()
 /*
 crasges when dependece vector is in the 3rd quadrant (-1, -1)
 */
-void crash_negative_dep_vector() {
+void crash_negative_dep_vector() 
+{
+    printf("\n\n*** TEST CASE 4 ***\n\n");
+
     isl_ctx *ctx = isl_ctx_alloc();
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx,
@@ -98,7 +106,10 @@ Works with options->lbtile = 1. Does not work with options->libtile = 0 &&
 i0: time
 i1: row
 */
-void test_diamond_tiling() {
+void test_diamond_tiling() 
+{
+    printf("\n\n*** TEST CASE 3 ***\n\n");
+
     isl_ctx *ctx = isl_ctx_alloc();
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx,
@@ -161,8 +172,8 @@ int main()
     options->partlbtile = 1;
     options->lbtile = 1;
 
-    //test1();
-    //test2();
+    test1();
+    test2();
     test_diamond_tiling();
     crash_negative_dep_vector();
 
