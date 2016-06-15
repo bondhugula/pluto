@@ -39,7 +39,6 @@
 #define EAGER 0
 #define LAZY 1
 
-int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
@@ -723,7 +722,8 @@ void LOOP(PlutoProg* prog, int loop, int pseudo_id)
     }
 }
 
-/* This assigns the same pseudo_id to statements in the same SCC at the current loop level even though those SCCs may be across different loops (as they appear in the original program */
+/* This assigns the same pseudo_id to statements in the same SCC at the current loop level even
+ * though those SCCs may be across different loops (as they appear in the original program) */
 void SCC(PlutoProg* prog, int loop, int scc_id, int pseudo_id)
 {
     bug("In SCC: %d %d", loop, scc_id);

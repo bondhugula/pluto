@@ -70,7 +70,7 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
-#define bug(...) { /*printf(__VA_ARGS__); printf("\n"); fflush(stdout);*/ }
+#define bug(...) { printf(__VA_ARGS__); printf("\n"); fflush(stdout); }
 #define max(x,y)    ((x) > (y)? (x) : (y))
 #define min(x,y)    ((x) < (y)? (x) : (y))
 
@@ -513,6 +513,8 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 void normalize_domains(PlutoProg *prog);
 int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j);
 int src_acc_dim(PlutoProg* prog, PlutoMatrix* mat);
+int dep_satisfaction_update(PlutoProg *prog, int level);
+int get_loop_type(Stmt *stmt, int level);
 
 
 #endif
