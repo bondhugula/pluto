@@ -607,7 +607,7 @@ int main(int argc, char *argv[])
 		bug("%d",iter_priv_sccs_depth[i]);
 	}
 		
-    pluto_deps_print(stdout,prog);
+//    pluto_deps_print(stdout,prog);
 
     marker = fopen("marker","w");
     skipdeps = fopen("skipdeps.txt","w");
@@ -717,7 +717,7 @@ bug("Dep being considered for skipping : %d",i);
         } // if
     }
 
-    pluto_deps_print(stdout,prog);
+//    pluto_deps_print(stdout,prog);
 
     CST_WIDTH = prog->npar+1+prog->nloops*(prog->nvar+1)+1;
 
