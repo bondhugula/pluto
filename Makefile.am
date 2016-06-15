@@ -60,9 +60,13 @@ test_libpluto: src/test_libpluto.c
 test: .PHO
 
 .PHO: 
-	./test.sh --silent --lastwriter
+	./test.sh --silent
+	./test.sh --silent --tile --parallel --cloogsh --nocloogbacktrack
 	./test.sh --silent --lastwriter --tile --parallel --cloogsh --nocloogbacktrack
+	./test.sh --silent --partlbtile --cloogsh --nocloogbacktrack
+	./test.sh --silent --lastwriter
+	./test.sh --silent --nofuse --tile --parallel --cloogsh --nocloogbacktrack
 	./test.sh --silent --lastwriter --partlbtile --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --nofuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --nofuse
+	./test.sh --silent --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
+	./test.sh --silent --nofuse
+	./test.sh --silent --iss

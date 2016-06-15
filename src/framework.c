@@ -305,10 +305,10 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             /* First time, compute the constraints */
             compute_permutability_constraints_dep(dep, prog);
 
-            IF_DEBUG(fprintf(stdout, "\tFor dep: %d; num_constraints: %d\n",
+            IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n",
                         i+1, dep->cst->nrows));
             total_cst_rows += dep->cst->nrows;
-            // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+            // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
             // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
         }
     }
@@ -343,7 +343,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         pluto_constraints_add(globcst, dep->cst);
         /* print_polylib_visual_sets("global", dep->cst); */
 
-        IF_DEBUG(fprintf(stdout, "\tAfter dep: %d; num_constraints: %d\n", i+1,
+        IF_DEBUG(fprintf(stdout, "\tAfter dep %d; num_constraints: %d\n", i+1,
                     globcst->nrows));
         /* This is for optimization as opposed to for correctness. We will
          * simplify constraints only if it crosses the threshold: at the time
@@ -358,7 +358,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             pluto_constraints_simplify(globcst);
             inc++;
             IF_DEBUG(fprintf(stdout,
-                        "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
+                        "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
                         globcst->nrows));
         }
     }
@@ -527,9 +527,9 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
 
         fcst_d = get_feautrier_schedule_constraints_dep(dep, prog);
 
-        IF_DEBUG(fprintf(stdout, "\tFor dep: %d; num_constraints: %d\n",
+        IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n",
                     i+1, fcst_d->nrows));
-        IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep: %d\n", i+1));
+        IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
         IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, fcst_d));
 
         pluto_constraints_add(fcst, fcst_d);
@@ -540,7 +540,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
                 CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
             pluto_constraints_simplify(fcst);
             IF_DEBUG(fprintf(stdout,
-                        "\tAfter dep: %d; num_constraints_simplified: %d\n", i+1,
+                        "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
                         fcst->nrows));
             if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
                 inc++;
@@ -686,9 +686,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     // pluto_matrix_print(stdout, ortho); 
 
     /* Fast linear independence check */
-    if (!options->flic) {
-        isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
-    }else isl_currcst = NULL;
+    if (options->flic)  isl_currcst = NULL;
+    else isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
 
     assert(p == ortho->nrows);
     p=0;
