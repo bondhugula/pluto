@@ -173,7 +173,6 @@ int main()
     options->islsolve = 1;
     options->partlbtile = 1;
     options->lbtile = 1;
-    options->debug = 1;
 
     test1();
     test2();
