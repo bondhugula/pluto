@@ -135,6 +135,7 @@ void test_diamond_tiling()
     isl_ctx_free(ctx);
 }
 
+
 void test5() 
 {
     printf("\n\n*** TEST CASE 5 ***\n\n");
@@ -163,23 +164,50 @@ void test5()
     isl_ctx_free(ctx);
 }
 
+
+void test6_diamond_tiling_with_scalar_dimension() {
+    printf("\n\n*** TEST CASE 6\n\n");
+    isl_ctx *ctx = isl_ctx_alloc();
+    isl_union_set *domains = isl_union_set_read_from_str(ctx,
+            " [R, T] -> { S_0[2, i0, i1] : 0 <= i0 <= T and 0 <= i1 <= R - 1;}");
+    isl_union_map *deps = isl_union_map_read_from_str(ctx,
+        "[R, T] -> {"
+        "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1 - 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
+        "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
+        "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }");
+    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+
+    isl_printer *printer = isl_printer_to_file(ctx, stdout);
+    isl_printer_print_union_map(printer, schedule);
+    printf("\n");
+    isl_printer_free(printer);
+
+    // Check if the schedule can be applied to the domain.
+    domains = isl_union_set_apply(domains, schedule);
+
+    isl_union_set_free(domains);
+    isl_union_map_free(deps);
+
+
+    isl_ctx_free(ctx);
+}
 int main() 
 {
     options = pluto_options_alloc();
     options->tile = 1;
     options->parallel = 1;
-    options->debug = 0;
+    options->debug = 1;
     options->moredebug = 0;
     options->islsolve = 1;
     options->partlbtile = 1;
     options->lbtile = 1;
-    options->debug = 1;
-
+    
     test1();
     test2();
     test_diamond_tiling();
     crash_negative_dep_vector();
     test5();
+    test6_diamond_tiling_with_scalar_dimension();
 
     pluto_options_free(options);
 }
