@@ -1942,6 +1942,7 @@ static int map_extract_dep(__isl_take isl_map *map, void *user)
 }
 
 
+/* Extract deps from isl union maps into Pluto Deps */
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type)
 {
@@ -3532,6 +3533,10 @@ int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
     return max;
 }
 
+/*
+ * The maximum number of linearly independent hyperplanes across all
+ * statements 
+ */ 
 int pluto_get_max_ind_hyps(const PlutoProg *prog)
 {
     int max, i;
