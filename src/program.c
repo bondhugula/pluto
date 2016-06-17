@@ -1837,6 +1837,10 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
+    /* Inconsistent dependence if this assertion fails */
+    assert(dep->dpolytope->ncols == stmts[dep->src]->dim + stmts[dep->dest]->dim 
+            + stmts[dep->src]->domain->ncols - stmts[dep->src]->dim);
+
     pluto_constraints_set_names_range(dep->dpolytope,
             stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
 
