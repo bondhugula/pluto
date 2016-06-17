@@ -196,7 +196,7 @@ int main()
     options = pluto_options_alloc();
     options->tile = 1;
     options->parallel = 1;
-    options->debug = 1;
+    options->debug = 0;
     options->moredebug = 0;
     options->islsolve = 1;
     options->partlbtile = 1;
