@@ -39,7 +39,7 @@ pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
 
 pluto_LDFLAGS = -static -fopenmp
 pluto_LDADD =  \
-   ../piplib/libpiplib64.la \
+   ../piplib/libpiplib_dp.la \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
@@ -64,7 +64,7 @@ libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
 
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
-   ../piplib/libpiplib64.la \
+   ../piplib/libpiplib_dp.la \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../candl/libcandl.la \
