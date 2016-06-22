@@ -246,6 +246,7 @@ typedef struct plutoOptions PlutoOptions;
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 
+
 __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences,
         PlutoOptions *options);
@@ -255,4 +256,27 @@ int pluto_schedule_osl(osl_scop_p scop,
 #if defined(__cplusplus)
 }
 #endif
+
+
+/*
+This function is a HACK. The reason this exists is to allow for easy FFI
+between PolyMage and Pluto. Sending isl objects between PyIsl to libpluto is
+hard (because PyIsl does not seem to have a way to access the underlying C
+object pointer).
+
+Hence, the solution is to convert everything to strings, and return the
+generated schedule as a string as well, which is then converted back to an
+isl object.
+*/
+void pluto_schedule_str(const char *domains_str,
+        const char *dependences_str,
+        char** schedules_str_buffer_ptr,
+        PlutoOptions *options);
+
+/*
+Free the string stored in schedules_str_buffer_ptr
+*/
+void pluto_schedules_strbuf_free(char *schedules_str_buffer);
+
+
 #endif

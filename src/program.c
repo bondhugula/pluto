@@ -2049,6 +2049,10 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
+    /* Inconsistent dependence if this assertion fails */
+    assert(dep->dpolytope->ncols == stmts[dep->src]->dim + stmts[dep->dest]->dim 
+            + stmts[dep->src]->domain->ncols - stmts[dep->src]->dim);
+
     pluto_constraints_set_names_range(dep->dpolytope,
             stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
 
@@ -2218,6 +2222,7 @@ static int isl_map_extract_access_func(__isl_take isl_map *map, void *user)
 }
 
 
+/* Extract deps from isl union maps into Pluto Deps */
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type)
 {
@@ -4718,6 +4723,10 @@ int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
     return max;
 }
 
+/*
+ * The maximum number of linearly independent hyperplanes across all
+ * statements 
+ */ 
 int pluto_get_max_ind_hyps(const PlutoProg *prog)
 {
     int max, i;
