@@ -669,6 +669,62 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars)
     }
 }
 
+/* Returned string should be freed with malloc */
+char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars)
+{
+    char *var[ndims], *out;
+    int j, n;
+
+    /* max 5 chars for var, 3 for coefficient + 1 if ndims is 0 + 1 null char */
+    n = 9*ndims + 1 + 1;
+    out = malloc(n);
+    *out = '\0';
+
+    for (j=0; j<ndims; j++)  {
+        if (vars && vars[j]) {
+            var[j] = strdup(vars[j]);
+        }else{
+            var[j] = malloc(5);
+            sprintf(var[j], "x%d", j+1);
+        }
+    }
+
+    int first = 0;
+    for (j=0; j<ndims; j++)   {
+        if (func[j] == 1)  {
+            if (first) strcat(out, "+");
+            snprintf(out+strlen(out), 5, "%s", var[j]);
+        }else if (func[j] == -1)  {
+            snprintf(out+strlen(out), 6, "-%s", var[j]);
+        }else if (func[j] != 0)  {
+            if (func[j] >= 1) {
+                snprintf(out+strlen(out), 9, "%s%lld%s", first?"+":"", func[j], var[j]);
+            }else{
+                snprintf(out+strlen(out), 8, "%lld%s", func[j], var[j]);
+            }
+        }
+        if (func[j] != 0) first = 1;
+    }
+    /* Constant part */
+    if (func[ndims] >= 1)  {
+        if (first) strcat(out, "+");
+        snprintf(out+strlen(out), 3, "%lld", func[ndims]);
+    }else if (func[ndims] <= -1){
+        snprintf(out+strlen(out), 3, "%lld", func[ndims]);
+    }else{
+        /* 0 */
+        if (!first) strcat(out, "0");
+    }
+
+    for (j=0; j<ndims; j++)  {
+        free(var[j]);
+    }
+
+    return out;
+}
+
+
+
 /*
  * Convert an isl affine expression to Pluto function
  */
