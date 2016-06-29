@@ -1370,7 +1370,83 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
     fprintf(fp, "\n");
 }
 
+/* 
+ * Checks whether the transformation at 'level' corresponds to a tiled
+ * dimension (an affine function of domain dimension divided by a constant),
+ * and if yes, returns the function that was tiled (as a function of the
+ * domain iterators/param) aka tiling hyperplane, tile_size will point to the
+ * tile size / divisor; if no, returns NULL
+ *
+ * t_i = z is a tile dimension if there exist the following two constraints 
+ * in the domain:
+ *
+ * T*z <= f(i_S, p) <= T*z + T - 1, where T is the tile size / divisor
+ *
+ * Thus, t_i = f(i_S, p)/T
+ *
+ * pos: position of the supernode in the domain
+ *
+ */
+static int64 *pluto_check_supernode(const Stmt *stmt, int pos, 
+        int *tile_size)
+{
+    int lb_pos, ub_pos, r, c;
 
+    PlutoConstraints *dom;
+
+    dom = stmt->domain;
+
+    lb_pos = -1;
+    ub_pos = -1;
+
+    for (r=0; r<dom->nrows; r++) {
+        if (dom->val[r][pos] >= 1 &&
+                dom->val[r][dom->ncols-1] == dom->val[r][pos]-1) {
+            ub_pos = r;
+            *tile_size = dom->val[r][pos];
+        }
+
+        if (dom->val[r][pos] <= -1 &&
+                dom->val[r][dom->ncols-1] == 0) {
+            lb_pos = r;
+        }
+    }
+
+    if (ub_pos == -1 || lb_pos == -1) return NULL;
+
+    for (c=0; c<dom->ncols-1; c++) {
+        if (dom->val[ub_pos][c] != -dom->val[lb_pos][c]) break;
+    }
+    if (c<dom->ncols-1) return NULL;
+
+    int64 *tile_hyp = malloc(dom->ncols*sizeof(int64));
+
+    for (c=0; c<dom->ncols; c++) {
+        if (c == pos) tile_hyp[c] = 0;
+        else tile_hyp[c] = dom->val[lb_pos][c];
+    }
+
+    return tile_hyp;
+}
+
+
+static int is_skewed(int64 *func, int len)
+{
+    int count, i;
+
+    count = 0;
+
+    for (i=0; i<len; i++) {
+        if (func[i] != 0) count++;
+    }
+
+    return count <= 1? 0: 1 ;
+}
+
+
+/*
+ * Prints the 1-d affine function/hyperplane for 'stmt' at depth 'level'
+ */
 void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level)
 {
     int npar, j;
@@ -1380,7 +1456,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level)
     char **vars = malloc((stmt->dim + npar)*sizeof(char *));
 
     for (j=0; j<stmt->dim; j++) {
-        vars[j] = stmt->iterators[j];
+        vars[j] = strdup(stmt->iterators[j]);
     }
     for (j=0; j<npar; j++) {
         if (stmt->domain->names && stmt->domain->names[stmt->dim+j]) {
@@ -1390,8 +1466,37 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level)
         }
     }
 
-    pluto_affine_function_print(stdout, stmt->trans->val[level], 
+    for (j=0; j<stmt->dim; j++) {
+        /* Detect if this dimension is an affine function of other dimensions
+         * divided by a constant -- useful to print tiled hyperplanes, the
+         * dividing constant being the tile size */
+        int div = 1;
+        int64 *super_func;
+        if ((super_func = pluto_check_supernode(stmt, j, &div))) {
+            char *tmp;
+            tmp = pluto_affine_function_sprint(super_func, stmt->dim+npar, vars);
+            free(vars[j]);
+            vars[j] = tmp;
+            if (is_skewed(super_func, stmt->domain->ncols)) {
+                vars[j] = realloc(vars[j], 1 + strlen(vars[j]) + 2 + log10(div) + 1 + 1);
+                sprintf(vars[j], "(%s", tmp = strdup(vars[j]));
+                free(tmp);
+                sprintf(vars[j]+strlen(vars[j]), ")/%d", div);
+            }else{
+                vars[j] = realloc(vars[j], strlen(vars[j]) + 1 + log10(div) + 1 + 1);
+                sprintf(vars[j]+strlen(vars[j]), "/%d", div);
+            }
+            free(super_func);
+        }    
+    }
+
+    pluto_affine_function_print(fp, stmt->trans->val[level], 
             stmt->dim+npar, vars);
+
+    for (j=0; j<stmt->dim; j++) {
+        free(vars[j]);
+    }
+
     free(vars);
 }
 
@@ -1522,36 +1627,6 @@ static __isl_give isl_set *osl_relation_list_to_isl_set(
     isl_dim_free(dim);
     return set;
 }
-
-#if 0
-/* Unused */
-/* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
- * to an m x (m + n + 1) isl_mat [-I A c].
- */
-static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
-        PlutoMatrix *matrix)
-{
-    int i, j;
-    int n_col, n;
-    isl_mat *eq;
-
-    n_col = matrix->ncols;
-    n = matrix->nrows;
-
-    eq = isl_mat_alloc(ctx, n, n + n_col);
-
-    for (i = 0; i < n; ++i) {
-        for (j = 0; j < n; ++j)
-            eq = isl_mat_set_element_si(eq, i, j, 0);
-        eq = isl_mat_set_element_si(eq, i, i, -1);
-        for (j = 0; j < n_col ; ++j) {
-            eq = isl_mat_set_element_si(eq, i, n + j, matrix->val[i][j]);
-        }
-    }
-
-    return eq;
-}
-#endif
 
 /* Convert an m x (1 + m + n + 1) osl_relation_p [d -I A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
@@ -1842,6 +1917,10 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
     dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
 
+    /* Inconsistent dependence if this assertion fails */
+    assert(dep->dpolytope->ncols == stmts[dep->src]->dim + stmts[dep->dest]->dim 
+            + stmts[dep->src]->domain->ncols - stmts[dep->src]->dim);
+
     pluto_constraints_set_names_range(dep->dpolytope,
             stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
 
@@ -1943,6 +2022,7 @@ static int map_extract_dep(__isl_take isl_map *map, void *user)
 }
 
 
+/* Extract deps from isl union maps into Pluto Deps */
 int extract_deps(Dep **deps, int first, Stmt **stmts,
         __isl_keep isl_union_map *umap, int type)
 {
@@ -3534,6 +3614,10 @@ int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog)
     return max;
 }
 
+/*
+ * The maximum number of linearly independent hyperplanes across all
+ * statements 
+ */ 
 int pluto_get_max_ind_hyps(const PlutoProg *prog)
 {
     int max, i;
