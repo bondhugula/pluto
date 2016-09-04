@@ -1468,6 +1468,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
     pluto_constraints_free(bcst);
 
     int64 *sol = pluto_prog_constraints_lexmin(fcst, prog);
+    pluto_constraints_free(fcst);
 
     if (!sol) {
         IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d schedules \n"););
@@ -1487,6 +1488,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
         conc_start_faces->val[_s][nvar+npar] = sol[npar+1+s*(nvar+1)+nvar];
         _s++;
     }
+    free(sol);
 
     IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
     for (s=0; s<band->loop->nstmts; s++) {
