@@ -551,6 +551,9 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg)
  * SCC1 -> SCC2 -> SCC3 ... ->SCCn 
  * Two neighboring SCCs won't be cut if they are of the same
  * dimensionality
+ *
+ * (Due to the algorithm used for computing SCCs, there are no edges 
+ * between SCC<i> and SCC<j> where i > j)
  */
 int cut_scc_dim_based(PlutoProg *prog, Graph *ddg)
 {
@@ -1465,6 +1468,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
     pluto_constraints_free(bcst);
 
     int64 *sol = pluto_prog_constraints_lexmin(fcst, prog);
+    pluto_constraints_free(fcst);
 
     if (!sol) {
         IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d schedules \n"););
@@ -1484,6 +1488,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band)
         conc_start_faces->val[_s][nvar+npar] = sol[npar+1+s*(nvar+1)+nvar];
         _s++;
     }
+    free(sol);
 
     IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
     for (s=0; s<band->loop->nstmts; s++) {
@@ -1991,8 +1996,10 @@ void ddg_print(Graph *g)
 }
 
 
-/* Update the DDG - should be called when some dependences 
- * are satisfied */
+/*
+ * Update the DDG - should be called when some dependences
+ * are satisfied
+ **/
 void ddg_update(Graph *g, PlutoProg *prog)
 {
     int i, j;
@@ -2071,7 +2078,7 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
 }
 
 
-/* Compute the SCCs of a graph */
+/* Compute the SCCs of a graph (usig Kosaraju's algorithm) */
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;
