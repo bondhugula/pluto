@@ -1406,6 +1406,7 @@ static int64 *pluto_check_supernode(const Stmt *stmt, int pos,
         int *tile_size)
 {
     int lb_pos, ub_pos, r, c;
+    int64 *tile_hyp;
 
     PlutoConstraints *dom;
 
@@ -1413,6 +1414,7 @@ static int64 *pluto_check_supernode(const Stmt *stmt, int pos,
 
     lb_pos = -1;
     ub_pos = -1;
+    *tile_size = -1;
 
     for (r=0; r<dom->nrows; r++) {
         if (dom->val[r][pos] >= 1 &&
@@ -1434,7 +1436,7 @@ static int64 *pluto_check_supernode(const Stmt *stmt, int pos,
     }
     if (c<dom->ncols-1) return NULL;
 
-    int64 *tile_hyp = malloc(dom->ncols*sizeof(int64));
+    tile_hyp = malloc(dom->ncols*sizeof(int64));
 
     for (c=0; c<dom->ncols; c++) {
         if (c == pos) tile_hyp[c] = 0;
@@ -1485,9 +1487,10 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level)
         /* Detect if this dimension is an affine function of other dimensions
          * divided by a constant -- useful to print tiled hyperplanes, the
          * dividing constant being the tile size */
-        int div = 1;
+        int div;
         int64 *super_func;
-        if ((super_func = pluto_check_supernode(stmt, j, &div))) {
+        super_func = pluto_check_supernode(stmt, j, &div);
+        if (super_func) {
             char *tmp;
             tmp = pluto_affine_function_sprint(super_func, stmt->dim+npar, vars);
             free(vars[j]);
