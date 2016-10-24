@@ -377,14 +377,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
 
 Remapping *pluto_get_remapping(isl_union_set *domains,
-        isl_union_map *dependences, PlutoOptions *options_l) {
+        isl_union_map *dependences, PlutoOptions *options_l) 
+{
 
     int i, nbands, n_ibands, retval;
-    isl_ctx *ctx;
     isl_space *space;
-    double t_t, t_all, t_start;
 
-    ctx = isl_union_set_get_ctx(domains);
     space = isl_union_set_get_space(domains);
 
     // isl_union_set_dump(domains);
@@ -440,9 +438,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
 
     IF_DEBUG(pluto_prog_print(stdout, prog););
 
-    t_start = rtclock();
     retval = pluto_auto_transform(prog);
-    t_t = rtclock() - t_start;
 
     if (retval) {
         /* Failure */
