@@ -49,3 +49,4 @@ check_and_apply_patch "cloog-isl" "${BASE}/patches/0002-clast-data-dist-decls-pr
 check_and_apply_patch "cloog-isl" "${BASE}/patches/0003-cloog-invariant-decls-print-option.patch"
 check_and_apply_patch "cloog-isl" "${BASE}/patches/0004-allow-appending-a-suffix-to-temporary-variables-for-.patch"
 check_and_apply_patch "cloog-isl" "${BASE}/patches/0005-clast-introduce-lbp-ubp-as-local-variables.patch"
+check_and_apply_patch "cloog-isl" "${BASE}/patches/cloog-0001-added-extra-braces-to-prevent-the-redefination-error.patch"
