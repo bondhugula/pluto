@@ -27,10 +27,10 @@ void print_array()
 
     for (i=0; i<N; i++) {
         for (j=0; j<N; j++) {
-            fprintf(stdout, "%lf ", B[i][j]);
+            fprintf(stderr, "%lf ", B[i][j]);
             if (j%80 == 79) fprintf(stdout, "\n");
         }
-        fprintf(stdout, "\n");
+        fprintf(stderr, "\n");
     }
 }
 

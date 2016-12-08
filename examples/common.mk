@@ -14,7 +14,7 @@ MPI=openmpi
 
 #NON_CLUSTER=true
 
-NPROCS=2
+NPROCS=1
 NTHREADS=4
 NTHREADS_WITH_MPI=2
 NTHREADS_LIST = 1 2 4 8 16 32
@@ -68,7 +68,7 @@ else
 		MPICXX       := mpicxx -D__MPI
 	else #openmpi
 		MPICC        := OMPI_CC=gcc mpicc -D__MPI
-		MPICXX       := OMPI_CC=g++ mpicc -D__MPI
+		MPICXX       := OMPI_CC=g++ mpic++ -D__MPI
 	endif
 endif
 
@@ -369,7 +369,7 @@ dist_dynsched_data_dist: $(SRC).dist_dynsched_data_dist.c sigma_$(SRC).dist_dyns
 		$(POLYRTINCDIR)/polyrt.c $(POLYRTINCDIR)/buffer_manager.c -o $@ -I $(POLYRTINCDIR) -ltbb $(LDFLAGS)
 
 dist_dynsched_data_dist_local: $(SRC).dist_dynsched_data_dist.c sigma_$(SRC).dist_dynsched_data_dist.c pi_$(SRC).dist_dynsched_data_dist.c
-	$(MPICXX) $(OPT_FLAGS) $(OMP_FLAGS) $(CFLAGS) -DUSE_LOCAL_ARRAYS $(SRC).dist_dynsched_data_dist.c sigma_$(SRC).dist_dynsched_data_dist.c pi_$(SRC).dist_dynsched_data_dist.c \
+	$(MPICXX) $(OPT_FLAGS) $(OMP_FLAGS) $(CFLAGS)  $(SRC).dist_dynsched_data_dist.c sigma_$(SRC).dist_dynsched_data_dist.c pi_$(SRC).dist_dynsched_data_dist.c \
 		$(POLYRTINCDIR)/polyrt.c $(POLYRTINCDIR)/buffer_manager.c -o $@ -I $(POLYRTINCDIR) -ltbb $(LDFLAGS) 
 
 dist_dynsched_idt: $(SRC).dist_dynsched_foifi_idt.c sigma_$(SRC).dist_dynsched_foifi_idt.c pi.c
@@ -753,8 +753,16 @@ dist_dynsched_data_dist_test: dist_dynsched dist_dynsched_data_dist
 	diff -q out_dist_dynsched out_dist_dynsched_data_dist
 	@echo Success!
 
-dist_dynsched_data_dist_run: dist_dynsched_data_dist_local
+dist_dynsched_data_dist_run: dist_dynsched_data_dist_local orig
+	touch .test
 	$(MPIRUN) ./dist_dynsched_data_dist_local 2> out_dist_dynsched_data_dist_run
+	$(MPIRUN) ./dist_dynsched 2> out_dist_dynsched
+	./orig 2> out_orig
+	rm -f .test
+	sed -i '/librdmacm/d' out_dist_dynsched
+	sed -i '/librdmacm/d' out_dist_dynsched_data_dist_run
+	diff -q out_dist_dynsched out_orig
+	diff -q out_dist_dynsched out_dist_dynsched_data_dist_run
 	@echo Success!
 
 dist_dynsched_test: distcxx dist_dynsched_nopr dist_dynsched

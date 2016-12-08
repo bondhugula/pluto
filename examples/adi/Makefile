@@ -1,6 +1,6 @@
 SRC=adi
 
-PLCFLAGS = --codegen-context=50
+PLCFLAGS = --codegen-context=50  --identity_data_dist --multi_level_distribution --identity
 TILEFLAGS =  #--l2tile
 
 include ../common.mk

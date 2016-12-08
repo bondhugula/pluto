@@ -14,6 +14,8 @@
 
 #include "util.h"
 
+#define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
+
 int main()
 {
     int i, j, k, l, m, n, t;

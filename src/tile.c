@@ -1096,6 +1096,9 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
             stmt->last_tile_dim = lastD;
         } /* all statements */
     } /* all scats to be tiled */
+
+    if(options->data_dist)
+    	pluto_dist_update_tiling_info(prog, band, tile_sizes);
 }
 
 

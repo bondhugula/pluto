@@ -3105,7 +3105,7 @@ void pluto_prog_free(PlutoProg *prog)
     pluto_constraints_free(prog->context);
     pluto_constraints_free(prog->codegen_context);
 
-    pluto_constraints_free(prog->globcst);
+//    pluto_constraints_free(prog->globcst);
 
     for(i=0; i< prog->num_data; i++) {
         free(prog->data_names[i]);
@@ -5742,11 +5742,12 @@ void pluto_transformations_pretty_print(const PlutoProg *prog)
     }
 
     if(options->data_dist) {
-        for(i=0;i<prog->narrays;i++){
-            Array *arr = prog->arrays[i];
-            fprintf(stdout, "T(%s) \n", arr->text);
-            pluto_matrix_print(stdout, arr->trans);
-        }
+//        for(i=0;i<prog->narrays;i++){
+//            Array *arr = prog->arrays[i];
+//            if(arr->trans == NULL) continue;
+//            fprintf(stdout, "T(%s) \n", arr->text);
+//            pluto_matrix_print(stdout, arr->trans);
+//        }
     }
 }
 
