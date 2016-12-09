@@ -865,7 +865,8 @@ void pluto_dist_reorder_hyperplanes(Array *arr, int firstD, int lastD, int cur_d
 	int i;
 
 	for(i=0;i<firstD;i++){
-		arr->hyperplane_mapping[cur_dim + i] = i;
+		if(cur_dim + i < arr->dim)
+			arr->hyperplane_mapping[cur_dim + i] = i;
 	}
 
 
@@ -908,10 +909,12 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band, int *tile_sizes)
 					pluto_dist_reorder_hyperplanes(arr, firstD, lastD, depth);
 
 					row = arr->hyperplane_mapping[depth];
+//					row = arr->hyperplane_mapping[0];
 					if(row<0) continue;
         		}
 
-        		assert(row<arr->dim_orig);
+//        		assert(row<arr->dim_orig);
+                if(row >= arr->dim_orig) continue;
 
         		if(arr->tiled_hyperplane[row].is_tiled) continue;
 
@@ -1226,7 +1229,8 @@ void pluto_tile(PlutoProg *prog)
     }
 #endif
 
-    if (options->parallel || options->dynschedule_graph || options->dynschedule) {
+    if ((options->parallel || options->dynschedule_graph || options->dynschedule) && !options->identity)  {
+
         int retval = pluto_create_tile_schedule(prog, bands, nbands);
         if (retval && !options->silent) {
             printf("[Pluto] After tile scheduling:\n");

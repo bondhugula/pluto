@@ -306,9 +306,9 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         }
     }
 
-    if (!prog->globcst) {
+//    if (!prog->globcst) {
         prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
-    }
+//    }
 
     globcst = prog->globcst;
 

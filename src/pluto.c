@@ -2141,7 +2141,7 @@ void pluto_dist_add_hyperplanes(int64 *sol, int curr_hyperplane,  PlutoProg *pro
         cur += j;
 
         for(j=0;j<prog->npar+1;j++){
-            arr->trans->val[arr->trans->nrows-1][prog->max_array_dim + j] = sol[cur+ j];
+            arr->trans->val[arr->trans->nrows-1][arr->dim_orig + j] = sol[cur+ j];
         }
         cur += j;
 
@@ -2390,9 +2390,9 @@ void pluto_data_dist_identity_trans(PlutoProg *prog){
         arr->num_hyperplanes_found = arr->dim_orig;
 
         if(arr->hyperplane_mapping == NULL)
-            arr->hyperplane_mapping = malloc(max_dim* sizeof(int));
+            arr->hyperplane_mapping = malloc(2*max_dim* sizeof(int));
 
-        for(j=0;j<max_dim;j++){
+        for(j=0;j<2*max_dim;j++){
             arr->hyperplane_mapping[j] = -1;
         }
 

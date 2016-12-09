@@ -668,7 +668,7 @@ int pluto_dist_apply_mod_optimization(char *stmt_text , char *new_stmt_text,
 char *pluto_dist_modify_stmt_text(char* stmt_text, int use_strides, PlutoProg *prog){
     int  j, k;
 
-    char *new_stmt_text = (char *)malloc(strlen(stmt_text)* 500 * sizeof(char));
+    char *new_stmt_text = (char *)malloc((strlen(stmt_text) + 1) * 500 * sizeof(char));
     new_stmt_text[0] = 0;
 
     char *array_name;
