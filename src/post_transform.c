@@ -380,7 +380,8 @@ int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
 
     if (retval) {
         /* Detect properties again */
-        pluto_detect_transformation_properties(prog);
+        pluto_compute_dep_directions(prog);
+        pluto_compute_dep_satisfaction(prog);
         if (!options->silent) {
             printf("[pluto] After intra-tile optimize\n");
             pluto_transformations_pretty_print(prog);

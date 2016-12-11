@@ -275,11 +275,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         return NULL;
     }
 
-    pluto_detect_transformation_properties(prog);
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent) {
+        fprintf(stdout, "[pluto] Affine transformations\n\n");
+        /* Print out transformations */
         pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
     }
 
     Band **bands, **ibands;
@@ -292,31 +294,10 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     if (options->tile) {
         pluto_tile(prog);
-    }
-
-    /* Detect properties again after tiling */
-    pluto_detect_transformation_properties(prog);
-
-    if (options->tile && !options->silent)  {
-        fprintf(stdout, "[Pluto] After tiling:\n");
-        pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
-    }
-
-    /* Intra-tile optimization */
-    if (options->intratileopt) {
-        int nbands;
-        Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-        int retval = 0;
-        for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog); 
+    }else{
+        if (options->intratileopt) {
+            pluto_intra_tile_optimize(prog, 0);
         }
-        if (retval) pluto_detect_transformation_properties(prog);
-        if (retval & !options->silent) {
-            printf("[Pluto] after intra tile opt\n");
-            pluto_transformations_pretty_print(prog);
-        }
-        pluto_bands_free(bands, nbands);
     }
 
     if ((options->parallel) && !options->tile)   {
@@ -324,20 +305,20 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
          * necessary */
         int nbands;
         Band **bands;
+        pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
         bool retval = pluto_create_tile_schedule(prog, bands, nbands);
         pluto_bands_free(bands, nbands);
 
         /* If the user hasn't supplied --tile and there is only pipelined
          * parallelism, we will warn the user */
-        if (retval && !options->silent)   {
-            printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
-            printf("use --tile for better parallelization \n");
-            fprintf(stdout, "[Pluto] After skewing:\n");
+        if (retval)   {
+            printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("[pluto] WARNING: use --tile for better parallelization \n");
+            fprintf(stdout, "[pluto] After skewing:\n");
             pluto_transformations_pretty_print(prog);
-            pluto_print_hyperplane_properties(prog);
+            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
-
     }
 
     if (options->parallel && !options->silent) {
@@ -391,8 +372,124 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         printf("[pluto] Total time: %0.6lfs\n", t_all);
     }
 
-
     return schedules;
+}
+
+
+Remapping *pluto_get_remapping(isl_union_set *domains,
+        isl_union_map *dependences, PlutoOptions *options_l) 
+{
+
+    int i, nbands, n_ibands, retval;
+    isl_space *space;
+
+    space = isl_union_set_get_space(domains);
+
+    // isl_union_set_dump(domains);
+    // isl_union_map_dump(dependences);
+
+    PlutoProg *prog = pluto_prog_alloc();
+    prog->options = options_l;
+
+    /* global var */
+    options = options_l;
+
+
+    prog->nvar = -1;
+    prog->nstmts = isl_union_set_n_set(domains);
+
+    if (prog->nstmts >= 1) {
+        prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+    }else{
+        prog->stmts = NULL;
+    }
+
+    for (i=0; i<prog->nstmts; i++) {
+        prog->stmts[i] = NULL;
+    }
+
+    extract_stmts(domains, prog->stmts);
+
+    for (i=0; i<prog->nstmts; i++) {
+        prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+    }
+
+    if (prog->nstmts >= 1) {
+        Stmt *stmt = prog->stmts[0];
+        prog->npar = stmt->domain->ncols - stmt->dim - 1;
+        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
+    }else prog->npar = 0;
+
+    for (i=0; i<prog->npar; i++) {
+        char *param = malloc(5);
+        sprintf(param, "p%d", i);
+        prog->params[i] = param;
+    }
+
+    prog->ndeps = 0;
+    isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
+
+    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i] = pluto_dep_alloc();
+    }
+    extract_deps(prog->deps, 0, prog->stmts,
+            dependences, OSL_DEPENDENCE_RAW);
+
+    IF_DEBUG(pluto_prog_print(stdout, prog););
+
+    retval = pluto_auto_transform(prog);
+
+    if (retval) {
+        /* Failure */
+        pluto_prog_free(prog);
+        isl_space_free(space);
+
+        if (!options->silent) {
+            printf("[libpluto] failure, returning NULL schedules\n");
+        }
+
+        return NULL;
+    }
+
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
+
+    if (!options->silent) {
+        fprintf(stdout, "[pluto] Affine transformations\n\n");
+        /* Print out transformations */
+        pluto_transformations_pretty_print(prog);
+    }
+
+    Band **bands, **ibands;
+    bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+    printf("Outermost tilable bands: %d bands\n", nbands);
+    pluto_bands_print(bands, nbands);
+    printf("Innermost tilable bands: %d bands\n", n_ibands);
+    pluto_bands_print(ibands, n_ibands);
+
+    if (options->tile) {
+        pluto_tile(prog);
+    }else{
+        if (options->intratileopt) {
+            pluto_intra_tile_optimize(prog, 0);
+        }
+    }
+
+    Remapping *remapping = (Remapping *)malloc(sizeof(Remapping));
+    remapping->nstmts = prog->nstmts;
+    remapping->stmt_inv_matrices =
+        (PlutoMatrix **)malloc(sizeof(PlutoMatrix *) * prog->nstmts);
+    remapping->stmt_divs = (int **)malloc(sizeof(int *) * prog->nstmts);
+
+
+    for(i = 0; i < prog->nstmts; i++) {
+         remapping->stmt_inv_matrices[i] = pluto_stmt_get_remapping(prog->stmts[i],
+                &remapping->stmt_divs[i]);
+    }
+
+    return remapping;
 }
 
 
@@ -453,37 +550,30 @@ int pluto_schedule_osl(osl_scop_p scop,
   if (!options->identity) {
       pluto_auto_transform(prog);
   }
-  pluto_detect_transformation_properties(prog);
+
+  pluto_compute_dep_directions(prog);
+  pluto_compute_dep_satisfaction(prog);
 
   if (!options->silent)   {
       fprintf(stdout, "[Pluto] Affine transformations [<iter coeff's> <const>]\n\n");
       /* Print out transformations */
       pluto_transformations_pretty_print(prog);
-      pluto_print_hyperplane_properties(prog);
   }
 
   if (options->tile)   {
       pluto_tile(prog);
   }else{
       if (options->intratileopt) {
-          int retval = pluto_intra_tile_optimize(prog, 0); 
-          if (retval) {
-              /* Detect properties again */
-              pluto_detect_transformation_properties(prog);
-              if (!options->silent) {
-                  printf("[Pluto] after intra tile opt\n");
-                  pluto_transformations_pretty_print(prog);
-              }
-          }
+          pluto_intra_tile_optimize(prog, 0); 
       }
   }
-
 
   if (options->parallel && !options->tile && !options->identity)   {
       /* Obtain wavefront/pipelined parallelization by skewing if
        * necessary */
       int nbands;
       Band **bands;
+      pluto_compute_dep_satisfaction(prog);
       bands = pluto_get_outermost_permutable_bands(prog, &nbands);
       bool retval = pluto_create_tile_schedule(prog, bands, nbands);
       pluto_bands_free(bands, nbands);
@@ -491,18 +581,12 @@ int pluto_schedule_osl(osl_scop_p scop,
       /* If the user hasn't supplied --tile and there is only pipelined
        * parallelism, we will warn the user */
       if (retval)   {
-          printf("[Pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
-          printf("use --tile for better parallelization \n");
-          IF_DEBUG(fprintf(stdout, "[Pluto] After skewing:\n"););
-          IF_DEBUG(pluto_transformations_pretty_print(prog););
-          IF_DEBUG(pluto_print_hyperplane_properties(prog););
-      }
-  }
-
-  if (options->tile && !options->silent)  {
-      IF_DEBUG(fprintf(stdout, "[Pluto] After tiling:\n"););
-      IF_DEBUG(pluto_transformations_pretty_print(prog););
-      IF_DEBUG(pluto_print_hyperplane_properties(prog););
+          printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+          printf("[pluto] WARNING: use --tile for better parallelization \n");
+          fprintf(stdout, "[pluto] After skewing:\n");
+          pluto_transformations_pretty_print(prog);
+          /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
+}
   }
 
   if (options->unroll || options->polyunroll)    {
@@ -539,4 +623,60 @@ int pluto_schedule_osl(osl_scop_p scop,
   pluto_prog_free(prog);
 
   return EXIT_SUCCESS;
+}
+
+void pluto_schedule_str(const char *domains_str,
+        const char *dependences_str,
+        char** schedules_str_buffer_ptr,
+        PlutoOptions *options) {
+
+    isl_ctx *ctx = isl_ctx_alloc();
+    isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
+    isl_union_map *dependences = isl_union_map_read_from_str(ctx, 
+            dependences_str);
+
+    isl_union_map *schedule = pluto_schedule(domains, dependences, options);
+
+    isl_printer *printer = isl_printer_to_str(ctx);
+    isl_printer_print_union_map(printer, schedule);
+    
+    *schedules_str_buffer_ptr = isl_printer_get_str(printer);
+    assert(*schedules_str_buffer_ptr != NULL && "isl printer providing empty"
+                                               " string");
+   
+    isl_printer_free(printer);
+    isl_union_set_free(domains);
+    isl_union_map_free(dependences);
+    isl_union_map_free(schedule);
+
+    isl_ctx_free(ctx);
+
+}
+
+
+
+void pluto_get_remapping_str(const char *domains_str,
+        const char *dependences_str,
+        Remapping **remapping_ptr,
+        PlutoOptions *options) {
+
+    isl_ctx *ctx = isl_ctx_alloc();
+    isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
+    isl_union_map *dependences = isl_union_map_read_from_str(ctx,
+            dependences_str);
+
+    assert(remapping_ptr != NULL);
+    Remapping *remapping = pluto_get_remapping(domains, dependences, options);
+    *remapping_ptr = remapping;
+
+};
+
+
+void pluto_remapping_free(Remapping *remapping) {
+    assert(remapping != NULL);
+    free(remapping);
+};
+
+void pluto_schedules_strbuf_free(char *schedules_str_buffer) {
+  free(schedules_str_buffer);
 }

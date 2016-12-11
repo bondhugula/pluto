@@ -122,7 +122,7 @@ echo ""
 echo "=========================="
 echo "Configuring PipLib"
 echo "=========================="
-configureopts="--with-gmp \
+configureopts="--with-gmp --with-bits=64 \
 --with-gmp-prefix=$GMP_PREFIX \
 --prefix=$prefix"
 (cd piplib/

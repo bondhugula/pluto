@@ -480,13 +480,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_auto_transform(prog);
     }
     t_t = rtclock() - t_start;
-    pluto_detect_transformation_properties(prog);
+
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
 
     if (!options->silent)   {
         fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
-        pluto_print_hyperplane_properties(prog);
+        /* pluto_print_hyperplane_properties(prog); */
     }
 
     if (options->tile)   {
@@ -513,7 +515,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             printf("use --tile for better parallelization \n");
             IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
             IF_DEBUG(pluto_transformations_pretty_print(prog););
-            IF_DEBUG(pluto_print_hyperplane_properties(prog););
+            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Order-1, 3D 7 point stencil
+ * Order-1, 3D 27 point stencil
  * Adapted from Pochoir test bench
  *
  * Irshad Pananilath: irshad@csa.iisc.ernet.in
