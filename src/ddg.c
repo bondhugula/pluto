@@ -156,8 +156,13 @@ static int compar (const void *e1, const void *e2)
     }else return 1;
 }
 
-/* Depth first search - this version stores additional data
- * that is useful for computing SCCs */
+/*
+ * Depth first search in the descending order of finish
+ * times of previous dfs - used to compute SCCs
+ *
+ * SCC related information is stored
+ *
+ **/
 void dfs_for_scc(Graph *g)
 {
     int i, j;
@@ -171,7 +176,7 @@ void dfs_for_scc(Graph *g)
         g->vertices[i].scc_id = -1;
     }
 
-    /* Sort by fn */
+    /* Sort (in the ascending order) by finish number */
     qsort(vCopy, g->nVertices, sizeof(Vertex), compar);
 
     /* Reverse order of fn */
@@ -179,7 +184,7 @@ void dfs_for_scc(Graph *g)
     for (i=g->nVertices-1; i>=0; i--)  {
         if (g->vertices[vCopy[i].id].vn == 0)  {
             g->sccs[numScc].id = numScc;
-            dfs_vertex (g, &g->vertices[vCopy[i].id], &time);
+            dfs_vertex(g, &g->vertices[vCopy[i].id], &time);
 
             IF_MORE_DEBUG(printf("[pluto] dfs_for_scc: SCC %d: Stmt ids: ", numScc));
             for (j=0; j<g->nVertices; j++) {

@@ -7292,7 +7292,7 @@ int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp
 
 	// !!!roshan not sure if this is required
 	// since no dimensions have been added to the program
-	pluto_compute_dep_satisfaction_complex(prog);
+	pluto_compute_dep_satisfaction_precise(prog);
 
 	return (nloops==0);
 }
@@ -9362,7 +9362,7 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp, FI
 	// should be done before generate_pi since that may require it
 
 	if(!options->dynschedule)
-		pluto_compute_dep_satisfaction_complex(prog);
+		pluto_compute_dep_satisfaction_precise(prog);
 
 	int inner_dist_loop_level;
 	for (l=0; l<nloops; l++) {
