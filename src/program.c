@@ -1169,7 +1169,6 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop)
         scop_stmt = scop_stmt->next;
     }
 
-    /* Allocate more to account for unroll/jamming later on */
     stmts = (Stmt **) malloc(nstmts*sizeof(Stmt *));
 
     scop_stmt = scop->statement;
@@ -1547,15 +1546,15 @@ void pluto_dep_free(Dep *dep)
 /* Set the dimension names of type "type" according to the elements
  * in the array "names".
  */
-static __isl_give isl_dim *set_names(__isl_take isl_dim *dim,
+static __isl_give isl_space *set_names(__isl_take isl_space *space,
         enum isl_dim_type type, char **names)
 {
     int i;
 
-    for (i = 0; i < isl_dim_size(dim, type); ++i)
-        dim = isl_dim_set_name(dim, type, i, names[i]);
+    for (i = 0; i < isl_space_dim(space, type); ++i)
+        space = isl_space_set_dim_name(space, type, i, names[i]);
 
-    return dim;
+    return space;
 }
 
 
@@ -1564,7 +1563,7 @@ static __isl_give isl_dim *set_names(__isl_take isl_dim *dim,
  * One shot only; does not take into account the next ptr.
  */
 static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
-        __isl_take isl_dim *dim)
+        __isl_take isl_space *space)
 {
     int i, j;
     int n_eq = 0, n_ineq = 0;
@@ -1572,7 +1571,7 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
     isl_mat *eq, *ineq;
     isl_basic_set *bset;
 
-    ctx = isl_dim_get_ctx(dim);
+    ctx = isl_space_get_ctx(space);
 
     for (i = 0; i < relation->nb_rows; ++i)
         if (osl_int_zero(relation->precision, relation->m[i][0]))
@@ -1602,7 +1601,7 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
         }
     }
 
-    bset = isl_basic_set_from_constraint_matrices(dim, eq, ineq,
+    bset = isl_basic_set_from_constraint_matrices(space, eq, ineq,
             isl_dim_set, isl_dim_div, isl_dim_param, isl_dim_cst);
     return isl_set_from_basic_set(bset);
 }
@@ -1611,18 +1610,18 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
  * to an isl_set.
  */
 static __isl_give isl_set *osl_relation_list_to_isl_set(
-        osl_relation_p list, __isl_take isl_dim *dim)
+        osl_relation_p list, __isl_take isl_space *space)
 {
     isl_set *set;
 
-    set = isl_set_empty(isl_dim_copy(dim));
+    set = isl_set_empty(isl_space_copy(space));
     for (; list; list = list->next) {
         isl_set *set_i;
-        set_i = osl_relation_to_isl_set(list, isl_dim_copy(dim));
+        set_i = osl_relation_to_isl_set(list, isl_space_copy(space));
         set = isl_set_union(set, set_i);
     }
 
-    isl_dim_free(dim);
+    isl_space_free(space);
     return set;
 }
 
@@ -1705,14 +1704,14 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
  * the isl_map { i -> A i + c } in the space prescribed by "dim".
  */
 static __isl_give isl_map *osl_scattering_to_isl_map(
-        osl_relation_p scattering, __isl_take isl_dim *dim)
+        osl_relation_p scattering, __isl_take isl_space *dim)
 {
     int n_col;
     isl_ctx *ctx;
     isl_mat *eq, *ineq;
     isl_basic_map *bmap;
 
-    ctx = isl_dim_get_ctx(dim);
+    ctx = isl_space_get_ctx(dim);
     n_col = scattering->nb_columns;
 
     ineq = isl_mat_alloc(ctx, 0, n_col - 1);
@@ -1742,14 +1741,14 @@ static __isl_give isl_union_map *osl_access_list_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
     isl_union_map *res;
 
     ctx = isl_set_get_ctx(dom);
 
-    dim = isl_set_get_dim(dom);
-    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+    dim = isl_set_get_space(dom);
+    dim = isl_space_drop_dims(dim, isl_dim_set, 0, isl_space_dim(dim, isl_dim_set));
     res = isl_union_map_empty(dim);
 
     for ( ; list; list = list->next) {
@@ -1761,10 +1760,10 @@ static __isl_give isl_union_map *osl_access_list_to_isl_union_map(
         isl_map *map;
         int arr = osl_relation_get_array_id(list->elt) - 1;
 
-        dim = isl_set_get_dim(dom);
-        dim = isl_dim_from_domain(dim);
-        dim = isl_dim_add(dim, isl_dim_out, len);
-        dim = isl_dim_set_tuple_name(dim, isl_dim_out, arrays[arr]);
+        dim = isl_set_get_space(dom);
+        dim = isl_space_from_domain(dim);
+        dim = isl_space_add_dims(dim, isl_dim_out, len);
+        dim = isl_space_set_tuple_name(dim, isl_dim_out, arrays[arr]);
 
         ineq = isl_mat_alloc(ctx, 0, n_col);
         eq = extract_equalities_osl_access(ctx, list->elt);
@@ -1791,7 +1790,7 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
 
     ctx = isl_set_get_ctx(dom);
@@ -1804,10 +1803,10 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
     isl_map *map;
     int arr = osl_relation_get_array_id(access) - 1;
 
-    dim = isl_set_get_dim(dom);
-    dim = isl_dim_from_domain(dim);
-    dim = isl_dim_add(dim, isl_dim_out, len);
-    dim = isl_dim_set_tuple_name(dim, isl_dim_out, arrays[arr]);
+    dim = isl_set_get_space(dom);
+    dim = isl_space_from_domain(dim);
+    dim = isl_space_add_dims(dim, isl_dim_out, len);
+    dim = isl_space_set_tuple_name(dim, isl_dim_out, arrays[arr]);
 
     ineq = isl_mat_alloc(ctx, 0, n_col);
     eq = extract_equalities_osl_access(ctx, access);
@@ -1832,13 +1831,13 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
 
     ctx = isl_set_get_ctx(dom);
 
-    dim = isl_set_get_dim(dom);
-    dim = isl_dim_drop(dim, isl_dim_set, 0, isl_dim_size(dim, isl_dim_set));
+    dim = isl_set_get_space(dom);
+    dim = isl_space_drop_dims(dim, isl_dim_set, 0, isl_space_dim(dim, isl_dim_set));
 
     n_col = mat->ncols;
 
@@ -1848,10 +1847,10 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 
     len = mat->nrows;
 
-    dim = isl_set_get_dim(dom);
-    dim = isl_dim_from_domain(dim);
-    dim = isl_dim_add(dim, isl_dim_out, len);
-    dim = isl_dim_set_tuple_name(dim, isl_dim_out, access_name);
+    dim = isl_set_get_space(dom);
+    dim = isl_space_from_domain(dim);
+    dim = isl_space_add_dims(dim, isl_dim_out, len);
+    dim = isl_space_set_tuple_name(dim, isl_dim_out, access_name);
 
     ineq = isl_mat_alloc(ctx, 0, len + n_col);
     eq = pluto_extract_equalities(ctx, mat);
@@ -2076,7 +2075,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     int i, racc_num, wacc_num;
     int nstmts = osl_statement_number(scop->statement);
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_space *param_space;
     isl_set *context;
     isl_union_map *empty;
@@ -2097,7 +2096,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
     osl_names_p names = get_scop_names(scop);
 
-    dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, 0);
+    dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, 0);
     if (scop->context->nb_parameters){
         scop_params = (osl_strings_p)scop->parameters->data;
         dim = set_names(dim, isl_dim_param, scop_params->string);
@@ -2105,10 +2104,10 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     param_space = isl_space_params(isl_space_copy(dim));
     context = osl_relation_to_isl_set(scop->context, param_space);
 
-    if (!options->rar) dep_rar = isl_union_map_empty(isl_dim_copy(dim));
-    empty = isl_union_map_empty(isl_dim_copy(dim));
-    write = isl_union_map_empty(isl_dim_copy(dim));
-    read = isl_union_map_empty(isl_dim_copy(dim));
+    if (!options->rar) dep_rar = isl_union_map_empty(isl_space_copy(dim));
+    empty = isl_union_map_empty(isl_space_copy(dim));
+    write = isl_union_map_empty(isl_space_copy(dim));
+    read = isl_union_map_empty(isl_space_copy(dim));
     schedule = isl_union_map_empty(dim);
 
     if (!options->isldepaccesswise) {
@@ -2129,7 +2128,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
             snprintf(name, sizeof(name), "S_%d", i);
 
             int niter = osl_statement_get_nb_iterators(stmt);
-            dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, niter);
+            dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
             if(scop->context->nb_parameters){
                 scop_params = (osl_strings_p)scop->parameters->data;
                 dim = set_names(dim, isl_dim_param, scop_params->string);
@@ -2138,11 +2137,11 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                 dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
             }
-            dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+            dim = isl_space_set_tuple_name(dim, isl_dim_set, name);
             dom = osl_relation_list_to_isl_set(stmt->domain, dim);
             dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-            dim = isl_dim_alloc(ctx, scop->context->nb_parameters, niter,
+            dim = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
                     2 * niter + 1);
             if(scop->context->nb_parameters){
                 scop_params = (osl_strings_p)scop->parameters->data;
@@ -2152,7 +2151,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                 dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
             }
-            dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+            dim = isl_space_set_tuple_name(dim, isl_dim_in, name);
             schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
 
             osl_relation_list_p rlist  = osl_access_list_filter_read(stmt->access);
@@ -2204,7 +2203,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 }
 
                 int niter = osl_statement_get_nb_iterators(stmt);
-                dim = isl_dim_set_alloc(ctx, scop->context->nb_parameters, niter);
+                dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
                 if(scop->context->nb_parameters){
                     scop_params = (osl_strings_p)scop->parameters->data;
                     dim = set_names(dim, isl_dim_param, scop_params->string);
@@ -2219,11 +2218,11 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                     osl_strings_free(names->iterators);
                     names->iterators = osl_strings_clone(stmt_body->iterators);
                 }
-                dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+                dim = isl_space_set_tuple_name(dim, isl_dim_set, name);
                 dom = osl_relation_list_to_isl_set(stmt->domain, dim);
                 dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-                dim = isl_dim_alloc(ctx, scop->context->nb_parameters, niter,
+                dim = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
                         2 * niter + 1);
                 if(scop->context->nb_parameters){
                     scop_params = (osl_strings_p)scop->parameters->data;
@@ -2233,7 +2232,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                     osl_body_p stmt_body = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
                     dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
                 }
-                dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+                dim = isl_space_set_tuple_name(dim, isl_dim_in, name);
 
                 schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
 

@@ -708,7 +708,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         if (!options->flic) {
             orthcst_i = isl_basic_set_intersect(orthcst_i,
                     isl_basic_set_copy(isl_currcst));
-            if (isl_basic_set_fast_is_empty(orthcst_i)
+            if (isl_basic_set_plain_is_empty(orthcst_i)
                     || isl_basic_set_is_empty(orthcst_i)) {
                 pluto_constraints_negate_row(orthcst[p], 0);
             }
