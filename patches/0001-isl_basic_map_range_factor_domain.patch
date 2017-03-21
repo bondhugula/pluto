@@ -1,0 +1,62 @@
+From 284a3ba7ce1ab8da770593b15178e070165fd49f Mon Sep 17 00:00:00 2001
+From: Uday Bondhugula <uday@csa.iisc.ernet.in>
+Date: Tue, 21 Mar 2017 11:59:25 +0530
+Subject: [PATCH] isl_basic_map_range_factor_domain
+
+Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
+---
+ include/isl/map.h |  1 +
+ isl_map.c         | 25 +++++++++++++++++++++++++
+ 2 files changed, 26 insertions(+)
+
+diff --git a/include/isl/map.h b/include/isl/map.h
+index 9082a37..81c6f18 100644
+--- a/include/isl/map.h
++++ b/include/isl/map.h
+@@ -188,6 +188,7 @@ __isl_give isl_basic_map *isl_basic_map_remove_dims(
+ __isl_give isl_basic_map *isl_basic_map_eliminate(
+ 	__isl_take isl_basic_map *bmap,
+ 	enum isl_dim_type type, unsigned first, unsigned n);
++__isl_give isl_basic_map *isl_basic_map_range_factor_domain(__isl_take isl_basic_map *bmap);
+ ISL_DEPRECATED
+ __isl_give isl_basic_map *isl_basic_map_from_basic_set(
+ 	__isl_take isl_basic_set *bset, __isl_take isl_space *dim);
+diff --git a/isl_map.c b/isl_map.c
+index 5d22aa2..a2ba824 100644
+--- a/isl_map.c
++++ b/isl_map.c
+@@ -10006,6 +10006,31 @@ __isl_give isl_map *isl_map_range_factor_domain(__isl_take isl_map *map)
+ 	return map;
+ }
+ 
++
++/* Given a map A -> [B -> C], extract the map A -> B.
++ */
++__isl_give isl_basic_map *isl_basic_map_range_factor_domain(__isl_take isl_basic_map *bmap)
++{
++	isl_space *space;
++	int total, keep;
++
++	if (!bmap)
++		return NULL;
++	if (!isl_space_range_is_wrapping(bmap->dim))
++		isl_die(isl_basic_map_get_ctx(bmap), isl_error_invalid,
++			"range is not a product", return isl_basic_map_free(bmap));
++
++	space = isl_basic_map_get_space(bmap);
++	total = isl_space_dim(space, isl_dim_out);
++	space = isl_space_range_factor_domain(space);
++	keep = isl_space_dim(space, isl_dim_out);
++	bmap = isl_basic_map_project_out(bmap, isl_dim_out, keep, total - keep);
++	bmap = isl_basic_map_reset_space(bmap, space);
++
++	return bmap;
++}
++
++
+ /* Given a map A -> [B -> C], extract the map A -> C.
+  */
+ __isl_give isl_map *isl_map_range_factor_range(__isl_take isl_map *map)
+-- 
+2.7.4
+
