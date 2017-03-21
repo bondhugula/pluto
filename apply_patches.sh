@@ -13,7 +13,6 @@ check_and_apply_patch() {
   local patch="$2"
 
   if [ \( -d ${BASE}/$path \) -a \( ! -f ${BASE}/$path/.`basename $patch` \)  ] ; then
-      echo Hello
     echo -e "\nTrying to apply patch from directory: `pwd`"
     `git apply --check --directory=$path $patch`
     exit_status=$?
