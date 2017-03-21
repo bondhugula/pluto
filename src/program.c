@@ -20,9 +20,7 @@
  *
  * program.c
  *
- * This file contains functions that do the job interfacing the PLUTO 
- * core to the frontend and related matters
- *
+ * This file contains functions that deal with Pluto program structures
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +55,7 @@
 #include <isl/mat.h>
 #include <isl/set.h>
 #include <isl/flow.h>
+#include <isl/map.h>
 #include <isl/union_map.h>
 #include <isl/deprecated/int.h>
 #include <isl/deprecated/mat_int.h>
@@ -1907,12 +1906,22 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     dep = info->deps[info->index];
 
     dep->id = info->index;
-    dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
-    dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
+
     dep->dirvec = NULL;
     dep->type = info->type;
     dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
-    dep->dest = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2);
+
+    /* Access functions may be nested spaces */
+    isl_space *space = isl_basic_map_get_space(bmap);
+    if (isl_space_range_is_wrapping(space)) {
+        bmap = isl_basic_map_range_factor_domain(isl_basic_map_copy(bmap));
+        isl_space_free(space);
+        space = isl_basic_map_get_space(bmap);
+    }
+    dep->dest = atoi(isl_space_get_tuple_name(space, isl_dim_out) + 2);
+    dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
+    dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
+    isl_space_free(space);
 
     /* Inconsistent dependence if this assertion fails */
     assert(dep->dpolytope->ncols == stmts[dep->src]->dim + stmts[dep->dest]->dim 
