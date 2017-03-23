@@ -38,4 +38,4 @@ check_and_apply_patch() {
 }
 
 check_and_apply_patch "isl" "${BASE}/patches/0001-isl_basic_map_range_factor_domain.patch"
-check_and_apply_patch "isl" "${BASE}/patches/0002-isl-dim-wise-single-valued-and-isl_pw_aff_map-functi.patch"
+check_and_apply_patch "isl" "${BASE}/patches/0002-finally-fix-patch-for-isl-dim-wise-single-valued-and.patch"
