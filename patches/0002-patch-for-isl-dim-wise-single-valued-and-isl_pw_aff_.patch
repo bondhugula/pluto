@@ -1,15 +1,15 @@
-From aec9ee46df11c117892c58e0b3846ca7af16d4ec Mon Sep 17 00:00:00 2001
+From 3febb7e9ffaa0c15d16612c7117b1cebc641a6e9 Mon Sep 17 00:00:00 2001
 From: Uday Bondhugula <uday@csa.iisc.ernet.in>
-Date: Thu, 23 Mar 2017 16:34:47 +0530
+Date: Thu, 23 Mar 2017 16:37:57 +0530
 Subject: [PATCH 2/2] patch for isl dim-wise single-valued and isl_pw_aff_map
 
 Signed-off-by: Uday Bondhugula <uday@csa.iisc.ernet.in>
 ---
  include/isl/aff.h |  1 +
  include/isl/map.h |  1 +
- isl_aff.c         | 30 ++++++++++++++++++++++++++++++
+ isl_aff.c         | 29 +++++++++++++++++++++++++++++
  isl_map.c         | 26 ++++++++++++++++++++++++++
- 4 files changed, 58 insertions(+)
+ 4 files changed, 57 insertions(+)
 
 diff --git a/include/isl/aff.h b/include/isl/aff.h
 index 2d56ed8..fa08eae 100644
@@ -36,13 +36,13 @@ index 81c6f18..ce66ba3 100644
  __isl_export
  isl_bool isl_map_is_injective(__isl_keep isl_map *map);
 diff --git a/isl_aff.c b/isl_aff.c
-index 158033a..05c28ea 100644
+index 158033a..b9001c8 100644
 --- a/isl_aff.c
 +++ b/isl_aff.c
-@@ -5039,6 +5039,36 @@ static __isl_give isl_pw_multi_aff *pw_multi_aff_from_map_check_strides(
+@@ -5038,6 +5038,35 @@ static __isl_give isl_pw_multi_aff *pw_multi_aff_from_map_check_strides(
+ 	isl_basic_map_free(hull);
  	return pw_multi_aff_from_map_check_div(map);
  }
- 
 +/* Create a piecewise quasi affine expression equivalent to a particular
 + * dimension of an isl_map. Return NULL if that is not possible.
 + */
@@ -72,10 +72,9 @@ index 158033a..05c28ea 100644
 +    return pw_aff;
 +}
 +
-+
+ 
  /* Try and create an isl_pw_multi_aff that is equivalent to the given isl_map.
   *
-  * As a special case, we first check if all output dimensions are uniquely
 diff --git a/isl_map.c b/isl_map.c
 index a2ba824..0eb6148 100644
 --- a/isl_map.c
