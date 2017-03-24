@@ -15,7 +15,7 @@ int test2()
             "[p_0, p_1, p_2, p_3, p_4, p_5, p_7] -> { S_1[i0, i1] : i0 >= 0 and i0 <= p_0 and i1 >= 0 and i1 <= p_3 and p_2 >= 0; S_0[i0] : i0 >= 0 and i0 <= p_0}");
     isl_union_map *deps = isl_union_map_read_from_str(ctx, "[p_0, p_1, p_2, p_3, p_4, p_5, p_7] -> { S_0[i0] -> S_1[o0, o1] : (exists (e0 = [(p_7)/8]: 8o1 = -p_5 + p_7 + 8192i0 - 8192o0 and 8e0 = p_7 and i0 >= 0 and o0 <= p_0 and 8192o0 >= -8p_3 - p_5 + p_7 + 8192i0 and 8192o0 <= -p_5 + p_7 + 8192i0 and p_2 >= 0 and o0 >= 1 + i0)); S_1[i0, i1] -> S_0[o0] : (exists (e0 = [(p_1)/8], e1 = [(p_4)/8], e2 = [(-p_1 + p_7)/8184]: 8192o0 = p_5 - p_7 + 8192i0 + 8i1 and 8e0 = p_1 and 8e1 = p_4 and 8184e2 = -p_1 + p_7 and i1 >= 0 and 8i1 <= 8192p_0 - p_5 + p_7 - 8192i0 and 8184i1 >= 1024 + 1024p_1 - 1023p_5 - p_7 - 8380416i0 and p_2 >= 0 and p_7 <= -1 + p_5 and 8i1 >= 1 + 8p_3 + p_4 - p_5 - 8192i0 and i1 <= p_3 and i0 >= 0 and 8i1 >= 8192 - p_5 + p_7))}");
 
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     if (schedule) {
         isl_printer *printer = isl_printer_to_file(ctx, stdout);
@@ -48,7 +48,7 @@ void test1()
             "[n] -> {S_1[i0, i1] : i0 >= 0 and i0 <= 99 and i1 >= 0 and i1 <= 99; S_0[i0] : i0 >= 0 and i0 <= 99; S_2[i0] : i0 >= 0 and i0 <= 99 }");
     deps = isl_union_map_read_from_str(ctx, "[n] -> {S_1[i0, 99] -> S_0[1 + i0] : i0 >= 0 and i0 <= 98; S_1[i0, i1] -> S_1[i0, 1 + i1] : i0 >= 0 and i0 <= 99 and i1 >= 0 and i1 <= 98; S_1[i0, 99] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_1[i0, 0] : i0 >= 0 and i0 <= 99; S_2[i0] -> S_1[1 + i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_2[i0] : i0 >= 0 and i0 <= 99; S_1[i0, 99] -> S_2[i0] : i0 >= 0 and i0 <= 99 }");
 
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);
@@ -83,7 +83,7 @@ void crash_negative_dep_vector()
         /* does not crash with this dependence */
         //"S_0[i0, i1] -> S_0[i0 - 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }");
 
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);
@@ -118,7 +118,7 @@ void test_diamond_tiling()
         "[R, T] -> {"
         "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 0 <= i0 <= T - 1 and 1 <= i1 <= R - 2; "
         "S_0[i0, i1] -> S_0[i0 + 1, i1 + 1] : 0 <= i0 <= T - 1 and 1 <= i1 <= R - 2; }");
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);
@@ -147,7 +147,7 @@ void test5()
         "S_0[i0, i1] -> S_1[i0 - 1, i1 - 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
         "S_0[i0, i1] -> S_1[i0 - 1, i1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
         "S_0[i0, i1] -> S_1[i0 - 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }");
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);
@@ -175,7 +175,7 @@ void test6_diamond_tiling_with_scalar_dimension() {
         "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1 - 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
         "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }"
         "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; }");
-    isl_union_map *schedule = pluto_schedule(domains, deps, options);
+    isl_union_map *schedule = pluto_schedule(domains, deps, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     isl_printer_print_union_map(printer, schedule);

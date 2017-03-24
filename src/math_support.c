@@ -1,3 +1,4 @@
+#include <omp.h>
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
@@ -31,6 +32,7 @@
 #include "isl/val.h"
 #include "isl/val_gmp.h"
 #include "isl/deprecated/int.h"
+
 
 /*
  * Allocated; not initialized
@@ -594,6 +596,7 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat)
     }
 }
 
+
 /*
  * Construct a PlutoMatrix with the same content as the given isl_mat.
  */
@@ -768,6 +771,57 @@ int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2)
     }
 
     return (dot == 0);
+}
+
+
+/*
+ * Convert an isl affine expression to Pluto function
+ */
+int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
+        void *user)
+{
+    int i, j, npar;
+
+    npar = isl_aff_dim(aff, isl_dim_param);
+
+    PlutoMatrix **mat_p = (PlutoMatrix **) user;
+    if (*mat_p != NULL) pluto_matrix_free(*mat_p);
+    *mat_p = pluto_matrix_alloc(1, isl_aff_dim(aff, isl_dim_in) + npar + 1);
+    PlutoMatrix *mat = *mat_p;
+
+    if (isl_aff_dim(aff, isl_dim_div) >= 1) {
+        isl_aff *div = isl_aff_get_div(aff, 0);
+        isl_val *v = isl_aff_get_denominator_val(div);
+        isl_aff_free(div);
+        if (!isl_val_is_one(v)) {
+            pluto_matrix_zero_row(mat, 0);
+            isl_val_free(v);
+            isl_set_free(set);
+            isl_aff_free(aff);
+            return 0;
+        }
+        isl_val_free(v);
+    }
+
+    for (i=0; i<isl_aff_dim(aff, isl_dim_in); i++) {
+        isl_val *v = isl_aff_get_coefficient_val(aff, isl_dim_in, i);
+        mat->val[0][i] = isl_val_get_num_si(v);
+        isl_val_free(v);
+    }
+    for (j=0; j<npar; i++,j++) {
+        isl_val *v =  isl_aff_get_coefficient_val(aff, isl_dim_param, j);
+        mat->val[0][i] = isl_val_get_num_si(v);
+        isl_val_free(v);
+    }
+    isl_val *v = isl_aff_get_constant_val(aff);
+    mat->val[0][i] = isl_val_get_num_si(v);
+    isl_val_free(v);
+    //pluto_matrix_print(stdout, mat);
+
+    isl_set_free(set);
+    isl_aff_free(aff);
+
+    return 0;
 }
 
 /* Convert from mpz to signed long long */

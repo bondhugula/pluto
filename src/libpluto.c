@@ -35,6 +35,75 @@
 
 PlutoOptions *options;
 
+/* Copied from petext.c */
+struct pluto_access_meta_info {
+    /* Pointer to an array of accesses */
+    PlutoAccess ***accs;
+    int index;
+    int stmt_dim;
+    int npar;
+};
+
+/* Copied from petext.c */
+/* Extract a Pluto access function from isl_basic_map */
+static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
+{
+    int i;
+
+    isl_map *map;
+
+    // isl_basic_map_dump(bmap);
+
+    map = isl_map_from_basic_map(bmap);
+
+    int dim = isl_map_dim(map, isl_dim_out);
+    int ncols = isl_map_dim(map, isl_dim_in)
+	+ isl_map_dim(map, isl_dim_param) + 1;
+
+    PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
+
+    for (i=0; i<dim; i++) {
+	PlutoMatrix *func_onedim = NULL;
+	if (isl_map_dim_is_single_valued(map, i)) {
+	    isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+	    // isl_pw_aff_dump(pw_aff);
+	    /* Best effort: Gets it from the last piece */
+	    isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+	    pluto_matrix_add(func, func_onedim);
+	    pluto_matrix_free(func_onedim);
+	    isl_pw_aff_free(pw_aff);
+	}else{
+	    pluto_matrix_add_row(func, 0);
+	    pluto_matrix_zero_row(func, 0);
+	}
+    }
+    struct pluto_access_meta_info *info = (struct pluto_access_meta_info *) user;
+
+    (*info->accs)[info->index] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
+    PlutoAccess *acc = (*info->accs)[info->index];
+    acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
+    acc->mat = func;
+
+    info->index++;
+
+    isl_map_free(map);
+
+    return 0;
+}
+
+/* Extract Pluto access functions from isl_map */
+int isl_map_extract_access_func(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    /* Extract a PlutoAccess from every isl_basic_map */
+    r = isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
+
+    isl_map_free(map);
+
+    return r;
+}
+
 static double rtclock()
 {
     struct timezone Tzp;
@@ -53,6 +122,11 @@ static double rtclock()
 struct pluto_extra_stmt_info {
     Stmt **stmts;
     int index;
+};
+
+struct pluto_extra_access_info {
+    isl_union_map *access_fn;
+    int id;
 };
 
 static int extract_basic_set(__isl_take isl_basic_set *bset, void *user)
@@ -146,7 +220,62 @@ static int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts)
     return 0;
 }
 
+static int extract_access_fns(__isl_keep isl_union_map *reads,
+	__isl_keep isl_union_map *writes,
+	Stmt *stmt,
+	int id)
+{
+    int j;
+    isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
+    isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
+    struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, 0};
+    struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, 0};
+
+    if (stmt->nreads >= 1) {
+	stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
+    }
+    if (stmt->nwrites >= 1) {
+	stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
+    }
+    for (j=0; j<stmt->nreads; j++) {
+	stmt->reads[j] = NULL;
+    }
+    for (j=0; j<stmt->nwrites; j++) {
+	stmt->writes[j] = NULL;
+    }
+
+    isl_union_map_foreach_map(reads, &isl_map_extract_access_func, &e_reads);
+    isl_union_map_foreach_map(writes, &isl_map_extract_access_func, &e_writes);
+
+    //pluto_matrix_print(stdout, stmt->reads[0]->mat);
+    return 0;
+}
+
+static int extract_stmt_access(__isl_take isl_map *map, void *user)
+{
+    struct pluto_extra_access_info *info = (struct pluto_extra_access_info *) user;
+    isl_union_map *new_map = info->access_fn;
+    int id = info->id;
+
+    if (id == atoi(isl_map_get_tuple_name(map, isl_dim_in)+2)) {
+	isl_union_map_add_map(new_map, isl_map_copy(map));
+    }
+
+    isl_map_free(map);
+    return 0;
+}
+
+__isl_give isl_union_map *extract_stmt_accesses(__isl_keep isl_union_map *map, int id)
+{
+    isl_space *space = isl_union_map_get_space(map);
+    isl_union_map *new_map = isl_union_map_empty(isl_space_copy(space));
+    struct pluto_extra_access_info info = {new_map, id};
+    isl_union_map_foreach_map(map, &extract_stmt_access, &info);
+
+    isl_space_free(space);
+    return new_map;
+}
 
 /*
  * Pluto tiling modifies the domain; move the information from the
@@ -195,8 +324,10 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog)
  * isl_dim_out, isl_dim_in, div, param, const
  */
 __isl_give isl_union_map *pluto_schedule(isl_union_set *domains, 
-        isl_union_map *dependences, 
-        PlutoOptions *options_l)
+	 isl_union_map *dependences,
+     isl_union_map *read,
+     isl_union_map *write,
+     PlutoOptions *options_l)
 {
     int i, j, nbands, n_ibands, retval;
     isl_ctx *ctx;
@@ -233,6 +364,14 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     for (i=0; i<prog->nstmts; i++) {
         prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+    }
+
+    for (i = 0; i<prog->nstmts; i++) {
+	isl_union_map *reads = extract_stmt_accesses(read, i);
+	isl_union_map *writes = extract_stmt_accesses(write, i);
+	extract_access_fns(reads, writes, prog->stmts[i], i);
+	isl_union_map_free(reads);
+	isl_union_map_free(writes);
     }
 
     if (prog->nstmts >= 1) {
@@ -287,10 +426,12 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
+    if (!options->silent) {
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        pluto_bands_print(bands, nbands);
+        printf("Innermost tilable bands: %d bands\n", n_ibands);
+        pluto_bands_print(ibands, n_ibands);
+    }
 
     if (options->tile) {
         pluto_tile(prog);
@@ -374,125 +515,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     return schedules;
 }
-
-
-Remapping *pluto_get_remapping(isl_union_set *domains,
-        isl_union_map *dependences, PlutoOptions *options_l) 
-{
-
-    int i, nbands, n_ibands, retval;
-    isl_space *space;
-
-    space = isl_union_set_get_space(domains);
-
-    // isl_union_set_dump(domains);
-    // isl_union_map_dump(dependences);
-
-    PlutoProg *prog = pluto_prog_alloc();
-    prog->options = options_l;
-
-    /* global var */
-    options = options_l;
-
-
-    prog->nvar = -1;
-    prog->nstmts = isl_union_set_n_set(domains);
-
-    if (prog->nstmts >= 1) {
-        prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
-    }else{
-        prog->stmts = NULL;
-    }
-
-    for (i=0; i<prog->nstmts; i++) {
-        prog->stmts[i] = NULL;
-    }
-
-    extract_stmts(domains, prog->stmts);
-
-    for (i=0; i<prog->nstmts; i++) {
-        prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
-    }
-
-    if (prog->nstmts >= 1) {
-        Stmt *stmt = prog->stmts[0];
-        prog->npar = stmt->domain->ncols - stmt->dim - 1;
-        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
-    }else prog->npar = 0;
-
-    for (i=0; i<prog->npar; i++) {
-        char *param = malloc(5);
-        sprintf(param, "p%d", i);
-        prog->params[i] = param;
-    }
-
-    prog->ndeps = 0;
-    isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
-
-    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
-    for (i=0; i<prog->ndeps; i++) {
-        prog->deps[i] = pluto_dep_alloc();
-    }
-    extract_deps(prog->deps, 0, prog->stmts,
-            dependences, OSL_DEPENDENCE_RAW);
-
-    IF_DEBUG(pluto_prog_print(stdout, prog););
-
-    retval = pluto_auto_transform(prog);
-
-    if (retval) {
-        /* Failure */
-        pluto_prog_free(prog);
-        isl_space_free(space);
-
-        if (!options->silent) {
-            printf("[libpluto] failure, returning NULL schedules\n");
-        }
-
-        return NULL;
-    }
-
-    pluto_compute_dep_directions(prog);
-    pluto_compute_dep_satisfaction(prog);
-
-    if (!options->silent) {
-        fprintf(stdout, "[pluto] Affine transformations\n\n");
-        /* Print out transformations */
-        pluto_transformations_pretty_print(prog);
-    }
-
-    Band **bands, **ibands;
-    bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-    ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
-
-    if (options->tile) {
-        pluto_tile(prog);
-    }else{
-        if (options->intratileopt) {
-            pluto_intra_tile_optimize(prog, 0);
-        }
-    }
-
-    Remapping *remapping = (Remapping *)malloc(sizeof(Remapping));
-    remapping->nstmts = prog->nstmts;
-    remapping->stmt_inv_matrices =
-        (PlutoMatrix **)malloc(sizeof(PlutoMatrix *) * prog->nstmts);
-    remapping->stmt_divs = (int **)malloc(sizeof(int *) * prog->nstmts);
-
-
-    for(i = 0; i < prog->nstmts; i++) {
-         remapping->stmt_inv_matrices[i] = pluto_stmt_get_remapping(prog->stmts[i],
-                &remapping->stmt_divs[i]);
-    }
-
-    return remapping;
-}
-
-
 
 /*
  * Performs pluto-scheduling on an osl_scop.
@@ -635,7 +657,7 @@ void pluto_schedule_str(const char *domains_str,
     isl_union_map *dependences = isl_union_map_read_from_str(ctx, 
             dependences_str);
 
-    isl_union_map *schedule = pluto_schedule(domains, dependences, options);
+    isl_union_map *schedule = pluto_schedule(domains, dependences, NULL, NULL, options);
 
     isl_printer *printer = isl_printer_to_str(ctx);
     isl_printer_print_union_map(printer, schedule);
@@ -652,30 +674,6 @@ void pluto_schedule_str(const char *domains_str,
     isl_ctx_free(ctx);
 
 }
-
-
-
-void pluto_get_remapping_str(const char *domains_str,
-        const char *dependences_str,
-        Remapping **remapping_ptr,
-        PlutoOptions *options) {
-
-    isl_ctx *ctx = isl_ctx_alloc();
-    isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
-    isl_union_map *dependences = isl_union_map_read_from_str(ctx,
-            dependences_str);
-
-    assert(remapping_ptr != NULL);
-    Remapping *remapping = pluto_get_remapping(domains, dependences, options);
-    *remapping_ptr = remapping;
-
-};
-
-
-void pluto_remapping_free(Remapping *remapping) {
-    assert(remapping != NULL);
-    free(remapping);
-};
 
 void pluto_schedules_strbuf_free(char *schedules_str_buffer) {
   free(schedules_str_buffer);
