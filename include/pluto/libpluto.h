@@ -2,6 +2,7 @@
 #define __LIBPLUTO__
 #include "isl/union_set.h"
 #include "isl/union_map.h"
+#include "../../src/math_support.h"
 
 #include "osl/scop.h"
 
@@ -217,6 +218,23 @@ void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
         PlutoOptions *options);
+
+
+
+struct remapping {
+    int nstmts;
+    PlutoMatrix **stmt_inv_matrices;
+    int **stmt_divs;
+};
+typedef struct remapping Remapping;
+
+void pluto_remapping_free(Remapping *);
+
+void pluto_get_remapping_str(const char *domains_str,
+        const char *dependences_str,
+        Remapping **remapping_ptr,
+        PlutoOptions *options);
+
 
 /*
 Free the string stored in schedules_str_buffer_ptr
