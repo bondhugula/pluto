@@ -14,7 +14,7 @@ ACKNOWLEDGMENTS
 
 5.  Louis-Noel Pouchet for miscellaneous collaborative development
 
-6.  Sven Verdoolaege for Cloog-isl and isl
+6.  Sven Verdoolaege for Cloog-isl, isl, and isl-based lastwriter support
 
 7.  All other contributors of Cloog, Candl, Clan, and PipLib
 
@@ -26,9 +26,22 @@ ACKNOWLEDGMENTS
 
 11. Prasanth Chatarasi for symbol table support for clan/scoplib
 
-12. Tobias Grosser for help with libpluto
+12. Tobias Grosser for libpluto support in LLVM/Polly
 
-13. Taj Muhammad Khan for migration to OpenSCoP (osl)
+13. Roshan Dathathri for FOIFI and FOP communication schemes,
+    dynamic scheduling, and other distributed-memory codegen support
+
+14. Chandan G for FOIFI, FOP communication schemes
+
+15. Vinayaka Bandishti for a part of the diamond-tiling implementation
+
+16. Irshad Pananilath
+
+17. Arvind M and Anoop with libPluto and LLVM/Polly integration
+
+18. Aravind Acharya for a part of Pluto+ implementation
+
+19. Taj Muhammad Khan for migration to OpenSCoP (osl)
 
 
 Bugs and fixes
