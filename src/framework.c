@@ -256,7 +256,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 }
 
 /*
-* Get the permutability constraints only for the statements and dependences existing within those statements.
+* Gets the permutability constraints only for the statements and dependences existing within those statements.
 * @param stmts_to_consider, stmts_to_consider[i] = true means ith statement is considered for
     permutability constraints.
 */
@@ -280,8 +280,7 @@ PlutoConstraints *get_selective_permutability_constraints(PlutoProg *prog, bool 
         int dst_index = dep->dest;
 
         // consider only dependencies corresponding to stmts_to_consider.
-        if(!stmts_to_consider[src_index] || !stmts_to_consider[dst_index])
-            continue;
+        if (!stmts_to_consider[src_index] || !stmts_to_consider[dst_index]) continue;
 
         if (options->rar == 0 && IS_RAR(dep->type)) {
             continue;
@@ -315,8 +314,7 @@ PlutoConstraints *get_selective_permutability_constraints(PlutoProg *prog, bool 
         int dst_index = dep->dest;
 
         // consider only dependencies corresponding to stmts_to_consider
-	if(!stmts_to_consider[src_index] || !stmts_to_consider[dst_index])
-            continue;
+	if (!stmts_to_consider[src_index] || !stmts_to_consider[dst_index]) continue;
 
         /* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
@@ -1124,21 +1122,18 @@ DepDir get_dep_direction_with_hyperplane(const Dep *dep, const PlutoProg *prog, 
     // bestsol[npar+1+j*(nvar+1)+k];
     cst->is_eq[0] = 0;
     for (j = 0; j < src_dim; j++) {
-        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j]; //-stmts[src]->trans_orig->val[level][j];
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j];
     }
     for (j = src_dim; j < src_dim + dest_dim; j++) {
-        cst->val[0][j] = hyperplane[npar+1+dest*(nvar+1)+j-src_dim];//stmts[dest]->trans_orig->val[level][j - src_dim];
+        cst->val[0][j] = hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
     }
     for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
-        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j-dest_dim] + hyperplane[npar+1+dest*(nvar+1)+j-src_dim] ;
-        //-stmts[src]->trans_orig->val[level][j - dest_dim] +
-            //stmts[dest]->trans_orig->val[level][j - src_dim];
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j-dest_dim] + hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
     }
     cst->val[0][src_dim + dest_dim + npar] =
         -hyperplane[npar+1+src*(nvar+1)+ src_dim + npar] +
         hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar] - 1;
-        //-stmts[src]->trans_orig->val[level][src_dim + npar] +
-        //stmts[dest]->trans_orig->val[level][dest_dim + npar] - 1;
+
     cst->nrows = 1;
 
     pluto_constraints_add(cst, dep->dpolytope);

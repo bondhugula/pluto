@@ -216,9 +216,9 @@ void transitive_closure(Graph *graph){
     adjacency = graph->adj;
     n_vertices = graph->nVertices;
 
-    for(k = 0; k < n_vertices; k++){
-        for(i = 0; i < n_vertices; i++){
-            for(j = 0; j < n_vertices; j++){
+    for (k = 0; k < n_vertices; k++) {
+        for (i = 0; i < n_vertices; i++) {
+            for (j = 0; j < n_vertices; j++) {
                 adjacency->val[i][j] = adjacency->val[i][j] ||
                     (adjacency->val[i][k] && adjacency->val[k][j]);
             }
@@ -235,11 +235,11 @@ void compute_scc_vertices(Graph *ddg){
     int *vertices;
 
     n_sccs = ddg->num_sccs;
-    for(i=0; i<n_sccs; i++){
-        vertices = (int*)malloc((ddg->sccs[i].size)*sizeof(int));
+    for (i=0; i<n_sccs; i++) {
+        vertices = (int *) malloc((ddg->sccs[i].size)*sizeof(int));
         k = 0;
-        for(j=0;j<ddg->nVertices; j++){
-            if((ddg->vertices[j].scc_id) == i){
+        for (j=0; j<ddg->nVertices; j++) {
+            if ((ddg->vertices[j].scc_id) == i) {
                 vertices[k] = ddg->vertices[j].id;
                 k++;
             }
