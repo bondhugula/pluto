@@ -255,6 +255,113 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     pluto_constraints_free(bounding_func_cst);
 }
 
+/*
+* Get the permutability constraints only for the statements and dependences existing within those statements.
+* @param stmts_to_consider, stmts_to_consider[i] = true means ith statement is considered for
+    permutability constraints.
+*/
+PlutoConstraints *get_selective_permutability_constraints(PlutoProg *prog, bool *stmts_to_consider){
+    int i, inc, nstmts, nvar, npar, ndeps, total_cst_rows;
+    PlutoConstraints *globcst;
+    Dep **deps;
+
+    nstmts = prog->nstmts;
+    ndeps = prog->ndeps;
+    deps = prog->deps;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    total_cst_rows = 0;
+
+    /* Compute the constraints and store them in dep->cst */
+    for (i=0; i<ndeps; i++) {
+        Dep *dep = deps[i];
+        int src_index = dep->src;
+        int dst_index = dep->dest;
+
+        // consider only dependencies corresponding to stmts_to_consider.
+        if(!stmts_to_consider[src_index] || !stmts_to_consider[dst_index])
+            continue;
+
+        if (options->rar == 0 && IS_RAR(dep->type)) {
+            continue;
+        }
+
+        if (dep->cst == NULL) {
+            /* First time, compute the constraints */
+            compute_permutability_constraints_dep(dep, prog);
+
+            IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n",
+                        i+1, dep->cst->nrows));
+            total_cst_rows += dep->cst->nrows;
+            // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
+            // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
+        }
+    }
+
+    if (!prog->globcst) {
+        prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    }
+
+    globcst = prog->globcst;
+
+    globcst->ncols = CST_WIDTH;
+    globcst->nrows = 0;
+
+    /* Add constraints to globcst */
+    for (i = 0, inc = 0; i < ndeps; i++) {
+        Dep *dep = deps[i];
+        int src_index = dep->src;
+        int dst_index = dep->dest;
+
+        // consider only dependencies corresponding to stmts_to_consider
+	if(!stmts_to_consider[src_index] || !stmts_to_consider[dst_index])
+            continue;
+
+        /* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
+
+        if (options->rar == 0 && IS_RAR(dep->type)) continue;
+
+        /* Note that dependences would be marked satisfied (in
+         * pluto_auto_transform) only after all possible independent solutions
+         * are found at a depth
+         */
+        if (dep_is_satisfied(dep)) {
+            continue;
+        }
+
+        /* Subsequent calls can just use the old ones */
+        pluto_constraints_add(globcst, dep->cst);
+        /* print_polylib_visual_sets("global", dep->cst); */
+
+        IF_DEBUG(fprintf(stdout, "\tAfter dep %d; num_constraints: %d\n", i+1,
+                    globcst->nrows));
+        /* This is for optimization as opposed to for correctness. We will
+         * simplify constraints only if it crosses the threshold: at the time
+         * it crosses the threshold or at 1000 increments thereon. Simplifying
+         * each time slows down Pluto whenever there are few hundreds of
+         * dependences. Not simplifying at all also leads to a slow down
+         * because it leads to a large globcst and a number of constraits in
+         * it are redundant */
+        if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc) &&
+                globcst->nrows - dep->cst->nrows <
+                CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc)) {
+            pluto_constraints_simplify(globcst);
+            inc++;
+            IF_DEBUG(fprintf(stdout,
+                        "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
+                        globcst->nrows));
+        }
+    }
+
+    pluto_constraints_simplify(globcst);
+
+    IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
+                globcst->nrows, globcst->ncols - 1));
+    // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
+
+    return globcst;
+}
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
@@ -991,6 +1098,147 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, i
     return retval;
 }
 
+/* Direction vector component at level 'level' for given hyperplane.
+ */
+DepDir get_dep_direction_with_hyperplane(const Dep *dep, const PlutoProg *prog, int64 *hyperplane)
+{
+    PlutoConstraints *cst;
+    int j, src, dest;
+
+    int npar = prog->npar;
+    int nvar = prog->nvar;
+    Stmt **stmts = prog->stmts;
+
+    src = dep->src;
+    dest = dep->dest;
+
+    Stmt *src_stmt = stmts[dep->src];
+    Stmt *dest_stmt = stmts[dep->dest];
+
+    int src_dim = src_stmt->dim;
+    int dest_dim = dest_stmt->dim;
+
+    cst = pluto_constraints_alloc(2 * (2 + dep->dpolytope->nrows),
+                (src_dim + dest_dim) + npar + 1);
+
+    // bestsol[npar+1+j*(nvar+1)+k];
+    cst->is_eq[0] = 0;
+    for (j = 0; j < src_dim; j++) {
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j]; //-stmts[src]->trans_orig->val[level][j];
+    }
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = hyperplane[npar+1+dest*(nvar+1)+j-src_dim];//stmts[dest]->trans_orig->val[level][j - src_dim];
+    }
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j-dest_dim] + hyperplane[npar+1+dest*(nvar+1)+j-src_dim] ;
+        //-stmts[src]->trans_orig->val[level][j - dest_dim] +
+            //stmts[dest]->trans_orig->val[level][j - src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -hyperplane[npar+1+src*(nvar+1)+ src_dim + npar] +
+        hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar] - 1;
+        //-stmts[src]->trans_orig->val[level][src_dim + npar] +
+        //stmts[dest]->trans_orig->val[level][dest_dim + npar] - 1;
+    cst->nrows = 1;
+
+    pluto_constraints_add(cst, dep->dpolytope);
+
+    bool is_empty = pluto_constraints_is_empty(cst);
+
+    if (is_empty) {
+        for (j = 0; j < src_dim; j++) {
+            cst->val[0][j] = hyperplane[npar+1+src*(nvar+1)+j];
+        }
+        for (j = src_dim; j < src_dim + dest_dim; j++) {
+            cst->val[0][j] = -hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
+        }
+        for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+            cst->val[0][j] = hyperplane[npar+1+src*(nvar+1)+j-dest_dim]
+                - hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
+        }
+        cst->val[0][src_dim + dest_dim + npar] =
+            hyperplane[npar+1+src*(nvar+1)+ src_dim + npar]
+            - hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar] - 1;
+        cst->nrows = 1;
+
+        pluto_constraints_add(cst, dep->dpolytope);
+
+        is_empty = pluto_constraints_is_empty(cst);
+
+        /* If no solution exists, all points satisfy \phi (dest) - \phi (src) = 0 */
+        if (is_empty) {
+            pluto_constraints_free(cst);
+            return DEP_ZERO;
+        }
+    }
+
+    /*
+     * Check for PLUS
+     * Constraint format
+     * \phi(dest) - \phi (src) <= -1
+     * (reverse of plus)
+     */
+
+    for (j = 0; j < src_dim; j++) {
+        cst->val[0][j] = hyperplane[npar+1+src*(nvar+1)+j];
+    }
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = -hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
+    }
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = hyperplane[npar+1+src*(nvar+1)+j-dest_dim]
+            - hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        hyperplane[npar+1+src*(nvar+1)+ src_dim + npar] -
+        hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar] - 1;
+
+    cst->nrows = 1;
+
+    pluto_constraints_add(cst, dep->dpolytope);
+
+    is_empty = pluto_constraints_is_empty(cst);
+
+    if (is_empty) {
+        pluto_constraints_free(cst);
+        return DEP_PLUS;
+    }
+
+    /*
+     * Check for MINUS
+     *
+     * Constraint format
+     * \phi(dest) - \phi (src) >= 1
+     * reverse of minus, we alraedy know that it's not zero
+     */
+
+    for (j = 0; j < src_dim; j++) {
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j];
+    }
+    for (j = src_dim; j < src_dim + dest_dim; j++) {
+        cst->val[0][j] = hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
+    }
+    for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
+        cst->val[0][j] = -hyperplane[npar+1+src*(nvar+1)+j-dest_dim]
+            + hyperplane[npar+1+dest*(nvar+1)+j-src_dim];
+    }
+    cst->val[0][src_dim + dest_dim + npar] =
+        -hyperplane[npar+1+src*(nvar+1)+ src_dim + npar]+
+        hyperplane[npar+1+dest*(nvar+1)+ dest_dim + npar]- 1;
+    cst->nrows = 1;
+
+    pluto_constraints_add(cst, dep->dpolytope);
+
+    is_empty = pluto_constraints_is_empty(cst);
+    pluto_constraints_free(cst);
+
+    if (is_empty) {
+        return DEP_MINUS;
+    }
+
+    /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
+    return DEP_STAR;
+}
 
 /* Direction vector component at level 'level'
  */
