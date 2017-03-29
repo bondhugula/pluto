@@ -161,7 +161,8 @@ typedef struct plutoOptions PlutoOptions;
 #define MAXIMAL_FUSE 1
 /* Something in between the above two */
 #define SMART_FUSE 2
-
+/* Maximizes parallelism by preventing the fusion of SCCs that results in parallelism loss.*/
+#define TYPED_FUSE 3
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);

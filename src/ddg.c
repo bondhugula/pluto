@@ -204,6 +204,50 @@ void dfs_for_scc(Graph *g)
     free(vCopy);
 }
 
+/**
+* Modifies the graph to include transitive edges.
+* @param graph, for which transitve edges needed to be added.
+**/
+void transitive_closure(Graph *graph){
+    unsigned i, j, k;
+    unsigned n_vertices;
+    PlutoMatrix *adjacency;
+
+    adjacency = graph->adj;
+    n_vertices = graph->nVertices;
+
+    for (k = 0; k < n_vertices; k++) {
+        for (i = 0; i < n_vertices; i++) {
+            for (j = 0; j < n_vertices; j++) {
+                adjacency->val[i][j] = adjacency->val[i][j] ||
+                    (adjacency->val[i][k] && adjacency->val[k][j]);
+            }
+        }
+    }
+}
+
+/**
+* Computes the vertices corresponding to scc.
+**/
+void compute_scc_vertices(Graph *ddg){
+    int i,j,k;
+    int n_sccs;
+    int *vertices;
+
+    n_sccs = ddg->num_sccs;
+    for (i=0; i<n_sccs; i++) {
+        vertices = (int *) malloc((ddg->sccs[i].size)*sizeof(int));
+        k = 0;
+        for (j=0; j<ddg->nVertices; j++) {
+            if ((ddg->vertices[j].scc_id) == i) {
+                vertices[k] = ddg->vertices[j].id;
+                k++;
+            }
+        }
+        ddg->sccs[i].vertices = vertices;
+    }
+}
+
 void graph_free(Graph *g)
 {
     pluto_matrix_free(g->adj);

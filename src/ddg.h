@@ -25,6 +25,8 @@ struct scc{
     /* Id of this SCC */
     int id;
 
+    /* Stmt Id's of the vertices in the SCC */
+    int* vertices;
 };
 typedef struct scc Scc;
 
@@ -52,5 +54,8 @@ Graph *graph_transpose (Graph *g);
 void dfs (Graph *g);
 void dfs_for_scc (Graph *g);
 Vertex *ddg_get_vertex_by_id(Graph *g, int id);
+
+void transitive_closure(Graph *graph);
+void compute_scc_vertices(Graph *ddg);
 
 #endif

@@ -2713,7 +2713,7 @@ PlutoOptions *pluto_options_alloc()
     options->multipar = 0;
     options->l2tile = 0;
     options->prevector = 1;
-    options->fuse = SMART_FUSE;
+    options->fuse = TYPED_FUSE;
 
     /* Experimental */
     options->polyunroll = 0;

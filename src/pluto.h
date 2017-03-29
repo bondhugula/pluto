@@ -73,6 +73,17 @@ typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ,
 /* ORIG is an original compute statement provided by a polyhedral extractor */
 typedef enum stmttype {ORIG=0, STMT_UNKNOWN} PlutoStmtType;
 
+/**
+* NO_HYPERPLANE: no hyperplane exists.
+* PARALLEL_HYPERPLANE: parallel hyperplane exists.
+* SEQUENTIAL_HYPERPLANE: only sequential hyperplane exists.
+*/
+typedef enum solvability{
+    NO_HYPERPLANE = 0,
+    PARALLEL_HYPERPLANE,
+    SEQUENTIAL_HYPERPLANE
+}Solvability;
+
 typedef struct pluto_access{
     int sym_id;
     char *name;
@@ -116,6 +127,9 @@ struct statement{
      */
     PlutoMatrix *trans;
 
+    /*Original transformation.*/
+    PlutoMatrix *orig_trans;
+
     /* The hyperplane evicted by the hyperplane enabling
      * concurrent start (diamond tiling) */
     PlutoMatrix *evicted_hyp;
@@ -126,6 +140,9 @@ struct statement{
 
     /* H_LOOP, H_SCALAR, .. */
     PlutoHypType *hyp_types;
+
+    /*Original hyperplane types*/
+    PlutoHypType *orig_hyp_types;
 
     /* Num of scattering dimensions tiled */
     int num_tiled_loops;
@@ -285,6 +302,9 @@ struct plutoProg{
      * stmt->trans->nrows */
     int num_hyperplanes;
 
+    /*Original number of hyperplane.*/
+    int orig_num_hyperplanes;
+
     /* Data dependence graph of the program */
     Graph *ddg;
 
@@ -293,6 +313,9 @@ struct plutoProg{
 
     /* Hyperplane properties */
     HyperplaneProperties *hProps;
+
+    /*Original hyperplane properties.*/
+    HyperplaneProperties *orig_hProps;
 
     /* Max (original) domain dimensionality */
     int nvar;
@@ -354,6 +377,39 @@ void pluto_constraints_list_add(PlutoConstraintsList *list,const PlutoConstraint
 
 void pluto_constraints_list_replace(PlutoConstraintsList *list, PlutoConstraints *cst);
 
+struct node {
+    int data;
+    struct node *next;
+};
+typedef struct node Node;
+
+struct list {
+    Node *head;
+    Node *tail;
+};
+typedef struct list List;
+
+Node *alloc_node(int data);
+List *create_empty_list(void);
+
+void push_node_to_list(List *list, int data);
+void pop_node_from_list(List *list);
+List *merge_lists(List *list_1, List *list_2);
+
+struct scc_cluster {
+    /*Parameters required for the scoring*/
+    unsigned invariant_access;
+    unsigned spatial_access;
+    bool is_parallel;
+    bool is_vectorizable;
+    unsigned granularity;
+    unsigned distinct_access;
+
+    /*Sccs corresponding to this cluster.*/
+    List *scc_list;
+};
+typedef struct scc_cluster SccCluster;
+
 typedef struct band{
     /* Root loop of this band */
     Ploop *loop;
@@ -379,6 +435,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 
+PlutoConstraints *get_selective_permutability_constraints(PlutoProg *prog, bool *stmts_to_consider);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
@@ -393,9 +450,11 @@ int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
 
 int  find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode, 
         int max_sols, int band_depth);
+int64 *get_best_solution(PlutoProg *prog, Graph *ddg, bool *stmts_to_consider);
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int, int, int);
 DepDir  get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
+DepDir get_dep_direction_with_hyperplane(const Dep *dep, const PlutoProg *prog, int64 *hyperplane);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
