@@ -819,7 +819,11 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     return schedules;
 }
 
-
+/* pluto_schedule_str is a wrapper method around
+ * pluto_parallel_schedule_with_remapping().
+ * This method accepts domain, dependence and PlutoOptions as string
+ * and returns a transformed schedule, remapping and parallel loops.
+ */
 void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
