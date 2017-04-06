@@ -178,6 +178,11 @@ int pluto_schedule_osl(osl_scop_p scop,
 }
 #endif
 
+/*
+ * Structure to hold Remapping information
+ * Consists of number of statements, Remapping pluto matrix
+ * and divs.
+ */
 struct remapping {
     int nstmts;
     PlutoMatrix **stmt_inv_matrices;
