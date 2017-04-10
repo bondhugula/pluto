@@ -611,7 +611,8 @@ int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
 
     if (retval) {
         /* Detect properties again */
-        pluto_detect_transformation_properties(prog);
+        pluto_compute_dep_directions(prog);
+        pluto_compute_dep_satisfaction(prog);
         if (!options->silent) {
             printf("[pluto] After post-tile distribution\n");
             pluto_transformations_pretty_print(prog);
