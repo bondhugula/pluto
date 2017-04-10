@@ -180,6 +180,17 @@ int pluto_schedule_osl(osl_scop_p scop,
 }
 #endif
 
+/*
+ * Structure to hold Remapping information
+ * Consists of number of statements, Remapping pluto matrix
+ * and divs.
+ */
+struct remapping {
+    int nstmts;
+    PlutoMatrix **stmt_inv_matrices;
+    int **stmt_divs;
+};
+typedef struct remapping Remapping;
 
 /*
 This function is a HACK. The reason this exists is to allow for easy FFI
@@ -194,8 +205,16 @@ isl object.
 void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
+        char** p_loops,
+        Remapping **remapping_ptr,
         PlutoOptions *options);
 
+void pluto_remapping_free(Remapping *);
+
+void pluto_get_remapping_str(const char *domains_str,
+        const char *dependences_str,
+        Remapping **remapping_ptr,
+        PlutoOptions *options);
 
 
 /*
