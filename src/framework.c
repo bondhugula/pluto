@@ -298,8 +298,11 @@ PlutoConstraints *get_selective_permutability_constraints(PlutoProg *prog, bool 
         }
     }
 
-    globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    if (!prog->globcst) {
+        prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    }
 
+    globcst = prog->globcst;
     globcst->ncols = CST_WIDTH;
     globcst->nrows = 0;
 

@@ -200,7 +200,8 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
     return count;
 }
 
-/* PlutoConstraints to avoid trivial solutions only for the statements in consideration(all zeros)
+/* PlutoConstraints considering only the statements given by 'stmts_to_consider'
+    to avoid trivial solutions (all zeros)
  *
  * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked,
  * a hyperplane, if found, will be a loop hyperplane.
@@ -328,7 +329,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 }
 
 /**
- * Bounds for Pluto ILP variables only for the statements in consideration.
+ * Bounds for Pluto ILP variables by considering only the statements specified in 'stmts_to_consider'
  */
 static PlutoConstraints *get_selective_coeff_bounding_constraints(PlutoProg *prog, bool *stmts_to_consider)
 {
@@ -868,7 +869,8 @@ void deallocate_list(List *list){
  * Check if the solution hyperplane is parallel.
  * @returns true, if the solution hyperplane is parallel.
  */
-bool is_parallel(PlutoProg *prog, int64 *solution_hyperplane){
+bool is_parallel(PlutoProg *prog, int64 *solution_hyperplane)
+{
 
     int i; //iterator
 
@@ -887,7 +889,8 @@ bool is_parallel(PlutoProg *prog, int64 *solution_hyperplane){
  * @returns, NO_HYPERPLANE, PARALLEL_HYPERPLANE or SEQUENTIAL_HYPERPLANE.
  * NOTE: length of stmts_to_consider == #stmts in program
  */
-Solvability get_solvability_status(PlutoProg *prog, Graph *ddg, bool *stmts_to_consider){
+Solvability get_solvability_status(PlutoProg *prog, Graph *ddg, bool *stmts_to_consider)
+{
 
     bool is_scc_parallel;
     int64 *best_solution;
@@ -910,7 +913,8 @@ Solvability get_solvability_status(PlutoProg *prog, Graph *ddg, bool *stmts_to_c
  * @return graph, the dag constructed out of the cluster where each node is a cluster and edges between
  *  them represent the dependences between them.
  */
-Graph *construct_cluster_graph(PlutoProg *prog, Graph *ddg, SccCluster *clusters, unsigned n_clusters){
+Graph *construct_cluster_graph(PlutoProg *prog, Graph *ddg, SccCluster *clusters, unsigned n_clusters)
+{
     unsigned i, j; //iterators
     Graph *graph;
     PlutoMatrix *adjacency;
@@ -960,7 +964,8 @@ Graph *construct_cluster_graph(PlutoProg *prog, Graph *ddg, SccCluster *clusters
  * Schedules the statements based on partition it belongs to.
  * @param partition, partition[i] = k represents ith scc belongs to kth partition.
  */
-void cut_based_on_partition(PlutoProg*prog, Graph *ddg, int64 *partition){
+void cut_based_on_partition(PlutoProg*prog, Graph *ddg, int64 *partition)
+{
 
     Stmt **stmts;
     int nstmts, nvar, npar, i, j;
@@ -991,7 +996,8 @@ void cut_based_on_partition(PlutoProg*prog, Graph *ddg, int64 *partition){
  * @returns bool array whose length == #stmts in prog and true in ith entry
  *  represents ith stmt belongs the given cluster.
  */
-bool *get_stmts_from_cluster(PlutoProg *prog, Graph *ddg, SccCluster cluster){
+bool *get_stmts_from_cluster(PlutoProg *prog, Graph *ddg, SccCluster cluster)
+{
 
     assert(cluster.scc_list != NULL);
 
@@ -1021,7 +1027,8 @@ bool *get_stmts_from_cluster(PlutoProg *prog, Graph *ddg, SccCluster cluster){
  * Pretty print cluster.
  * @param cluster, cluster to be printed.
  */
-void print_cluster(SccCluster cluster){
+void print_cluster(SccCluster cluster)
+{
     Node *it;
 
     assert(cluster.scc_list != NULL);
@@ -1049,7 +1056,8 @@ void print_cluster(SccCluster cluster){
     number of hardware prefetch buffers.
  * TODO: define score of the cluster to be linear function of its parameters.
  **/
-double get_score_test(SccCluster cluster){
+double get_score_test(SccCluster cluster)
+{
     double  score;
     unsigned num_sccs, limit;
     Node *tmp;
@@ -1074,7 +1082,8 @@ double get_score_test(SccCluster cluster){
  * @param cluster, for which score need to computed.
  * @returns score, the score based on cluster parameters.
  **/
-double get_score_parallel(SccCluster cluster){
+double get_score_parallel(SccCluster cluster)
+{
 
     double score;
     score = cluster.is_parallel;
@@ -1084,7 +1093,8 @@ double get_score_parallel(SccCluster cluster){
 
 /* Checks if matrices are equal
 */
-bool pluto_matrix_distinct_access_check(PlutoMatrix *mat_1, PlutoMatrix *mat_2) {
+bool pluto_matrix_distinct_access_check(PlutoMatrix *mat_1, PlutoMatrix *mat_2)
+{
 
     unsigned i, j;
     unsigned n_rows, n_cols;
@@ -1115,7 +1125,8 @@ bool pluto_matrix_distinct_access_check(PlutoMatrix *mat_1, PlutoMatrix *mat_2) 
     Even A[i][j] and A[i-1][j] should be considered different memory access as it
     triggers different cache lines.
  **/
-unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider){
+unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
+{
 
     unsigned i, j, k;
     Stmt *stmt;
@@ -1180,7 +1191,8 @@ unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider){
  * @param nstmts, number of statements in the set.
  * @param cluster, cluster which need to be updated.
  **/
-void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccCluster *cluster){
+void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccCluster *cluster)
+{
 
     unsigned i, j, k, n_loops;
     Stmt *stmt, **stmts;
@@ -1234,7 +1246,8 @@ void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccClus
  * @returns the group of clusters with cluster[i] containing ith SCC.
  * TODO: Need to compute distinct accesses parameters.
  **/
-SccCluster* create_clusters(PlutoProg *prog, Graph *ddg){
+SccCluster* create_clusters(PlutoProg *prog, Graph *ddg)
+{
 
     SccCluster *clusters;
     unsigned i, j, n_sccs;
@@ -1282,7 +1295,8 @@ SccCluster* create_clusters(PlutoProg *prog, Graph *ddg){
  * @param cluster, the one to be copied.
  * @return the copy of the cluster.
  **/
-SccCluster copy_cluster(SccCluster cluster){
+SccCluster copy_cluster(SccCluster cluster)
+{
     SccCluster copy;
     Node *tmp;
 
@@ -1311,7 +1325,8 @@ SccCluster copy_cluster(SccCluster cluster){
  * @returns true, if combining the two clusters is valid otherwise false.
  **/
 bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1, SccCluster cluster_2,
-	SccCluster *cluster, double (*get_score)(SccCluster)){
+	SccCluster *cluster, double (*get_score)(SccCluster))
+{
 
     unsigned i;
     double score, score_1, score_2;
@@ -1385,7 +1400,8 @@ bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1, SccClus
  * Create the empty cluster.
  * @returns cluster, with empty sccs.
  **/
-SccCluster create_empty_cluster(void){
+SccCluster create_empty_cluster(void)
+{
     SccCluster cluster;
 
     cluster.invariant_access = 0;
@@ -1405,7 +1421,8 @@ SccCluster create_empty_cluster(void){
  * @returns the cluster groups sorted by topological order.
  **/
 SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
-	SccCluster *clusters,unsigned *n_groups,double (*get_score)(SccCluster)){
+	SccCluster *clusters,unsigned *n_groups,double (*get_score)(SccCluster))
+{
 
     unsigned i,j, n_partitioned_index, n_clusters;
     SccCluster tmp_groups[cluster_graph->nVertices], *cluster_groups;
@@ -1493,7 +1510,8 @@ SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
  * NOTE: Cluster group should be in topological order.
  * @returns partition, where partition[i] = k represents ith SCC belongs to kth partition(cluster_groups).
  */
-int64 *get_partition(SccCluster *cluster_groups, unsigned n_groups, unsigned n_sccs){
+int64 *get_partition(SccCluster *cluster_groups, unsigned n_groups, unsigned n_sccs)
+{
     int64 *partition;
     SccCluster cluster;
     Node *it;
@@ -1514,7 +1532,8 @@ int64 *get_partition(SccCluster *cluster_groups, unsigned n_groups, unsigned n_s
 /**
  * Score based algorithm for initial cut.
  **/
-bool cut_based_on_cost_model(PlutoProg *prog, Graph *ddg, double (*get_score)(SccCluster)){
+bool cut_based_on_cost_model(PlutoProg *prog, Graph *ddg, double (*get_score)(SccCluster))
+{
 
     Graph *graph;
     SccCluster *clusters, *cluster_groups;
@@ -1560,7 +1579,8 @@ bool cut_based_on_cost_model(PlutoProg *prog, Graph *ddg, double (*get_score)(Sc
 /*
  * Same as cut_based_on_cost_model with scoring mechanism considering only parallelism.
  */
-void cut_at_parallelism_loss(PlutoProg *prog, Graph *ddg){
+void cut_at_parallelism_loss(PlutoProg *prog, Graph *ddg)
+{
     cut_based_on_cost_model(prog, ddg, &get_score_parallel);
 }
 
