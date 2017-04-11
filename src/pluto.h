@@ -404,6 +404,7 @@ struct scc_cluster {
     bool is_vectorizable;
     unsigned granularity;
     unsigned distinct_access;
+    unsigned num_access;
 
     /*Sccs corresponding to this cluster.*/
     List *scc_list;

@@ -80,8 +80,8 @@ void usage_message(void)
     fprintf(stdout, "\n   Fusion                Options to control fusion heuristic\n");
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
-    fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
-    fprintf(stdout, "       --typedfuse               Maximizes parallelism by preventing the fusion of SCCs that results in parallelism loss.\n");
+    fprintf(stdout, "       --smartfuse               Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --typedfuse [default]     Maximizes parallelism by preventing the fusion of SCCs that results in parallelism loss.\n");
     fprintf(stdout, "\n   Index Set Splitting        \n");
     fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
