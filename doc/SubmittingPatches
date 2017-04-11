@@ -2,7 +2,7 @@
 - Please make sure your code is indented the same way as surrounding code
 
 - Use spaces instead of tabs for indenting (for vim, set expandtab). All of
-  Pluto uses a 4-space indent, please try using the same. For vim, it should
+  Pluto uses a 4-space indent, try using the same. For vim, it should
   be  "set ts=4 sw=4 expandtab"
 
 - For for/while loops, place the opening brace on the same line.
@@ -11,8 +11,15 @@
 
 
     }
+  
+- For function definitions, place opening brace on the next line:
 
-- For if/else that have their blocks on a separate line, use braces (if the
+void foo(void) 
+{
+
+}
+
+- For if/else that have their blocks on a separate line, use braces (even if the
   block is a single line).
 
     if (...) {
@@ -34,7 +41,7 @@
 - Please sign your commits and generate patch against the git version, 
   i.e., use 
 
-'git format-patch -M origin' 
+$ git format-patch -M origin
 
-- Send patches to pluto-development@googlegroups.com or uday@csa.iisc.ernet.in
+- Send patches to pluto-development@googlegroups.com or raise a pull request on Pluto's GitHub.
 
