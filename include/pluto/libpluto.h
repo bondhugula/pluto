@@ -2,13 +2,28 @@
 #define __LIBPLUTO__
 #include "isl/union_set.h"
 #include "isl/union_map.h"
-#include "../../src/math_support.h"
 
 #include "osl/scop.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+#define int64 long long int
+/* A matrix */
+struct plutoMatrix{
+    /* The values */
+    int64 **val;
+
+    int nrows;
+    int ncols;
+
+    /* Pre-allocated number of rows */
+    int alloc_nrows;
+    int alloc_ncols;
+};
+typedef struct plutoMatrix PlutoMatrix;
+
 struct plutoOptions{
 
     /* To tile or not? */
