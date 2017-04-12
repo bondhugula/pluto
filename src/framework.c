@@ -861,7 +861,7 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(dep->depsat_poly, cst);
+    pluto_constraints_intersect_isl(dep->depsat_poly, cst);
 
     retval = !pluto_constraints_is_empty(cst);
 
