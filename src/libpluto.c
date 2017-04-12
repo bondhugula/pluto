@@ -755,9 +755,11 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
 
     if (options->parallel) {
         *ploops = pluto_get_parallel_loops(prog, nploops);
-        printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
-        pluto_loops_print(*ploops, *nploops);
-        printf("\n");
+        if (!options->silent) {
+            printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
+            pluto_loops_print(*ploops, *nploops);
+            printf("\n");
+        }
     }
 
     // Constructing remapping Matrix
@@ -772,8 +774,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     for(i = 0; i < prog->nstmts; i++) {
          remapping->stmt_inv_matrices[i] = pluto_stmt_get_remapping(prog->stmts[i],
                 &remapping->stmt_divs[i]);
-         if(!options->silent)
-         {
+         if (!options->silent) {
              printf("Statement %d Id- %d\n",i,prog->stmts[i]->id);
              pluto_matrix_print(stdout, remapping->stmt_inv_matrices[i]);
          }
@@ -836,7 +837,7 @@ void pluto_schedule_str(const char *domains_str,
 
     isl_ctx *ctx = isl_ctx_alloc();
     Ploop** ploop;
-    int nploop,i;
+    int nploop = 0,i;
     Remapping* remapping;
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
@@ -848,7 +849,9 @@ void pluto_schedule_str(const char *domains_str,
             dependences, &ploop, &nploop, &remapping, options);
 
     if (options->parallel) {
-       pluto_loops_print(ploop, nploop);
+       if (!options->silent) {
+           pluto_loops_print(ploop, nploop);
+       }
 
        // NOTE: assuming max 4 digits
        // number of parallel loops
@@ -860,8 +863,7 @@ void pluto_schedule_str(const char *domains_str,
        p_loops[0] = (char *) malloc(sizeof(char) * 6 * (nploop+1));
        strcpy(p_loops[0], str);
 
-       for(i = 1; i < nploop + 1; i++)
-       {
+       for (i = 1; i < nploop + 1; i++) {
            // the result is a csv list
            strcat(p_loops[0], ",");
            // add the i'th parallel loop dim
