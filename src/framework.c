@@ -977,7 +977,7 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, i
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(cst, dep->depsat_poly);
+    pluto_constraints_intersect_isl(cst, dep->depsat_poly);
     // pluto_constraints_print(stdout, cst);
 
     retval = !pluto_constraints_is_empty(cst);
