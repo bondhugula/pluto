@@ -753,7 +753,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
         }
     }
 
-    if (options->parallel && !options->silent) {
+    if (options->parallel) {
         *ploops = pluto_get_parallel_loops(prog, nploops);
         printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
         pluto_loops_print(*ploops, *nploops);
@@ -770,10 +770,13 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     *remap = remapping;
 
     for(i = 0; i < prog->nstmts; i++) {
-         printf("Statement %d Id- %d\n",i,prog->stmts[i]->id);
          remapping->stmt_inv_matrices[i] = pluto_stmt_get_remapping(prog->stmts[i],
                 &remapping->stmt_divs[i]);
-         pluto_matrix_print(stdout, remapping->stmt_inv_matrices[i]);
+         if(!options->silent)
+         {
+             printf("Statement %d Id- %d\n",i,prog->stmts[i]->id);
+             pluto_matrix_print(stdout, remapping->stmt_inv_matrices[i]);
+         }
     }
 
     /* Construct isl_union_map for pluto schedules */
