@@ -915,7 +915,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
 
 /*
- * Remove dependence instances that have been satisified at level
+ * Remove dependence instances from 'dep' that have been satisified at 'level'
  *
  * A dependence instance is satisfied if \phi(t) - \phi(s) >= 1; hence, those
  * <s,t> with \phi(t) - \phi(s) <= 0 are the unsatisfied ones. In fact, there
@@ -965,14 +965,10 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(dep->depsat_poly, cst);
-    // pluto_constraints_print(stdout, cst);
+    pluto_constraints_intersect_isl(dep->depsat_poly, cst);
 
     retval = !pluto_constraints_is_empty(cst);
-    //printf("Constraints are empty: %d\n", !retval);
 
-    /* All solutions are those that are satisfied */
-    pluto_constraints_subtract(dep->depsat_poly,cst);
     pluto_constraints_free(cst);
 
     return retval;
@@ -1085,7 +1081,7 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, i
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(cst, dep->depsat_poly);
+    pluto_constraints_intersect_isl(cst, dep->depsat_poly);
     // pluto_constraints_print(stdout, cst);
 
     retval = !pluto_constraints_is_empty(cst);
