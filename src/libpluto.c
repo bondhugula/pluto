@@ -623,12 +623,42 @@ int pluto_schedule_osl(osl_scop_p scop,
   return EXIT_SUCCESS;
 }
 
+/* The function accepts an array of Ploops and number of program statements
+ * and returns which loops are parallel for each statement.
+ */
+char** get_parallel_loops_per_stmt(Ploop **loops, int nloops, int num_stmt)
+{
+    int i, j, stmt_num, loop_num;
+    char * str = (char *)(malloc(sizeof(char) * 5));
+    //Allocating num_stmt character pointers
+    char** ploop = (char **)(malloc(sizeof(char *) * num_stmt));
+    Ploop* loop;
+    // Statement numbers run from 1 to num_stmts
+    for (i=1; i<=num_stmt; i++) {
+        ploop[i] = (char *)malloc(2 * sizeof(char) * nloops);
+        strcpy(ploop[i],"");
+    }
+    for (i=0; i<nloops; i++) {
+        loop = loops[i];
+        for (j=0; j<loop->nstmts; j++) {
+           stmt_num = loop->stmts[j]->id+1;
+           loop_num = loop->depth+1;
+           sprintf(str, "%d,", loop_num);
+           strcat(ploop[stmt_num], str);
+        }
+    }
+    /*for(i=1; i<=num_stmt; i++) {
+        printf("Statement:%d Loops:%s\n", i, ploop[i]);
+    }*/
+    return ploop;
+}
+
 /* Pluto_schedule method to get schedule, parallel loops and remapping
 *  all in one function
 */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *domains,
         isl_union_map *dependences,
-        Ploop*** ploops,
+        char** ploops,
         int* nploops,
         Remapping** remap,
         PlutoOptions *options_l)
@@ -754,12 +784,23 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     }
 
     if (options->parallel) {
-        *ploops = pluto_get_parallel_loops(prog, nploops);
+        Ploop** parallel_loops = pluto_get_parallel_loops(prog, nploops);
+        char** ploop_per_stmt = get_parallel_loops_per_stmt(parallel_loops, *nploops, prog->nstmts);
+        char* loopstring = (char *)malloc(*nploops * 2 * sizeof(char *) * prog->nstmts);
+        strcpy(loopstring,",");
+        for(i=1; i<=prog->nstmts; i++) {
+            strcat(loopstring, ploop_per_stmt[i]);
+            strcat(loopstring, ",");
+        }
+        *ploops = loopstring;
         if (!options->silent) {
             printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
-            pluto_loops_print(*ploops, *nploops);
+            pluto_loops_print(parallel_loops, *nploops);
             printf("\n");
+            printf("Loop string: %s\n", loopstring);
         }
+        free(ploop_per_stmt);
+        free(parallel_loops);
     }else{
         *nploops = 0;
     }
@@ -838,8 +879,8 @@ void pluto_schedule_str(const char *domains_str,
         PlutoOptions *options) {
 
     isl_ctx *ctx = isl_ctx_alloc();
-    Ploop** ploop;
-    int nploop = 0,i;
+    char* ploop;
+    int nploop = 0;
     Remapping* remapping;
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
@@ -851,7 +892,7 @@ void pluto_schedule_str(const char *domains_str,
             dependences, &ploop, &nploop, &remapping, options);
 
     if (options->parallel) {
-       if (!options->silent) {
+       /*if (!options->silent) {
            pluto_loops_print(ploop, nploop);
        }
 
@@ -871,7 +912,8 @@ void pluto_schedule_str(const char *domains_str,
            // add the i'th parallel loop dim
            sprintf(str, "%d", ploop[i-1]->depth+1);
            strcat(p_loops[0], str);
-       }
+       }*/
+       *p_loops = ploop;
     }
 
     *remapping_ptr = remapping;
