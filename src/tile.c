@@ -215,13 +215,11 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
 
 
 
-/* Updates the statement domains and transformations to represent the new
+/*
+ * Updates statement domains and transformations to represent the new
  * tiled code. A schedule of tiles is created for parallel execution if
- * --parallel is on 
- *
- *  Pre-vectorization is also done inside a tile
- *
- *  */
+ * --parallel is on. Intra-tile optimization is done as part of this as well.
+ */
 void pluto_tile(PlutoProg *prog)
 {
     int nbands, i, j, n_ibands, num_tiled_levels, nloops;
@@ -350,8 +348,6 @@ void pluto_tile(PlutoProg *prog)
 }
 
 
-
-
 /* Tiles scattering functions for all bands; l2=1 => perform l2 tiling */
 void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l2)
 {
@@ -383,6 +379,7 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
         }
     } /* all bands */
 
+    /* Sink everything to the same depth */
     int max = 0, curr;
     for (i=0; i<prog->nstmts; i++) {
         max = PLMAX(stmts[i]->trans->nrows, max);
@@ -394,7 +391,6 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
         }
     }
 
-    // print_hyperplane_properties(prog);
     curr = prog->num_hyperplanes;
     for (depth=curr; depth<max; depth++)    {
         pluto_prog_add_hyperplane(prog, depth, H_UNKNOWN);
@@ -402,9 +398,6 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
     /* Re-detect hyperplane types (H_SCALAR, H_LOOP) */
     pluto_detect_hyperplane_types(prog);
     pluto_detect_hyperplane_types_stmtwise(prog);
-
-    // print_hyperplane_properties(prog);
-    // pluto_transformations_pretty_print(prog);
 }
 
 
