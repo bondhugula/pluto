@@ -39,6 +39,9 @@
 #define MAX_FARKAS_CST  2000
 
 int* skipdeps_;
+static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, int level);
+static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int level);
+
 
 /**
  *
@@ -813,8 +816,16 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 }
 
 
-/* Retval: true if some iterations are satisfied */
-static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int level)
+/*
+ * Remove dependence instances from 'dep' that have been satisified at 'level'
+ *
+ * A dependence instance is satisfied if \phi(t) - \phi(s) >= 1; hence, those
+ * <s,t> with \phi(t) - \phi(s) <= 0 are the unsatisfied ones. In fact, there
+ * will be a violation if \phi(t) - \phi(s) <= -1
+ *
+ * Retval: true if at least one dependence instance was satisfied
+ */
+static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int level)
 {
     PlutoConstraints *cst;
     int j, src, dest, src_dim, dest_dim, retval;
@@ -836,34 +847,30 @@ static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int leve
 
     /*
      * constraint format 
-     * \phi(dest) - \phi (src) >= 1
+     * \phi(dest) - \phi (src) <= 0
      */
 
     cst->is_eq[0] = 0;
     for (j=0; j<src_dim; j++)    {
-        cst->val[0][j] = -stmts[src]->trans->val[level][j];
+        cst->val[0][j] = stmts[src]->trans->val[level][j];
     }
     for (j=src_dim; j<src_dim+dest_dim; j++)    {
-        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+        cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
     }
     for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar; j++)    {
         cst->val[0][j] = 
-            -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim];
+            stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
     }
     j=src_dim+dest_dim+npar;
     cst->val[0][j] = 
-        -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim]-1;
+        stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(cst, dep->depsat_poly);
-    // pluto_constraints_print(stdout, cst);
+    pluto_constraints_intersect_isl(dep->depsat_poly, cst);
 
     retval = !pluto_constraints_is_empty(cst);
-    //printf("Constraints are empty: %d\n", !retval);
 
-    /* All solutions are those that are satisfied */
-    pluto_constraints_subtract(dep->depsat_poly,cst);
     pluto_constraints_free(cst);
 
     return retval;
@@ -872,15 +879,15 @@ static int pluto_remove_satisfied_iterations(Dep *dep, PlutoProg *prog, int leve
 
 
 /* 
- * A more complex dep satisfaction test 
+ * A precise dep satisfaction computation 
  *
  * Returns: number of dependences satisfied
  */
-int pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
+int pluto_compute_dep_satisfaction_precise(PlutoProg *prog)
 {
     int i, num_satisfied;
 
-    IF_DEBUG(printf("[pluto] computing_dep_satisfaction_complex\n"););
+    IF_DEBUG(printf("[pluto] computing_dep_satisfaction_precise\n"););
 
     for (i=0; i<prog->ndeps; i++) {
         prog->deps[i]->satisfied = false;
@@ -906,7 +913,8 @@ int pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
         dep->satisfaction_level = -1;
 
         for (level=0; level<prog->num_hyperplanes; level++) {
-            dep->satvec[level] = pluto_remove_satisfied_iterations(dep, prog, level);
+            dep->satvec[level] = pluto_dep_satisfies_instance(dep, prog, level);
+            pluto_dep_remove_satisfied_instances(dep, prog, level);
             if (dep->satvec[level]) {
                 dep->satisfaction_level = PLMAX(dep->satisfaction_level, level);
             }
@@ -930,6 +938,61 @@ int pluto_compute_dep_satisfaction_complex(PlutoProg *prog)
                 num_satisfied, prog->ndeps););
     return num_satisfied;
 }
+
+
+/* Retval: true if some iterations are satisfied */
+static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, int level)
+{
+    PlutoConstraints *cst;
+    int j, src, dest, src_dim, dest_dim, retval;
+
+    int npar = prog->npar;
+
+    Stmt **stmts = prog->stmts;
+
+    src = dep->src;
+    dest = dep->dest;
+
+    src_dim = prog->stmts[src]->dim;
+    dest_dim = prog->stmts[dest]->dim;
+
+    assert(level < stmts[src]->trans->nrows);
+    assert(level < stmts[dest]->trans->nrows);
+
+    cst = pluto_constraints_alloc(1+dep->dpolytope->nrows, src_dim+dest_dim+npar+1);
+
+    /*
+     * constraint format
+     * \phi(dest) - \phi (src) >= 1
+     */
+
+    cst->is_eq[0] = 0;
+    for (j=0; j<src_dim; j++)    {
+        cst->val[0][j] = -stmts[src]->trans->val[level][j];
+    }
+    for (j=src_dim; j<src_dim+dest_dim; j++)    {
+        cst->val[0][j] = stmts[dest]->trans->val[level][j-src_dim];
+    }
+    for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar; j++)    {
+        cst->val[0][j] =
+            -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim];
+    }
+    j=src_dim+dest_dim+npar;
+    cst->val[0][j] =
+        -stmts[src]->trans->val[level][j-dest_dim] + stmts[dest]->trans->val[level][j-src_dim]-1;
+
+    cst->nrows = 1;
+
+    pluto_constraints_intersect_isl(cst, dep->depsat_poly);
+    // pluto_constraints_print(stdout, cst);
+
+    retval = !pluto_constraints_is_empty(cst);
+
+    pluto_constraints_free(cst);
+
+    return retval;
+}
+
 
 /* Direction vector component at level 'level'
  */

@@ -163,7 +163,11 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog)
 }
 
 
-/* Vectorize first loop in band that meets criteria */
+/*
+ * DEPRECATED: Subsumed by intra_tile_optimize_band and not used anymore
+ *
+ * Vectorize first loop in band that meets criteria
+*/
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 {
     int nloops, l;
@@ -193,6 +197,9 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 }
 
 
+/*
+ * DEPRECATED: Subsumed by pluto_intra_tile_optimize and not used anymore
+ */
 int pluto_pre_vectorize(PlutoProg *prog)
 {
     int nbands, i;

@@ -402,7 +402,7 @@ void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
 void pluto_compute_dep_satisfaction(PlutoProg *prog);
-int pluto_compute_dep_satisfaction_complex(PlutoProg *prog);
+int pluto_compute_dep_satisfaction_precise(PlutoProg *prog);
 bool dep_is_satisfied(Dep *dep);
 void pluto_detect_transformation_properties(PlutoProg *prog);
 void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
