@@ -40,7 +40,9 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
 
     if (!tsfile && !auto_tile_size)    return 0;
 
-    IF_DEBUG(printf("[pluto] Reading %d tile sizes\n", num_tile_dims););
+    if (!auto_tile_size) {
+        IF_DEBUG(printf("[pluto] Reading %d tile sizes\n", num_tile_dims););
+    }
 
     if (options->ft >= 0 && options->lt >= 0)   {
         num_tile_dims = options->lt - options->ft + 1;
@@ -59,7 +61,7 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
                 tile_sizes[i] = 42;
             }
         }
-    } else {
+    } else if (tsfile) {
         for (i=0, k=0; i < num_tile_dims && !feof(tsfile); i++)   {
             for (j=0; j<nstmts; j++) {
                 if (pluto_is_hyperplane_loop(stmts[j], firstLoop+i)) break;
@@ -72,13 +74,17 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
                 tile_sizes[i] = 42;
             }
         }
+        return 1;
     }
+
+    if (!tsfile) return 0;
 
     if (i < num_tile_dims)  {
         printf("WARNING: not enough tile sizes provided\n");
         fclose(tsfile);
         return 0;
     }
+
 
     i=0;
     while (i < num_tile_dims && !feof(tsfile))   {
