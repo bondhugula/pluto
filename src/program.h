@@ -110,6 +110,7 @@ void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
 void pluto_stmt_transformation_print(const Stmt *stmt);
+int64 *pluto_check_supernode(const Stmt *stmt, int pos, int *tile_size);
 void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level);
 void pluto_transformation_print_level(const PlutoProg *prog, int level);
 

@@ -19,3 +19,6 @@
 [submodule "openscop"]
 	path = openscop
 	url = https://github.com/periscop/openscop.git
+[submodule "barvinok"]
+	path = barvinok
+	url = git://repo.or.cz/barvinok.git

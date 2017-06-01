@@ -35,7 +35,8 @@ pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
    -I../cloog-isl/include \
    -I../openscop/include \
    -I../candl/include \
-   -I../polylib/include
+   -I../polylib/include \
+   -I../barvinok/barvinok
 
 pluto_LDFLAGS = -static -fopenmp
 pluto_LDADD =  \
@@ -46,6 +47,7 @@ pluto_LDADD =  \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
+   ../barvinok/libbarvinok.la \
    -lm
 
 lib_LTLIBRARIES = libpluto.la
@@ -60,7 +62,9 @@ libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -I../openscop/include \
    -I../candl/include \
    -I../cloog-isl/include \
-   $(ISL_INCLUDE)
+   $(ISL_INCLUDE) \
+   -I../barvinok/barvinok
+
 
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
@@ -68,6 +72,7 @@ libpluto_la_LIBADD = \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../candl/libcandl.la \
+   ../barvinok/libbarvinok.la \
    $(ISL_LIBADD) \
    -lm -lgomp
 libpluto_la_LDFLAGS = -version-info 1:0:1

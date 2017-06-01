@@ -24,20 +24,21 @@
 #include <string.h>
 
 #include "pluto.h"
+#include "constraints.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
 
-
 /* Read tile sizes from file tile.sizes */
 static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
-        int num_tile_dims, Stmt **stmts, int nstmts, int firstLoop)
+                           int num_tile_dims, Stmt **stmts, int nstmts, int firstLoop,
+                           int *auto_tile_size)
 {
-    int i, j;
+    int i, j, k;
 
     FILE *tsfile = fopen("tile.sizes", "r");
 
-    if (!tsfile)    return 0;
+    if (!tsfile && !auto_tile_size)    return 0;
 
     IF_DEBUG(printf("[pluto] Reading %d tile sizes\n", num_tile_dims););
 
@@ -45,16 +46,31 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
         num_tile_dims = options->lt - options->ft + 1;
     }
 
-    for (i=0; i < num_tile_dims && !feof(tsfile); i++)   {
-        for (j=0; j<nstmts; j++) {
-            if (pluto_is_hyperplane_loop(stmts[j], firstLoop+i)) break;
+    if (auto_tile_size) {
+        for (i=0, k=0; i < num_tile_dims; i++)   {
+            for (j=0; j<nstmts; j++) {
+                if (pluto_is_hyperplane_loop(stmts[j], firstLoop+i)) break;
+            }
+            int loop = (j<nstmts);
+            if (loop) {
+                tile_sizes[i] = auto_tile_size[k++];
+            }else{
+                /* Size set for scalar dimension doesn't matter */
+                tile_sizes[i] = 42;
+            }
         }
-        int loop = (j<nstmts);
-        if (loop) {
-            fscanf(tsfile, "%d", &tile_sizes[i]);
-        }else{
-            /* Size set for scalar dimension doesn't matter */
-            tile_sizes[i] = 42;
+    } else {
+        for (i=0, k=0; i < num_tile_dims && !feof(tsfile); i++)   {
+            for (j=0; j<nstmts; j++) {
+                if (pluto_is_hyperplane_loop(stmts[j], firstLoop+i)) break;
+            }
+            int loop = (j<nstmts);
+            if (loop) {
+                fscanf(tsfile, "%d", &tile_sizes[i]);
+            }else{
+                /* Size set for scalar dimension doesn't matter */
+                tile_sizes[i] = 42;
+            }
         }
     }
 
@@ -222,7 +238,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
  *  Pre-vectorization is also done inside a tile
  *
  *  */
-void pluto_tile(PlutoProg *prog)
+void pluto_tile(PlutoProg *prog, int *auto_tile_size)
 {
     int nbands, i, j, n_ibands, num_tiled_levels, nloops;
     Band **bands, **ibands;
@@ -252,7 +268,7 @@ void pluto_tile(PlutoProg *prog)
         }
     }
     pluto_loops_free(loops, nloops);
-    
+
     /* Now, we are ready to tile */
     if (options->lt >= 0 && options->ft >= 0)   {
         /* User option specified tiling */
@@ -262,20 +278,20 @@ void pluto_tile(PlutoProg *prog)
         assert(options->ft <= options->lt);
 
         /* L1 tiling */
-        pluto_tile_scattering_dims(prog, bands, nbands, 0);
+        pluto_tile_scattering_dims(prog, bands, nbands, 0, auto_tile_size);
         num_tiled_levels++;
 
         if (options->l2tile)    {
-            pluto_tile_scattering_dims(prog, bands, nbands, 1);
+            pluto_tile_scattering_dims(prog, bands, nbands, 1, auto_tile_size);
             num_tiled_levels++;
         }
     }else{
         /* L1 tiling */
-        pluto_tile_scattering_dims(prog, bands, nbands, 0);
+        pluto_tile_scattering_dims(prog, bands, nbands, 0, auto_tile_size);
         num_tiled_levels++;
         if (options->l2tile)    {
             /* L2 tiling */
-            pluto_tile_scattering_dims(prog, bands, nbands, 1);
+            pluto_tile_scattering_dims(prog, bands, nbands, 1, auto_tile_size);
             num_tiled_levels++;
         }
     }
@@ -349,11 +365,9 @@ void pluto_tile(PlutoProg *prog)
     pluto_bands_free(ibands, n_ibands);
 }
 
-
-
-
 /* Tiles scattering functions for all bands; l2=1 => perform l2 tiling */
-void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l2)
+void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l2,
+                                int *auto_tile_size)
 {
     int i, j, b;
     int depth;
@@ -373,8 +387,9 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands, int l
     }
 
     for (b=0; b<nbands; b++) {
-        read_tile_sizes(tile_sizes, l2_tile_size_ratios, bands[b]->width, 
-                bands[b]->loop->stmts, bands[b]->loop->nstmts, bands[b]->loop->depth);
+        read_tile_sizes(tile_sizes, l2_tile_size_ratios, bands[b]->width,
+                        bands[b]->loop->stmts, bands[b]->loop->nstmts, bands[b]->loop->depth,
+                        auto_tile_size);
 
         if (l2) {
             pluto_tile_band(prog, bands[b], l2_tile_size_ratios);
@@ -555,6 +570,4 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd)
     }
     *bandStart = *bandEnd = lastloop;
 }
-
-
 

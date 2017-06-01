@@ -18,7 +18,7 @@ ISL_LIBADD += $(top_srcdir)/isl/libisl.la
 endif
 
 
-SUBDIRS = piplib openscop clan candl polylib $(MAY_ISL) cloog-isl src
+SUBDIRS = piplib openscop clan candl polylib $(MAY_ISL) cloog-isl barvinok src
 
 ACLOCAL_AMFLAGS = -I m4
 

@@ -47,6 +47,9 @@
 #define MAX_TILING_LEVELS 2
 
 #define DEFAULT_L1_TILE_SIZE 32
+#define DEFAULT_L1_CACHE_SIZE 32768
+#define DEFAULT_L1_CACHE_LINESIZE 64
+#define DEFAULT_DATA_TYPE double
 
 #define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
@@ -462,7 +465,10 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
-void pluto_tile(PlutoProg *);
+isl_union_map *isl_union_map_for_pluto_schedule(PlutoProg *prog, isl_ctx *ctx, isl_space *space);
+int *get_auto_tile_size(PlutoProg *prog, isl_union_set *domains, isl_union_map *read,
+                        isl_union_map *write);
+void pluto_tile(PlutoProg *, int *);
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 

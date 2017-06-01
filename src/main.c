@@ -459,7 +459,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->tile)   {
-        pluto_tile(prog);
+        pluto_tile(prog, NULL);
     }else{
         if (options->intratileopt) {
             pluto_intra_tile_optimize(prog, 0);

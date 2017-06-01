@@ -165,6 +165,9 @@ struct plutoOptions{
 
     /* fast linear independence check */
     int flic;
+
+    /* Auto tile size detection */
+    int autotilesize;
 };
 typedef struct plutoOptions PlutoOptions;
 

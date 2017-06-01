@@ -17,6 +17,11 @@ cd cloog-isl
 ./autogen.sh
 cd ..
 
+echo -e "\n*** Running autotools on barvinok ***"
+cd barvinok
+./autogen.sh
+cd ..
+
 echo -e "\n*** Running autotools on piplib ***"
 cd piplib
 ./autogen.sh

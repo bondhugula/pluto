@@ -180,8 +180,7 @@ echo ""
 echo "======================"
 echo "Configuring polylib"
 echo "======================"
-configureopts="--enable-longlongint-lib \
---prefix=$prefix"
+configureopts="--enable-longlongint-lib --with-libgmp --prefix=$prefix"
 (cd polylib/
  ./configure ${configureopts}
 )
@@ -221,6 +220,15 @@ configureopts="--with-gmp=system \
 )
 fi
 
+
+echo ""
+echo "======================"
+echo "Configuring barvinok"
+echo "======================"
+configureopts="--enable-shared-barvinok --with-pic --prefix=$prefix --with-gmp-prefix=$HOME/sw --with-ntl-prefix=/opt --with-isl=build --with-isl-builddir=$SOURCE_DIR/isl"
+(cd barvinok/
+./configure ${configureopts}
+)
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo ""

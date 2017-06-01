@@ -1380,7 +1380,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt)
  * pos: position of the supernode in the domain
  *
  */
-static int64 *pluto_check_supernode(const Stmt *stmt, int pos, 
+int64 *pluto_check_supernode(const Stmt *stmt, int pos,
         int *tile_size)
 {
     int lb_pos, ub_pos, r, c;
@@ -3749,11 +3749,19 @@ Stmt *pluto_stmt_dup(const Stmt *stmt)
     nstmt->dim_orig = stmt->dim_orig;
     nstmt->type = stmt->type;
 
+    nstmt->id = stmt->id;
+
     for (i=0; i<stmt->dim; i++) {
         nstmt->iterators[i] = strdup(stmt->iterators[i]);
         nstmt->is_orig_loop[i] = stmt->is_orig_loop[i];
     }
     if (stmt->text) nstmt->text = strdup(stmt->text);
+
+    for (i=0; i<stmt->trans->nrows; i++) {
+        nstmt->hyp_types[i] = stmt->hyp_types[i];
+    }
+
+    nstmt->num_tiled_loops = stmt->num_tiled_loops;
 
     nstmt->nreads = stmt->nreads;
     nstmt->nwrites = stmt->nwrites;
@@ -3766,7 +3774,7 @@ Stmt *pluto_stmt_dup(const Stmt *stmt)
     }
 
     for (i=0; i<stmt->nwrites; i++) {
-        nstmt->writes[i] = pluto_access_dup(stmt->reads[i]);
+        nstmt->writes[i] = pluto_access_dup(stmt->writes[i]);
     }
 
     return nstmt;
