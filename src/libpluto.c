@@ -281,7 +281,7 @@ __isl_give isl_union_map *extract_stmt_accesses(__isl_keep isl_union_map *map, i
 struct pluto_tile_footprint_meta_info {
     PlutoProg *prog;
     isl_union_map *sched;
-    long *tile_footprint;
+    isl_map_list **tile_access_points;
     isl_union_map *read;
     isl_union_map *write;
     isl_union_set *domain;
@@ -290,7 +290,7 @@ struct pluto_tile_footprint_meta_info {
     bool exponential;
 };
 
-static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
+static int get_tile_data_access_points(__isl_take isl_map *map, void *user)
 {
     struct pluto_tile_footprint_meta_info *ptfmi = (struct pluto_tile_footprint_meta_info *) user;
     isl_union_map *sched = ptfmi->sched;
@@ -301,12 +301,9 @@ static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
     isl_map *mem_to_sched_map;
     isl_space *space;
     isl_constraint *c;
-    isl_pw_qpolynomial *card;
-    isl_set *range;
     isl_ctx *ctx = isl_map_get_ctx(map);
-    isl_val *max;
-    long *tile_footprint = (long *)ptfmi->tile_footprint;
     int num_dim_after_last_tile_dim;
+    isl_map_list **tile_access_points = ptfmi->tile_access_points;
 
     sscanf(isl_map_get_tuple_name(map, isl_dim_in), "S_%d", &num);
     Stmt *stmt = prog->stmts[num];
@@ -395,20 +392,43 @@ static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
 
     mem_to_sched_map = isl_map_project_out(mem_to_sched_map, isl_dim_param, 0, param_offset);
 
-    range = isl_map_range(isl_map_copy(mem_to_sched_map));
-    card = isl_set_card(isl_set_copy(range));
-    //isl_pw_qpolynomial_dump(card);
-    max = isl_pw_qpolynomial_max(card);
-
-    *tile_footprint = *tile_footprint + isl_val_get_num_si(max) * DEFAULT_L1_CACHE_LINESIZE;
+    int n = isl_map_list_n_map(*tile_access_points);
+    bool found = false;
+    for (j = 0; j < n; j++) {
+        isl_map *m = isl_map_list_get_map(*tile_access_points, j);
+        isl_space *s1 = isl_map_get_space(m), *s2 = isl_map_get_space(mem_to_sched_map);
+        if(!strcmp(isl_space_get_tuple_name(s1, isl_dim_in),
+                   isl_space_get_tuple_name(s2, isl_dim_in))
+           && isl_space_dim(s1, isl_dim_param) == isl_space_dim(s2, isl_dim_param)) {
+            isl_map_list_drop(*tile_access_points, j, 1);
+            *tile_access_points = isl_map_list_add(*tile_access_points,
+                                                   isl_map_union(isl_map_copy(m), isl_map_copy(mem_to_sched_map)));
+            found = true;
+        }
+        isl_space_free(s1);
+        isl_space_free(s2);
+        isl_map_free(m);
+        if (found) { break; }
+    }
+    if (!found) { *tile_access_points = isl_map_list_add(*tile_access_points, isl_map_copy(mem_to_sched_map)); }
 
     isl_map_free(map);
     isl_map_free(mem_to_stmt);
-    isl_map_free(mem_to_sched_map);
     isl_space_free(space);
+    isl_map_free(mem_to_sched_map);
     isl_union_map_free(mem_to_stmt2);
     isl_union_map_free(mem_to_sched);
-    isl_set_free(range);
+    return isl_stat_ok;
+}
+
+static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
+{
+    int *tile_footprint = (int *) user;
+    isl_set *range = isl_map_range(map);
+    isl_pw_qpolynomial *card = isl_set_card(range);
+    isl_val *max = isl_pw_qpolynomial_max(card);
+    *tile_footprint = *tile_footprint + isl_val_get_num_si(max) * DEFAULT_L1_CACHE_LINESIZE;
+
     isl_val_free(max);
     return isl_stat_ok;
 }
@@ -421,14 +441,19 @@ long compute_tile_footprint(isl_union_set *domains,
 {
     isl_union_map *accesses, *sched;
     long tile_footprint=0;
+    isl_map_list *tile_access_points = isl_map_list_alloc(isl_union_set_get_ctx(domains), 0);
+
     accesses = isl_union_map_union(isl_union_map_copy(read),
                                    isl_union_map_copy(write));
     sched = isl_union_map_intersect_domain(isl_union_map_copy(schedule),
                                            isl_union_set_copy(domains));
-    struct pluto_tile_footprint_meta_info psmi = {prog, sched, &tile_footprint, 0, 0, 0, 0, 0, 0};
-    isl_union_map_foreach_map(accesses, &count_tile_footprint_for_access, &psmi);
+    struct pluto_tile_footprint_meta_info psmi = {prog,sched,&tile_access_points,0, 0, 0, 0, 0, 0};
+    isl_union_map_foreach_map(accesses, &get_tile_data_access_points, &psmi);
+    isl_map_list_foreach(tile_access_points, &count_tile_footprint_for_access, &tile_footprint);
     isl_union_map_free(accesses);
     isl_union_map_free(sched);
+    isl_map_list_free(tile_access_points);
+
     return tile_footprint;
 }
 
@@ -793,7 +818,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         printf("\n\n");
     }
 
-    //printf("\n%lu\n", psmi.best_fit_footprint);
+    //    printf("\n%lu\n", psmi.best_fit_footprint);
     return psmi.best_fit_size;
 }
 
