@@ -585,7 +585,7 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
         }
 
         for (j = 0; j < n_overflowed; j++) {
-            int count=0;
+            bool large = true;
             for (i = 0; i < tile_dim; i++) {
                 isl_val *val = isl_point_get_coordinate_val(overflowed_tile_sizes[j],
                                                             isl_dim_set, i);
@@ -596,11 +596,11 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
                 long b = isl_val_get_num_si(val);
                 isl_val_free(val);
 
-                if ((a-b) != 0) {
-                    count++;
+                if ((b-a) < 0) {
+                    large = false;
                 }
             }
-            if (count == 1) {
+            if (large) {
                 if (last) {
                     for (i = 0; i < n_overflowed; i++)
                         isl_point_free(overflowed_tile_sizes[i]);
@@ -622,6 +622,7 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
         }
     }
 
+    //    isl_point_dump(pnt);
     for (j = 0; j < tile_dim; j++) {
         isl_val *val = isl_point_get_coordinate_val(pnt, isl_dim_set, j);
         int dim_size = isl_val_get_num_si(val);
@@ -663,7 +664,6 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
 
     schedules = isl_union_map_for_pluto_schedule(prog, ctx, space);
     tile_footprint = compute_tile_footprint(domain, schedules, read, write, prog);
-
     if (!psmi->best_fit_footprint) {
         if (tile_footprint > DEFAULT_L1_CACHE_SIZE) {
             threshold = DEFAULT_L2_CACHE_SIZE;
