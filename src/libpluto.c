@@ -32,7 +32,7 @@
 #include "isl/map.h"
 #include "isl/polynomial.h"
 #include "candl/scop.h"
-#include "barvinok/isl.h"
+#include "isl.h"
 
 PlutoOptions *options;
 
