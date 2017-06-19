@@ -8,9 +8,9 @@ LLVM_BUILD=${BASE_DIR}/llvm_build
 LLVM_INSTALL=${BASE_DIR}/llvm_install
 POLLY_PATCH_FILE=${BASE_DIR}/polly.patch
 
-LLVM_VERSION=c40271cb7545ab19216ea964c6b3607ed825a59e
-CLANG_VERSION=b38543d2c36e7e905dbdb3ec3ace2167421b562d
-POLLY_VERSION=5556f29626b25cbba0059431c11355064ce14ffe
+LLVM_COMMIT=c40271cb7545ab19216ea964c6b3607ed825a59e
+CLANG_COMMIT=b38543d2c36e7e905dbdb3ec3ace2167421b562d
+POLLY_COMMIT=5556f29626b25cbba0059431c11355064ce14ffe
 
 echo "Installing Pluto..."
 # Install pluto (libpluto)
@@ -30,9 +30,9 @@ git clone http://llvm.org/git/polly.git ${LLVM_GIT}/tools/polly
 git clone http://llvm.org/git/clang.git ${LLVM_GIT}/tools/clang
 
 # Checking out to specific versions of LLVM, CLANG, POLLY
-cd ${LLVM_GIT} && git checkout ${LLVM_VERSION} && cd ${BASE_DIR}
-cd ${LLVM_GIT}/tools/polly && git checkout ${POLLY_VERSION} && cd ${BASE_DIR}
-cd ${LLVM_GIT}/tools/clang && git checkout ${CLANG_VERSION} && cd ${BASE_DIR}
+cd ${LLVM_GIT} && git checkout ${LLVM_COMMIT} && cd ${BASE_DIR}
+cd ${LLVM_GIT}/tools/polly && git checkout ${POLLY_COMMIT} && cd ${BASE_DIR}
+cd ${LLVM_GIT}/tools/clang && git checkout ${CLANG_COMMIT} && cd ${BASE_DIR}
 
 # Applying the patch
 cd ${LLVM_GIT}/tools/polly
