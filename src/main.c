@@ -462,8 +462,22 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         dim_sum += prog->stmts[i]->dim;
     }
 
-    for(i=0;i<prog->nstmts;i++)
-        prog->stmts[i]->orig_scc_id = prog->stmts[i]->scc_id;
+    for(i=0;i<prog->nstmts;i++) {
+        prog->stmts[i]->orig_scc_id = (int*)malloc(prog->num_hyperplanes*sizeof(int));
+    }
+
+    for(j=0;j<prog->num_hyperplanes;j++) {
+        dep_satisfaction_update(prog,j);
+        ddg_update(prog->ddg,prog);
+        ddg_compute_scc(prog);
+        for(i=0;i<prog->nstmts;i++)
+            prog->stmts[i]->orig_scc_id[j]=prog->stmts[i]->scc_id;
+    }
+
+    for(j=0;j<prog->ndeps;j++)
+        prog->deps[j]->satisfied = false;
+    ddg_update(prog->ddg,prog);
+    ddg_compute_scc(prog);
 
     /* counting the number of loops */
     count=1;
@@ -651,25 +665,17 @@ bug("Dep being considered for skipping : %d",i);
 					continue;
 				}
 			}
-			if(k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) {
+			if(k<iter_priv_sccs_depth[prog->stmts[prog->deps[i]->src]->scc_id]) { /* these dependences should be removed if possible as these may restrict transformations */
                 int l = 0;
                 for(j=0;(j<prog->num_hyperplanes && (l<min(prog->stmts[prog->deps[i]->src]->dim_orig,prog->stmts[prog->deps[i]->dest]->dim_orig)));j++) {
-                    dep_satisfaction_update(prog,j);
-                    ddg_update(prog->ddg,prog);
-                    ddg_compute_scc(prog);
                     if(get_loop_type(prog->stmts[prog->deps[i]->src],j)==H_LOOP) { /* its a loop-hyperplane */
                         l++;
-                        if((prog->stmts[prog->deps[i]->src]->scc_id!=prog->stmts[prog->deps[i]->dest]->scc_id) && (k<l)) {
+                        if((prog->stmts[prog->deps[i]->src]->orig_scc_id[j]!=prog->stmts[prog->deps[i]->dest]->orig_scc_id[j]) && (k<l)) {
                             fprintf(skipdeps,"%d\n",i);
                             break;
                         }
                     }
                 }
-                for(j=0;j<prog->ndeps;j++) {
-                    prog->deps[j]->satisfied = false;
-                }
-                ddg_update(prog->ddg,prog);
-                ddg_compute_scc(prog);
             }
 		}
 	

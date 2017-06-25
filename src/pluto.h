@@ -156,7 +156,7 @@ struct statement{
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
     int pseudo_scc_id;
-    int orig_scc_id;
+    int* orig_scc_id;
 
     int first_tile_dim;
     int last_tile_dim;
