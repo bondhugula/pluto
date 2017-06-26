@@ -2169,30 +2169,128 @@ void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos, PlutoMatrix *fu
 
 int pluto_constraints_is_ub(PlutoConstraints *cst, int row, int pos)
 {
+    if (cst->is_eq[row]) return 0;
     if (cst->val[row][pos] <= -1) return 1;
 
     return 0;
 }
 
+int pluto_constraints_is_lb(PlutoConstraints *cst, int row, int pos)
+{
+    if (cst->is_eq[row]) return 0;
+    if (cst->val[row][pos] >= 1) return 1;
+
+    return 0;
+}
+
+
+
 void pluto_constraints_remove_const_ub(PlutoConstraints *cst, int pos)
 {
-    int i, j, r;
+    int i, j, r, nrows, sum;
     assert(pos >= 0 && pos <= cst->ncols-2);
 
-    for (i=0, r=0; r<cst->nrows; r++) {
+    nrows = cst->nrows;
+
+    for (i=0, r=0; r<nrows; r++) {
         if (pluto_constraints_is_ub(cst, i, pos)) {
-            int sum = 0;
-            for (j=0; j<cst->ncols-1 && j!= pos; j++) {
+            sum = 0;
+            for (j=0; j<cst->ncols-1; j++) {
+                if (j != pos) continue;
                 sum += abs(cst->val[i][j]);
             }
             if (sum == 0) {
                 pluto_constraints_remove_row(cst, i);
-            }else i++;
+                continue;
+            }
         }
+        i++;
     }
 }
 
+
+void pluto_constraints_remove_const_lb(PlutoConstraints *cst, int pos)
+{
+    int i, j, r, nrows;
+    assert(pos >= 0 && pos <= cst->ncols-2);
+
+    nrows = cst->nrows;
+
+    for (i=0, r=0; r<nrows; r++) {
+        if (pluto_constraints_is_lb(cst, i, pos)) {
+            int sum = 0;
+            for (j=0; j<cst->ncols-1; j++) {
+                if (j != pos) continue;
+                sum += abs(cst->val[i][j]);
+            }
+            if (sum == 0) {
+                pluto_constraints_remove_row(cst, i);
+                continue;
+            }
+        }
+        i++;
+    }
+}
+
+
+void pluto_constraints_remove_const_bounds(PlutoConstraints *cst)
+{
+    int i;
+
+    for (i=0; i<cst->ncols-1; i++) {
+        pluto_constraints_remove_const_lb(cst, i);
+        pluto_constraints_remove_const_ub(cst, i);
+    }
+}
+
+
 /*
+ * Only keep constraints that connect the two blocks of variables starting
+ * from start1 and start2 resp.; remove the rest.
+ */
+int pluto_constraints_keep_connecting_constraints(PlutoConstraints *cst, 
+        int start1, int num1, int start2, int num2)
+{
+    int i, j1, j2, del_count, orig_nrows;
+
+    assert(start1 >= 0 && start1 <= cst->ncols-2);
+    assert(start2 >= 0 && start2 <= cst->ncols-2);
+    assert(num1 >= 0);
+    assert(num2 >= 0);
+    assert(start1 + num1 - 1 < start2 ||
+            start2 + num2 - 1 < start1);
+    assert(start1 + num1 - 1 <= cst->ncols-2);
+    assert(start2 + num2 - 1 <= cst->ncols-2);
+
+    // pluto_constraints_compact_print(stdout, cst);
+    
+    del_count = 0;
+    orig_nrows = cst->nrows;
+    for (i=0; i< orig_nrows; i++) {
+        for (j1=start1; j1<start1+num1; j1++) {
+            if (cst->val[i-del_count][j1] != 0) {
+                break;
+            }
+        }
+        for (j2=start2; j2<start2+num2; j2++) {
+            if (cst->val[i-del_count][j2] != 0) {
+                break;
+            }
+        }
+        if ((j1 == start1+num1 && j2 < start2+num2)
+                || (j1 < start1+num1 && j2 == start2+num2)) {
+            pluto_constraints_remove_row(cst, i-del_count);
+            del_count++;
+        }
+    }
+
+    // if (del_count >= 1) pluto_constraints_compact_print(stdout, cst);
+
+    return (del_count >= 1);
+
+}
+
+/* 
  * Eliminates the pos^th variable, where pos has to be between 0 and cst->ncols-2;
  * Remember that the last column is for the constant. The implementation does not
  * have a complex redundancy check; it just uses pluto_constraints_simplify which

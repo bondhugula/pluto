@@ -144,6 +144,8 @@ PlutoConstraints *pluto_constraints_intersect_isl(PlutoConstraints *cst1,
 int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int depth, int64 *ub);
 int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int depth, int64 *lb);
 
+void pluto_constraints_remove_const_bounds(PlutoConstraints *cst);
+
 int pluto_constraints_is_empty(const PlutoConstraints *cst);
 int pluto_constraints_are_equal(const PlutoConstraints *cst1, const PlutoConstraints *cst2);
 
@@ -190,6 +192,10 @@ void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 void pluto_constraints_remove_names_single(PlutoConstraints *cst);
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
+
+int pluto_constraints_keep_connecting_constraints(PlutoConstraints *cst, 
+        int start1, int num1, int start2, int num2);
+
 PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
 void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
 
