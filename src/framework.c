@@ -75,6 +75,18 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     src_stmt = dep->src;
 
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
+    PlutoConstraints *bounding_poly = pluto_constraints_dup(dep->bounding_poly);
+
+    pluto_constraints_keep_connecting_constraints(dpoly, 0, nvar,
+            nvar+npar, nvar);
+    pluto_constraints_keep_connecting_constraints(bounding_poly, 0, nvar,
+            nvar, nvar+npar);
+
+    //printf("before\n");
+    //pluto_constraints_compact_print(stdout, dpoly);
+    // pluto_constraints_remove_const_bounds(dpoly);
+    //pluto_constraints_compact_print(stdout, dpoly);
+    // pluto_constraints_remove_const_bounds(bounding_poly);
 
     if (src_stmt != dest_stmt) {
         phi = pluto_matrix_alloc(2*nvar+npar+1, 2*(nvar+1)+1);
@@ -162,10 +174,11 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     }
 
     /* Apply Farkas lemma for bounding function constraints */
-    bounding_func_cst = farkas_lemma_affine(dep->bounding_poly, phi);
+    bounding_func_cst = farkas_lemma_affine(bounding_poly, phi);
 
     pluto_matrix_free(phi);
     pluto_constraints_free(dpoly);
+    pluto_constraints_free(bounding_poly);
 
     /* Aggregate permutability and bounding function constraints together in
      * global format; note that tiling_valid_cst and bounding_func_cst are 
@@ -496,6 +509,9 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
     src_stmt = dep->src;
 
     PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
+
+    pluto_constraints_keep_connecting_constraints(dpoly, 0, nvar,
+            nvar, nvar);
 
     if (src_stmt != dest_stmt) {
         phi = pluto_matrix_alloc(2*nvar+npar+1, 2*(nvar+1)+1);
