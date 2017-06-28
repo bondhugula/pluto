@@ -27,6 +27,29 @@
 #include "program.h"
 #include "transforms.h"
 
+/**
+ * @returns true, if band is profitable. Profitable when
+    1. its already tiled.
+    2. it contains more than one SCC.
+ */
+bool pluto_is_band_profitable(Band *band)
+{
+    int i;
+    for (i = 0; i < band->loop->nstmts; i++) {
+        if (band->loop->stmts[i]->last_tile_dim != -1) break;
+    }
+
+    // This band is not tiled.
+    if (i == band->loop->nstmts) return false;
+
+    // Check if the band contains only one scc.
+    for (i = 1; i < band->loop->nstmts; i++) {
+        if (band->loop->stmts[0]->scc_id != band->loop->stmts[i]->scc_id) break;
+    }
+    if (i == band->loop->nstmts) return false;
+
+    return true;
+}
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth)
 {
@@ -332,6 +355,8 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *
     best_loop = NULL;
     for (l=0; l<nloops; l++) {
         int a, s, t, v, score;
+
+        if (loops[l]->depth < band->loop->depth + num_tiled_levels*band->width) continue;
         a = get_num_accesses(loops[l], prog);
         s = get_num_spatial_accesses(loops[l], prog);
         t = get_num_invariant_accesses(loops[l], prog);
@@ -370,11 +395,17 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
 {
     int i, nbands, retval;
-    Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    //Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    Band **bands = pluto_get_innermost_permutable_bands_intraopt(prog, &nbands);
+
+    if (options->debug || options->moredebug) {
+        fprintf(stdout, "Intratile optimization bands:\n");
+        pluto_bands_print(bands, nbands);
+    }
 
     retval = 0;
     for (i=0; i<nbands; i++) {
-        retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog); 
+        retval |= pluto_intra_tile_optimize_band(bands[i], 0, prog);
     }
     pluto_bands_free(bands, nbands);
 
@@ -391,7 +422,216 @@ int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
     return retval;
 }
 
+/**
+* It assigns a type based on vectorizability of 'sccs' corresponding to 'band'.
+* @returns type returned is -1, then no other Sccs can further join.
+* TYPES: VECTORIZABLE, NON-VECTORIZABLE, -1.
+**/
+int get_type_sccs(PlutoProg *prog, Graph *ddg, List *sccs, Band *band)
+{
+    Ploop **basic_loops;
+    Stmt **stmts;
+    int i, nbasic_loops, num;
+    bool is_vectorizable;
+    Node *it;
+    bool stmts_to_consider[prog->nstmts];
+    unsigned distinct_access;
 
+    assert(sccs != NULL);
+
+    for (i = 0; i < prog->nstmts; i++) {
+        stmts_to_consider[i] = false;
+    }
+    num = 0;
+    for (it = sccs->head; it != NULL; it = it->next) {
+        num += ddg->sccs[it->data].size;
+    }
+    stmts = (Stmt **)malloc(sizeof(Stmt *) * num);
+
+    num = 0;
+    for (i = 0; i < band->loop->nstmts; i++) {
+	if (list_is_present(sccs, band->loop->stmts[i]->scc_id)) {
+            stmts[num] = band->loop->stmts[i];
+            stmts_to_consider[stmts[num]->id] = true;
+            num++;
+        }
+    }
+
+    distinct_access = get_distinct_accesses(prog, stmts_to_consider, false);
+    if (distinct_access > N_PREFETCH_BUFFERS) {
+        free(stmts);
+        return -1;
+    }
+
+    basic_loops = pluto_get_loops_under(stmts, num, band->loop->depth, prog, &nbasic_loops);
+
+    is_vectorizable = false;
+    for (i = 0; i < nbasic_loops; i++) {
+        is_vectorizable = is_vectorizable || pluto_loop_is_vectorizable(basic_loops[i], prog);
+    }
+    free(stmts);
+    pluto_loops_free(basic_loops, nbasic_loops);
+
+    return is_vectorizable;
+}
+
+/**
+* Distributes the SCCs within a 'band' if any of following situations arises.
+*   1. Vectorization loss
+*   2. Number of distinct accesses > number of prefetch streams.
+* Updates the 'partition' based on distribution
+*/
+void compute_band_partition(PlutoProg *prog, Graph *ddg, Band *band, int64 *partition)
+{
+    int scc_partition[ddg->num_sccs];
+    Graph *scc_graph;
+    List *sccs;
+    int partition_id, i, j, k;
+    PlutoMatrix *adjacency;
+
+    sccs = create_empty_list();
+    for (i = 0; i < ddg->num_sccs; i++) {
+        scc_partition[i] = 0;
+        push_node_to_list(sccs, i);
+    }
+    scc_graph = construct_scc_graph(prog, ddg, sccs);
+    transitive_closure(scc_graph);
+    adjacency = scc_graph->adj;
+
+    // Sccs corresponding to this band and initialize the partition to -1
+    for (i = 0; i < band->loop->nstmts; i++) {
+        scc_partition[band->loop->stmts[i]->scc_id] = -1;
+    }
+
+    partition_id = 0;
+    while (true) {
+        List *current_scc_list;
+        int current_type;
+        for (i = 0; i < ddg->num_sccs; i++) {
+            if (scc_partition[i]==-1) break;
+        }
+        // Everything is partitioned
+        if (i == ddg->num_sccs) break;
+
+        current_scc_list = create_empty_list();
+        push_node_to_list(current_scc_list, i);
+        current_type = get_type_sccs(prog, ddg, current_scc_list, band);
+        scc_partition[i] = partition_id;
+
+        for (j = i+1; j < ddg->num_sccs; j++) {
+            List *tmp_1, *tmp_2;
+            int joiner_type;
+
+            // If already partitioned, ignore.
+            if (scc_partition[j] != -1) continue;
+
+            // if one of jth ancestor is not partitioned, ignore.
+            for (k = 0; k < j; k++) {
+                if (adjacency->val[k][j] && scc_partition[k] == -1) break;
+            }
+            if (k < j) continue;
+
+            tmp_1 = create_empty_list();
+            push_node_to_list(tmp_1, j);
+            tmp_2 = merge_lists(current_scc_list, tmp_1);
+            deallocate_list(tmp_1);
+
+            joiner_type = get_type_sccs(prog, ddg, tmp_2, band);
+            if (joiner_type == -1) continue;
+
+            if (current_type == joiner_type) {
+                deallocate_list(current_scc_list);
+                current_scc_list = tmp_2;
+                scc_partition[j] = partition_id;
+            }
+        }
+        deallocate_list(current_scc_list);
+        partition_id++;
+    }
+
+    // Update the partition number.
+    for (i = 0; i < band->loop->nstmts; i++) {
+        partition[band->loop->stmts[i]->id] = scc_partition[band->loop->stmts[i]->scc_id];
+    }
+
+    graph_free(scc_graph);
+    deallocate_list(sccs);
+}
+
+/**
+* Post transform distribution phase.
+* Distribution (through compute_band_partition) occurs for all innermost permutable bands.
+* NOTE: function updates the schedule to include the distribution.
+**/
+void pluto_intratile_loops_distribute(PlutoProg *prog)
+{
+    Graph *orig_ddg;
+    int i, j, nibands;
+    Band **ibands;
+    int64 *partition;
+
+    orig_ddg = prog->ddg;
+
+    // 0. Check if atleast one statement is tiled.
+    for (i = 0; i < prog->nstmts; i++) {
+         if (prog->stmts[i]->last_tile_dim != -1) break;
+    }
+    if (i == prog->nstmts) return;
+
+    partition = (int64 *)malloc(sizeof(int64) * prog->nstmts);
+    for (i = 0; i < prog->nstmts; i++) {
+        partition[i] = -1;
+    }
+
+    // 1. Find the innermost band.
+    ibands = pluto_get_innermost_permutable_bands_intraopt(prog, &nibands);
+
+    for (i = 0; i < nibands; i++) {
+        Band *band;
+        Graph *ddg;
+        Ploop *loop;
+
+	band = ibands[i];
+
+	if (!pluto_is_band_profitable(band)) continue;
+
+        // 2. Construct ddg and scc graph at band depth.
+        ddg = construct_ddg_at_depth(prog, band->loop->depth);
+        prog->ddg = ddg;
+        ddg_compute_scc(prog);
+
+        compute_band_partition(prog, ddg, band, partition);
+        loop = band->loop;
+        for (j = 0; j < loop->nstmts; j++) {
+            Stmt *stmt;
+            stmt = loop->stmts[j];
+            pluto_stmt_add_hyperplane(stmt, H_SCALAR, loop->depth);
+            assert(partition[stmt->id] != -1);
+            stmt->trans->val[loop->depth][stmt->trans->ncols-1] = partition[stmt->id];
+        }
+        graph_free(ddg);
+    }
+
+    for (i = 0; i < prog->nstmts; i++) {
+         if (partition[i] == -1) pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, prog->num_hyperplanes);
+    }
+
+    pluto_bands_free(ibands, nibands);
+    free(partition);
+
+    // Restore the original ddg
+    prog->num_hyperplanes++;
+    prog->ddg = orig_ddg;
+    ddg_compute_scc(prog);
+
+    pluto_compute_dep_satisfaction_precise(prog);
+    pluto_compute_dep_directions(prog);
+
+    if (!options->silent) {
+        fprintf(stdout,"\n[Pluto] After intratile distribution:\n");
+        pluto_transformations_pretty_print(prog);
+    }
+}
 
 int get_outermost_parallel_loop(const PlutoProg *prog)
 {

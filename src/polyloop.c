@@ -637,13 +637,19 @@ int pluto_is_depth_scalar(Ploop *loop, int depth)
 }
 
 
-/* Returns a non-trivial permutable band starting from this loop; NULL
+/* @param ignore_scalar, to decide whether the dependencies satisfied by scalar hyperplanes
+ * is to be considered or not while computing permutable band. It is valid to ignore if the
+ * band is used for tilability and invalid to ignore if used for intra_tile_optimization.
+ * Returns a non-trivial permutable band starting from this loop; NULL
  * if the band is trivial (just the loop itself */
-Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
+Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog, bool ignore_scalar)
 {
     int i, depth;
 
-    depth = loop->depth;
+    // If loop is innermost, then band will always be trivial.
+    if (pluto_loop_is_innermost(loop, prog)) return NULL;
+
+    depth = loop->depth + 1;
 
     do{
         //printf("Level = %d\n", depth);
@@ -656,7 +662,7 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
             if (dep->satisfaction_level < loop->depth) continue;
             /* Dependences satisfied in previous scalar dimensions in the band
              * don't count as well (i.e., they can have negative components) */
-            if (pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
+            if (ignore_scalar && pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
             /* Rest of the dependences need to have non-negative components */
             if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
                     && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 
@@ -816,7 +822,7 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
     bands = NULL;
     nbands = 0;
     for (i=0; i<num; i++) {
-        Band *band = pluto_get_permutable_band(loops[i], prog);
+        Band *band = pluto_get_permutable_band(loops[i], prog, true);
         if (band != NULL) {
             bands = realloc(bands, (nbands+1)*sizeof(Band *));
             bands[nbands++] = band;
@@ -882,6 +888,42 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops)
     return iloops;
 }
 
+/* Set of innermost non-trivial permutable bands (of width >= 2) */
+Band **pluto_get_innermost_permutable_bands_intraopt(PlutoProg *prog, int *ndbands)
+{
+    Ploop **loops;
+    int num, i, nbands;
+    Band **bands, **dbands;
+
+    bands = NULL;
+    num = 0;
+    loops = pluto_get_all_loops(prog, &num);
+
+    // pluto_print_dep_directions(prog);
+
+    nbands = 0;
+    for (i=0; i<num; i++) {
+        if (loops[i]->depth <= loops[i]->stmts[0]->last_tile_dim) continue;
+
+        Band *band = pluto_get_permutable_band(loops[i], prog, false);
+        if (band != NULL && pluto_is_band_innermost(band, 0)) {
+            bands = realloc(bands, (nbands+1)*sizeof(Band *));
+            bands[nbands] = band;
+            nbands++;
+        }else pluto_band_free(band);
+    }
+    pluto_loops_free(loops, num);
+
+    // pluto_bands_print(bands, nbands);
+
+    dbands = pluto_get_dominator_bands(bands, nbands, ndbands);
+
+    pluto_bands_free(bands, nbands);
+
+    // pluto_bands_print(dbands, *ndbands);
+
+    return dbands;
+}
 
 /* Set of innermost non-trivial permutable bands (of width >= 2) */
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands)
@@ -898,7 +940,7 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands)
 
     nbands = 0;
     for (i=0; i<num; i++) {
-        Band *band = pluto_get_permutable_band(loops[i], prog);
+        Band *band = pluto_get_permutable_band(loops[i], prog, true);
         if (band != NULL && pluto_is_band_innermost(band, 0)) {
             bands = realloc(bands, (nbands+1)*sizeof(Band *));
             bands[nbands] = band;

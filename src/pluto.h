@@ -66,6 +66,8 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
+#define N_PREFETCH_BUFFERS 8
+
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
     PIPE_PARALLEL_INNER_PARALLEL} PlutoLoopType;
 
@@ -162,6 +164,10 @@ struct statement{
 
     int first_tile_dim;
     int last_tile_dim;
+
+    /* Depth at which intra-tile distribution is done. (-1 if this stmt is not the part of distribution)
+    Useful to make move the distribution innermost.*/
+    int intra_tile_distribute_depth;
 
     PlutoStmtType type;
 
@@ -395,6 +401,10 @@ List *create_empty_list(void);
 void push_node_to_list(List *list, int data);
 void pop_node_from_list(List *list);
 List *merge_lists(List *list_1, List *list_2);
+bool list_is_present(List *list, int data);
+unsigned list_get_size(List list);
+void list_print(List *list);
+void deallocate_list(List *list);
 
 struct scc_cluster {
     /*Parameters required for the scoring*/
@@ -402,6 +412,7 @@ struct scc_cluster {
     unsigned spatial_access;
     bool is_parallel;
     bool is_vectorizable;
+    bool are_dims_same;
     unsigned granularity;
     unsigned distinct_access;
     unsigned num_access;
@@ -472,6 +483,8 @@ void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
 int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
+Graph *construct_ddg_at_depth(PlutoProg *prog, int depth);
+Graph *construct_scc_graph(PlutoProg *prog, Graph *ddg, List *sccs);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
@@ -502,6 +515,7 @@ Band *pluto_band_alloc(Ploop *loop, int width);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
+Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog, bool ignore_scalar);
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
@@ -523,6 +537,7 @@ int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
+Band **pluto_get_innermost_permutable_bands_intraopt(PlutoProg *prog, int *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 
 PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *dest);

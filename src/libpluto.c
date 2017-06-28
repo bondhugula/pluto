@@ -197,7 +197,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     for (i=0; i<npar; i++) {
         char *param = malloc(5);
         sprintf(param, "p%d", i);
-        stmt->domain->names[stmt->dim+i] = param;
+        if (stmt->dim > 0) stmt->domain->names[stmt->dim+i] = param;
     }
 
     pluto_matrix_free(trans);
