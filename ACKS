@@ -37,11 +37,13 @@ ACKNOWLEDGMENTS
 
 16. Irshad Pananilath
 
-17. Arvind M and Anoop with libPluto and LLVM/Polly integration
+17. Arvind M and Anoop for libPluto and LLVM/Polly re-integration
 
 18. Aravind Acharya for a part of Pluto+ implementation
 
 19. Taj Muhammad Khan for migration to OpenSCoP (osl)
+
+20. Arvind M for typedfuse fusion model
 
 
 Bugs and fixes
