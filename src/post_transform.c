@@ -463,11 +463,13 @@ int get_type_sccs(PlutoProg *prog, Graph *ddg, List *sccs, Band *band)
         return -1;
     }
 
-    basic_loops = pluto_get_loops_under(stmts, num, band->loop->depth, prog, &nbasic_loops);
+    basic_loops = pluto_get_loops_under(stmts, num, band->loop->depth, prog,
+                                            &nbasic_loops);
 
     is_vectorizable = false;
     for (i = 0; i < nbasic_loops; i++) {
-        is_vectorizable = is_vectorizable || pluto_loop_is_vectorizable(basic_loops[i], prog);
+        is_vectorizable = is_vectorizable ||
+                            pluto_loop_is_vectorizable(basic_loops[i], prog);
     }
     free(stmts);
     pluto_loops_free(basic_loops, nbasic_loops);
@@ -481,7 +483,8 @@ int get_type_sccs(PlutoProg *prog, Graph *ddg, List *sccs, Band *band)
 *   2. Number of distinct accesses > number of prefetch streams.
 * Updates the 'partition' based on distribution
 */
-void compute_band_partition(PlutoProg *prog, Graph *ddg, Band *band, int64 *partition)
+void compute_band_partition(PlutoProg *prog, Graph *ddg, Band *band,
+                                int64 *partition)
 {
     int scc_partition[ddg->num_sccs];
     Graph *scc_graph;
@@ -551,7 +554,9 @@ void compute_band_partition(PlutoProg *prog, Graph *ddg, Band *band, int64 *part
 
     // Update the partition number.
     for (i = 0; i < band->loop->nstmts; i++) {
-        partition[band->loop->stmts[i]->id] = scc_partition[band->loop->stmts[i]->scc_id];
+        int stmt_id;
+        stmt_id = band->loop->stmts[i]->id;
+        partition[stmt_id] = scc_partition[band->loop->stmts[i]->scc_id];
     }
 
     graph_free(scc_graph);
@@ -560,7 +565,10 @@ void compute_band_partition(PlutoProg *prog, Graph *ddg, Band *band, int64 *part
 
 /**
 * Post transform distribution phase.
-* Distribution (through compute_band_partition) occurs for all innermost permutable bands.
+*   This phase recovers vectorizability of SCC and ensures effective prefetch
+    stream utilization.
+* Distribution (through compute_band_partition) occurs for all innermost
+    permutable bands.
 * NOTE: function updates the schedule to include the distribution.
 **/
 void pluto_intratile_loops_distribute(PlutoProg *prog)
@@ -604,16 +612,21 @@ void pluto_intratile_loops_distribute(PlutoProg *prog)
         loop = band->loop;
         for (j = 0; j < loop->nstmts; j++) {
             Stmt *stmt;
+            int col;
             stmt = loop->stmts[j];
             pluto_stmt_add_hyperplane(stmt, H_SCALAR, loop->depth);
             assert(partition[stmt->id] != -1);
-            stmt->trans->val[loop->depth][stmt->trans->ncols-1] = partition[stmt->id];
+            col = stmt->trans->ncols-1;
+            stmt->trans->val[loop->depth][col] = partition[stmt->id];
         }
         graph_free(ddg);
     }
 
     for (i = 0; i < prog->nstmts; i++) {
-         if (partition[i] == -1) pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, prog->num_hyperplanes);
+        if (partition[i] == -1) {
+            pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR,
+                                        prog->num_hyperplanes);
+        }
     }
 
     pluto_bands_free(ibands, nibands);

@@ -637,10 +637,11 @@ int pluto_is_depth_scalar(Ploop *loop, int depth)
 }
 
 
-/* @param ignore_scalar, to decide whether the dependencies satisfied by scalar hyperplanes
- * is to be considered or not while computing permutable band. It is valid to ignore if the
- * band is used for tilability and invalid to ignore if used for intra_tile_optimization.
- * Returns a non-trivial permutable band starting from this loop; NULL
+/* @param ignore_scalar, to decide whether the dependencies satisfied by
+    scalar hyperplanes is to be considered or not while computing permutable
+    band. It is valid to ignore if the band is used for tilability and invalid
+    to ignore if used for intra_tile_optimization.
+ * @returns a non-trivial permutable band starting from this loop; NULL
  * if the band is trivial (just the loop itself */
 Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog, bool ignore_scalar)
 {
@@ -662,7 +663,8 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog, bool ignore_scalar
             if (dep->satisfaction_level < loop->depth) continue;
             /* Dependences satisfied in previous scalar dimensions in the band
              * don't count as well (i.e., they can have negative components) */
-            if (ignore_scalar && pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
+            if (ignore_scalar &&
+                pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
             /* Rest of the dependences need to have non-negative components */
             if (pluto_stmt_is_member_of(prog->stmts[dep->src]->id, loop->stmts, loop->nstmts)
                     && pluto_stmt_is_member_of(prog->stmts[dep->dest]->id, loop->stmts, 

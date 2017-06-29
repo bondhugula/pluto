@@ -66,6 +66,7 @@ typedef enum hyptype {H_UNKNOWN=0, H_LOOP, H_TILE_SPACE_LOOP,
 #define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
 #define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
+/* Number of prefetch stream buffers*/
 #define N_PREFETCH_BUFFERS 8
 
 typedef enum looptype {UNKNOWN=0, PARALLEL, PIPE_PARALLEL, SEQ, 
@@ -165,8 +166,8 @@ struct statement{
     int first_tile_dim;
     int last_tile_dim;
 
-    /* Depth at which intra-tile distribution is done. (-1 if this stmt is not the part of distribution)
-    Useful to make move the distribution innermost.*/
+    /* Depth at which intra-tile distribution is done. (-1 if this stmt is not
+        the part of distribution).*/
     int intra_tile_distribute_depth;
 
     PlutoStmtType type;

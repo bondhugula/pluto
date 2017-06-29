@@ -306,12 +306,13 @@ void pluto_tile(PlutoProg *prog)
     }
 
     // Post-transform distribution phase available only with TYPED_FUSE (as of now).
-    if(options->fuse == TYPED_FUSE) pluto_intratile_loops_distribute(prog);
+    if (options->fuse == TYPED_FUSE) pluto_intratile_loops_distribute(prog);
 
     if (options->intratileopt) {
         Band **ibands_opts;
         int n_ibands_opts;
-        ibands_opts = pluto_get_innermost_permutable_bands_intraopt(prog, &n_ibands_opts);
+        ibands_opts = pluto_get_innermost_permutable_bands_intraopt(prog,
+                                                                &n_ibands_opts);
         if (options->debug || options->moredebug) {
             fprintf(stdout, "Intratile optimization bands:\n");
             pluto_bands_print(ibands_opts, n_ibands_opts);
