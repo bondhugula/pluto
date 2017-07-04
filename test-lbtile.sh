@@ -5,14 +5,10 @@ cd test
 make clean > /dev/null 2>&1
 cd ..
 
-TESTS="test/jacobi-1d-periodic.c \
-test/jacobi-1d-periodic-even.c \
-test/jacobi-2d-periodic.c \
+TESTS="examples/heat-1d/heat-1d.c \
+examples/heat-2d/heat-2d.c \
+examples/heat-3d/heat-3d.c \
 test/jacobi-2d-mod.c \
-test/multi-stmt-periodic.c \
-test/multi-stmt-2d-periodic.c \
-test/2d-bidirec.c \
-test/reverse-iss.c
 "
 
 OPTS="--pet --iss --islsolve"

@@ -401,6 +401,41 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
     return ucst;
 }
 
+/*
+ * Extract a pluto function from an isl map under certain 
+ * circumstances
+ */
+PlutoMatrix *isl_map_to_pluto_func(isl_map *map,
+        int stmt_dim, int npar)
+{
+    int i, dim, ncols;
+
+    dim = isl_map_dim(map, isl_dim_out);
+    ncols = isl_map_dim(map, isl_dim_in)
+        + isl_map_dim(map, isl_dim_param) + 1;
+
+    assert(ncols == stmt_dim + npar + 1);
+
+    PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
+
+    for (i=0; i<dim; i++) {
+        PlutoMatrix *func_onedim = NULL;
+        /* Schedule should be single valued */
+        assert(isl_map_dim_is_single_valued(map, i));
+        isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+        // isl_pw_aff_dump(pw_aff);
+        /* TODO: check to make sure there is only one piece; or else
+         * an incorrect schedule will be extracted */
+        /* Best effort: Gets it from the last piece */
+        isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+        pluto_matrix_add(func, func_onedim);
+        pluto_matrix_free(func_onedim);
+        isl_pw_aff_free(pw_aff);
+    }
+
+    return func;
+}
+
 
 static int basic_map_count(__isl_take isl_basic_map *bmap, void *user)
 {

@@ -934,8 +934,8 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
     }
 }
 
-/* 
- * Determine constraints to ensure linear independence of hyperplanes 
+/*
+ * Determine constraints to ensure linear independence of hyperplanes
  *
  * lin_ind_mode = EAGER: all statement hyperplanes have to be linearly independent
  * w.r.t existing ones (ignoring stmts that already have enough lin ind solns)

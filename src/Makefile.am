@@ -17,20 +17,23 @@ endif
 
 bin_PROGRAMS = pluto
 
-pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c pluto_codegen_if.c polyloop.c ast_transform.c iss.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
+pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c polyloop.c framework.c pluto_codegen_if.c iss.c ast_transform.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
+
+nodist_EXTRA_pluto_SOURCES = dummy.cc
 
 if PLUTO_DEBUG
+OPT_FLAGS = -O3 -funroll-loops -fopenmp
+else
 OPT_FLAGS = 
 DEBUG_FLAGS = -g
-else
-OPT_FLAGS = -O3 -funroll-loops -fopenmp
 endif
 
 pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
-   -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
+   -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    $(ISL_INCLUDE) \
    -I../cloog-isl/include \
    -I../openscop/include \
@@ -43,6 +46,7 @@ pluto_LDADD =  \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
+   ../pet/libpet.la \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
@@ -57,6 +61,7 @@ libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -I../include \
    -I../piplib/include \
    -I../clan/include \
+   -I../pet/include \
    -I../openscop/include \
    -I../candl/include \
    -I../cloog-isl/include \
@@ -65,6 +70,7 @@ libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
    ../piplib/libpiplib_dp.la \
+   ../pet/libpet.la \
    ../openscop/libosl.la \
    ../clan/libclan.la \
    ../candl/libcandl.la \

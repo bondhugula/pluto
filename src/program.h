@@ -25,6 +25,7 @@
 #include "clan/clan.h"
 #include "candl/candl.h"
 
+#include "pet.h"
 #include "osl/scop.h"
 
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain, const PlutoMatrix *mat);
@@ -72,10 +73,10 @@ PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog);
 PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **strides);
 
 void get_parametric_extent(const PlutoConstraints *cst, int pos,
-        int npar, const char **params, char **extent);
+        int npar, const char **params, char **extent, char **p_lbexpr);
 
 void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
-        int npar, const char **params, char **extent);
+        int npar, const char **params, char **extent, char **p_lbexpr);
 
 char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
         int num, int npar, const char **params);
@@ -102,6 +103,7 @@ int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
 
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *, PlutoOptions *);
 void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
                            PlutoOptions *options);
 

@@ -13,7 +13,6 @@ check_and_apply_patch() {
   local patch="$2"
 
   if [ \( -d ${BASE}/$path \) -a \( ! -f ${BASE}/$path/.`basename $patch` \)  ] ; then
-      echo Hello
     echo -e "\nTrying to apply patch from directory: `pwd`"
     `git apply --check --directory=$path $patch`
     exit_status=$?
@@ -38,4 +37,10 @@ check_and_apply_patch() {
   fi
 }
 
-check_and_apply_patch "isl" "${BASE}/patches/0001-isl-dim-wise-single_valued-and-isl_pw_aff_map-functi.patch"
+# ------------------------------------------------
+# Apply patches if any
+# ------------------------------------------------
+# check_and_apply_patch "pet" "${BASE}/patches/pet_configure_ac.patch"
+check_and_apply_patch "pet" "${BASE}/patches/0001-pet-stmt-collect-accesses.patch"
+check_and_apply_patch "isl" "${BASE}/patches/0001-isl-ast-build-overwrite.patch"
+check_and_apply_patch "isl" "${BASE}/patches/0002-isl-dim-wise-single-valued-and-isl_pw_aff_map-functi.patch"

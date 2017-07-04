@@ -130,4 +130,7 @@ int main(int argc, char *argv[])
 }
 
 // icc -O3 -DTIME -DDEBUG 3d7pt.c -o op-3d7pt
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/master

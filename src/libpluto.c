@@ -300,7 +300,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         }
     }
 
-    if ((options->parallel) && !options->tile && !options->identity)   {
+    if ((options->parallel) && !options->tile)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;

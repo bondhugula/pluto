@@ -221,6 +221,33 @@ configureopts="--with-gmp=system \
 )
 fi
 
+dnl Offer --with-clang-prefix
+AC_ARG_WITH(clang-prefix,
+    AC_HELP_STRING([--with-clang-prefix=DIR], [DIR location of clang install]),
+    [
+        CLANG_PREFIX="$withval";
+        external_clang=true
+    ],
+    [external_clang=false]
+)
+
+AM_CONDITIONAL(EXTERNAL_CLANG, test x$external_clang = xtrue)
+
+dnl Configure PET
+echo -e "\n=========================="
+echo "Configuring PET"
+echo "=========================="
+
+if test x$external_clang = xtrue; then
+    configureopts="CXXFLAGS=-fno-rtti --with-clang-prefix=$CLANG_PREFIX --with-clang-exec-prefix=$CLANG_PREFIX --with-isl-builddir=../isl --prefix=$prefix"
+else
+    configureopts="CXXFLAGS=-fno-rtti --with-isl-builddir=../isl --prefix=$prefix"
+fi
+
+(cd pet && ./configure ${configureopts})
+
+dnl check if pet configure had failed
+AC_CHECK_FILE([pet/Makefile], [], [AC_MSG_ERROR([configure in pet/ failed])])
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo ""

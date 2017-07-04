@@ -182,6 +182,8 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
 
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst, int max_elim);
+int isl_map_count(__isl_take isl_map *map, void *user);
+PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar);
 PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h);
 PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h);
 void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos, PlutoMatrix *func);

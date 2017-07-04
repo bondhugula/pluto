@@ -33,6 +33,7 @@
 #include <isl/constraint.h>
 #include <isl/mat.h>
 #include <isl/set.h>
+#include <isl/deprecated/int.h>
 #include "candl/candl.h"
 
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
@@ -560,9 +561,6 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
 }
 
 
-/*
- * Construct a PlutoMatrix with the same content as the given isl_mat.
- */
 /*
  * Returns linear independence constraints for a single statement.
  *

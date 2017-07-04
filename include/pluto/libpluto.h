@@ -37,6 +37,28 @@ struct plutoOptions{
 
     /* Load-balanced tiling (one dimensional concurrent start)*/
     int partlbtile;
+
+    /* Extract scop information from libpet*/
+    int pet;
+
+    /* dynamic scheduling 
+     * using Synthesized Runtime Interface */
+    int dynschedule;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using Intel TBB Flow Graph scheduler */
+    int dynschedule_graph;
+
+    /* dynamic scheduling - previous technique of 
+     * building the entire task graph in memory 
+     * using a custom DAG scheduler */
+    // no longer maintained
+    int dynschedule_graph_old;
+
+    /* consider transitive dependences between tasks */
+    int dyn_trans_deps_tasks;
+
     /* parallelization */
     int parallel;
 

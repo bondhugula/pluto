@@ -61,6 +61,8 @@
 #include <isl/deprecated/int.h>
 #include <isl/deprecated/mat_int.h>
 
+#include "pet.h"
+
 osl_relation_p get_identity_schedule(int dim, int npar);
 static int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 
@@ -170,6 +172,24 @@ osl_relation_p pluto_constraints_to_osl_domain(PlutoConstraints *cst, int npar){
 
   return rln;
 }
+
+osl_relation_p pluto_constraints_list_to_osl_domain(PlutoConstraints *cst, 
+        int npar)
+{
+    if (cst==NULL) return NULL;
+
+    osl_relation_p list = osl_relation_pmalloc(PLUTO_OSL_PRECISION,
+            cst->nrows, cst->ncols+1);
+
+    list = pluto_constraints_to_osl_domain(cst, npar);
+
+    if(cst->next != NULL)
+        list->next = pluto_constraints_list_to_osl_domain(cst->next, 
+                npar);
+
+    return list;
+}
+
 
 
 /*
@@ -1631,6 +1651,33 @@ static __isl_give isl_set *osl_relation_list_to_isl_set(
     return set;
 }
 
+/* Convert an m x ( n + 1) pluto access_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *pluto_extract_equalities(isl_ctx *ctx,
+        PlutoMatrix *matrix)
+{
+    int i, j;
+    int n_col, n;
+    isl_mat *eq;
+
+    n_col = matrix->ncols;
+    n = matrix->nrows;
+
+    eq = isl_mat_alloc(ctx, n, n + n_col);
+
+    for (i = 0; i < n; ++i) {
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element_si(eq, i, j, 0);
+        eq = isl_mat_set_element_si(eq, i, i, -1);
+        for (j = 0; j < n_col ; ++j) {
+            eq = isl_mat_set_element_si(eq, i, n + j, matrix->val[i][j]);
+        }
+    }
+
+    return eq;
+}
+
 /* Convert an m x (1 + m + n + 1) osl_relation_p [d -I A c]
  * to an m x (m + n + 1) isl_mat [-I A c].
  */
@@ -1703,6 +1750,64 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
     isl_int_clear(v);
 
     return eq;
+}
+
+/* Convert an m x (1 + n + 1) scoplib_matrix_p [d A c]
+ * to an m x (m + n + 1) isl_mat [-I A c].
+ */
+static __isl_give isl_mat *extract_equalities(isl_ctx *ctx,
+        PlutoMatrix *matrix, int first, int n)
+{
+    int i, j;
+    int n_col;
+    isl_int v;
+    isl_mat *eq;
+
+    n_col = matrix->ncols;
+
+    isl_int_init(v);
+    eq = isl_mat_alloc(ctx, n, n + n_col);
+
+    for (i = 0; i < n; ++i) {
+        isl_int_set_si(v, 0);
+        for (j = 0; j < n; ++j)
+            eq = isl_mat_set_element(eq, i, j, v);
+        isl_int_set_si(v, -1);
+        eq = isl_mat_set_element(eq, i, i, v);
+        for (j = 0; j < n_col - 1; ++j) {
+            int t = matrix->val[first + i][j];
+            isl_int_set_si(v, t);
+            eq = isl_mat_set_element(eq, i, n + j, v);
+        }
+    }
+
+    isl_int_clear(v);
+
+    return eq;
+}
+
+
+/* Convert a pluto matrix schedule [ A c] to
+ * the isl_map { i -> A i + c } in the space prescribed by "dim".
+ */
+static __isl_give isl_map *pluto_matrix_schedule_to_isl_map(
+        PlutoMatrix *schedule, __isl_take isl_dim *dim)
+{
+    int n_row, n_col;
+    isl_ctx *ctx;
+    isl_mat *eq, *ineq;
+    isl_basic_map *bmap;
+
+    ctx = isl_dim_get_ctx(dim);
+    n_row = schedule->nrows;
+    n_col = schedule->ncols;
+
+    ineq = isl_mat_alloc(ctx, 0, n_row + n_col);
+    eq = extract_equalities(ctx, schedule, 0, n_row);
+
+    bmap = isl_basic_map_from_constraint_matrices(dim, eq, ineq,
+            isl_dim_out, isl_dim_in, isl_dim_div, isl_dim_param, isl_dim_cst);
+    return isl_map_from_basic_map(bmap);
 }
 
 
@@ -1825,8 +1930,6 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
     return map;
 }
 
-#if 0
-/* Unused */
 /*
  * Like osl_access_list_to_isl_union_map, but just for a single pluto access
  * (read or write)
@@ -1868,7 +1971,6 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 
     return map;
 }
-#endif
 
 
 
@@ -2021,6 +2123,74 @@ static int map_extract_dep(__isl_take isl_map *map, void *user)
 
     r = isl_map_foreach_basic_map(map, &basic_map_extract_dep, user);
     isl_map_free(map);
+    return r;
+}
+
+
+struct pluto_access_meta_info {
+    /* Pointer to an array of accesses */
+    PlutoAccess ***accs;
+    int index;
+    int stmt_dim;
+    int npar;
+};
+
+/* Extract a Pluto access function from isl_basic_map */
+static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user)
+{
+    int i;
+
+    isl_map *map;
+
+    // isl_basic_map_dump(bmap);
+
+    map = isl_map_from_basic_map(bmap);
+
+    int dim = isl_map_dim(map, isl_dim_out);
+    int ncols = isl_map_dim(map, isl_dim_in)
+        + isl_map_dim(map, isl_dim_param) + 1;
+
+    PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
+
+    for (i=0; i<dim; i++) {
+        PlutoMatrix *func_onedim = NULL;
+        if (isl_map_dim_is_single_valued(map, i)) {
+            isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+            // isl_pw_aff_dump(pw_aff);
+            /* Best effort: Gets it from the last piece */
+            isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+            pluto_matrix_add(func, func_onedim);
+            pluto_matrix_free(func_onedim);
+            isl_pw_aff_free(pw_aff);
+        }else{
+            pluto_matrix_add_row(func, 0);
+            pluto_matrix_zero_row(func, 0);
+        }
+    }
+    struct pluto_access_meta_info *info = (struct pluto_access_meta_info *) user;
+
+    (*info->accs)[info->index] = (PlutoAccess *) malloc(sizeof(PlutoAccess));
+    PlutoAccess *acc = (*info->accs)[info->index];
+    acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
+    acc->mat = func;
+
+    info->index++;
+
+    isl_map_free(map);
+
+    return 0;
+}
+
+/* Extract Pluto access functions from isl_map */
+static int isl_map_extract_access_func(__isl_take isl_map *map, void *user)
+{
+    int r;
+
+    /* Extract a PlutoAccess from every isl_basic_map */
+    r = isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
+
+    isl_map_free(map);
+
     return r;
 }
 
@@ -2611,8 +2781,13 @@ PlutoProg *pluto_prog_alloc()
     prog->ddg = NULL;
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
+    prog->decls = malloc(16384*9);
+
+    strcpy(prog->decls, "");
 
     prog->globcst = NULL;
+
+    prog->num_parameterized_loops = -1;
 
     return prog;
 }
@@ -2663,6 +2838,8 @@ void pluto_prog_free(PlutoProg *prog)
 
     pluto_constraints_free(prog->globcst);
 
+    free(prog->decls);
+
     free(prog);
 }
 
@@ -2677,6 +2854,10 @@ PlutoOptions *pluto_options_alloc()
     options->flic = 0;
     options->tile = 0;
     options->intratileopt = 1;
+    options->dynschedule = 0;
+    options->dynschedule_graph = 0;
+    options->dynschedule_graph_old = 0;
+    options->dyn_trans_deps_tasks = 0;
     options->debug = 0;
     options->moredebug = 0;
     options->scancount = 0;
@@ -2685,6 +2866,7 @@ PlutoOptions *pluto_options_alloc()
     options->identity = 0;
 
     options->lbtile = 0;
+    options->pet = 0;
     options->partlbtile = 0;
 
     options->iss = 0;
@@ -2746,7 +2928,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->out_file = NULL;
 
-    options->time = 0;
+    options->time = 1;
 
     return options;
 }
@@ -3195,7 +3377,7 @@ Stmt *pluto_stmt_alloc(int dim,
     stmt->last_tile_dim = -1;
 
     stmt->type = STMT_UNKNOWN;
-    stmt->parent_compute_stmt = NULL;
+    stmt->ploop_id = -1;
 
     if (dim >= 1)   {
         stmt->is_orig_loop = (bool *) malloc(dim*sizeof(bool));
@@ -3278,10 +3460,423 @@ void pluto_stmt_free(Stmt *stmt)
 }
 
 
+/* Get transformed domain */
+PlutoConstraints *pluto_get_new_domain(const Stmt *stmt)
+{
+    int i;
+    PlutoConstraints *sched;
+
+    PlutoConstraints *newdom = pluto_constraints_dup(stmt->domain);
+    for (i=0; i<stmt->trans->nrows; i++)  {
+        pluto_constraints_add_dim(newdom, 0, NULL);
+    }
+
+    sched = pluto_stmt_get_schedule(stmt);
+
+    pluto_constraints_intersect(newdom, sched);
+
+    // IF_DEBUG(printf("New pre-domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_project_out(newdom, 
+            stmt->trans->nrows, stmt->dim);
+
+    // IF_DEBUG(printf("New domain is \n"););
+    // IF_DEBUG(pluto_constraints_print(stdout, newdom););
+
+    pluto_constraints_free(sched);
+
+    return newdom;
+}
+
+
+/* 
+ * Checks if the range of the variable at depth 'depth' can be bound by a
+ * constant; returns the constant of -1 if it can't be
+ *
+ * WARNING: If cnst is a list, looks at just the first element
+ *
+ * TODO: Not general now: difference being constant can be implied through
+ * other inequalities 
+ *
+ * */
+int get_const_bound_difference(const PlutoConstraints *cnst, int depth)
+{
+    int constdiff, r, r1, c, _lcm;
+
+    assert(cnst != NULL);
+    PlutoConstraints *cst = pluto_constraints_dup(cnst);
+
+    pluto_constraints_project_out(cst, depth+1, cst->ncols-1-depth-1);
+    assert(depth >= 0 && depth <= cst->ncols-2);
+
+    // printf("Const bound diff at depth: %d\n", depth);
+    // pluto_constraints_print(stdout, cst);
+
+    constdiff = INT_MAX;
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0)  break;
+    }
+    /* Variable doesn't appear */
+    if (r==cst->nrows) return -1;
+
+    /* Scale rows so that the coefficient of depth var is the same */
+    _lcm = 1;
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) _lcm = lcm(_lcm, abs(cst->val[r][depth]));
+    }
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->val[r][depth] != 0) {
+            for (c=0; c<cst->ncols; c++) {
+                cst->val[r][c] = cst->val[r][c]*(_lcm/abs(cst->val[r][depth]));
+            }
+        }
+    }
+
+    /* Equality to a function of parameters/constant implies single point */
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r] && cst->val[r][depth] != 0)  {
+            for (c=depth+1; c<cst->ncols-1; c++)  { 
+                if (cst->val[r][c] != 0)    {
+                    break;
+                }
+            }
+            if (c==cst->ncols-1) {
+                constdiff = 1;
+                //printf("constdiff is 1\n");
+            }
+        }
+    }
+
+    for (r=0; r<cst->nrows; r++) {
+        if (cst->is_eq[r])  continue;
+        if (cst->val[r][depth] <= -1)  {
+            /* Find a lower bound with constant difference */
+            for (r1=0; r1<cst->nrows; r1++) {
+                if (cst->is_eq[r1])  continue;
+                if (cst->val[r1][depth] >= 1) {
+                    for (c=0; c<cst->ncols-1; c++)  { 
+                        if (cst->val[r1][c] + cst->val[r][c] != 0)    {
+                            break;
+                        }
+                    }
+                    if (c==cst->ncols-1) {
+                        constdiff = PLMIN(constdiff, 
+                                floorf(cst->val[r][c]/(float)-cst->val[r][depth]) 
+                                + ceilf(cst->val[r1][c]/(float)cst->val[r1][depth])
+                                +1);
+                    }
+                }
+            }
+        }
+    }
+    pluto_constraints_free(cst);
+
+    if (constdiff == INT_MAX)   {
+        return -1;
+    }
+
+    /* Sometimes empty sets imply negative difference */
+    /* It basically means zero points */
+    if (constdiff <= -1) constdiff = 0;
+    //printf("constdiff is %d\n", constdiff);
+
+    return constdiff;
+}
+
+#define MINF 0
+#define MAXF 1
+
+/* Get expression for pos^{th} constraint in cst;
+ * Returned string should be freed with 'free' */
+char *get_expr(PlutoConstraints *cst, int pos, const char **params,
+        int bound_type)
+{
+    int c, sum;
+
+    char *expr = malloc(512);
+    strcpy(expr, "");
+
+    // printf("Get expr\n");
+    // pluto_constraints_print(stdout, cst);
+
+    if (bound_type == MINF) assert(cst->val[pos][0] <= -1);
+    else assert(cst->val[pos][0] >= 1);
+
+    sum = 0;
+    for (c=1; c<cst->ncols-1; c++)    {
+        sum += abs(cst->val[pos][c]);
+    }
+
+    if (sum == 0)   {
+        /* constant */
+        if (bound_type == MINF) {
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)floorf(cst->val[pos][cst->ncols-1]/-(float)cst->val[pos][0]));
+        }else{
+            sprintf(expr+strlen(expr), "%d", 
+                    (int)ceilf(-cst->val[pos][cst->ncols-1]/(float)cst->val[pos][0]));
+        }
+    }else{
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), "floorf((");
+            }else{
+                sprintf(expr+strlen(expr), "ceilf((");
+            }
+        }
+
+
+        for (c=1; c<cst->ncols-1; c++)    {
+            if (cst->val[pos][c] != 0) {
+                if (bound_type == MINF) {
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%lld*%s": "%lld*%s", 
+                            cst->val[pos][c], params[c-1]);
+                }else{
+                    sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%lld*%s": "%lld*%s", 
+                            -cst->val[pos][c], params[c-1]);
+                }
+            }
+        }
+
+        if (cst->val[pos][c] != 0) {
+            if (bound_type == MINF) {
+                sprintf(expr+strlen(expr), (cst->val[pos][c] >= 1)? "+%lld": "%lld", 
+                        cst->val[pos][c]);
+            }else{
+                sprintf(expr+strlen(expr), (cst->val[pos][c] <= -1)? "+%lld": "%lld", 
+                        -cst->val[pos][c]);
+            }
+        }
+
+        /* if it's being divided by 1, make it better by not putting
+         * floor/ceil */
+        if (abs(cst->val[pos][0]) != 1) {
+            sprintf(expr+strlen(expr), ")/(float)%lld)",
+                    (bound_type==MINF)? -cst->val[pos][0]: cst->val[pos][0]);
+        }
+    }
+
+    return expr;
+}
+
+/*
+ * Get min or max of all upper or lower bounds (resp).
+ * Returned string should be freed with free
+ */
+char *get_func_of_expr(PlutoConstraints *cst, int offset, int bound_type,
+        const char **params)
+{
+    char *fexpr;
+    char *expr, *expr1;
+
+    fexpr = malloc(512);
+
+    strcpy(fexpr, "");
+
+    char func[5];
+    if (bound_type == MINF)  strcpy(func, "min(");
+    else strcpy(func, "max(");
+
+    if (cst->nrows - offset == 1) {
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, expr);
+    }else{
+        /* cst->nrows >= 2 */
+        expr = get_expr(cst, offset, params, bound_type);
+        strcat(fexpr, func);
+        strcat(fexpr, expr);
+        expr1 = get_func_of_expr(cst, offset+1,bound_type,params);
+        strcat(fexpr, ",");
+        strcat(fexpr, expr1);
+        strcat(fexpr, ")");
+        free(expr1);
+    }
+    free(expr);
+
+    return fexpr;
+}
+
+/* Return the size of the parametric bounding box for a (contiguous) 
+ * block of dimensions
+ * start: position of start of block
+ * num: number of dimensions in block
+ * npar: number of parameters in terms of which expression will be computed;
+ * these are assumed to be the last 'npar' variables of cst
+ * parmas: strings for 'npar' parameters
+ * Return: expression describing the maximum number of points 'block' 
+ * vars traverse for any value of '0..start-1' variables
+ *
+ * This function is constant-aware, i.e., if possible, it will exploit the
+ * fact that the range of a variable is bounded by a constant. The underlying
+ * call to get_parametric_extent_const for each of the 'num' dimensions
+ * achieves this.
+ */
+char *get_parametric_bounding_box(const PlutoConstraints *cst, int start, 
+        int num, int npar, const char **params)
+{
+    int k;
+    char *buf_size;
+
+    buf_size = malloc(2048 * 8);
+    strcpy(buf_size, "(");
+
+    const PlutoConstraints *cst_tmp = cst;
+    while (cst_tmp != NULL) {
+        sprintf(buf_size+strlen(buf_size), "+1");
+        for (k=0; k<num; k++) {
+            char *extent;
+            get_parametric_extent_const(cst_tmp, start+k, npar,
+                    params, &extent, NULL);
+            sprintf(buf_size+strlen(buf_size), "*(%s)", extent);
+            free(extent);
+        }
+        cst_tmp = cst_tmp->next;
+    }
+    sprintf(buf_size+strlen(buf_size), ")");
+
+    return buf_size;
+}
+
+
+/*  Parametric extent of the pos^th variable in cst
+ *  Extent computation is constant-aware, i.e., look when it can be 
+ *  bounded by a constant; if not, just a difference of max and min 
+ *  expressions of parameters is returned;  last 'npar'  ones are 
+ *  treated as parameters; *extent should be freed by 'free' 
+ */
+void get_parametric_extent_const(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent, char **p_lbexpr)
+{
+    int constdiff;
+
+    // printf("Parametric/const bounds at pos: %d\n", pos);
+    //pluto_constraints_print(stdout, cst);
+
+    constdiff = get_const_bound_difference(cst, pos);
+
+    if ((p_lbexpr == NULL) && (constdiff != -1))    {
+        *extent = malloc(sizeof(int)*8);
+        sprintf(*extent, "%d", constdiff);
+    }else{
+        get_parametric_extent(cst, pos, npar, params, extent, p_lbexpr);
+    }
+}
+
+
+/* Get lower and upper bound expression as a function of parameters for pos^th
+ * variable; last npar in cst are treated as parameters 
+ * lbexpr and ubexpr should be freed with free
+ * */
+void get_lb_ub_expr(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **lbexpr, char **ubexpr)
+{
+    int i;
+    PlutoConstraints *lb, *ub, *lbs, *ubs;
+    char *lbe, *ube;
+
+    PlutoConstraints *dup = pluto_constraints_dup(cst);
+
+    pluto_constraints_project_out(dup, 0, pos);
+    pluto_constraints_project_out(dup, 1, dup->ncols-npar-1-1);
+
+    // printf("Parametric bounds at 0th pos\n");
+    // pluto_constraints_print(stdout, dup);
+
+    //pluto_constraints_simplify(dup);
+    //pluto_constraints_print(stdout, dup);
+
+    lbs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+    ubs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+
+    for (i=0; i<dup->nrows; i++)    {
+        if (dup->is_eq[i] && dup->val[i][0] != 0) {
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_negate_row(ub, 0);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+        if (dup->val[i][0] >= 1)    {
+            /* Lower bound */
+            lb = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(lbs, lb);
+            pluto_constraints_free(lb);
+        }else if (dup->val[i][0] <= -1) {
+            /* Upper bound */
+            ub = pluto_constraints_select_row(dup, i);
+            pluto_constraints_add(ubs, ub);
+            pluto_constraints_free(ub);
+        }
+    }
+
+    assert(lbs->nrows >= 1);
+    assert(ubs->nrows >= 1);
+    pluto_constraints_free(dup);
+
+    lbe = get_func_of_expr(lbs, 0, MAXF, params);
+    ube = get_func_of_expr(ubs, 0, MINF, params);
+
+    *lbexpr = lbe;
+    *ubexpr = ube;
+
+    // printf("lbexpr: %s\n", lbe);
+    // printf("ubexpr: %s\n", ube);
+
+    pluto_constraints_free(lbs);
+    pluto_constraints_free(ubs);
+}
+
+
+/* 
+ * Get expression for difference of upper and lower bound of pos^th variable
+ * in cst in terms of parameters;  last 'npar' dimensions of cst are treated 
+ * as parameters; *extent should be freed by 'free'
+ */
+void get_parametric_extent(const PlutoConstraints *cst, int pos,
+        int npar, const char **params, char **extent, char **p_lbexpr)
+{
+    char *lbexpr, *ubexpr;
+
+    get_lb_ub_expr(cst, pos, npar, params, &lbexpr, &ubexpr);
+
+    if (!strcmp(lbexpr, ubexpr)) {
+        *extent = strdup("1");
+    }else{
+        *extent = malloc(strlen(lbexpr) + strlen(ubexpr) + strlen(" -  + 1")+1);
+        sprintf(*extent, "%s - %s + 1", ubexpr, lbexpr);
+    }
+    if (p_lbexpr != NULL) {
+        *p_lbexpr = malloc(strlen(lbexpr) + 1);
+        strcpy(*p_lbexpr, lbexpr);
+    }
+
+#if 0
+    if (cst->next != NULL)  {
+        char *extent_next;
+        get_parametric_extent(cst->next, pos, npar, params, &extent_next);
+        *extent = realloc(*extent, strlen(*extent)+strlen(extent_next) + strlen(" + "));
+        sprintf(*extent+strlen(*extent), " + %s", extent_next);
+        free(extent_next);
+    }
+#endif
+
+    // printf("Extent: %s\n", *extent);
+
+    free(lbexpr);
+    free(ubexpr);
+}
+
 
 /*char *get_data_extent(PlutoAccess *acc, char **params, int npars, int dim)
 {
-    return scoplib_symbol_table_get_bound(acc->symbol, dim, params, npars);
+return scoplib_symbol_table_get_bound(acc->symbol, dim, params, npars);
 }*/
 
 /* Get Alpha matrix (A matrix - INRIA transformation representation */
@@ -3471,7 +4066,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
     remap = pluto_stmt_get_remapping(stmt, &remap_divs);
     // printf("Remapping matrix\n");
     // pluto_matrix_print(stdout, remap);
-    //
+    
 
     int _lcm = 1;
     for (r=0; r<remap->nrows; r++) {
@@ -3690,6 +4285,752 @@ int pluto_transformations_full_ranked(PlutoProg *prog)
     return 1;
 }
 
+struct acc_info{
+    char *prefix;
+    int acc_num;
+    isl_union_map **new_maps;
+    isl_union_map **schedule;
+    isl_map *base_schedule;
+};
+
+static int set_tuple_name(__isl_take isl_map *map, void *usr)
+{
+    char *name;
+
+    struct acc_info *info = (struct acc_info *) usr;
+    name = malloc(strlen(info->prefix)+4);
+    sprintf(name, "%s%d", info->prefix, info->acc_num);
+    // printf("%s\n", name);
+    map = isl_map_set_tuple_name(map, isl_dim_in, name);
+    info->acc_num++;
+
+    *info->new_maps = isl_union_map_union(*info->new_maps, 
+            isl_union_map_from_map(map));
+    isl_map *schedule_i = isl_map_copy(info->base_schedule);
+    schedule_i = isl_map_set_tuple_name(schedule_i, isl_dim_in, name);
+    *info->schedule = isl_union_map_union(*info->schedule,
+            isl_union_map_from_map(schedule_i));
+    free(name);
+
+    return 0;
+}
+
+/* Compute dependences based on the domain, scheduling, and access
+ * information in "pscop", and put the result in "prog".
+ */
+static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
+        PlutoOptions *options)
+{
+    int i;
+    isl_union_map *empty;
+    isl_union_map *writes;
+    isl_union_map *reads;
+    isl_union_map *schedule;
+    isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
+
+    IF_DEBUG(printf("[pluto] compute deps (isl)\n"););
+
+    isl_space *space = isl_set_get_space(pscop->context);
+    empty = isl_union_map_empty(isl_space_copy(space));
+    // writes = pet_scop_collect_may_writes(pscop);
+    // schedule = pet_scop_collect_schedule(pscop);
+    // reads = pet_scop_collect_may_reads(pscop);
+
+    reads = isl_union_map_copy(empty);
+    writes = isl_union_map_copy(empty);
+    schedule = isl_union_map_copy(empty);
+
+    for (i=0; i<prog->nstmts; i++) {
+    	struct pet_stmt *pstmt = pscop->stmts[i];
+        Stmt *stmt = prog->stmts[i];
+
+        /* The schedule's parameters are not aligned by pet to its context and
+         * domain (the latter two are consistent */
+        //pstmt->schedule = isl_map_align_params(pstmt->schedule, isl_set_get_space(pscop->context));
+
+        isl_union_map *lreads =	pet_stmt_collect_accesses(pstmt, 1, 0, 
+                0, 0, 0, isl_space_copy(space));
+        isl_union_map *lwrites = pet_stmt_collect_accesses(pstmt, 0, 1, 
+                0, 0, 0, isl_space_copy(space));
+
+        char name[20];
+        sprintf(name, "S_%d_r", stmt->id);
+        struct acc_info rinfo = {name, 0, &reads, &schedule, pstmt->schedule};
+        isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
+        sprintf(name, "S_%d_w", stmt->id);
+        struct acc_info winfo = {name, 0, &writes, &schedule, pstmt->schedule};
+        isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
+
+        isl_union_map_free(lreads);
+        isl_union_map_free(lwrites);
+    }
+
+    isl_space_free(space);
+
+    // isl_union_map_dump(reads);
+    // isl_union_map_dump(writes);
+    // isl_union_map_dump(schedule);
+
+    if (options->lastwriter) {
+        // compute RAW dependences which do not contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(reads),
+                isl_union_map_copy(writes),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(schedule),
+                &dep_raw, NULL, NULL, NULL);
+        // isl_union_map_dump(dep_raw);
+        // compute WAW and WAR dependences which do not contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(writes),
+                isl_union_map_copy(writes),
+                isl_union_map_copy(reads),
+                isl_union_map_copy(schedule),
+                &dep_waw, &dep_war, NULL, NULL);
+        if (options->rar) {
+            // compute RAR dependences which do not contain transitive dependences
+            isl_union_map_compute_flow(isl_union_map_copy(reads),
+                    isl_union_map_copy(reads),
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(schedule),
+                    &dep_rar, NULL, NULL, NULL);
+        }
+    }else{
+        // compute RAW dependences which may contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(reads),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(writes),
+                isl_union_map_copy(schedule),
+                NULL, &dep_raw, NULL, NULL);
+        // compute WAR dependences which may contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(writes),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(reads),
+                isl_union_map_copy(schedule),
+                NULL, &dep_war, NULL, NULL);
+        // compute WAW dependences which may contain transitive dependences
+        isl_union_map_compute_flow(isl_union_map_copy(writes),
+                isl_union_map_copy(empty),
+                isl_union_map_copy(writes),
+                isl_union_map_copy(schedule),
+                NULL, &dep_waw, NULL, NULL);
+        if (options->rar) {
+            // compute RAR dependences which may contain transitive dependences
+            isl_union_map_compute_flow(isl_union_map_copy(reads),
+                    isl_union_map_copy(empty),
+                    isl_union_map_copy(reads),
+                    isl_union_map_copy(schedule),
+                    NULL, &dep_rar, NULL, NULL);
+        }
+    }
+
+    if (options->isldepcoalesce) {
+        dep_raw = isl_union_map_coalesce(dep_raw);
+        dep_war = isl_union_map_coalesce(dep_war);
+        dep_waw = isl_union_map_coalesce(dep_waw);
+    }
+
+    prog->ndeps = 0;
+    isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
+    isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
+
+    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i] = pluto_dep_alloc();
+    }
+    prog->ndeps = 0;
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_raw, OSL_DEPENDENCE_RAW);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war, OSL_DEPENDENCE_WAR);
+    prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw, OSL_DEPENDENCE_WAW);
+    prog->transdeps = NULL;
+    prog->ntransdeps = 0;
+
+    isl_union_map_free(dep_raw);
+    isl_union_map_free(dep_war);
+    isl_union_map_free(dep_waw);
+
+    isl_union_map_free(empty);
+    isl_union_map_free(writes);
+    isl_union_map_free(reads);
+    isl_union_map_free(schedule);
+}
+
+/* Read statement info from pet structures (nvar: max domain dim) */
+static Stmt **pet_to_pluto_stmts(struct pet_scop * pscop)
+{
+    int i, j, s;
+    Stmt **stmts;
+    int nvar, npar, nstmts, max_sched_rows;
+    char **params;
+
+    IF_DEBUG(printf("[pluto] Pet to Pluto stmts\n"););
+
+    npar = isl_set_dim(pscop->context, isl_dim_all);
+    nstmts = pscop->n_stmt;
+
+    if (nstmts == 0)    return NULL;
+
+    IF_DEBUG(printf("[pluto] Pet SCoP context\n"););
+    IF_DEBUG(isl_set_dump(pscop->context););
+
+    params = NULL;
+    if (npar >= 1)    {
+        params = (char **) malloc(sizeof(char *)*npar);
+    }
+    isl_space *cspace = isl_set_get_space(pscop->context);
+    for (i=0; i<npar; i++)  {
+        params[i] = strdup(isl_space_get_dim_name(cspace, isl_dim_param, i));
+    }
+    isl_space_free(cspace);
+
+    /* Max dom dimensionality */
+    nvar = -1;
+    max_sched_rows = 0;
+
+    for (s=0; s<nstmts; s++) {
+    	struct pet_stmt * pstmt = pscop->stmts[s];
+    	int stmt_dim = isl_set_dim(pstmt->domain, isl_dim_set);
+        nvar = PLMAX(nvar, stmt_dim);
+
+        int nrows = isl_map_dim(pstmt->schedule, isl_dim_out);
+        max_sched_rows = PLMAX(max_sched_rows, nrows);
+    }
+
+    /* Allocate more to account for unroll/jamming later on */
+    stmts = (Stmt **) malloc(nstmts*sizeof(Stmt *));
+
+    for(s=0; s<nstmts; s++)  {
+    	struct pet_stmt *pstmt = pscop->stmts[s];
+        PlutoConstraints *domain = isl_set_to_pluto_constraints(pstmt->domain);
+
+        PlutoMatrix *trans = isl_map_to_pluto_func(pstmt->schedule,
+                isl_set_dim(pstmt->domain, isl_dim_set), npar);
+
+        stmts[s] = pluto_stmt_alloc(isl_set_dim(pstmt->domain, isl_dim_set), 
+                domain, trans);
+
+        /* Pad with all zero rows */
+        int curr_sched_rows = stmts[s]->trans->nrows;
+        for (j=curr_sched_rows; j<max_sched_rows; j++) {
+            pluto_stmt_add_hyperplane(stmts[s], H_SCALAR, j);
+        }
+
+        pluto_constraints_free(domain);
+        pluto_matrix_free(trans);
+
+        Stmt *stmt = stmts[s];
+
+        stmt->id = s;
+        stmt->type = ORIG;
+
+        // assert(scop_stmt->domain->elt->NbColumns-1 == stmt->dim + npar + 1);
+
+        for (j=0; j<stmt->dim; j++)  {
+            stmt->is_orig_loop[j] = true;
+        }
+
+        /* Tile it if it's tilable unless turned off by .fst/.precut file */
+        stmt->tile = 1;
+
+        /* Store the iterator names*/
+        isl_space *dspace = isl_set_get_space(pstmt->domain);
+        for (j=0; j<stmt->dim; j++)    {
+            stmt->iterators[j] = strdup(
+                    isl_space_get_dim_name(dspace, isl_dim_set, j));
+        }
+        isl_space_free(dspace);
+
+        pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
+        pluto_constraints_set_names_range(stmt->domain, params, stmt->dim, 0, npar);
+
+
+        /*
+         * Copy the body of the statement found by print_user. Remove 
+         * the newline character at the end to make it compatible to ClooG 
+         * format.
+         */
+        if (pstmt->stmt_text) {
+            int len=(strlen(pstmt->stmt_text));
+            stmt->text = (char *) malloc(len+1);
+            strcpy(stmt->text, pstmt->stmt_text);
+            stmt->text[len-1]='\0'; 
+            free(pstmt->stmt_text);
+            pstmt->stmt_text = NULL;
+        }else stmt->text = strdup("/* unknown - failure constructing stmt body */");
+
+        isl_space *space = isl_set_get_space(pscop->context);
+        isl_union_map *reads =	pet_stmt_collect_accesses(pstmt, 
+                1, 0, 0, 0, 0, isl_space_copy(space));
+        isl_union_map *writes = pet_stmt_collect_accesses(pstmt, 0, 1, 
+                0, 0, 0, space);
+        isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
+        isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
+
+        struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
+        struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, npar};
+
+        //printf("Num reads: %d\n", stmt->nreads);
+        //isl_union_map_dump(reads);
+        //printf("Num writes: %d\n", stmt->nwrites);
+        //isl_union_map_dump(writes);
+
+        if (stmt->nreads >= 1) {
+            stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
+        }
+        if (stmt->nwrites >= 1) {
+            stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
+        }
+        for (j=0; j<stmt->nreads; j++) {
+            stmt->reads[j] = NULL;
+        }
+        for (j=0; j<stmt->nwrites; j++) {
+            stmt->writes[j] = NULL;
+        }
+
+        isl_union_map_foreach_map(reads, &isl_map_extract_access_func, &e_reads);
+        isl_union_map_foreach_map(writes, &isl_map_extract_access_func, &e_writes);
+
+        isl_union_map_free(reads);
+        isl_union_map_free(writes);
+    }
+
+    for (j=0; j<npar; j++) {
+        free(params[j]);
+    }
+    free(params);
+
+    // pluto_stmts_print(stdout, stmts, nstmts);
+
+    return stmts;
+}
+
+
+/* Find the element in scop->stmts that has the given "name".
+ *  */
+static struct pet_stmt *find_stmt(struct pet_scop *scop, const char *name)
+{
+    int i;
+
+    for (i = 0; i < scop->n_stmt; ++i) {
+        struct pet_stmt *stmt = scop->stmts[i];
+        const char *name_i;
+
+        name_i = isl_set_get_tuple_name(stmt->domain);
+        if (!strcmp(name, name_i))
+            return stmt;
+    }
+    return NULL;
+}
+
+static __isl_give void free_isl_id_to_ast_expr(void *user)
+{
+        isl_id_to_ast_expr_free((isl_id_to_ast_expr *) user);
+}
+
+/* Find the element in scop->stmts that the same name
+ *  * as the function call by the given user node.
+ *   * These names are determined by the names of the domains
+ *    * of the schedule constructed in transform().
+ *     */
+static struct pet_stmt *extract_pet_stmt(__isl_keep isl_ast_node *node,
+        struct pet_scop *scop)
+{
+    isl_ast_expr *expr, *arg;
+    isl_id *id;
+    struct pet_stmt *stmt;
+
+    expr = isl_ast_node_user_get_expr(node);
+    arg = isl_ast_expr_get_op_arg(expr, 0);
+    isl_ast_expr_free(expr);
+    id = isl_ast_expr_get_id(arg);
+    isl_ast_expr_free(arg);
+    stmt = find_stmt(scop, isl_id_get_name(id));
+    isl_id_free(id);
+
+    return stmt;
+}
+
+/* Index transformation callback for pet_stmt_build_ast_exprs.
+ * "index" expresses the array indices in terms of statement iterators
+ * "iterator_map" expresses the statement iterators in terms of
+ * AST loop iterators.
+ * 
+ * The result expresses the array indices in terms of
+ * AST loop iterators.
+ */
+static __isl_give isl_multi_pw_aff *pullback_index(
+        __isl_take isl_multi_pw_aff *index, __isl_keep isl_id *id, void *user)
+{
+    isl_pw_multi_aff *iterator_map = (isl_pw_multi_aff *) user;
+
+    iterator_map = isl_pw_multi_aff_copy(iterator_map);
+    return isl_multi_pw_aff_pullback_pw_multi_aff(index, iterator_map);
+}
+
+
+#if 0
+/* Return a list of isl_ids of the form "prefix%d".
+*/
+static __isl_give isl_id_list *generate_names_(isl_ctx * ctx)
+{
+    isl_id_list *names;
+
+    names = isl_id_list_alloc(ctx, 7);
+        isl_id *id;
+
+        id = isl_id_alloc(ctx, "0", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "t", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "0", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "i", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "0", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "j", NULL);
+        names = isl_id_list_add(names, id);
+        id = isl_id_alloc(ctx, "0", NULL);
+        names = isl_id_list_add(names, id);
+
+    return names;
+}
+#endif
+
+/* Set the iterator names using schedule map of the statement*/
+static __isl_give isl_id_list *generate_names(isl_ctx * ctx, struct pet_stmt * stmt)
+{
+    isl_id_list *names;
+    isl_id *id;
+    isl_printer *k;
+
+    char buffer[10];
+    int local = 0;
+
+    names = isl_id_list_alloc(ctx, 20);
+
+    k = isl_printer_to_str(ctx);
+    k = isl_printer_print_map(k, stmt->schedule);
+    char *map_text= isl_printer_get_str(k);
+    isl_printer_free(k);
+    char *cur;
+
+    /* Read from the map text and populate the id list*/
+
+    cur=map_text;
+    while ( *cur != '{') cur ++;
+    while ( *cur != '>') cur ++;
+    while ( *cur != '[') cur ++;
+    while ( *cur != ']' )
+    { 
+        if ( *cur == ',')  
+        {
+            buffer[local]='\0'; 
+            id = isl_id_alloc(ctx, buffer, NULL);
+            names = isl_id_list_add(names, id);
+            local=0;
+        }
+        else{
+            buffer[local]=*cur;
+            local++;
+        }
+        cur ++;
+    }
+    buffer[local]='\0'; 
+    id = isl_id_alloc(ctx, buffer, NULL);
+    names = isl_id_list_add(names, id);
+    //printf("map_text: %s", map_text);
+    free(map_text);
+
+    return names;
+}
+
+/* Transform the accesses in the statement associated to the domain
+ * called by "node" to refer to the AST loop iterators, construct
+ * corresponding AST expressions using "build" and attach them
+ * to the node.
+ */
+static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
+        __isl_keep isl_ast_build *build, void *user)
+{
+        struct pet_stmt *stmt;
+        isl_ctx *ctx;
+        isl_id *id;
+        isl_map *map;
+        isl_pw_multi_aff *iterator_map;
+        isl_id_to_ast_expr *ref2expr;
+        struct pet_scop *scop = (struct pet_scop *) user;
+
+        ctx = isl_ast_node_get_ctx(node);
+
+        stmt = extract_pet_stmt(node, scop);
+        if (!stmt)
+                isl_die(ctx, isl_error_internal, "cannot find statement",
+                        isl_ast_node_free(node); node = NULL);
+
+        map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
+        map = isl_map_reverse(map);
+        iterator_map = isl_pw_multi_aff_from_map(map);
+
+        isl_id_list * iterators = generate_names(ctx, stmt);
+        build = isl_ast_build_set_iterators(build, iterators);
+        //isl_ast_build_dump(build);
+
+        ref2expr = pet_stmt_build_ast_exprs(stmt, build,
+                                    &pullback_index, iterator_map, NULL, NULL);
+        isl_pw_multi_aff_free(iterator_map);
+
+        id = isl_id_alloc(ctx, NULL, ref2expr);
+        id = isl_id_set_free_user(id, &free_isl_id_to_ast_expr);
+
+        return isl_ast_node_set_annotation(node, id);
+}
+
+/* Print the statement corresponding to "node" to "p".
+ *  We look for the statement in the pet_scop passed through "user".
+ *  The AST expressions for all references in the statement
+ *  have been attached to the node by at_each_domain().
+ */
+static __isl_give isl_printer *print_user(__isl_take isl_printer *p,
+        __isl_take isl_ast_print_options *print_options,
+        __isl_keep isl_ast_node *node, void *user)
+{
+    isl_id_to_ast_expr *ref2expr;
+    isl_id *id;
+    struct pet_stmt *stmt;
+    struct pet_scop *scop = (struct pet_scop *) user;
+
+    isl_ctx *ctx = isl_printer_get_ctx(p);
+    isl_printer *k;
+    k = isl_printer_to_str(ctx);
+
+    stmt = extract_pet_stmt(node, scop);
+
+    id = isl_ast_node_get_annotation(node);
+    ref2expr = (isl_id_to_ast_expr *) isl_id_get_user(id);
+    isl_id_free(id);
+
+    k = pet_stmt_print_body(stmt, k, ref2expr);
+    stmt->stmt_text = isl_printer_get_str(k);
+    isl_printer_free(k);
+
+    isl_ast_print_options_free(print_options);
+
+    return p;
+}
+/* Is "stmt" a kill statement?
+ */
+static int is_kill(struct pet_stmt *stmt)
+{
+	if (stmt->body->type != pet_expr_unary)
+		return 0;
+	return stmt->body->op == pet_op_kill;
+}
+
+/* Is "stmt" not a kill statement?
+ */
+static int is_not_kill(struct pet_stmt *stmt)
+{
+	return !is_kill(stmt);
+}
+
+static __isl_give isl_union_set *collect_domains(struct pet_scop *scop,
+	int (*pred)(struct pet_stmt *stmt))
+{
+	int i;
+	isl_set *domain_i;
+	isl_union_set *domain;
+
+	if (!scop)
+		return NULL;
+
+	domain = isl_union_set_empty(isl_set_get_space(scop->context));
+
+	for (i = 0; i < scop->n_stmt; ++i) {
+		struct pet_stmt *stmt = scop->stmts[i];
+
+		if (!pred(stmt))
+			continue;
+
+		if (stmt->n_arg > 0)
+			isl_die(isl_union_set_get_ctx(domain),
+				isl_error_unsupported,
+				"data dependent conditions not supported",
+				return isl_union_set_free(domain));
+
+		domain_i = isl_set_copy(scop->stmts[i]->domain);
+		domain = isl_union_set_add_set(domain, domain_i);
+	}
+
+	return domain;
+}
+
+/* Collect the iteration domains of the statements in "scop",
+ * skipping kill statements.
+ */
+static __isl_give isl_union_set *collect_non_kill_domains(struct pet_scop *scop)
+{
+	return collect_domains(scop, &is_not_kill);
+}
+
+
+/* Code generate the scop 'scop' and print the corresponding C code to 'p'.
+ */
+static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
+	__isl_take isl_printer *p)
+{
+	isl_ctx *ctx = isl_printer_get_ctx(p);
+	isl_union_set *domain_set;
+	isl_union_map *schedule_map;
+	isl_ast_build *build;
+	isl_ast_print_options *print_options;
+	isl_ast_node *tree;
+
+    domain_set = collect_non_kill_domains(scop);
+    schedule_map = pet_scop_collect_schedule(scop);
+	schedule_map = isl_union_map_intersect_domain(schedule_map, domain_set);
+
+	build = isl_ast_build_from_context(isl_set_copy(scop->context));
+	build = isl_ast_build_set_at_each_domain(build, &at_each_domain, scop);
+
+	tree = isl_ast_build_ast_from_schedule(build, schedule_map);
+
+	isl_ast_build_free(build);
+
+	print_options = isl_ast_print_options_alloc(ctx);
+	print_options = isl_ast_print_options_set_print_user(print_options,
+							&print_user, scop);
+	p = isl_ast_node_print(tree, p, print_options);
+
+	isl_ast_node_free(tree);
+
+	return p;
+}
+
+
+static int read_codegen_context_from_file(PlutoConstraints *codegen_context)
+{
+    FILE *fp = fopen("codegen.context", "r");
+
+    if (fp) {
+        IF_DEBUG(printf("[Pluto] Reading from codegen.context\n"););
+        PlutoConstraints *cc = pluto_constraints_read(fp);
+        if (cc && cc->ncols == codegen_context->ncols) {
+            pluto_constraints_add(codegen_context, cc);
+            return 0;
+        }
+        IF_DEBUG(printf("[WARNING] Failed to read from codegen.context\n"););
+    }
+
+    return 1;
+}
+
+/* 
+ * Extract necessary information from pet_scop to create PlutoProg - a
+ * representation of the program sufficient to be used throughout Pluto. 
+ * PlutoProg also includes dependences; uses isl.
+ */
+PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions *options)
+{
+    int i, max_sched_rows, npar;
+
+    if (pscop == NULL) return NULL;
+
+    pet_scop_align_params(pscop);
+
+    PlutoProg *prog = pluto_prog_alloc();
+
+    /* Program parameters */
+    npar = isl_set_dim(pscop->context, isl_dim_all);
+
+    isl_space *cspace = isl_set_get_space(pscop->context);
+    for (i=0; i<npar; i++) {
+        pluto_prog_add_param(prog, 
+                isl_space_get_dim_name(cspace, isl_dim_param, i),
+                prog->npar);
+    }
+    isl_space_free(cspace);
+
+    pluto_constraints_free(prog->context);
+    prog->context = isl_set_to_pluto_constraints(pscop->context);
+    IF_DEBUG(printf("[pluto] Pet SCoP context\n"));
+    IF_DEBUG(isl_set_dump(pscop->context););
+    IF_DEBUG(pluto_constraints_compact_print(stdout, prog->context));
+
+    // isl_set_dump(pscop->context);
+
+    if (options->codegen_context != -1)	{
+        for (i=0; i<prog->npar; i++)  {
+            pluto_constraints_add_inequality(prog->codegen_context);
+            prog->codegen_context->val[i][i] = 1;
+            prog->codegen_context->val[i][prog->codegen_context->ncols-1] = -options->codegen_context;
+        }
+    }
+
+    read_codegen_context_from_file(prog->codegen_context);
+
+    prog->options = options;
+    prog->nstmts = pscop->n_stmt;
+
+    prog->nvar = -1;
+    max_sched_rows = 0;
+
+    for (i=0; i<prog->nstmts; i++) {
+    	struct pet_stmt * pstmt = pscop->stmts[i];
+
+    	int stmt_dim = isl_set_dim(pstmt->domain, isl_dim_set);
+        prog->nvar = PLMAX(prog->nvar, stmt_dim);
+
+        int nrows = isl_map_dim(pstmt->schedule, isl_dim_out);
+        max_sched_rows = PLMAX(max_sched_rows, nrows);
+    }
+
+    FILE *text_dump = fopen(".dumpstmttxt", "w");
+    isl_printer *p = isl_printer_to_file(ctx , text_dump);
+    p = construct_stmt_body(pscop,p);
+    isl_printer_free(p);
+    fclose(text_dump);
+
+    prog->stmts = pet_to_pluto_stmts(pscop);
+
+    /* Compute dependences */
+    compute_deps_pet(pscop, prog, options);
+
+    /* Add hyperplanes */
+    if (prog->nstmts >= 1) {
+        for (i=0; i<max_sched_rows; i++) {
+            pluto_prog_add_hyperplane(prog,prog->num_hyperplanes,H_UNKNOWN);
+            prog->hProps[prog->num_hyperplanes-1].type =
+                (i%2)? H_LOOP: H_SCALAR;
+        }
+    }
+
+    /* Hack for linearized accesses */
+    FILE *lfp = fopen(".linearized", "r");
+    FILE *nlfp = fopen(".nonlinearized", "r");
+    char tmpstr[256];
+    char linearized[256];
+    if (lfp && nlfp) {
+        for (i=0; i<prog->nstmts; i++)    {
+            rewind(lfp);
+            rewind(nlfp);
+            while (!feof(lfp) && !feof(nlfp))      {
+                fgets(tmpstr, 256, nlfp);
+                fgets(linearized, 256, lfp);
+                if (strstr(tmpstr, prog->stmts[i]->text))        {
+                    prog->stmts[i]->text = (char *) realloc(prog->stmts[i]->text, sizeof(char)*(strlen(linearized)+1));
+                    strcpy(prog->stmts[i]->text, linearized);
+                }
+            }
+        }
+        fclose(lfp);
+        fclose(nlfp);
+    }
+
+    return prog;
+}
+
+
+
 osl_relation_p get_identity_schedule(int dim, int npar)
 {
 
@@ -3718,22 +5059,6 @@ osl_relation_p get_identity_schedule(int dim, int npar)
     return rln;
 }
 
-static int read_codegen_context_from_file(PlutoConstraints *codegen_context)
-{
-    FILE *fp = fopen("codegen.context", "r");
-
-    if (fp) {
-        IF_DEBUG(printf("[Pluto] Reading from codegen.context\n"););
-        PlutoConstraints *cc = pluto_constraints_read(fp);
-        if (cc && cc->ncols == codegen_context->ncols) {
-            pluto_constraints_add(codegen_context, cc);
-            return 0;
-        }
-        IF_DEBUG(printf("[WARNING] Failed to read from codegen.context\n"););
-    }
-
-    return 1;
-}
 
 /*
  * Return clone of a statement
@@ -3920,4 +5245,215 @@ void pluto_stmt_transformation_print(const Stmt *stmt)
         else printf("unknown");
     }
     printf(")\n\n");
+}
+
+/*
+ * Computes the dependence polyhedron between the source iterators of dep1 and dep2
+ * domain1:  source iterators of dep1
+ * domain2:  source iterators of dep2
+ * dep1: first dependence
+ * dep2: second dependence
+ * access_matrix: access function matrix for source iterators of dep2. pass NULL to use access function in dep2
+ * returns dependence polyhedron
+ */
+
+PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstraints *domain2, Dep *dep1, Dep *dep2,
+        PlutoProg *prog, PlutoMatrix *access_matrix)
+{
+    int i, *divs;
+    isl_ctx *ctx;
+    isl_dim *dim;
+    isl_space *param_space;
+    isl_set *context;
+    isl_union_map *empty;
+    isl_union_map *write;
+    isl_union_map *read;
+    isl_union_map *schedule;
+    isl_union_map *dep_raw;
+
+    ctx = isl_ctx_alloc();
+    assert(ctx);
+
+    dim = isl_dim_set_alloc(ctx, prog->npar , 0);
+    dim = set_names(dim, isl_dim_param,prog->params );
+    param_space = isl_space_params(isl_space_copy(dim));
+    context = osl_relation_list_to_isl_set(
+            pluto_constraints_to_osl_domain(prog->context, prog->npar), 
+            param_space);
+
+
+    empty = isl_union_map_empty(isl_dim_copy(dim));
+    write = isl_union_map_empty(isl_dim_copy(dim));
+    read = isl_union_map_empty(isl_dim_copy(dim));
+    schedule = isl_union_map_empty(dim);
+
+    isl_set *dom;
+
+    //Add the source iterators of dep1 and corresponding access function to isl
+    PlutoConstraints *source_iterators = domain2;
+    PlutoAccess *access = dep2->src_acc;
+    Stmt *s = prog->stmts[dep2->src];
+    int domain_dim = source_iterators->ncols - prog->npar -1;
+    char **iter = (char**)malloc(domain_dim*sizeof(char*));
+
+    for (i=0; i < domain_dim; i++) {
+        iter[i] = malloc(10 * sizeof(char));
+        sprintf(iter[i], "d%d", i+1);
+    }
+
+    //assert(domain_dim <= s->dim);
+    isl_map *read_pos;
+    isl_map *write_pos;
+    isl_map *schedule_i;
+
+    char name[20];
+
+    snprintf(name, sizeof(name), "S_%d_r%d", 0, 0);
+
+    dim = isl_dim_set_alloc(ctx,prog->npar ,domain_dim );
+    dim = set_names(dim, isl_dim_param,prog->params);
+    dim = set_names(dim, isl_dim_set,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+
+    dom = osl_relation_list_to_isl_set(
+            pluto_constraints_list_to_osl_domain(source_iterators, prog->npar),
+            dim);
+
+
+    dom = isl_set_intersect_params(dom, isl_set_copy(context));
+
+
+    dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
+            2*domain_dim +1);
+    dim = set_names(dim, isl_dim_param, prog->params);
+    dim = set_names(dim, isl_dim_in,iter );
+    dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+
+
+    PlutoMatrix *i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
+    schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
+
+    if(access_matrix == NULL)
+        read_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
+    else
+        read_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
+    read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
+    free(divs);
+
+    schedule = isl_union_map_union(schedule,
+            isl_union_map_from_map(schedule_i));
+
+
+    for(i=0;i<domain_dim; i++){
+        free(iter[i]);
+    }
+
+    free(iter);
+
+
+    //Add the source iterators of dep2 and corresponding access function to isl
+    source_iterators = domain1;
+    access = dep1->src_acc;
+    s = prog->stmts[dep1->src];
+    domain_dim = source_iterators->ncols - prog->npar -1;
+
+    iter = (char**)malloc(domain_dim*sizeof(char*));
+
+    for (i=0; i < domain_dim; i++) {
+        iter[i] = malloc(10 * sizeof(char));
+        sprintf(iter[i], "d%d", i+1);
+    }
+
+    snprintf(name, sizeof(name), "S_%d_w%d", 0, 0);
+
+    dim = isl_dim_set_alloc(ctx,prog->npar , domain_dim );
+    dim = set_names(dim, isl_dim_param,prog->params);
+    dim = set_names(dim, isl_dim_set,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_set, name);
+
+    dom = osl_relation_list_to_isl_set(
+            pluto_constraints_list_to_osl_domain(source_iterators, prog->npar),
+            dim);
+
+    dom = isl_set_intersect_params(dom, isl_set_copy(context));
+
+    dim = isl_dim_alloc(ctx,prog->npar ,domain_dim,
+            2*domain_dim +1);
+    dim = set_names(dim, isl_dim_param, prog->params);
+    dim = set_names(dim, isl_dim_in,iter);
+    dim = isl_dim_set_tuple_name(dim, isl_dim_in, name);
+
+    //osl_relation_free(smat);
+   i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
+    schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
+
+    write_pos = pluto_basic_access_to_isl_union_map(pluto_get_new_access_func(s, access->mat, &divs), access->name,  dom);
+    //write_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,  dom);
+    write = isl_union_map_union(write, isl_union_map_from_map(write_pos));
+
+    schedule = isl_union_map_union(schedule,
+            isl_union_map_from_map(schedule_i));
+
+
+    isl_union_map_compute_flow(isl_union_map_copy(read),
+            isl_union_map_copy(empty),
+            isl_union_map_copy(write),
+            isl_union_map_copy(schedule),
+            NULL, &dep_raw, NULL, NULL);
+
+
+    /*
+    //Find dep with last writer option
+    isl_union_map_compute_flow(isl_union_map_copy(read),
+    isl_union_map_copy(write),
+    isl_union_map_copy(empty),
+    isl_union_map_copy(schedule),
+    &dep_raw, NULL, NULL, NULL);
+    */
+
+    dep_raw = isl_union_map_coalesce(dep_raw);
+
+    int ndeps = 0;
+    isl_union_map_foreach_map(dep_raw, &isl_map_count, &ndeps);
+
+    if(ndeps == 0) {
+        return NULL;
+    }
+
+    Dep **deps = (Dep **)malloc(ndeps * sizeof(Dep *));
+    for (i=0; i<ndeps; i++) {
+        deps[i] = pluto_dep_alloc();
+    }
+    ndeps = 0;
+    ndeps += extract_deps(deps, ndeps, prog->stmts, dep_raw, OSL_DEPENDENCE_RAW);
+
+    PlutoConstraints *tdpoly = NULL;
+    for(i=0; i<ndeps; i++){
+        if(tdpoly == NULL)
+            tdpoly = pluto_constraints_dup(deps[i]->dpolytope);
+        else
+            pluto_constraints_unionize(tdpoly, deps[i]->dpolytope);
+    }
+
+
+
+    //TODO: Free deps
+
+    isl_union_map_free(dep_raw);
+
+    isl_union_map_free(empty);
+    isl_union_map_free(write);
+    isl_union_map_free(read);
+    isl_union_map_free(schedule);
+    isl_set_free(context);
+
+    isl_ctx_free(ctx);
+
+    for(i=0;i<domain_dim; i++){
+        free(iter[i]);
+    }
+
+    free(iter);
+
+    return tdpoly;
 }
