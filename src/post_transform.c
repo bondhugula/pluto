@@ -309,6 +309,34 @@ int gen_unroll_file(PlutoProg *prog)
     return 0;
 }
 
+int *calc_score_for_loops(Ploop **loops, int nloops, PlutoProg *prog)
+{  
+    int *loop_scores= (int*)malloc(nloops*sizeof(int));
+    int l;
+
+    for (l=0; l<nloops; l++) {
+        int a, s, t, v, score;
+        a = get_num_accesses(loops[l], prog);
+        s = get_num_spatial_accesses(loops[l], prog);
+        t = get_num_invariant_accesses(loops[l], prog);
+        v = pluto_loop_is_vectorizable(loops[l], prog);
+        /*
+         * Penalize accesses which will have neither spatial nor temporal
+         * reuse (i.e., non-contiguous ones); high priority for vectorization
+         * (if it's vectorizable it also means everything in it has
+         * either spatial or temporal reuse, so there is no big tradeoff)
+         * TODO: tune this further
+         */
+        score = (2*s + 4*t + 8*v - 16*(a-s-t))*loops[l]->nstmts;
+
+        IF_DEBUG(printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
+        IF_DEBUG(pluto_loop_print(loops[l]));
+
+        loop_scores[l] = score;
+    }
+
+    return loop_scores;
+}
 
 /*
  * is_tiled: is band tiled?
@@ -330,29 +358,17 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *
 
     max_score = 0;
     best_loop = NULL;
-    for (l=0; l<nloops; l++) {
-        int a, s, t, v, score;
-        a = get_num_accesses(loops[l], prog);
-        s = get_num_spatial_accesses(loops[l], prog);
-        t = get_num_invariant_accesses(loops[l], prog);
-        v = pluto_loop_is_vectorizable(loops[l], prog);
-        /*
-         * Penalize accesses which will have neither spatial nor temporal
-         * reuse (i.e., non-contiguous ones); high priority for vectorization
-         * (if it's vectorizable it also means everything in it has
-         * either spatial or temporal reuse, so there is no big tradeoff)
-         * TODO: tune this further
-         */
-        score = (2*s + 4*t + 8*v - 16*(a-s-t))*loops[l]->nstmts;
+
+    int* loop_scores = calc_score_for_loops(loops, nloops, prog);
+
+    for (l=0; l<nloops; l++){
         /* Using >= since we'll take the last one if all else is the same */
-        if (score >= max_score) {
-            max_score = score;
+        if (loop_scores[l] >= max_score) {
+            max_score = loop_scores[l];
             best_loop = loops[l];
         }
-        IF_DEBUG(printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
-        IF_DEBUG(pluto_loop_print(loops[l]));
     }
-
+        
     if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
         IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
         IF_DEBUG(pluto_loop_print(best_loop););
