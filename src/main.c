@@ -64,7 +64,9 @@ void usage_message(void)
     fprintf(stdout, "                                 (disabled by default)\n");
     fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
+#ifdef GLPK
     fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+#endif
     fprintf(stdout, "\n");
     fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
     fprintf(stdout, "       --tile                    Tile for locality [disabled by default]\n");
@@ -206,6 +208,9 @@ int main(int argc, char *argv[])
         {"noisldepcoalesce", no_argument, &options->isldepcoalesce, 0},
         {"readscop", no_argument, &options->readscop, 1},
         {"pipsolve", no_argument, &options->pipsolve, 1},
+#ifdef GLPK
+        {"glpk", no_argument, &options->glpk, 1},
+#endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
         {0, 0, 0, 0}

@@ -31,6 +31,10 @@
 
 #include "osl/extensions/dependence.h"
 
+#ifdef GLPK
+#include <glpk.h>
+#endif
+
 /* Check out which piplib we are linking with */
 /* Candl/piplib_wrapper converts relation to matrices */
 #ifdef SCOPLIB_INT_T_IS_LONGLONG // Defined in src/Makefile.am
@@ -547,6 +551,4 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
-
-
 #endif
