@@ -875,7 +875,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     float numerator;
     float partial_denominator=0;
     float denominator;
-    for(int i = 1; i< max_dim ; i++)
+    for(i = 1; i< max_dim ; i++)
     {
         numerator = y_coeffs[i]-y_coeffs[i-1];
         partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
@@ -884,7 +884,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         tile_size_final[max_dim-1-i] += (4-tile_size_final[max_dim-1-i]%4 );
     }
 
-    for (int i = 0; i < max_dim; ++i)
+    for (i = 0; i < max_dim; ++i)
     {
         tile_size_final[i] += BASE_TILE_SIZE;
     }
