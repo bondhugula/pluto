@@ -711,8 +711,8 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     }
     */
 
-    isl_point_dump(pnt); 
-    printf("TF: %lu\n", tile_footprint);
+    //isl_point_dump(pnt); 
+    //printf("TF: %lu\n", tile_footprint);
 
     psmi_auto->slope_data[psmi_auto->counter++] = tile_footprint;
 
@@ -823,11 +823,6 @@ int *get_auto_tile_size(PlutoProg *prog,
 
     for(i=0; i< max_dim; i++)
     {
-        printf("SD%d: %f\n", i, patmi.slope_data[i]);
-    }
-
-    for(i=0; i< max_dim; i++)
-    {
         int temp = (int) pow(2, i);
         float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
         float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
@@ -875,13 +870,6 @@ int *get_auto_tile_size(PlutoProg *prog,
     //Tile size for innermost loop
     tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
     tile_size_final[max_dim-1] += (8-tile_size_final[i]%8);
-
-    for(int i = 0; i< max_dim; i++)
-    {
-        printf("C: %f ", coeffs[i]);
-        printf("S: %f ", slopes[i]);
-        printf("Y: %f\n", y_coeffs[i]);
-    }
 
     //Model
     float numerator;
