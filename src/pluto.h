@@ -470,7 +470,7 @@ void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 isl_union_map *isl_union_map_for_pluto_schedule(PlutoProg *prog, isl_ctx *ctx, isl_space *space);
 int get_tile_dim(PlutoProg *prog, isl_union_set *domains);
 int *get_auto_tile_size(PlutoProg *prog, isl_union_set *domains, isl_union_map *read,
-                        isl_union_map *write);
+                        isl_union_map *write, int vectorized);
 void pluto_tile(PlutoProg *, int *);
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
