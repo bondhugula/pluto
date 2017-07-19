@@ -2526,6 +2526,7 @@ void ddg_compute_scc(PlutoProg *prog)
         g->sccs[num_scheduled].id = num_scheduled;
         num_scheduled++;
 
+        free(schedulable_sccs);
     }
 
     g->num_sccs=num_scheduled;
@@ -2546,6 +2547,7 @@ void ddg_compute_scc(PlutoProg *prog)
     graph_free(gT);
 
     graph_print_sccs(g);
+    free(scheduled_sccs);
 }
 
 

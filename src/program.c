@@ -2621,7 +2621,7 @@ PlutoProg *pluto_prog_alloc()
 
 void pluto_prog_free(PlutoProg *prog)
 {
-    int i;
+    int i,j;
 
     /* Free dependences */
     for (i=0; i<prog->ndeps; i++) {
@@ -2656,6 +2656,21 @@ void pluto_prog_free(PlutoProg *prog)
     }
     if (prog->nstmts >= 1)  {
         free(prog->stmts);
+    }
+    if (prog->loops!=NULL) {
+        for (i=0; i<prog->nloops; i++) {
+            for (j=0; j<prog->nloops; j++) {
+                if(prog->dist_[i][j]!=NULL){
+                    if(prog->dist_[i][j]->value!=NULL){
+                        pluto_constraints_free(prog->dist_[i][j]->value);
+                    }
+                    free(prog->dist_[i][j]);
+                }
+            }
+            free(prog->dist_[i]);
+        }
+        free(prog->dist_);
+        free(prog->loops);
     }
 
     pluto_constraints_free(prog->context);
@@ -3273,6 +3288,8 @@ void pluto_stmt_free(Stmt *stmt)
         }
         free(reads);
     }
+
+    free(stmt->orig_scc_id);
 
     free(stmt);
 }
