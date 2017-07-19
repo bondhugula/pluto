@@ -756,6 +756,8 @@ bug("Dep being considered for skipping : %d",i);
         } // if
     }
 
+    free(iter_priv_sccs_depth);
+    free(order);
 //    pluto_deps_print(stdout,prog);
 
     CST_WIDTH = prog->npar+1+prog->nloops*(prog->nvar+1)+1;
