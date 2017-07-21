@@ -818,7 +818,35 @@ int *get_auto_tile_size(PlutoProg *prog,
     struct pluto_auto_tile_meta_info patmi = {slope_data, &psmi, 0};
     isl_set_foreach_point(tile_sizes, tile_footprint_for_tile_size, &patmi);
     isl_set_free(tile_sizes);
-    isl_space_free(tile_space); 
+    isl_space_free(tile_space);
+
+    if(vectorized==1)
+    {
+        for(i=0; i< max_dim-1; i++)
+        {
+            int t = i*4;
+            float temp = patmi.slope_data[t+1];
+            patmi.slope_data[t+1] = patmi.slope_data[t+2];
+            patmi.slope_data[t+2] = temp;
+        } 
+    }
+
+    for(i=0; i< max_dim; i++)
+    {
+        int temp = (int) pow(2, i);
+        float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
+        float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
+        slopes[i] = slope;
+        printf("%f\n", slope);
+    }
+
+    for(i=0; i< max_dim; i++)
+    {
+        int temp = (int) pow(2, i);
+        float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
+        float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
+        slopes[i] = slope;
+    }
 
     for(i=0; i< max_dim; i++)
     {
@@ -860,6 +888,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         float tile_size_range = y_coeffs[max_dim-1]-y_coeffs[0];
         y_coeffs[i] = (float) (fraction*tile_size_range);
         y_coeffs[i] += y_coeffs[0];
+        //y_coeffs[i] += 2.0*i;
     }
 
     //Tile size for innermost loop
@@ -882,8 +911,18 @@ int *get_auto_tile_size(PlutoProg *prog,
     for (i = 0; i < max_dim; ++i)
     {
       tile_size_final[i] += BASE_TILE_SIZE;
+      printf("%d - ", tile_size_final[i]);
+      /* Default */
       //tile_size_final[i] = 32;
     }
+
+    int vec_tile_size = tile_size_final[vectorized];
+
+    for(i = vectorized; i<max_dim-1; i++)
+    {
+        tile_size_final[i] =tile_size_final[i+1];
+    }
+    tile_size_final[max_dim-1] = vec_tile_size;
 
     /*
     //Growing in multiples of 16
@@ -1053,9 +1092,34 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     if (options->tile) {
         int *best_fit_size = NULL;
         if (options->autotilesize) { 
+            int nloops, l, max_score, best_loop_index;
+            int num_tiled_levels = 0;
             
-            best_fit_size = get_auto_tile_size(prog, domains, read, write, 0);
-            //int vectorized = pluto_intra_tile_optimize(prog,0);
+            for (i=0; i<nbands; i++)
+            {
+                if(pluto_is_band_innermost(bands[i], num_tiled_levels))
+                {
+                    Ploop **loops;
+
+                    loops = pluto_get_loops_under(bands[i]->loop->stmts, bands[i]->loop->nstmts, 
+                        bands[i]->loop->depth + num_tiled_levels*bands[i]->width, prog, &nloops);
+
+                    max_score = 0;
+                    
+                    int* loop_scores = calc_score_for_loops(loops, nloops, prog);
+
+                    for (l=0; l<nloops; l++){
+                        //Using >= since we'll take the last one if all else is the same 
+                        if (loop_scores[l] >= max_score) {
+                            max_score = loop_scores[l];
+                            best_loop_index = l;
+                        }
+                    }
+                }
+            }
+            //pluto_intra_tile_optimize(prog, 0);
+            //best_loop_index = 0;
+            best_fit_size = get_auto_tile_size(prog, domains, read, write, best_loop_index);
         }
         pluto_compute_dep_directions(prog);
         pluto_compute_dep_satisfaction(prog);
