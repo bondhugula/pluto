@@ -711,8 +711,8 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     }
     */
 
-    //isl_point_dump(pnt); 
-    //printf("TF: %lu\n", tile_footprint);
+    isl_point_dump(pnt); 
+    printf("TF: %lu\n", tile_footprint);
 
     psmi_auto->slope_data[psmi_auto->counter++] = tile_footprint;
 
@@ -791,7 +791,6 @@ int *get_auto_tile_size(PlutoProg *prog,
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
     max_dim = get_tile_dim(prog, domains);
-    //printf("%d\n", max_dim);
 
     // Collect data of candidate tile size 
     tile_space = isl_space_set_alloc(ctx, 0, max_dim);
@@ -856,10 +855,8 @@ int *get_auto_tile_size(PlutoProg *prog,
     tsum -= (int)inverse(slopes[0]);
     for(i=1; i<max_dim-1; ++i)
     {
-        
         partial_sum += inverse(slopes[i]);
         fraction = partial_sum/(tsum*1.0);
-        printf("%f\n", fraction );
         float tile_size_range = y_coeffs[max_dim-1]-y_coeffs[0];
         y_coeffs[i] = (float) (fraction*tile_size_range);
         y_coeffs[i] += y_coeffs[0];
@@ -986,6 +983,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *reads = extract_stmt_accesses(read, i);
         isl_union_map *writes = extract_stmt_accesses(write, i);
         extract_access_fns(reads, writes, prog->stmts[i], i);
+        isl_union_map_dump(reads);
+        isl_union_map_dump(writes);
         isl_union_map_free(reads);
         isl_union_map_free(writes);
     }
@@ -1013,6 +1012,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
             dependences, OSL_DEPENDENCE_RAW);
 
     IF_DEBUG(pluto_prog_print(stdout, prog););
+
+    isl_union_map_dump(dependences);
 
     t_start = rtclock();
     retval = pluto_auto_transform(prog);
@@ -1052,8 +1053,9 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     if (options->tile) {
         int *best_fit_size = NULL;
         if (options->autotilesize) { 
-            int vectorized = pluto_intra_tile_optimize(prog,0);
-            best_fit_size = get_auto_tile_size(prog, domains, read, write, vectorized);
+            
+            best_fit_size = get_auto_tile_size(prog, domains, read, write, 0);
+            //int vectorized = pluto_intra_tile_optimize(prog,0);
         }
         pluto_compute_dep_directions(prog);
         pluto_compute_dep_satisfaction(prog);
@@ -1061,7 +1063,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         free(best_fit_size);
     }else{
         if (options->intratileopt) {
-            //pluto_intra_tile_optimize(prog, 0);
+            pluto_intra_tile_optimize(prog, 0);
         }
     }
 
