@@ -1192,7 +1192,7 @@ void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstr
 
     nrows = cst->nrows;
     ncols = cst->ncols;
-    non_zero = get_num_non_zero_elements_from_pluto_constraints(cst);
+    non_zero = pluto_constraints_get_num_non_zero_coeffs(cst);
 
     assert (lp != NULL);
 
@@ -2370,10 +2370,10 @@ void pluto_constraints_remove_const_ub(PlutoConstraints *cst, int pos)
 }
 
 /* Returns the number of non-zero elements in the
- * input matrix, excluding the constant term */
-int get_num_non_zero_elements_from_pluto_constraints(const PlutoConstraints* cst)
+ * constraint matrix, excluding the constant term */
+int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints* cst)
 {
-    int nrows, ncols, non_zeros,i,j;
+    int nrows, ncols, non_zeros, i, j;
 
     nrows = cst->nrows;
     ncols = cst->ncols;

@@ -199,6 +199,5 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
 PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom, const PlutoMatrix *phi);
 void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
 
-int get_num_non_zero_elements_from_pluto_constraints(const PlutoConstraints* cst);
-
+int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints* cst);
 #endif

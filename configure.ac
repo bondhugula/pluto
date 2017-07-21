@@ -47,7 +47,7 @@ fi
 glpk="false"
 dnl glpk flag
 AC_ARG_ENABLE(glpk,
-              [ --enable-glpk enable ILP Solving with glpk], glpk="true")
+              [  --enable-glpk  enable ILP solving with GLPK], glpk="true")
 
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
@@ -81,11 +81,11 @@ AC_CHECK_PROG(SED,sed,sed)
 
 if test $glpk = "true"; then
     dnl check for glpk
-    AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[glpk solver for solving ILP])]
+    AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[GLPK solver for solving ILP])]
                                 CFLAGS="$CFLAGS -DGLPK" LDFLAGS="$LDFLAGS -lglpk"
                                 , [AC_ERROR([glpk.h header not found])])
     AC_CHECK_LIB([glpk], [glp_create_prob], []
-                 , [AC_ERROR([glpk library not found])])
+                 , [AC_ERROR([GLPK library not found])])
 fi
 
 dnl Offer --with-gmp-prefix.
