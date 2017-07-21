@@ -2050,12 +2050,11 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
             stmts[dep->dest]->dim,
             stmts[dep->dest]->domain->ncols-stmts[dep->dest]->dim-1);
 
-    // pluto_stmt_print(stdout, stmts[dep->src]);
-    // pluto_stmt_print(stdout, stmts[dep->dest]);
-    // printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num);
+     /* pluto_stmt_print(stdout, stmts[dep->src]); */
+     /* pluto_stmt_print(stdout, stmts[dep->dest]); */
+     /* printf("Src acc: %d dest acc: %d\n", src_acc_num, dest_acc_num); */
 
-    if (options->isldepaccesswise && 
-            (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL)) {
+    if (options->isldepaccesswise) {
         /* Extract access function information */
         int src_acc_num, dest_acc_num;
         char src_type, dest_type;
@@ -2076,12 +2075,22 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
 
         switch (info->type) {
             case OSL_DEPENDENCE_RAW: 
-                dep->src_acc = stmts[dep->src]->writes[src_acc_num];
-                dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                if ((stmts[dep->dest]->reads != NULL) && (stmts[dep->src]->writes != NULL)) {
+                    assert(dest_acc_num < stmts[dep->dest]->nreads);
+                    assert(src_acc_num < stmts[dep->src]->nwrites);
+
+                    dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                    dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                }
                 break;
             case OSL_DEPENDENCE_WAW: 
-                dep->src_acc = stmts[dep->src]->writes[src_acc_num];
-                dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                if ((stmts[dep->dest]->writes != NULL) && (stmts[dep->src]->writes != NULL)) {
+                    assert(dest_acc_num < stmts[dep->dest]->nwrites);
+                    assert(src_acc_num < stmts[dep->src]->nwrites);
+
+                    dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                    dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                }
                 break;
                 /*
                  * Sometimes dep_war from isl are not WAR deps; there are WAW deps
@@ -2089,19 +2098,32 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
                  * deps. Mark them correctly.
                  */
             case OSL_DEPENDENCE_WAR: 
-                dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                if (stmts[dep->dest]->writes != NULL) {
+                    assert(dest_acc_num < stmts[dep->dest]->nwrites);
+                    dep->dest_acc = stmts[dep->dest]->writes[dest_acc_num];
+                }
                 if (src_type == 'w' && dest_type == 'w') {
                     /* Fix the type */
                     dep->type = OSL_DEPENDENCE_WAW;
                     /* This is really a WAW dep */
-                    dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                    if (stmts[dep->src]->writes != NULL) {
+                        assert(src_acc_num < stmts[dep->src]->nwrites);
+                        dep->src_acc = stmts[dep->src]->writes[src_acc_num];
+                    }
                 }else{
-                    dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                    if (stmts[dep->src]->reads != NULL) {
+                        assert(src_acc_num < stmts[dep->src]->nreads);
+                        dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                    }
                 }
                 break;
             case OSL_DEPENDENCE_RAR: 
-                dep->src_acc = stmts[dep->src]->reads[src_acc_num];
-                dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                if ((stmts[dep->dest]->reads != NULL) && (stmts[dep->src]->reads != NULL)) {
+                    assert(dest_acc_num < stmts[dep->dest]->nreads);
+                    assert(src_acc_num < stmts[dep->src]->nreads);
+                    dep->src_acc = stmts[dep->src]->reads[src_acc_num];
+                    dep->dest_acc = stmts[dep->dest]->reads[dest_acc_num];
+                }
                 break;
             default:
                 assert(0);
