@@ -31,6 +31,10 @@
 
 #include "osl/extensions/dependence.h"
 
+#ifdef GLPK
+#include <glpk.h>
+#endif
+
 /* Check out which piplib we are linking with */
 /* Candl/piplib_wrapper converts relation to matrices */
 #ifdef SCOPLIB_INT_T_IS_LONGLONG // Defined in src/Makefile.am
