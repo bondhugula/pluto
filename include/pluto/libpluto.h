@@ -176,6 +176,9 @@ struct plutoOptions{
     /* Use isl as ilp solver. */
     int islsolve;
 
+    /* Use glpk as ilp solver. */
+    int glpk;
+
     /* Index set splitting */
     int iss;
 

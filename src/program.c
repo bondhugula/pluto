@@ -2858,10 +2858,16 @@ void pluto_prog_free(PlutoProg *prog)
         for (i=0; i<prog->nloops; i++) {
             for (j=0; j<prog->nloops; j++) {
                 if(prog->dist_[i][j]!=NULL){
-                    if(prog->dist_[i][j]->value!=NULL){
-                        pluto_constraints_free(prog->dist_[i][j]->value);
-                    }
-                    free(prog->dist_[i][j]);
+                    struct dist *tmp1, *tmp2;
+                     tmp1 = prog->dist_[i][j];
+                     do {
+                         tmp2 = tmp1->next;
+                         if(tmp1->value!=NULL){
+                             pluto_constraints_free(tmp1->value);
+                         }
+                         free(tmp1);
+                         tmp1 = tmp2;
+                     } while(tmp2 != NULL);
                 }
             }
             free(prog->dist_[i]);
@@ -2952,6 +2958,7 @@ PlutoOptions *pluto_options_alloc()
 
     options->pipsolve = 0;
     options->islsolve = 1;
+    options->glpk = 0;
 
     options->readscop = 0;
 

@@ -376,6 +376,8 @@ static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
 
     cst = pluto_constraints_alloc(1, CST_WIDTH);
 
+    if (prog->num_hyperplanes == 0) return cst;
+
     /* Lower bound for bounding coefficients (all non-negative) */
     for (i=0; i<npar+1; i++)  {
         pluto_constraints_add_lb(cst, i, 0);
@@ -505,6 +507,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
+#ifdef GLPK
+    if (options->glpk) {
+        pluto_prog_constraints_lexmin_glpk(newcst, prog);
+    }
+#endif
     /* Solve the constraints */
     sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
