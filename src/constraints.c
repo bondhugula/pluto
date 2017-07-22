@@ -1153,6 +1153,183 @@ int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar)
     }
 }
 
+#ifdef GLPK
+PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog)
+{
+    int npar = prog->npar;
+    int nvar = prog->nvar;
+    int i, j, k;
+
+    PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
+    pluto_matrix_set(obj, 0);
+
+    /* u */
+    for (j=0; j<npar; j++) {
+        obj->val[0][j] = 5*5*nvar*prog->nstmts;
+    }
+    /* w  */
+    obj->val[0][npar] = 5*nvar*prog->nstmts;
+
+    for (i=0, j=npar+1; i<prog->nstmts; i++) {
+        for (k=j; k<j+prog->stmts[i]->dim_orig; k++) {
+            obj->val[0][k] = (nvar+2)*(prog->stmts[i]->dim_orig-(k-j));
+        }
+        /* constant shift */
+        obj->val[0][k] = 1;
+        j += prog->stmts[i]->dim_orig + 1;
+    }
+    return obj;
+
+}
+
+/* Constructs constraints for glpk problem in-memory.  Assumes that there
+ * are no rows or cols in glp_prob lp.*/
+void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstraints *cst)
+{
+    int i, j, k, nrows, ncols, non_zero;
+    int *row, *col;
+    double *coeff;
+
+    nrows = cst->nrows;
+    ncols = cst->ncols;
+    non_zero = pluto_constraints_get_num_non_zero_coeffs(cst);
+
+    assert (lp != NULL);
+
+    glp_add_rows(lp,cst->nrows);
+    glp_add_cols(lp,cst->ncols-1);
+
+    /* These are indexed from 1 */
+    row = (int*)malloc((non_zero+1)*sizeof(int));
+    col = (int*)malloc((non_zero+1)*sizeof(int));
+    coeff = (double*)malloc((non_zero+1)*sizeof(double));
+
+    k = 1;
+    for (i=0; i<nrows;i++) {
+        if (cst->is_eq[i]) {
+            /* For equality constraints the bounds are fixed */
+            glp_set_row_bnds(lp, i+1, GLP_FX, -cst->val[i][cst->ncols-1], 0.0);
+        } else {
+            /* Add a lower bound on each row of the inequality */
+            glp_set_row_bnds(lp, i+1, GLP_LO, -cst->val[i][cst->ncols-1], 0.0);
+        }
+
+        for (j=0; j<ncols-1; j++) {
+            if (cst->val[i][j] != 0) {
+                row[k] = i+1;
+                col[k] = j+1;
+                coeff[k] = (double) cst->val[i][j];
+                k++;
+            }
+        }
+    }
+    glp_load_matrix(lp, non_zero, row, col, coeff);
+    free(row);
+    free(col);
+    free(coeff);
+}
+
+int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
+{
+    int j;
+    if (!options->debug && !options->moredebug) {
+        glp_term_out(GLP_OFF);
+    }
+
+    glp_smcp parm;
+    glp_init_smcp(&parm);
+    parm.presolve = GLP_ON;
+
+    parm.msg_lev = GLP_MSG_OFF;
+    IF_DEBUG(parm.msg_lev = GLP_MSG_ON;);
+    IF_MORE_DEBUG(parm.msg_lev = GLP_MSG_ALL;);
+
+
+    glp_scale_prob(lp, GLP_SF_AUTO);
+    glp_adv_basis(lp, 0);
+    glp_simplex(lp, &parm);
+
+    int lp_status = glp_get_status(lp);
+
+    if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) {
+        glp_delete_prob(lp);
+        return NULL;
+    }
+
+    glp_iocp iocp;
+    glp_init_iocp(&iocp);
+    /* The default is 1e-5; one may need to reduce it even further
+     * depending on how large a coefficient we might see */
+    iocp.tol_int = 1e-7;
+    IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
+
+    iocp.msg_lev = GLP_MSG_OFF;
+    IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
+    IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
+
+    glp_intopt(lp, &iocp);
+
+    int ilp_status = glp_mip_status(lp);
+
+    if (ilp_status == GLP_INFEAS || ilp_status == GLP_UNDEF) {
+        glp_delete_prob(lp);
+        return NULL;
+    }
+
+    double z = glp_mip_obj_val(lp);
+    IF_DEBUG(printf("z = %lf\n", z););
+    int64* sol = malloc(sizeof(int64)*(cst->ncols-1));
+    for (j=0; j<glp_get_num_cols(lp); j++) {
+        double x = glp_mip_col_val(lp, j+1);
+        IF_DEBUG(printf("c%d = %lld, ", j, (int64) round(x)););
+        sol[j] = (int) round(x);
+    }
+    IF_DEBUG(printf("\n"););
+    glp_delete_prob(lp);
+    return sol;
+}
+
+/* Construct ILP in cplex format */
+int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+        PlutoProg *prog)
+{
+    int i, j;
+    PlutoMatrix *obj;
+    int64 *sol;
+
+
+    IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin_glpk (%d variables, %d constraints)\n",
+                cst->ncols-1, cst->nrows););
+
+    glp_prob *lp;
+    lp = glp_create_prob();
+
+    glp_set_obj_dir(lp, GLP_MIN);
+
+    obj = construct_cplex_objective(cst, prog);
+
+    set_glpk_constraints_from_pluto_constraints(lp, cst);
+
+    for (j=0; j<obj->ncols; j++) {
+        glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
+    }
+    pluto_matrix_free(obj);
+
+    for (i=0; i<cst->ncols-1; i++) {
+        glp_set_col_bnds(lp, i+1, GLP_FR, 0.0, 0.0);
+    }
+    for (i=0; i<cst->ncols-1; i++) {
+        glp_set_col_kind(lp, i+1, GLP_IV);
+    }
+    IF_DEBUG(glp_write_lp(lp, NULL, "pluto-debug-glpk.lp"););
+
+
+    sol = pluto_constraints_solve_glpk(lp, cst);
+
+    return sol;
+}
+
+#endif
 
 /* All equalities */
 PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat)
@@ -2190,6 +2367,26 @@ void pluto_constraints_remove_const_ub(PlutoConstraints *cst, int pos)
             }else i++;
         }
     }
+}
+
+/* Returns the number of non-zero elements in the
+ * constraint matrix, excluding the constant term */
+int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints* cst)
+{
+    int nrows, ncols, non_zeros, i, j;
+
+    nrows = cst->nrows;
+    ncols = cst->ncols;
+    non_zeros = 0;
+
+    for (i=0; i<nrows; i++) {
+        for (j=0; j<ncols-1; j++) {
+            if (cst->val[i][j] != 0) {
+                non_zeros++;
+            }
+        }
+    }
+    return non_zeros;
 }
 
 /*

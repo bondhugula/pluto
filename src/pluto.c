@@ -406,6 +406,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
+#ifdef GLPK
+    if (options->glpk) {
+        pluto_prog_constraints_lexmin_glpk(newcst, prog);
+    }
+#endif
     /* Solve the constraints */
     sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     /* print_polylib_visual_sets("csts", newcst); */
