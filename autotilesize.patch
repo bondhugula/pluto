@@ -1,0 +1,24 @@
+diff --git a/lib/Transform/Pluto.cpp b/lib/Transform/Pluto.cpp
+index 5e5cf1d..6a2f4b6 100644
+--- a/lib/Transform/Pluto.cpp
++++ b/lib/Transform/Pluto.cpp
+@@ -34,6 +34,11 @@ static cl::opt<bool> EnableTiling("polly-pluto-tile", cl::desc("Enable tiling"),
+ 		cl::Hidden, cl::init(false), cl::ZeroOrMore,
+ 		cl::cat(PollyCategory));
+ 
++static cl::opt<bool> EnableAutoTileSize("polly-pluto-autotilesize",
++										cl::desc("Enable auto tile size detection"),
++										cl::Hidden, cl::init(false), cl::ZeroOrMore,
++										cl::cat(PollyCategory));
++
+ static cl::opt<bool> EnableIntraTiling("polly-pluto-intratileopt",
+ 		cl::desc("Enable intratiling"),
+ 		cl::Hidden, cl::init(true),
+@@ -223,6 +228,7 @@ bool PlutoOptimizer::runOnScop(Scop &S) {
+ 	Options->polyunroll = PlutoPollyUnroll;
+ 	Options->rar = PlutoRar;
+ 	Options->tile = EnableTiling;
++	Options->autotilesize = EnableAutoTileSize;
+ 	Options->unroll = PlutoUnroll;
+ 	Options->silent = PlutoSilent;
+ 	Options->isldepaccesswise = 0;

@@ -820,7 +820,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     isl_set_free(tile_sizes);
     isl_space_free(tile_space);
 
-    if(vectorized==1)
+    if(vectorized>0)
     {
         for(i=0; i< max_dim-1; i++)
         {
@@ -916,13 +916,16 @@ int *get_auto_tile_size(PlutoProg *prog,
       //tile_size_final[i] = 32;
     }
 
-    int vec_tile_size = tile_size_final[vectorized];
-
-    for(i = vectorized; i<max_dim-1; i++)
+    if(vectorized>0)
     {
-        tile_size_final[i] =tile_size_final[i+1];
+      int vec_tile_size = tile_size_final[max_dim-vectorized-1];
+
+      for(i = max_dim-vectorized-1; i<max_dim-1; i++)
+      {
+	tile_size_final[i] =tile_size_final[i+1];
+      }
+      tile_size_final[max_dim-1] = vec_tile_size;
     }
-    tile_size_final[max_dim-1] = vec_tile_size;
 
     /*
     //Growing in multiples of 16
