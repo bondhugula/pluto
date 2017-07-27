@@ -793,15 +793,15 @@ int *get_auto_tile_size(PlutoProg *prog,
     int num_tiled_levels = 0;
 
     Ploop **loops;
-
-    loops = pluto_get_loops_under(bands[i]->loop->stmts, bands[i]->loop->nstmts, 
-        bands[i]->loop->depth + num_tiled_levels*bands[i]->width, prog, &nloops);
     
     for (i=0; i<nbands; i++)
     {
         if(pluto_is_band_innermost(bands[i], num_tiled_levels))
         {
             max_score = 0;
+
+            loops = pluto_get_loops_under(bands[i]->loop->stmts, bands[i]->loop->nstmts, 
+                bands[i]->loop->depth + num_tiled_levels*bands[i]->width, prog, &nloops);
             
             int* loop_scores = calc_score_for_loops(loops, nloops, prog);
 
@@ -817,6 +817,7 @@ int *get_auto_tile_size(PlutoProg *prog,
             }
         }
     }
+    pluto_bands_free(bands, nbands);
 
     max_dim = get_tile_dim(prog, domains);
 
@@ -931,7 +932,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
         denominator = slopes[i]+partial_denominator;
         tile_size_final[max_dim-1-i] = numerator/denominator;
-        tile_size_final[max_dim-1-i] += (4-tile_size_final[max_dim-1-i]%4);
+        tile_size_final[max_dim-1-i] -= (tile_size_final[max_dim-1-i]%4);
     }
 
     for (i = 0; i < max_dim; ++i)
@@ -943,7 +944,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     }
 
     //tile_size_final[max_dim-1] /= spatial_accesses;
-    //tile_size_final[max_dim-1] += 8-(tile_size_final[max_dim-1]%8);
+    tile_size_final[max_dim-1] -= (tile_size_final[max_dim-1]%8);
 
     //tile_size_final[1] /= temporal_accesses;
     //tile_size_final[1] += 4-(tile_size_final[max_dim-2]%4);
