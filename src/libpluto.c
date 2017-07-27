@@ -782,7 +782,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     int i, j;
     Band **bands;
     int max_dim=0, b;
-    int nbands, spatial_accesses;
+    int nbands, spatial_accesses, temporal_accesses;
     isl_set *tile_sizes;
     isl_constraint *c;
     isl_space *tile_space;
@@ -811,6 +811,7 @@ int *get_auto_tile_size(PlutoProg *prog,
                 {
                     max_score = loop_scores[l];
                     spatial_accesses = get_num_spatial_accesses(loops[l], prog);
+                    temporal_accesses = get_num_invariant_accesses(loops[l], prog);
                     vectorized = l;
                 }
             }
@@ -930,7 +931,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
         denominator = slopes[i]+partial_denominator;
         tile_size_final[max_dim-1-i] = numerator/denominator;
-        tile_size_final[max_dim-1-i] += (4-tile_size_final[max_dim-1-i]%4 );
+        tile_size_final[max_dim-1-i] += (4-tile_size_final[max_dim-1-i]%4);
     }
 
     for (i = 0; i < max_dim; ++i)
@@ -941,8 +942,11 @@ int *get_auto_tile_size(PlutoProg *prog,
       //tile_size_final[i] = 32;
     }
 
-    tile_size_final[max_dim-1] /= spatial_accesses;
-    tile_size_final[max_dim-1] += (8-tile_size_final[max_dim-1]%8);
+    //tile_size_final[max_dim-1] /= spatial_accesses;
+    //tile_size_final[max_dim-1] += 8-(tile_size_final[max_dim-1]%8);
+
+    //tile_size_final[1] /= temporal_accesses;
+    //tile_size_final[1] += 4-(tile_size_final[max_dim-2]%4);
 
     if(vectorized>0)
     {
