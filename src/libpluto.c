@@ -783,6 +783,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     Band **bands;
     int max_dim=0, b;
     int nbands, spatial_accesses, temporal_accesses;
+    int is_vectorisable;
     isl_set *tile_sizes;
     isl_constraint *c;
     isl_space *tile_space;
@@ -812,6 +813,7 @@ int *get_auto_tile_size(PlutoProg *prog,
                     max_score = loop_scores[l];
                     spatial_accesses = get_num_spatial_accesses(loops[l], prog);
                     temporal_accesses = get_num_invariant_accesses(loops[l], prog);
+                    is_vectorisable = pluto_loop_is_vectorizable(loops[l], prog);
                     vectorized = l;
                 }
             }
@@ -895,32 +897,49 @@ int *get_auto_tile_size(PlutoProg *prog,
     }
 
     float tsum ;
+    float max_limit;
+    float partial_sum;
+    float fraction;
+    float tile_size_range;
+
     for(i=0; i<max_dim; i++)
     {
         tsum+=(int)inverse(slopes[i]);
         tile_size_final[i]=BASE_TILE_SIZE;
     }
 
-    //Task - Choosing appropriate y-coeffs
-    float max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
-    y_coeffs[0] = 1.0*DEFAULT_L1_CACHE_SIZE/slope_data[0];
-    y_coeffs[max_dim-1] = 0.85*max_limit;
+    if(is_vectorisable)
+    {
+        //Task - Choosing appropriate y-coeffs
+        max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
+        y_coeffs[0] = 0.90*DEFAULT_L1_CACHE_SIZE/slope_data[0];
+        y_coeffs[max_dim-1] = 0.85*max_limit;
+        tsum -= (int)inverse(slopes[0]);
+        partial_sum = 0;
+    }
 
-    float partial_sum;
-    float fraction;
-    partial_sum = 0;
-    tsum -= (int)inverse(slopes[0]);
+    else
+    {
+        max_limit = (float) DEFAULT_L1_CACHE_SIZE/slope_data[0];
+        partial_sum = inverse(slopes[0]);
+        fraction = partial_sum/(tsum*1.0);        
+        y_coeffs[0] = fraction*max_limit;
+        y_coeffs[max_dim-1] = 0.95*max_limit;
+    }
+
+    tile_size_range = y_coeffs[max_dim-1]-y_coeffs[0];
+
     for(i=1; i<max_dim-1; ++i)
     {
         partial_sum += inverse(slopes[i]);
-        fraction = partial_sum/(tsum*1.0);
-        float tile_size_range = y_coeffs[max_dim-1]-y_coeffs[0];
-        y_coeffs[i] = (float) (fraction*tile_size_range);
+        fraction = partial_sum/(tsum*1.0);        
+        y_coeffs[i] = fraction*tile_size_range;
         y_coeffs[i] += y_coeffs[0];
     }
 
     //Tile size for innermost loop
     tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
+    tile_size_final[max_dim-1] += 8-(tile_size_final[max_dim-1]%8);
 
     //Model
     float numerator;
@@ -932,7 +951,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
         denominator = slopes[i]+partial_denominator;
         tile_size_final[max_dim-1-i] = numerator/denominator;
-        tile_size_final[max_dim-1-i] -= (tile_size_final[max_dim-1-i]%4);
+        tile_size_final[max_dim-1-i] += 4-(tile_size_final[max_dim-1-i]%4);
     }
 
     for (i = 0; i < max_dim; ++i)
@@ -944,7 +963,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     }
 
     //tile_size_final[max_dim-1] /= spatial_accesses;
-    tile_size_final[max_dim-1] -= (tile_size_final[max_dim-1]%8);
+    //tile_size_final[max_dim-1] -= (tile_size_final[max_dim-1]%8);
 
     //tile_size_final[1] /= temporal_accesses;
     //tile_size_final[1] += 4-(tile_size_final[max_dim-2]%4);
