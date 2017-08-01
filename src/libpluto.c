@@ -901,6 +901,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     float partial_sum;
     float fraction;
     float tile_size_range;
+    float base;
 
     for(i=0; i<max_dim; i++)
     {
@@ -912,10 +913,11 @@ int *get_auto_tile_size(PlutoProg *prog,
     {
         //Task - Choosing appropriate y-coeffs
         max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
-        y_coeffs[0] = 0.90*DEFAULT_L1_CACHE_SIZE/slope_data[0];
+        y_coeffs[0] = 1.0*DEFAULT_L1_CACHE_SIZE/slope_data[0];
         y_coeffs[max_dim-1] = 0.85*max_limit;
         tsum -= (int)inverse(slopes[0]);
         partial_sum = 0;
+        base = y_coeffs[0];
     }
 
     else
@@ -925,21 +927,22 @@ int *get_auto_tile_size(PlutoProg *prog,
         fraction = partial_sum/(tsum*1.0);        
         y_coeffs[0] = fraction*max_limit;
         y_coeffs[max_dim-1] = 0.95*max_limit;
+        base = 0;
     }
 
-    tile_size_range = y_coeffs[max_dim-1]-y_coeffs[0];
+    tile_size_range = y_coeffs[max_dim-1]-base;
 
     for(i=1; i<max_dim-1; ++i)
     {
         partial_sum += inverse(slopes[i]);
         fraction = partial_sum/(tsum*1.0);        
         y_coeffs[i] = fraction*tile_size_range;
-        y_coeffs[i] += y_coeffs[0];
+        y_coeffs[i] += base;
     }
 
     //Tile size for innermost loop
     tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
-    tile_size_final[max_dim-1] += 8-(tile_size_final[max_dim-1]%8);
+    tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%8;
 
     //Model
     float numerator;
@@ -951,7 +954,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
         denominator = slopes[i]+partial_denominator;
         tile_size_final[max_dim-1-i] = numerator/denominator;
-        tile_size_final[max_dim-1-i] += 4-(tile_size_final[max_dim-1-i]%4);
+        tile_size_final[max_dim-1-i] -= tile_size_final[max_dim-1-i]%4;
     }
 
     for (i = 0; i < max_dim; ++i)
