@@ -909,6 +909,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         tile_size_final[i]=BASE_TILE_SIZE;
     }
 
+
     if(is_vectorisable)
     {
         //Task - Choosing appropriate y-coeffs
@@ -930,6 +931,34 @@ int *get_auto_tile_size(PlutoProg *prog,
         base = 0;
     }
 
+    //Tile size for innermost loop
+    tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
+    //round it to the nearest powers of 2
+    if(is_vectorisable)
+    {
+        int count = 0; 
+        if (!(tile_size_final[max_dim-1] && !(tile_size_final[max_dim-1]&(tile_size_final[max_dim-1]-1))))
+        {
+            while( tile_size_final[max_dim-1] != 0)
+            {
+                tile_size_final[max_dim-1]  >>= 1;
+                count += 1;
+            }
+            tile_size_final[max_dim-1] = (1 << count)-BASE_TILE_SIZE;
+        }
+        //reset the coeff
+        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]);
+        if(is_vectorisable)
+        {
+            base = y_coeffs[0];
+        }
+    }
+    else
+    {
+        tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%4;
+        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]);
+    }
+
     tile_size_range = y_coeffs[max_dim-1]-base;
 
     for(i=1; i<max_dim-1; ++i)
@@ -939,10 +968,6 @@ int *get_auto_tile_size(PlutoProg *prog,
         y_coeffs[i] = fraction*tile_size_range;
         y_coeffs[i] += base;
     }
-
-    //Tile size for innermost loop
-    tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
-    tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%8;
 
     //Model
     float numerator;
