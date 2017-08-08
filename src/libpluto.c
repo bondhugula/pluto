@@ -711,8 +711,8 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     }
     */
 
-    IF_DEBUG(isl_point_dump(pnt););
-    IF_DEBUG(printf("TF: %lu\n", tile_footprint););
+    isl_point_dump(pnt);
+    printf("TF: %lu\n", tile_footprint);
 
     psmi_auto->slope_data[psmi_auto->counter++] = tile_footprint;
 
@@ -901,14 +901,16 @@ int *get_auto_tile_size(PlutoProg *prog,
     float tile_size_range;
     float base;
 
+    if(patmi.slope_data[0]<DEFAULT_L1_CACHE_SIZE)
+    {
     for(i=0; i<max_dim; i++)
     {
+      if(slopes[i]!=0)
         tsum+=(int)inverse(slopes[i]);
-        tile_size_final[i]=BASE_TILE_SIZE;
+      tile_size_final[i]=BASE_TILE_SIZE;
     }
-
-
-    if(is_vectorisable)
+    
+    if(is_vectorisable && slopes[vectorized]!=0)
     {
         //Task - Choosing appropriate y-coeffs
         max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
@@ -930,14 +932,11 @@ int *get_auto_tile_size(PlutoProg *prog,
     }
 
     //Tile size for innermost loop
-    if(slopes[0]!=0)
+    tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
+
+    if(slopes[vectorized] == 0)
     {
-        tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
-    }
-    else
-    {
-        tile_size_final[max_dim-1] = 1024;
-        y_coeffs[0] = 1.0;
+        tile_size_final[max_dim-1-vectorized] = 1016;
     }
     //round it to the nearest powers of 2
     if(is_vectorisable)
@@ -969,7 +968,8 @@ int *get_auto_tile_size(PlutoProg *prog,
 
     for(i=1; i<max_dim-1; ++i)
     {
-        partial_sum += inverse(slopes[i]);
+        if (slopes[i]!=0)
+	  partial_sum += inverse(slopes[i]);
         fraction = partial_sum/(tsum*1.0);        
         y_coeffs[i] = fraction*tile_size_range;
         y_coeffs[i] += base;
@@ -986,6 +986,9 @@ int *get_auto_tile_size(PlutoProg *prog,
         denominator = slopes[i]+partial_denominator;
         tile_size_final[max_dim-1-i] = numerator/denominator;
         tile_size_final[max_dim-1-i] -= tile_size_final[max_dim-1-i]%4;
+	if(slopes[i]==0)
+	  tile_size_final[max_dim-1-i] = 1016;
+	printf("TSF: %d\n", tile_size_final[max_dim-1-i]);
     }
 
     for (i = 0; i < max_dim; ++i)
@@ -1006,10 +1009,13 @@ int *get_auto_tile_size(PlutoProg *prog,
         }
         tile_size_final[max_dim-1] = vec_tile_size;
     }
+    }
 
-    if(slopes[0]<1.0 && slopes[0]>0)
+    else
     {
-        tile_size_final[i] = 8;
+      printf("mark");
+      for (i = 0; i < max_dim; ++i)
+	tile_size_final[i] = 8;
     }
 
     /*
