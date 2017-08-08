@@ -930,7 +930,15 @@ int *get_auto_tile_size(PlutoProg *prog,
     }
 
     //Tile size for innermost loop
-    tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
+    if(slopes[0]!=0)
+    {
+        tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
+    }
+    else
+    {
+        tile_size_final[max_dim-1] = 1024;
+        y_coeffs[0] = 1.0;
+    }
     //round it to the nearest powers of 2
     if(is_vectorisable)
     {
@@ -997,6 +1005,11 @@ int *get_auto_tile_size(PlutoProg *prog,
            tile_size_final[i] =tile_size_final[i+1];
         }
         tile_size_final[max_dim-1] = vec_tile_size;
+    }
+
+    if(slopes[0]<1.0 && slopes[0]>0)
+    {
+        tile_size_final[i] = 8;
     }
 
     /*
