@@ -711,8 +711,8 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     }
     */
 
-    isl_point_dump(pnt); 
-    printf("TF: %lu\n", tile_footprint);
+    IF_DEBUG(isl_point_dump(pnt););
+    IF_DEBUG(printf("TF: %lu\n", tile_footprint););
 
     psmi_auto->slope_data[psmi_auto->counter++] = tile_footprint;
 
@@ -811,8 +811,6 @@ int *get_auto_tile_size(PlutoProg *prog,
                 if (loop_scores[l] >= max_score) 
                 {
                     max_score = loop_scores[l];
-                    spatial_accesses = get_num_spatial_accesses(loops[l], prog);
-                    temporal_accesses = get_num_invariant_accesses(loops[l], prog);
                     is_vectorisable = pluto_loop_is_vectorizable(loops[l], prog);
                     vectorized = l;
                 }
@@ -956,7 +954,7 @@ int *get_auto_tile_size(PlutoProg *prog,
     else
     {
         tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%4;
-        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]);
+        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]); 
     }
 
     tile_size_range = y_coeffs[max_dim-1]-base;
@@ -985,16 +983,10 @@ int *get_auto_tile_size(PlutoProg *prog,
     for (i = 0; i < max_dim; ++i)
     {
       tile_size_final[i] += BASE_TILE_SIZE;
-      printf("%d - ", tile_size_final[i]);
+      IF_DEBUG(printf("%d - ", tile_size_final[i]););
       /* Default */
       //tile_size_final[i] = 32;
     }
-
-    //tile_size_final[max_dim-1] /= spatial_accesses;
-    //tile_size_final[max_dim-1] -= (tile_size_final[max_dim-1]%8);
-
-    //tile_size_final[1] /= temporal_accesses;
-    //tile_size_final[1] += 4-(tile_size_final[max_dim-2]%4);
 
     if(vectorized>0)
     {
@@ -1051,7 +1043,6 @@ int *get_auto_tile_size(PlutoProg *prog,
         printf("\n\n");
     }
 
-    //    printf("\n%lu\n", psmi.best_fit_footprint);
     free(slopes);
     return tile_size_final;
 }
@@ -1105,8 +1096,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *reads = extract_stmt_accesses(read, i);
         isl_union_map *writes = extract_stmt_accesses(write, i);
         extract_access_fns(reads, writes, prog->stmts[i], i);
-        isl_union_map_dump(reads);
-        isl_union_map_dump(writes);
+        IF_DEBUG(isl_union_map_dump(reads););
+        IF_DEBUG(isl_union_map_dump(writes););
         isl_union_map_free(reads);
         isl_union_map_free(writes);
     }
@@ -1135,7 +1126,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     IF_DEBUG(pluto_prog_print(stdout, prog););
 
-    isl_union_map_dump(dependences);
+    IF_DEBUG(isl_union_map_dump(dependences););
 
     t_start = rtclock();
     retval = pluto_auto_transform(prog);
