@@ -10,10 +10,10 @@
 
 
     }
-
+  
 - For function definitions, place opening brace on the next line:
 
-void foo(void)
+void foo(void) 
 {
 
 }
