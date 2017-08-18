@@ -219,7 +219,6 @@ void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
         char** p_loops,
-        Remapping **remapping_ptr,
         PlutoOptions *options);
 
 void pluto_remapping_free(Remapping *);

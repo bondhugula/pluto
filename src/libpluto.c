@@ -194,8 +194,8 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog)
  * Output schedules are isl relations that have dims in the order
  * isl_dim_out, isl_dim_in, div, param, const
  */
-__isl_give isl_union_map *pluto_schedule(isl_union_set *domains, 
-        isl_union_map *dependences, 
+__isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
+        isl_union_map *dependences,
         PlutoOptions *options_l)
 {
     int i, j, nbands, n_ibands, retval;
@@ -323,7 +323,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
     if (options->parallel && !options->silent) {
         int nploops;
-        Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
+        //Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
+        Ploop** ploops = pluto_get_parallel_loops(prog, &nploops);
         printf("[pluto_mark_parallel] %d parallel loops\n", nploops);
         pluto_loops_print(ploops, nploops);
         printf("\n");
@@ -342,7 +343,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         // pluto_constraints_print(stdout, sched);
 
         bmap = isl_basic_map_from_pluto_constraints(ctx, sched,
-                sched->ncols - stmt->trans->nrows - prog->npar - 1, 
+                sched->ncols - stmt->trans->nrows - prog->npar - 1,
                 stmt->trans->nrows, prog->npar);
         bmap = isl_basic_map_project_out(bmap, isl_dim_in, 0, sched->ncols - stmt->trans->nrows - stmt->domain->ncols);
         char name[20];
@@ -375,8 +376,150 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     return schedules;
 }
 
+Ploop** parallel_loops(isl_union_set *domains,
+        isl_union_map *dependences,
+        PlutoOptions *options_l,
+//        Pddloop** parallel_loops,
+        int* nploops)
+{
+    int i, nbands, n_ibands, retval;
+    //isl_ctx *ctx;
+    isl_space *space;
+    //double t_t;
+    //double t_start;
+
+    //ctx = isl_union_set_get_ctx(domains);
+    space = isl_union_set_get_space(domains);
+
+    // isl_union_set_dump(domains);
+    // isl_union_map_dump(dependences);
+
+    PlutoProg *prog = pluto_prog_alloc();
+    prog->options = options_l;
+
+    /* global var */
+    options = options_l;
+
+
+    prog->nvar = -1;
+    prog->nstmts = isl_union_set_n_set(domains);
+
+    if (prog->nstmts >= 1) {
+        prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+    }else{
+        prog->stmts = NULL;
+    }
+
+    for (i=0; i<prog->nstmts; i++) {
+        prog->stmts[i] = NULL;
+    }
+
+    extract_stmts(domains, prog->stmts);
+
+    for (i=0; i<prog->nstmts; i++) {
+        prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+    }
+
+    if (prog->nstmts >= 1) {
+        Stmt *stmt = prog->stmts[0];
+        prog->npar = stmt->domain->ncols - stmt->dim - 1;
+        prog->params = (char **) malloc(sizeof(char *)*prog->npar);
+    }else prog->npar = 0;
+
+    for (i=0; i<prog->npar; i++) {
+        char *param = malloc(5);
+        sprintf(param, "p%d", i);
+        prog->params[i] = param;
+    }
+
+    prog->ndeps = 0;
+    isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
+
+    prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
+    for (i=0; i<prog->ndeps; i++) {
+        prog->deps[i] = pluto_dep_alloc();
+    }
+    extract_deps(prog->deps, 0, prog->stmts,
+            dependences, OSL_DEPENDENCE_RAW);
+
+    IF_DEBUG(pluto_prog_print(stdout, prog););
+
+    //t_start = rtclock();
+    retval = pluto_auto_transform(prog);
+    //t_t = rtclock() - t_start;
+
+    if (retval) {
+        /* Failure */
+        pluto_prog_free(prog);
+        isl_space_free(space);
+
+        if (!options->silent) {
+            printf("[libpluto] failure, returning NULL schedules\n");
+        }
+
+        return NULL;
+    }
+
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
+
+    if (!options->silent) {
+        fprintf(stdout, "[pluto] Affine transformations\n\n");
+        /* Print out transformations */
+        pluto_transformations_pretty_print(prog);
+    }
+
+    Band **bands, **ibands;
+    bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+    ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+    printf("Outermost tilable bands: %d bands\n", nbands);
+    pluto_bands_print(bands, nbands);
+    printf("Innermost tilable bands: %d bands\n", n_ibands);
+    pluto_bands_print(ibands, n_ibands);
+
+    if (options->tile) {
+        pluto_tile(prog);
+    }else{
+        if (options->intratileopt) {
+            pluto_intra_tile_optimize(prog, 0);
+        }
+    }
+
+    if ((options->parallel) && !options->tile && !options->identity)   {
+        /* Obtain wavefront/pipelined parallelization by skewing if
+         * necessary */
+        int nbands;
+        Band **bands;
+        pluto_compute_dep_satisfaction(prog);
+        bands = pluto_get_outermost_permutable_bands(prog, &nbands);
+        bool retval = pluto_create_tile_schedule(prog, bands, nbands);
+        pluto_bands_free(bands, nbands);
+
+        /* If the user hasn't supplied --tile and there is only pipelined
+         * parallelism, we will warn the user */
+        if (retval)   {
+            printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
+            printf("[pluto] WARNING: use --tile for better parallelization \n");
+            fprintf(stdout, "[pluto] After skewing:\n");
+            pluto_transformations_pretty_print(prog);
+            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
+        }
+    }
+
+    //Ploop** parallel_loops = pluto_get_dom_parallel_loops(prog, nploops);
+    Ploop** parallel_loops = pluto_get_parallel_loops(prog, nploops);
+    printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
+    pluto_loops_print(parallel_loops, *nploops);
+    printf("\n");
+    pluto_prog_free(prog);
+    isl_space_free(space);
+    return parallel_loops;
+//    parallel_loops = ploops;
+}
+
+
 Remapping *pluto_get_remapping(isl_union_set *domains,
-        isl_union_map *dependences, PlutoOptions *options_l) 
+        isl_union_map *dependences, PlutoOptions *options_l)
 {
 
     int i, nbands, n_ibands, retval;
@@ -498,7 +641,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
  * The osl_scop's statements' domains and scattering are replaced
  * by new ones.
  */
-int pluto_schedule_osl(osl_scop_p scop, 
+int pluto_schedule_osl(osl_scop_p scop,
         PlutoOptions *options_l)
 {
   int i=0;
@@ -562,7 +705,7 @@ int pluto_schedule_osl(osl_scop_p scop,
       pluto_tile(prog);
   }else{
       if (options->intratileopt) {
-          pluto_intra_tile_optimize(prog, 0); 
+          pluto_intra_tile_optimize(prog, 0);
       }
   }
 
@@ -611,7 +754,6 @@ int pluto_schedule_osl(osl_scop_p scop,
   }
 
   /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-  
 
   /* Replace the osl_scop's original domains and scatterings
    * by ones newly created by pluto
@@ -871,7 +1013,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
  * This method accepts domain, dependence and PlutoOptions as string
  * and returns a transformed schedule, remapping and parallel loops.
  */
-void pluto_schedule_str(const char *domains_str,
+/*void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
         char** p_loops,
@@ -884,7 +1026,7 @@ void pluto_schedule_str(const char *domains_str,
     Remapping* remapping;
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
-    isl_union_map *dependences = isl_union_map_read_from_str(ctx, 
+    isl_union_map *dependences = isl_union_map_read_from_str(ctx,
             dependences_str);
 
     assert(remapping_ptr != NULL);
@@ -892,7 +1034,7 @@ void pluto_schedule_str(const char *domains_str,
             dependences, &ploop, &nploop, &remapping, options);
 
     if (options->parallel) {
-       /*if (!options->silent) {
+       */ /*if (!options->silent) {
            pluto_loops_print(ploop, nploop);
        }
 
@@ -912,7 +1054,7 @@ void pluto_schedule_str(const char *domains_str,
            // add the i'th parallel loop dim
            sprintf(str, "%d", ploop[i-1]->depth+1);
            strcat(p_loops[0], str);
-       }*/
+       }*/ /*
        *p_loops = ploop;
     }
 
@@ -920,11 +1062,76 @@ void pluto_schedule_str(const char *domains_str,
 
     isl_printer *printer = isl_printer_to_str(ctx);
     isl_printer_print_union_map(printer, schedule);
-    
     *schedules_str_buffer_ptr = isl_printer_get_str(printer);
     assert(*schedules_str_buffer_ptr != NULL && "isl printer providing empty"
                                                " string");
-   
+    isl_printer_free(printer);
+    isl_union_set_free(domains);
+    isl_union_map_free(dependences);
+    isl_union_map_free(schedule);
+
+    isl_ctx_free(ctx);
+
+}*/
+
+void pluto_schedule_str(const char *domains_str,
+        const char *dependences_str,
+        char** schedules_str_buffer_ptr,
+        char** p_loops,
+        PlutoOptions *options) {
+
+    int i;
+
+    options->fuse = 2;
+    options->l2tile = 0;
+    options->parallel = 1;
+    options->silent = 0;
+
+    printf("FUSE: %d, DEBUG: %d, TILE:%d, L2Tile: %d, PARALLEL:%d\n", options->fuse, options->debug, options->tile, options->l2tile, options->parallel);
+
+    isl_ctx *ctx = isl_ctx_alloc();
+    isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
+    isl_union_map *dependences = isl_union_map_read_from_str(ctx,
+            dependences_str);
+
+    printf("Extracting Schedule\n");
+
+    isl_union_map *schedule = pluto_schedule(domains, dependences, options);
+
+    printf("Extracted Schedule\n");
+
+    if(options->parallel)
+    {
+       Ploop** ploop;
+       int nploop;
+       ploop = parallel_loops(domains, dependences, options, &nploop);
+       pluto_loops_print(ploop, nploop);
+
+       // NOTE: assuming max 4 digits
+       // number of parallel loops
+        char* str = (char*)(malloc(sizeof(char)*5));
+        sprintf(str, "%d", nploop);
+
+       // NOTE: assuming max 4 digits per integer, and 1 char for comma
+       // 1 place for 'nploop' int itself, and nploop places for the rest
+       p_loops[0] = (char *) malloc(sizeof(char) * 6 * (nploop+1));
+       strcpy(p_loops[0], str);
+
+       for(i=1; i<nploop+1; i++)
+       {
+           // the result is a csv list
+           strcat(p_loops[0], ",");
+           // add the i'th parallel loop dim
+          sprintf(str, "%d", ploop[i-1]->depth+1);
+          strcat(p_loops[0], str);
+       }
+    }
+
+    isl_printer *printer = isl_printer_to_str(ctx);
+    isl_printer_print_union_map(printer, schedule);
+    *schedules_str_buffer_ptr = isl_printer_get_str(printer);
+    assert(*schedules_str_buffer_ptr != NULL && "isl printer providing empty"
+                                               " string");
     isl_printer_free(printer);
     isl_union_set_free(domains);
     isl_union_map_free(dependences);
