@@ -287,10 +287,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
+    if (!options->silent) {
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        pluto_bands_print(bands, nbands);
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        printf("Innermost tilable bands: %d bands\n", n_ibands);
+        pluto_bands_print(ibands, n_ibands);
+    }
 
     if (options->tile) {
         pluto_tile(prog);
@@ -472,10 +475,12 @@ Ploop** parallel_loops(isl_union_set *domains,
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
+    if(!options->silent) {
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        pluto_bands_print(bands, nbands);
+        printf("Innermost tilable bands: %d bands\n", n_ibands);
+        pluto_bands_print(ibands, n_ibands);
+    }
 
     if (options->tile) {
         pluto_tile(prog);
@@ -508,9 +513,11 @@ Ploop** parallel_loops(isl_union_set *domains,
 
     //Ploop** parallel_loops = pluto_get_dom_parallel_loops(prog, nploops);
     Ploop** parallel_loops = pluto_get_parallel_loops(prog, nploops);
-    printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
-    pluto_loops_print(parallel_loops, *nploops);
-    printf("\n");
+    if(!options->silent) {
+        printf("[pluto_mark_parallel] %d parallel loops\n", *nploops);
+        pluto_loops_print(parallel_loops, *nploops);
+        printf("\n");
+    }
     pluto_prog_free(prog);
     isl_space_free(space);
     return parallel_loops;
@@ -606,10 +613,12 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
+    if(!options->silent) {
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        pluto_bands_print(bands, nbands);
+        printf("Innermost tilable bands: %d bands\n", n_ibands);
+        pluto_bands_print(ibands, n_ibands);
+    }
 
     if (options->tile) {
         pluto_tile(prog);
@@ -891,10 +900,12 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-    printf("Outermost tilable bands: %d bands\n", nbands);
-    pluto_bands_print(bands, nbands);
-    printf("Innermost tilable bands: %d bands\n", n_ibands);
-    pluto_bands_print(ibands, n_ibands);
+    if(!options->silent) {
+        printf("Outermost tilable bands: %d bands\n", nbands);
+        pluto_bands_print(bands, nbands);
+        printf("Innermost tilable bands: %d bands\n", n_ibands);
+        pluto_bands_print(ibands, n_ibands);
+    }
 
     if (options->tile) {
         pluto_tile(prog);
@@ -1085,27 +1096,27 @@ void pluto_schedule_str(const char *domains_str,
     options->fuse = 2;
     options->l2tile = 0;
     options->parallel = 1;
-    options->silent = 0;
-
-    printf("FUSE: %d, DEBUG: %d, TILE:%d, L2Tile: %d, PARALLEL:%d\n", options->fuse, options->debug, options->tile, options->l2tile, options->parallel);
+    options->silent = 1;
+    options->debug = 0;
+    options->moredebug = 0;
 
     isl_ctx *ctx = isl_ctx_alloc();
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
     isl_union_map *dependences = isl_union_map_read_from_str(ctx,
             dependences_str);
 
-    printf("Extracting Schedule\n");
 
     isl_union_map *schedule = pluto_schedule(domains, dependences, options);
 
-    printf("Extracted Schedule\n");
 
     if(options->parallel)
     {
        Ploop** ploop;
        int nploop;
        ploop = parallel_loops(domains, dependences, options, &nploop);
-       pluto_loops_print(ploop, nploop);
+       if(options->debug) {
+           pluto_loops_print(ploop, nploop);
+       }
 
        // NOTE: assuming max 4 digits
        // number of parallel loops
