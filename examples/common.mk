@@ -38,7 +38,6 @@ ifdef PERFCTR
 	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
 endif
 
-PLC=../../polycc
 
 all: orig tiled par
 
