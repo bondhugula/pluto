@@ -19,7 +19,7 @@ ACML=/usr/local/acml
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
-	OMP_FLAGS     := -openmp
+	OMP_FLAGS     := -qopenmp
 else
 	# for gcc
 	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
