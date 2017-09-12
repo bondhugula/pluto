@@ -10,6 +10,8 @@ CC=gcc
 
 NPROCS=4
 NTHREADS=4
+POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
+POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
@@ -38,6 +40,10 @@ ifdef PERFCTR
 	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
 endif
 
+ifdef POLYBENCH
+	CFLAGS += -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -I $(POLYBENCHINCDIR) $(POLYBENCHSRC)
+	DISTOPT_FLAGS += --variables_not_global
+endif
 
 all: orig tiled par
 
