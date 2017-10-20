@@ -10,6 +10,8 @@ CC=gcc
 
 NPROCS=4
 NTHREADS=4
+POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
+POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
@@ -19,7 +21,7 @@ ACML=/usr/local/acml
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
-	OMP_FLAGS     := -openmp
+	OMP_FLAGS     := -qopenmp
 else
 	# for gcc
 	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
@@ -38,7 +40,10 @@ ifdef PERFCTR
 	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
 endif
 
-PLC=../../polycc
+ifdef POLYBENCH
+	CFLAGS += -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -I $(POLYBENCHINCDIR) $(POLYBENCHSRC)
+	DISTOPT_FLAGS += --variables_not_global
+endif
 
 all: orig tiled par
 
