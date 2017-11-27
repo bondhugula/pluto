@@ -1165,18 +1165,18 @@ PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoP
 
     /* u */
     for (j=0; j<npar; j++) {
-        obj->val[0][j] = 5*5*nvar*prog->nstmts;
+        obj->val[0][j] = 5*5*nvar*prog->nloops;
     }
     /* w  */
-    obj->val[0][npar] = 5*nvar*prog->nstmts;
+    obj->val[0][npar] = 5*nvar*prog->nloops;
 
-    for (i=0, j=npar+1; i<prog->nstmts; i++) {
-        for (k=j; k<j+prog->stmts[i]->dim_orig; k++) {
-            obj->val[0][k] = (nvar+2)*(prog->stmts[i]->dim_orig-(k-j));
+    for (i=0, j=npar+1; i<prog->nloops; i++) {
+        for (k=j; k<j+prog->stmts[prog->loops[i]]->dim_orig; k++) {
+            obj->val[0][k] = (nvar+2)*(prog->stmts[prog->loops[i]]->dim_orig-(k-j));
         }
         /* constant shift */
         obj->val[0][k] = 1;
-        j += prog->stmts[i]->dim_orig + 1;
+        j += prog->stmts[prog->loops[i]]->dim_orig + 1;
     }
     return obj;
 
