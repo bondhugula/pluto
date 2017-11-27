@@ -71,6 +71,8 @@ void usage_message(void)
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) [disabled by default] \n");
     fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas) [disabled by default]\n");
     fprintf(stdout, "    or --parallelize\n");
+    fprintf(stdout, "       --multiopt                Use an objective for each connected component [disabled by default]\n");
+    fprintf(stdout, "    or --parallelize\n");
     fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start (recommended)\n");
     fprintf(stdout, "    or --part-diamond-tile\n");
     fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
@@ -164,6 +166,8 @@ int main(int argc, char *argv[])
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
+        {"parallelize", no_argument, &options->parallel, 1},
+        {"multiopt", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
         {"iss", no_argument, &options->iss, 1},
