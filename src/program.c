@@ -2675,6 +2675,7 @@ PlutoOptions *pluto_options_alloc()
     options->moredebug = 0;
     options->scancount = 0;
     options->parallel = 0;
+    options->multiopt = 0;
     options->innerpar = 0;
     options->identity = 0;
 
