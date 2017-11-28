@@ -12,6 +12,7 @@ struct vertex{
 
     /* Id of the SCC this vertex belongs to */
     int scc_id;
+    int cc_id;
 };
 typedef struct vertex Vertex;
 
@@ -41,6 +42,7 @@ struct graph{
 
     Scc *sccs;
     int num_sccs;
+    int num_ccs;
 };
 typedef struct graph Graph;
 
@@ -48,9 +50,11 @@ Graph *graph_alloc (int nVertices);
 void graph_free(Graph *g);
 void graph_print_sccs (Graph *g);
 void dfs_for_scc (Graph *g);
+Graph* get_undirected_graph(const Graph *g);
 Graph *graph_transpose (Graph *g);
 void dfs (Graph *g);
 void dfs_for_scc (Graph *g);
+void dfs_vertex(Graph *g, Vertex *v, int *time);
 Vertex *ddg_get_vertex_by_id(Graph *g, int id);
 
 #endif
