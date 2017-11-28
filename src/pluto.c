@@ -807,6 +807,11 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
         pluto_constraints_copy(currcst, basecst);
         nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
         pluto_constraints_add(currcst, nzcst);
+        if (options->multiopt) {
+            resize_cst_multiopt(nzcst, prog);
+        }
+
+
         pluto_constraints_free(nzcst);
 
         PlutoConstraints *indcst = get_linear_ind_constraints(prog, currcst, hyp_search_mode);
@@ -822,6 +827,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             bestsol = NULL;
         }else{
             pluto_constraints_add(currcst, indcst);
+            if (options->multiopt) {
+                resize_cst_multiopt(nzcst, prog);
+            }
             IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
@@ -833,6 +841,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             num_sols_found++;
 
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+            if (options->multiopt) {
+                multiopt_add_stmt_hyperplane_from_ilp_solutions (bestsol, prog);
+            }
 
             for (j=0; j<nstmts; j++)    {
                 Stmt *stmt = stmts[j];
@@ -2082,6 +2093,40 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
     }
 
     return num;
+}
+
+/* Compute the connected components of the graph */
+void ddg_compute_cc(PlutoProg *prog)
+{
+    int i, cc_id, num_cc, stmt_id, time;
+
+    cc_id = -1;
+    num_cc = 0;
+    time = 0;
+
+    IF_DEBUG(printf("[pluto] ddg_compute_cc\n"););
+    Graph *g = prog->ddg;
+    /* Make the graph undirected. */
+    Graph *gU = get_undirected_graph(g);
+    for (i=0; i<gU->nVertices; i++){
+        gU->vertices[i].vn = 0;
+    }
+    for (i=0; i<gU->nVertices; i++){
+        if (gU->vertices[i].vn == 0){
+            cc_id++;
+            num_cc++;
+            gU->vertices[i].cc_id = cc_id;
+            dfs_vertex(gU,&gU->vertices[i],&time);
+            gU->vertices[i].cc_id = cc_id;
+        }
+        g->vertices[i].cc_id = gU->vertices[i].cc_id;
+        stmt_id = g->vertices[i].id;
+        assert(stmt_id == i);
+        prog->stmts[i]->cc_id = g->vertices[i].cc_id;
+    }
+    g->num_ccs = num_cc;
+
+    graph_free(gU);
 }
 
 

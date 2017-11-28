@@ -203,6 +203,24 @@ void dfs_for_scc(Graph *g)
 
     free(vCopy);
 }
+                                                
+
+/* Returns an undirected graph corresponding to the input directed graph */
+/* This is used to find the connected components in the graph */
+Graph* get_undirected_graph(const Graph *g)
+{
+    int i,j;
+    Graph *gU;
+    gU=graph_alloc(g->nVertices);
+    for (i=0;i<g->nVertices;i++){
+        for (j=0;j<=i;j++){
+            gU->adj->val[i][j]=(g->adj->val[i][j]==0)?g->adj->val[j][i]:g->adj->val[i][j];
+            gU->adj->val[j][i]=gU->adj->val[i][j];
+        }
+    }
+    return gU;
+}
+
 
 void graph_free(Graph *g)
 {

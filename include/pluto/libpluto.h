@@ -40,6 +40,9 @@ struct plutoOptions{
     /* parallelization */
     int parallel;
 
+    /* Uses an objective for each connected component */
+    int multiopt;
+
     /* prefer pure inner parallelism to pipelined parallelism */
     int innerpar;
 
