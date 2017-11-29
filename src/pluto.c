@@ -35,9 +35,6 @@
 #include "ddg.h"
 #include "version.h"
 
-/* Iterative search modes */
-#define EAGER 0
-#define LAZY 1
 
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
@@ -302,118 +299,6 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
     }
     return count;
 }
-
-
-/* PlutoConstraints to avoid trivial solutions (all zeros)
- *
- * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked, 
- * a hyperplane, if found, will be a loop hyperplane.
- *                 = LAZY: at least one of the hyperplanes for non-full statements 
- *  should be a loop hyperplane as opposed to all 
- */
-PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
-        bool hyp_search_mode)
-{
-    PlutoConstraints *nzcst;
-    int i, j, stmt_offset, nvar, npar, nstmts, nloops;
-
-    Stmt **stmts = prog->stmts;
-    nstmts = prog->nstmts;
-    nvar = prog->nvar;
-    npar = prog->npar;
-    nloops = prog->nloops;
-
-    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
-    nzcst->ncols = CST_WIDTH;
-
-    if (hyp_search_mode == EAGER) {
-        for (i=0; i<nloops; i++) {
-            /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
-                continue;
-            }
-            stmt_offset = npar+1+i*(nvar+1);
-            for (j=0; j<nvar; j++)  {
-                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
-                    nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
-                }
-            }
-            nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
-            nzcst->nrows++;
-        }
-    }else{
-        assert(hyp_search_mode == LAZY);
-        for (i=0; i<nloops; i++) {
-            /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
-                continue;
-            }
-            stmt_offset = npar+1+i*(nvar+1);
-            for (j=0; j<nvar; j++)  {
-                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
-                    nzcst->val[0][stmt_offset+j] = 1;
-                }
-            }
-            nzcst->val[0][CST_WIDTH-1] = -1;
-        }
-        nzcst->nrows = 1;
-    }
-
-    return nzcst;
-}
-
-/**
- * Bounds for Pluto ILP variables
- */
-static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
-{
-    int i, npar;
-    PlutoConstraints *cst;
-
-    npar = prog->npar;
-
-    cst = pluto_constraints_alloc(1, CST_WIDTH);
-
-    if (prog->num_hyperplanes == 0) return cst;
-
-    /* Lower bound for bounding coefficients (all non-negative) */
-    for (i=0; i<npar+1; i++)  {
-        pluto_constraints_add_lb(cst, i, 0);
-    }
-    /* Lower bound for transformation coefficients (all non-negative) */
-    for (i=0; i<cst->ncols-npar-1-1; i++)  {
-        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        pluto_constraints_add_lb(cst, npar+1+i, 0);
-    }
-
-    if (options->coeff_bound != -1) {
-        for (i=0; i<cst->ncols-npar-1-1; i++)  {
-            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
-            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
-        }
-    }else{
-        /* Add upper bounds for transformation coefficients */
-        int ub = pluto_prog_get_largest_const_in_domains(prog);
-
-        /* Putting too small an upper bound can prevent useful transformations;
-         * also, note that an upper bound is added for all statements globally due
-         * to the lack of an easy way to determine bounds for each coefficient to
-         * prevent spurious transformations that involve shifts proportional to
-         * loop bounds
-         */
-        if (ub >= 10)   {
-            for (i=0; i<cst->ncols-npar-1-1; i++)  {
-                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-                pluto_constraints_add_ub(cst, npar+1+i, ub);
-            }
-        }
-    }
-
-    return cst;
-}
-
 
 /**
  * Coefficient bounds when finding the cone complement; the cone complement
