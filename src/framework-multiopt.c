@@ -375,4 +375,54 @@ void resize_cst_multiopt(PlutoConstraints *cst, PlutoProg* prog)
     }
 }
 
+/* Assumes that the length of the array redun is equal to the constraint width of cst.
+ * This assumption has to be asserted before each call to the routine */
+PlutoConstraints* multiobj_remove_redundant_variables (PlutoConstraints *cst, PlutoProg *prog, int*redun)
+{
+    int i, j, nvar , npar, nstmts, num_ccs, k, del_count;
+    PlutoConstraints *newcst;
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    num_ccs = prog->ddg->num_ccs;
+    stmts = prog->stmts;
+
+
+    for (i=0; i<num_ccs*(npar+1)+1; i++)    {
+        redun[i] = 0;
+    }
+
+    for (i=0; i<nstmts; i++)    {
+        for (j=0; j<nvar; j++)    {
+            redun[num_ccs*(npar+1)+1+i*(nvar+1)+j] = !stmts[i]->is_orig_loop[j];
+        }
+        redun[num_ccs*(npar+1)+1+i*(nvar+1)+nvar] = 0;
+    }
+    redun[num_ccs*(npar+1)+1+nstmts*(nvar+1)] = 0;
+
+    del_count = 0;
+    newcst = pluto_constraints_dup(cst);
+    for (j = 0; j < cst->ncols-1; j++) {
+        if (redun[j]) {
+            pluto_constraints_remove_dim(newcst, j-del_count);
+            del_count++;
+        }
+    }
+
+    /* Permute the constraints so that if all else is the same, the original
+     * hyperplane order is preserved (no strong reason to do this) */
+    /* TODO: This interchange is not needed for fcg based approach */
+    j = num_ccs*(npar + 1)+1;
+    for (i=0; i<nstmts; i++)    {
+        for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+            pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
+
+        }
+        j += stmts[i]->dim_orig+1;
+    }
+    return newcst;
+
+}
 

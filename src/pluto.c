@@ -348,7 +348,6 @@ static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(Plut
     return cst;
 }
 
-
 /*
  * This calls pluto_constraints_lexmin, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
@@ -358,7 +357,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 {
     Stmt **stmts;
     int i, j, k;
-    int nstmts, nvar, npar, del_count;
+    int nstmts, nvar, npar, del_count, num_ccs;
     int64 *sol, *fsol;
     PlutoConstraints *newcst;
 
@@ -366,41 +365,49 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
-
-    assert(cst->ncols - 1 == CST_WIDTH - 1);
+    num_ccs = prog->ddg->num_ccs;
 
     /* Remove redundant variables - that don't appear in your outer loops */
     int redun[npar+1+nstmts*(nvar+1)+1];
-    for (i=0; i<npar+1; i++)    {
-        redun[i] = 0;
-    }
 
-    for (i=0; i<nstmts; i++)    {
-        for (j=0; j<nvar; j++)    {
-            redun[npar+1+i*(nvar+1)+j] = !stmts[i]->is_orig_loop[j];
+    if (options->multiopt) {
+        assert(cst->ncols == (num_ccs-1) *(npar+1) + CST_WIDTH + 1);
+        newcst = multiobj_remove_redundant_variables(cst, prog, redun);
+    } else {
+        assert(cst->ncols - 1 == CST_WIDTH - 1);
+
+
+        for (i=0; i<npar+1; i++)    {
+            redun[i] = 0;
         }
-        redun[npar+1+i*(nvar+1)+nvar] = 0;
-    }
-    redun[npar+1+nstmts*(nvar+1)] = 0;
 
-    del_count = 0;
-    newcst = pluto_constraints_dup(cst);
-    for (j = 0; j < cst->ncols-1; j++) {
-        if (redun[j]) {
-            pluto_constraints_remove_dim(newcst, j-del_count);
-            del_count++;
+        for (i=0; i<nstmts; i++)    {
+            for (j=0; j<nvar; j++)    {
+                redun[npar+1+i*(nvar+1)+j] = !stmts[i]->is_orig_loop[j];
+            }
+            redun[npar+1+i*(nvar+1)+nvar] = 0;
         }
-    }
+        redun[npar+1+nstmts*(nvar+1)] = 0;
 
-    /* Permute the constraints so that if all else is the same, the original
-     * hyperplane order is preserved (no strong reason to do this) */
-    j = npar + 1;
-    for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
-            pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
-
+        del_count = 0;
+        newcst = pluto_constraints_dup(cst);
+        for (j = 0; j < cst->ncols-1; j++) {
+            if (redun[j]) {
+                pluto_constraints_remove_dim(newcst, j-del_count);
+                del_count++;
+            }
         }
-        j += stmts[i]->dim_orig+1;
+
+        /* Permute the constraints so that if all else is the same, the original
+         * hyperplane order is preserved (no strong reason to do this) */
+        j = npar + 1;
+        for (i=0; i<nstmts; i++)    {
+            for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+                pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
+
+            }
+            j += stmts[i]->dim_orig+1;
+        }
     }
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
@@ -421,7 +428,12 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
-        j = npar + 1;
+        /* TODO: This part has to be under a flag for the fcg based approach */
+        if (options->multiopt) {
+            j = num_ccs*(npar +1) + 1;
+        } else {
+            j = npar + 1;
+        }
         for (i=0; i<nstmts; i++)    {
             for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
                 k1 = k;
