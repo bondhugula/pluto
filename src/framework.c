@@ -814,7 +814,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 /**
  * Bounds for Pluto ILP variables
  */
-PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
 {
     int i, npar, nstmts, nvar;
     PlutoConstraints *cst;
