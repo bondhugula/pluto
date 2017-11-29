@@ -59,6 +59,10 @@
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
 
+/* Iterative search modes */
+#define EAGER 0
+#define LAZY 1
+
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
 /* H_TILE_SPACE_LOOP may not always be distinguished from H_LOOP */
@@ -417,6 +421,7 @@ PlutoConstraints *get_global_independence_cst(
         PlutoConstraints ***ortho_cst, int *orthonum, 
         const PlutoProg *prog);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
 int pluto_auto_transform(PlutoProg *prog);
 int pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
