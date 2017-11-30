@@ -690,8 +690,16 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     if (max_sols == 0) return 0;
 
     /* Don't free basecst */
-    basecst = get_permutability_constraints(prog);
+    if (options->multiopt) {
+        basecst = multiopt_get_permutability_constraints(prog);
+    } else {
+        basecst = get_permutability_constraints(prog);
+    }
     boundcst = get_coeff_bounding_constraints(prog);
+    if (options->multiopt) {
+        resize_cst_multiopt(boundcst, prog);
+    }
+   
     pluto_constraints_add(basecst, boundcst);
     pluto_constraints_free(boundcst);
     // print_polylib_visual_sets("pluto", basecst);
@@ -700,16 +708,20 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     /* We don't expect to add a lot to basecst - just ortho constraints
      * and trivial soln avoidance constraints; instead of duplicating basecst,
      * we will just allocate once and copy each time */
+    if (options->multiopt) {
+        currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, (prog->ddg->num_ccs-1)*(npar+1)+CST_WIDTH+1); 
+    } else {
     currcst = pluto_constraints_alloc(basecst->nrows+nstmts+nvar*nstmts, 
             CST_WIDTH);
+    }
 
     do{
         pluto_constraints_copy(currcst, basecst);
         nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
-        pluto_constraints_add(currcst, nzcst);
         if (options->multiopt) {
             resize_cst_multiopt(nzcst, prog);
         }
+        pluto_constraints_add(currcst, nzcst);
 
 
         pluto_constraints_free(nzcst);
@@ -726,10 +738,10 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             IF_DEBUG(printf("No linearly independent rows\n"););
             bestsol = NULL;
         }else{
-            pluto_constraints_add(currcst, indcst);
             if (options->multiopt) {
-                resize_cst_multiopt(nzcst, prog);
+                resize_cst_multiopt(indcst, prog);
             }
+            pluto_constraints_add(currcst, indcst);
             IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
             bestsol = pluto_prog_constraints_lexmin(currcst, prog);
@@ -1664,6 +1676,9 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);
     ddg_compute_scc(prog);
+    if (options->multiopt) {
+        ddg_compute_cc(prog);
+    }
 
     Graph *ddg = prog->ddg;
      int nvar = prog->nvar;
@@ -1730,6 +1745,9 @@ int pluto_auto_transform(PlutoProg *prog)
         if (options->fuse == NO_FUSE)   {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
+            if (options->multiopt) {
+                ddg_compute_cc(prog);
+            }
         }
 
         num_sols_left = 0;
@@ -1786,6 +1804,9 @@ int pluto_auto_transform(PlutoProg *prog)
                     /* Max fuse */
                     if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
                     else cut_conservative(prog, ddg);
+                }
+                if(options->multiopt) {
+                    ddg_compute_cc(prog);
                 }
             }else{
                 /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
@@ -2008,6 +2029,7 @@ void ddg_compute_cc(PlutoProg *prog)
     Graph *g = prog->ddg;
     /* Make the graph undirected. */
     Graph *gU = get_undirected_graph(g);
+    assert(gU->nVertices == g->nVertices);
     for (i=0; i<gU->nVertices; i++){
         gU->vertices[i].vn = 0;
     }
@@ -2019,6 +2041,7 @@ void ddg_compute_cc(PlutoProg *prog)
             dfs_vertex(gU,&gU->vertices[i],&time);
             gU->vertices[i].cc_id = cc_id;
         }
+        gU->vertices[i].cc_id = cc_id;
         g->vertices[i].cc_id = gU->vertices[i].cc_id;
         stmt_id = g->vertices[i].id;
         assert(stmt_id == i);

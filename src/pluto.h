@@ -421,6 +421,7 @@ int pluto_omp_parallelize(PlutoProg *prog);
 
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
+void   ddg_compute_cc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
 int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
 
@@ -485,4 +486,8 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
+PlutoConstraints* multiobj_remove_redundant_variables (PlutoConstraints *cst, PlutoProg *prog, int*redun);
+void resize_cst_multiopt(PlutoConstraints*, PlutoProg*);
+PlutoConstraints *multiopt_get_permutability_constraints(PlutoProg *);
 #endif

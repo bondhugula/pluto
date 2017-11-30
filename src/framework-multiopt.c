@@ -279,13 +279,13 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
         pluto_constraints_copy(new_dep_cst, dep->cst);
         /* new_dep_cst = pluto_constraints_dup(dep->cst); */
 
-        printf("Dependence Constraints before resize\n");
-        pluto_constraints_cplex_print(stdout, new_dep_cst);
+        /* printf("Dependence Constraints before resize\n"); */
+        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
 
         pluto_constraints_resize_single(new_dep_cst, dep->cst->nrows,cc_permute_cst->ncols);
 
-        printf("Dependence Constraints after resize\n");
-        pluto_constraints_cplex_print(stdout, new_dep_cst);
+        /* printf("Dependence Constraints after resize\n"); */
+        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
 
         offset = (num_ccs-1)*(npar+1)+1;
         for (j=0; j<new_dep_cst->nrows; j++) {
@@ -304,11 +304,12 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
         }
 
         pluto_constraints_add(cc_permute_cst, new_dep_cst);
-        printf("Dep cst \n");
-        pluto_constraints_cplex_print(stdout, dep->cst);
-        printf(" Resized Dep cst \n");
-        pluto_constraints_cplex_print(stdout, new_dep_cst);
+        /* printf("Dep cst \n"); */
+        /* pluto_constraints_cplex_print(stdout, dep->cst); */
+        /* printf(" Resized Dep cst \n"); */
+        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
         pluto_constraints_free(new_dep_cst);
+        new_dep_cst = NULL;
     }
 
     /* There are no unsatisfied deps */
