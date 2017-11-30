@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
-        {"multiopt", no_argument, &options->parallel, 1},
+        {"multiopt", no_argument, &options->multiopt, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
         {"iss", no_argument, &options->iss, 1},
