@@ -762,15 +762,21 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         bool hyp_search_mode)
 {
     PlutoConstraints *nzcst;
-    int i, j, stmt_offset, nvar, npar, nstmts;
+    int i, j, stmt_offset, nvar, npar, nstmts, num_ccs;
 
     Stmt **stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
 
-    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
-    nzcst->ncols = CST_WIDTH;
+    if (options->multiopt) {
+        num_ccs = prog->ddg->num_ccs;
+        nzcst = pluto_constraints_alloc(nstmts, (npar+1)*(num_ccs-1) + CST_WIDTH + 1);
+        nzcst->ncols = (npar +1)*(num_ccs-1)+ CST_WIDTH +1;
+    } else {
+        nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
+        nzcst->ncols = CST_WIDTH;
+    }
 
     if (hyp_search_mode == EAGER) {
         for (i=0; i<nstmts; i++) {
@@ -779,13 +785,21 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                 IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
                 continue;
             }
-            stmt_offset = npar+1+i*(nvar+1);
+            if (options->multiopt) {
+                stmt_offset = num_ccs * (npar+1) + 1 +i*(nvar+1);
+            } else {
+                stmt_offset = npar+1+i*(nvar+1);
+            }
             for (j=0; j<nvar; j++)  {
                 if (stmts[i]->is_orig_loop[j] == 1) {
                     nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
                 }
             }
-            nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
+            if (options->multiopt) {
+                nzcst->val[nzcst->nrows][(num_ccs-1)*(npar+1) +1+ CST_WIDTH-1] = -1;
+            } else {
+                nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
+            }
             nzcst->nrows++;
         }
     }else{
@@ -796,13 +810,21 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                 IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
                 continue;
             }
-            stmt_offset = npar+1+i*(nvar+1);
+            if (options->multiopt) {
+                stmt_offset = num_ccs * (npar+1) + 1 +i*(nvar+1);
+            } else {
+                stmt_offset = npar+1+i*(nvar+1);
+            }
             for (j=0; j<nvar; j++)  {
                 if (stmts[i]->is_orig_loop[j] == 1) {
                     nzcst->val[0][stmt_offset+j] = 1;
                 }
             }
-            nzcst->val[0][CST_WIDTH-1] = -1;
+            if (options->multiopt) {
+                nzcst->val[nzcst->nrows][(num_ccs-1) * (npar+1) +1+ CST_WIDTH-1] = -1;
+            } else {
+                nzcst->val[0][CST_WIDTH-1] = -1;
+            }
         }
         nzcst->nrows = 1;
     }
