@@ -269,6 +269,8 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
                     cc_permute_cst->val[0][j*(npar+1)+k+1] = -1;
                 }
             }
+            /* The first variable in the ILP is the sum of u's and w's of each CC */
+            cc_permute_cst->is_eq[0] = 1;
         }
 
         src_id = dep->src;
@@ -319,7 +321,7 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
     return cc_permute_cst;
 }
 
-void multiopt_add_stmt_hyperplane_from_ilp_solutions (int *bestsol, PlutoProg *prog) {
+void multiopt_add_stmt_hyperplane_from_ilp_solutions (int64 *bestsol, PlutoProg *prog) {
     int j, k, nstmts, nvar, npar, num_ccs;
     Stmt **stmts;
 
@@ -329,7 +331,6 @@ void multiopt_add_stmt_hyperplane_from_ilp_solutions (int *bestsol, PlutoProg *p
     num_ccs = prog->ddg->num_ccs;
 
     stmts = prog->stmts;
-
     for (j=0; j<nstmts; j++) {
         Stmt *stmt = stmts[j];
         pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
