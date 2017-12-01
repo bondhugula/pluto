@@ -718,9 +718,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     do{
         pluto_constraints_copy(currcst, basecst);
         nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
-        if (options->multiopt) {
-            resize_cst_multiopt(nzcst, prog);
-        }
+        /* if (options->multiopt) { */
+        /*     resize_cst_multiopt(nzcst, prog); */
+        /* } */
         pluto_constraints_add(currcst, nzcst);
 
 
@@ -755,26 +755,26 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
             if (options->multiopt) {
                 multiopt_add_stmt_hyperplane_from_ilp_solutions (bestsol, prog);
-            }
+            } else {
+                for (j=0; j<nstmts; j++)    {
+                    Stmt *stmt = stmts[j];
+                    pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
+                    for (k=0; k<nvar; k++)    {
+                        stmt->trans->val[stmt->trans->nrows-1][k] =
+                            bestsol[npar+1+j*(nvar+1)+k];
+                    }
+                    /* No parameteric shifts */
+                    for (k=nvar; k<nvar+npar; k++)    {
+                        stmt->trans->val[stmt->trans->nrows-1][k] = 0;
+                    }
+                    stmt->trans->val[stmt->trans->nrows-1][nvar+npar] =
+                        bestsol[npar+1+j*(nvar+1)+nvar];
 
-            for (j=0; j<nstmts; j++)    {
-                Stmt *stmt = stmts[j];
-                pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
-                for (k=0; k<nvar; k++)    {
-                    stmt->trans->val[stmt->trans->nrows-1][k] = 
-                        bestsol[npar+1+j*(nvar+1)+k];
+                    stmt->hyp_types[stmt->trans->nrows-1] =
+                        pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
+                        H_SCALAR: H_LOOP;
+
                 }
-                /* No parameteric shifts */
-                for (k=nvar; k<nvar+npar; k++)    {
-                    stmt->trans->val[stmt->trans->nrows-1][k] = 0;
-                }
-                stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = 
-                    bestsol[npar+1+j*(nvar+1)+nvar];
-
-                stmt->hyp_types[stmt->trans->nrows-1] =  
-                    pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
-                    H_SCALAR: H_LOOP;
-
             }
             free(bestsol);
             IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
