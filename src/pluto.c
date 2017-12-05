@@ -597,9 +597,9 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
 PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog, 
         const PlutoConstraints *cst, bool lin_ind_mode)
 {
-    int npar, nvar, nstmts, i, j, k, orthosum;
+    int npar, nvar, nstmts, i, j, k, orthosum, num_ccs;
     int orthonum[prog->nstmts];
-    PlutoConstraints ***orthcst;
+    PlutoConstraints ***orthcst, *indcst;
     Stmt **stmts;
 
     IF_DEBUG(printf("[pluto] get_linear_ind_constraints\n"););
@@ -608,6 +608,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     nvar = prog->nvar;
     nstmts = prog->nstmts;
     stmts = prog->stmts;
+    num_ccs = prog->ddg->num_ccs;
 
     orthcst = (PlutoConstraints ***) malloc(nstmts*sizeof(PlutoConstraints **));
 
@@ -620,7 +621,11 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
         orthosum += orthonum[j];
     }
 
-    PlutoConstraints *indcst = pluto_constraints_alloc(1, CST_WIDTH);
+    if (options->multiopt){
+        indcst = pluto_constraints_alloc(1, (num_ccs)*(npar+1)+1+nstmts*(nvar+1)+1);
+    } else {
+        indcst = pluto_constraints_alloc(1, CST_WIDTH);
+    }
 
     if (orthosum >= 1) {
         if (lin_ind_mode == EAGER) {
@@ -738,9 +743,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             IF_DEBUG(printf("No linearly independent rows\n"););
             bestsol = NULL;
         }else{
-            if (options->multiopt) {
-                resize_cst_multiopt(indcst, prog);
-            }
+            /* if (options->multiopt) { */
+            /*     resize_cst_multiopt(indcst, prog); */
+            /* } */
             pluto_constraints_add(currcst, indcst);
             IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
@@ -1787,6 +1792,7 @@ int pluto_auto_transform(PlutoProg *prog)
                 dep_satisfaction_update(prog, stmts[0]->trans->nrows - nsols + j);
                 ddg_update(ddg, prog);
             }
+            ddg_compute_cc(prog);
         }else{
             /* Satisfy inter-scc dependences via distribution since we have 
              * no more fusable loops */

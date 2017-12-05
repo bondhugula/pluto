@@ -582,7 +582,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum)
 {
-    int i, j, k, p, q, nvar, npar, nstmts;
+    int i, j, k, p, q, nvar, npar, nstmts, num_ccs, stmt_offset, ncols;
     PlutoConstraints **orthcst;
     HyperplaneProperties *hProps;
     isl_ctx *ctx;
@@ -596,6 +596,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     npar = prog->npar;
     nstmts = prog->nstmts;
     hProps = prog->hProps;
+    num_ccs = prog->ddg->num_ccs;
 
     IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id+1););
 
@@ -651,8 +652,15 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *)); 
 
     for (i=0; i<nvar+1; i++)  {
-        orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
-        orthcst[i]->ncols = CST_WIDTH;
+        if(options->multiopt) {
+            orthcst[i] = pluto_constraints_alloc(1, num_ccs*(npar+1)+1+ nstmts*(nvar+1)+1);
+            orthcst[i]->ncols = num_ccs*(npar+1)+1+nstmts*(nvar+1)+1;
+
+        } else {
+            orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
+            orthcst[i]->ncols = CST_WIDTH;
+        }
+        
     }
 
     /* All non-negative orthant only */
@@ -692,18 +700,31 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         isl_basic_set *orthcst_i;
 
         j=0;
+        if (options->multiopt) {
+            stmt_offset = num_ccs*(npar+1)+1;
+        } else {
+            stmt_offset = npar+1;
+        }
         for (q=0; q<nvar; q++) {
             if (stmt->is_orig_loop[q])    {
-                orthcst[p]->val[0][npar+1+(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
+                orthcst[p]->val[0][stmt_offset +(stmt->id)*(nvar+1)+q] = ortho->val[j][i];
                 j++;
             }
         }
         orthcst[p]->nrows = 1;
-        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        if (options->multiopt) {
+            orthcst[p]->val[0][num_ccs*(npar+1)+1+nstmts*(nvar+1)] = -1;
+        } else {
+            orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        }
         if (!options->flic) {
             orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
         }
-        orthcst[p]->val[0][CST_WIDTH-1] = 0;
+        if (options->multiopt) {
+            orthcst[p]->val[0][num_ccs*(npar+1)+1+nstmts*(nvar+1)] = 0;
+        } else {
+            orthcst[p]->val[0][CST_WIDTH-1] = 0;
+        }
 
         if (!options->flic) {
             orthcst_i = isl_basic_set_intersect(orthcst_i,
@@ -720,13 +741,24 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     if (p >= 1)  {
         /* Sum of all of the above is the last constraint */
-        for(j=0; j<CST_WIDTH; j++)  {
+        if (options->multiopt) {
+            ncols = num_ccs*(npar+1)+1+nstmts*(nvar+1)+1;
+        } else {
+            ncols = CST_WIDTH;
+        }
+
+        for(j=0; j<ncols; j++)  {
             for (i=0; i<p; i++) {
                 orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
             }
         }
         orthcst[p]->nrows = 1;
-        orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        pluto_constraints_cplex_print(stdout, orthcst[p]);
+        if (options->multiopt) {
+            orthcst[p]->val[0][(num_ccs)*(npar+1)+1+(nstmts)*(nvar+1)] = -1;
+        } else {
+            orthcst[p]->val[0][CST_WIDTH-1] = -1;
+        }
         p++;
     }
 
