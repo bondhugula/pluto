@@ -753,7 +753,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
             }
         }
         orthcst[p]->nrows = 1;
-        pluto_constraints_cplex_print(stdout, orthcst[p]);
         if (options->multiopt) {
             orthcst[p]->val[0][(num_ccs)*(npar+1)+1+(nstmts)*(nvar+1)] = -1;
         } else {
