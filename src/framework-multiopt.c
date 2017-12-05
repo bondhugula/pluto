@@ -220,7 +220,7 @@ static void multiopt_compute_permutability_constraints_dep(Dep *dep, PlutoProg *
 /* Each connected component will have a separate value of u and w. This is done by having replacing the current u with a new one corresponding to the CC to which the dep edge belongs */
 PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
 {
-    int i, j, k, ndeps, num_ccs, offset, src_id, cc_id;
+    int i, j, k, ndeps, num_ccs, src_id, cc_id, new_cst_offset, obj_offset;
     int nvar, npar, nstmts;
     Graph *ddg;
     PlutoConstraints* cc_permute_cst, *new_dep_cst;
@@ -276,32 +276,19 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
         src_id = dep->src;
         cc_id = ddg->vertices[src_id].cc_id;
         if(new_dep_cst == NULL) {
-            new_dep_cst = pluto_constraints_alloc (dep->cst->nrows, dep->cst->ncols);
+            new_dep_cst = pluto_constraints_alloc (dep->cst->nrows, cc_permute_cst->ncols);
         }
-        pluto_constraints_copy(new_dep_cst, dep->cst);
-        /* new_dep_cst = pluto_constraints_dup(dep->cst); */
-
-        /* printf("Dependence Constraints before resize\n"); */
-        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
-
-        pluto_constraints_resize_single(new_dep_cst, dep->cst->nrows,cc_permute_cst->ncols);
-
-        /* printf("Dependence Constraints after resize\n"); */
-        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
-
-        offset = (num_ccs-1)*(npar+1)+1;
-        for (j=0; j<new_dep_cst->nrows; j++) {
-            for(k=CST_WIDTH-1; k>=npar+1; k--){
-                new_dep_cst->val[j][offset+k] = new_dep_cst->val[j][k];
-                new_dep_cst->val[j][k] = 0;
+        new_dep_cst->nrows = dep->cst->nrows;
+        new_dep_cst->ncols = cc_permute_cst->ncols;
+        new_cst_offset = (num_ccs-1)*(npar+1) + 1;
+        obj_offset = cc_id*(npar+1)+1;
+        /* The coeffs corresponding to the dimensions of the statements */
+        for (j =0; j<dep->cst->nrows; j++) {
+            for (k=0; k<npar+1; k++) {
+                new_dep_cst->val[j][obj_offset+k] = dep->cst->val[j][k];
             }
-        }
-
-        offset = cc_id*(npar+1)+1;
-        for (j=0; j<new_dep_cst->nrows; j++){
-            for(k=0; k<npar+1; k++){
-                new_dep_cst->val[j][offset+k] = new_dep_cst->val[j][k];
-                new_dep_cst->val[j][k]=0;
+            for(k=npar+1; k<dep->cst->ncols; k++) {
+                new_dep_cst->val[j][new_cst_offset+k] = dep->cst->val[j][k];
             }
         }
 
