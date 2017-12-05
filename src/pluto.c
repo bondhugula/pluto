@@ -723,9 +723,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     do{
         pluto_constraints_copy(currcst, basecst);
         nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
-        /* if (options->multiopt) { */
-        /*     resize_cst_multiopt(nzcst, prog); */
-        /* } */
         pluto_constraints_add(currcst, nzcst);
 
 
@@ -743,9 +740,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
             IF_DEBUG(printf("No linearly independent rows\n"););
             bestsol = NULL;
         }else{
-            /* if (options->multiopt) { */
-            /*     resize_cst_multiopt(indcst, prog); */
-            /* } */
             pluto_constraints_add(currcst, indcst);
             IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n", band_depth+1, num_sols_found+1));
             // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
