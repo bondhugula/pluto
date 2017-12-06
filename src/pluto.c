@@ -597,7 +597,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg)
 PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog, 
         const PlutoConstraints *cst, bool lin_ind_mode)
 {
-    int npar, nvar, nstmts, i, j, k, orthosum, num_ccs;
+    int npar, nvar, nstmts, i, j, k, orthosum, num_ccs, ncols;
     int orthonum[prog->nstmts];
     PlutoConstraints ***orthcst, *indcst;
     Stmt **stmts;
@@ -641,13 +641,18 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
             /* At least one stmt should have a linearly independent hyperplane */
             for (i=0; i<prog->nstmts; i++) {
                 /* Everything was initialized to zero */
+                if (options->multiopt) {
+                    ncols = num_ccs*(npar+1)+1+nstmts*(nvar+1)+1;
+                } else {
+                    ncols = CST_WIDTH;
+                }
                 if (orthonum[i] >= 1) {
-                    for (j=0; j<CST_WIDTH-1; j++) {
+                    for (j=0; j<ncols-1; j++) {
                         indcst->val[0][j] += orthcst[i][orthonum[i]-1]->val[0][j];
                     }
                 }
             }
-            indcst->val[0][CST_WIDTH-1] = -1;
+            indcst->val[0][ncols-1] = -1;
             indcst->nrows = 1;
             IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
             IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
