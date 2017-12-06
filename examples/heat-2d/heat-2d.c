@@ -92,29 +92,30 @@ int main(int argc, char * argv[]) {
     tdiff = (double)(result.tv_sec + result.tv_usec * 1.0e-6);
 
     printf("|Time taken =  %7.5lfms\t", tdiff * 1.0e3);
-    printf("|MFLOPS =  %f\t", ((((double)NUM_FP_OPS * N *N *  T) / tdiff) / 1000000L));
+    printf("|MFLOPS =  %f\n", ((((double)NUM_FP_OPS * N *N *  T) / tdiff) / 1000000L));
 #endif
 
-#ifdef VERIFY
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            total+= A[T%2][i][j] ;
+    if (fopen(".test", "r")) {
+        for (i = 1; i < N+1; i++) {
+            for (j = 1; j < N+1; j++) {
+                total+= A[T%2][i][j] ;
+            }
         }
-    }
-    printf("|sum: %e\t", total);
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            sum_err_sqr += (A[T%2][i][j] - (total/N))*(A[T%2][i][j] - (total/N));
+        fprintf(stderr, "|sum: %e\t", total);
+        for (i = 1; i < N+1; i++) {
+            for (j = 1; j < N+1; j++) {
+                sum_err_sqr += (A[T%2][i][j] - (total/N))*(A[T%2][i][j] - (total/N));
+            }
         }
-    }
-    printf("|rms(A) = %7.2f\t", sqrt(sum_err_sqr));
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            chtotal += ((char *)A[T%2][i])[j];
+        fprintf(stderr, "|rms(A) = %7.2f\t", sqrt(sum_err_sqr));
+        for (i = 1; i < N+1; i++) {
+            for (j = 1; j < N+1; j++) {
+                chtotal += ((char *)A[T%2][i])[j];
+            }
         }
+        fprintf(stderr, "|sum(rep(A)) = %d\n", chtotal);
     }
-    printf("|sum(rep(A)) = %d\n", chtotal);
-#endif
+
     return 0;
 }
 
