@@ -308,7 +308,8 @@ PlutoConstraints* multiopt_get_permutability_constraints(PlutoProg *prog)
     return cc_permute_cst;
 }
 
-void multiopt_add_stmt_hyperplane_from_ilp_solutions (int64 *bestsol, PlutoProg *prog) {
+void multiopt_add_stmt_hyperplane_from_ilp_solutions (int64 *bestsol, PlutoProg *prog)
+{
     int j, k, nstmts, nvar, npar, num_ccs;
     Stmt **stmts;
 
@@ -341,6 +342,45 @@ void multiopt_add_stmt_hyperplane_from_ilp_solutions (int64 *bestsol, PlutoProg 
 
 }
 
+PlutoConstraints *multi_opt_resize_permutability_constraints_dep(Dep *dep, PlutoConstraints*cst, PlutoProg *prog)
+{
+    int nvar, npar, num_ccs, cc_id, src_id, new_cst_offset, obj_offset, j, k;
+    PlutoConstraints *new_dep_cst;
+    Stmt **stmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+    stmts = prog->stmts;
+
+
+    src_id = dep->src;
+    cc_id = stmts[src_id]->cc_id;
+    num_ccs = prog->ddg->num_ccs;
+    /* if(new_dep_cst == NULL) { */
+    
+        new_dep_cst = pluto_constraints_alloc (dep->cst->nrows, num_ccs*(npar+1)+1+(prog->nstmts)*(nvar+1)+1);
+    /* } */
+    new_dep_cst->nrows = dep->cst->nrows;
+    new_dep_cst->ncols = num_ccs*(npar+1)+1+(prog->nstmts)*(nvar+1)+1;
+    new_cst_offset = (num_ccs-1)*(npar+1) + 1;
+    obj_offset = cc_id*(npar+1)+1;
+    /* The coeffs corresponding to the dimensions of the statements */
+    for (j =0; j<dep->cst->nrows; j++) {
+        for (k=0; k<npar+1; k++) {
+            new_dep_cst->val[j][obj_offset+k] = dep->cst->val[j][k];
+        }
+        for(k=npar+1; k<dep->cst->ncols; k++) {
+            new_dep_cst->val[j][new_cst_offset+k] = dep->cst->val[j][k];
+        }
+         /* pluto_constraints_add(cc_permute_cst, new_dep_cst); */
+        /* printf("Dep cst \n"); */
+        /* pluto_constraints_cplex_print(stdout, dep->cst); */
+        /* printf(" Resized Dep cst \n"); */
+        /* pluto_constraints_cplex_print(stdout, new_dep_cst); */
+        /* pluto_constraints_free(new_dep_cst); */
+        /* new_dep_cst = NULL;    */
+    }
+    return new_dep_cst;
+}
 void resize_cst_multiopt(PlutoConstraints *cst, PlutoProg* prog)
 {
     int nvar, npar, nstmts, num_ccs, offset;
