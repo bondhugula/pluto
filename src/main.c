@@ -355,6 +355,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
+#ifdef GLPK
+    if (options->glpk) {
+        /* Turn off islsolve */
+        options->islsolve = 0;
+    }
+#endif
+
 
     /* Extract polyhedral representation from osl scop */
     PlutoProg *prog = NULL; 
