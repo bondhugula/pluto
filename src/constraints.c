@@ -1154,34 +1154,6 @@ int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar)
 }
 
 #ifdef GLPK
-PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog)
-{
-    int npar = prog->npar;
-    int nvar = prog->nvar;
-    int i, j, k;
-
-    PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
-    pluto_matrix_set(obj, 0);
-
-    /* u */
-    for (j=0; j<npar; j++) {
-        obj->val[0][j] = 5*5*nvar*prog->nloops;
-    }
-    /* w  */
-    obj->val[0][npar] = 5*nvar*prog->nloops;
-
-    for (i=0, j=npar+1; i<prog->nloops; i++) {
-        for (k=j; k<j+prog->stmts[prog->loops[i]]->dim_orig; k++) {
-            obj->val[0][k] = (nvar+2)*(prog->stmts[prog->loops[i]]->dim_orig-(k-j));
-        }
-        /* constant shift */
-        obj->val[0][k] = 1;
-        j += prog->stmts[prog->loops[i]]->dim_orig + 1;
-    }
-    return obj;
-
-}
-
 /* Constructs constraints for glpk problem in-memory.  Assumes that there
  * are no rows or cols in glp_prob lp.*/
 void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstraints *cst)
@@ -1282,7 +1254,7 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
     for (j=0; j<glp_get_num_cols(lp); j++) {
         double x = glp_mip_col_val(lp, j+1);
         IF_DEBUG(printf("c%d = %lld, ", j, (int64) round(x)););
-        sol[j] = (int) round(x);
+        sol[j] = (int64) round(x);
     }
     IF_DEBUG(printf("\n"););
     glp_delete_prob(lp);
@@ -1291,10 +1263,9 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
 
 /* Construct ILP in cplex format */
 int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-        PlutoProg *prog)
+        PlutoMatrix *obj)
 {
     int i, j;
-    PlutoMatrix *obj;
     int64 *sol;
 
 
@@ -1306,17 +1277,15 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
 
     glp_set_obj_dir(lp, GLP_MIN);
 
-    obj = construct_cplex_objective(cst, prog);
 
     set_glpk_constraints_from_pluto_constraints(lp, cst);
 
     for (j=0; j<obj->ncols; j++) {
         glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
     }
-    pluto_matrix_free(obj);
 
     for (i=0; i<cst->ncols-1; i++) {
-        glp_set_col_bnds(lp, i+1, GLP_FR, 0.0, 0.0);
+        glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
     }
     for (i=0; i<cst->ncols-1; i++) {
         glp_set_col_kind(lp, i+1, GLP_IV);
