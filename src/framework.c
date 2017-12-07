@@ -869,31 +869,44 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  */
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
 {
-    int i, npar, nstmts, nvar;
+    int i, npar, nstmts, nvar, num_ccs, obj_offset;
     PlutoConstraints *cst;
 
     npar = prog->npar;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
+    num_ccs = prog->ddg->num_ccs;
 
-    cst = pluto_constraints_alloc(1, CST_WIDTH);
+    if (options->multiopt) {
+        cst = pluto_constraints_alloc(1, (num_ccs)*(npar+1)+1+nstmts*(nvar+1)+1);
+        cst->ncols = num_ccs*(npar+1)+1+nstmts*(nvar+1)+1;
+    } else {
+        cst = pluto_constraints_alloc(1, CST_WIDTH);
+        cst->ncols = CST_WIDTH;
+    }
+    cst->nrows = 0;
 
-    if (prog->num_hyperplanes == 0) return cst;
+    /* if (prog->num_hyperplanes == 0) return cst; */
 
+    if (options->multiopt) {
+        obj_offset = num_ccs*(npar+1)+1;
+    } else {
+        obj_offset = npar+1;
+    }
     /* Lower bound for bounding coefficients (all non-negative) */
-    for (i=0; i<npar+1; i++)  {
+    for (i=0; i<obj_offset; i++)  {
         pluto_constraints_add_lb(cst, i, 0);
     }
     /* Lower bound for transformation coefficients (all non-negative) */
-    for (i=0; i<cst->ncols-npar-1-1; i++)  {
+    for (i=obj_offset; i<cst->ncols-1; i++)  {
         IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
-        pluto_constraints_add_lb(cst, npar+1+i, 0);
+        pluto_constraints_add_lb(cst, i, 0);
     }
 
     if (options->coeff_bound != -1) {
-        for (i=0; i<cst->ncols-npar-1-1; i++)  {
+        for (i=obj_offset; i<cst->ncols-1; i++)  {
             IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
-            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
+            pluto_constraints_add_ub(cst, i, options->coeff_bound);
         }
     }else{
         /* Add upper bounds for transformation coefficients */
@@ -906,9 +919,9 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
          * loop bounds
          */
         if (ub >= 10)   {
-            for (i=0; i<cst->ncols-npar-1-1; i++)  {
+            for (i=obj_offset; i<cst->ncols-1; i++)  {
                 IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
-                pluto_constraints_add_ub(cst, npar+1+i, ub);
+                pluto_constraints_add_ub(cst, i, ub);
             }
         }
     }

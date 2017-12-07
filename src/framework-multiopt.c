@@ -406,7 +406,7 @@ void resize_cst_multiopt(PlutoConstraints *cst, PlutoProg* prog)
 
 /* Assumes that the length of the array redun is equal to the constraint width of cst.
  * This assumption has to be asserted before each call to the routine */
-PlutoConstraints* multiobj_remove_redundant_variables (PlutoConstraints *cst, PlutoProg *prog, int*redun)
+PlutoConstraints* multiopt_remove_redundant_variables (const PlutoConstraints *cst, PlutoProg *prog, int* redun)
 {
     int i, j, nvar , npar, nstmts, num_ccs, k, del_count;
     PlutoConstraints *newcst;

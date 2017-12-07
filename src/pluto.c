@@ -246,6 +246,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     Stmt **stmts;
     int i, j, k;
     int nstmts, nvar, npar, del_count, num_ccs;
+    int *redun;
     int64 *sol, *fsol;
     PlutoConstraints *newcst;
 
@@ -256,11 +257,16 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     num_ccs = prog->ddg->num_ccs;
 
     /* Remove redundant variables - that don't appear in your outer loops */
-    int redun[npar+1+nstmts*(nvar+1)+1];
+    if (options->multiopt) {
+        redun = (int*) malloc(((num_ccs)*(npar+1)+1+nstmts*(nvar+1)+1)*sizeof(int));
+    } else {
+        redun = (int*) malloc((CST_WIDTH)*sizeof(int));
+    }
+    /* int redun[npar+1+nstmts*(nvar+1)+1]; */
 
     if (options->multiopt) {
         assert(cst->ncols == (num_ccs-1) *(npar+1) + CST_WIDTH + 1);
-        newcst = multiobj_remove_redundant_variables(cst, prog, redun);
+        newcst = multiopt_remove_redundant_variables(cst, prog, redun);
     } else {
         assert(cst->ncols - 1 == CST_WIDTH - 1);
 
@@ -343,6 +349,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         free(sol);
     }
 
+    free(redun);
     pluto_constraints_free(newcst);
 
     return fsol;
@@ -706,9 +713,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
         basecst = get_permutability_constraints(prog);
     }
     boundcst = get_coeff_bounding_constraints(prog);
-    if (options->multiopt) {
-        resize_cst_multiopt(boundcst, prog);
-    }
    
     pluto_constraints_add(basecst, boundcst);
     pluto_constraints_free(boundcst);

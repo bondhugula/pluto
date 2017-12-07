@@ -487,7 +487,7 @@ void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
 
-PlutoConstraints* multiobj_remove_redundant_variables (PlutoConstraints *cst, PlutoProg *prog, int*redun);
+PlutoConstraints* multiopt_remove_redundant_variables (const PlutoConstraints *cst, PlutoProg *prog, int* redun);
 void resize_cst_multiopt(PlutoConstraints*, PlutoProg*);
 PlutoConstraints *multiopt_get_permutability_constraints(PlutoProg *);
 void multiopt_add_stmt_hyperplane_from_ilp_solutions(int64 *bestsol, PlutoProg*);
