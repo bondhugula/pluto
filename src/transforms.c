@@ -126,15 +126,18 @@ void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog)
 {
     int i, d, last_depth; 
 
-    last_depth = prog->num_hyperplanes-1;
+    last_depth = loop->depth;
+
     for (i=0; i<loop->nstmts; i++) {
         Stmt *stmt = loop->stmts[i];
-        for (d=loop->depth; d<stmt->trans->nrows; d++) {
-            if (pluto_is_hyperplane_scalar(stmt, d)) {
+
+        for (d=stmt->trans->nrows-1; d >= loop->depth; d--) {
+            if (pluto_is_hyperplane_loop(stmt, d)) {
                 break;
             }
         }
-        last_depth = PLMIN(last_depth, d-1);
+
+        last_depth = PLMAX(last_depth, d);
     }
 
     for (i=0; i<loop->nstmts; i++) {

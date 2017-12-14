@@ -865,6 +865,43 @@ void deallocate_list(List *list){
     free(list);
 }
 
+/*Checks if data is present in list.*/
+bool list_is_present(List *list, int data)
+{
+    assert(list != NULL);
+    Node *it;
+
+    for (it = list->head; it != NULL; it = it->next) {
+        if (it->data == data) return true;
+    }
+
+    return false;
+}
+
+/*Returns number of data present in list.*/
+unsigned list_get_size(List list)
+{
+    Node *tmp;
+    unsigned list_size;
+
+    list_size = 0;
+    for (tmp = list.head; tmp != NULL; tmp = tmp->next) {
+       list_size++;
+    }
+
+    return list_size;
+}
+
+/*Prints the data in list space-separated*/
+void list_print(List *list)
+{
+    Node *it;
+    for (it = list->head; it != NULL; it = it->next) {
+       fprintf(stderr, "%d ", it->data);
+    }
+    fprintf(stderr, "\n");
+}
+
 /**
  * Check if the solution hyperplane is parallel.
  * @returns true, if the solution hyperplane is parallel.
@@ -908,53 +945,73 @@ Solvability get_solvability_status(PlutoProg *prog, Graph *ddg, bool *stmts_to_c
     return SEQUENTIAL_HYPERPLANE;
 }
 
+/**
+* Constructs ddg at a particular depth
+*/
+Graph *construct_ddg_at_depth(PlutoProg *prog, int depth)
+{
+    Dep **deps;
+    int ndeps, src, dest, i;
+    Graph *ddg;
+    PlutoMatrix *adjacency;
+
+    assert(depth >= 0 && depth < prog->num_hyperplanes);
+
+    deps = prog->deps;
+    ndeps = prog->ndeps;
+    ddg = graph_alloc(prog->nstmts);
+    adjacency = ddg->adj;
+    for (i = 0; i < ndeps; i++) {
+        if (deps[i]->satisfied && deps[i]->satisfaction_level < depth) continue;
+        src = deps[i]->src;
+        dest = deps[i]->dest;
+        if (!adjacency->val[src][dest]) adjacency->val[src][dest] = 1;
+    }
+
+    return ddg;
+}
+
 /*
- * Constructs a cluster graph.
- * @return graph, the dag constructed out of the cluster where each node is a cluster and edges between
- *  them represent the dependences between them.
+ * Constructs a SCC Graph
+ * @return graph, the dag constructed out of SCCs given by the list sccs.
  */
-Graph *construct_cluster_graph(PlutoProg *prog, Graph *ddg, SccCluster *clusters, unsigned n_clusters)
+Graph *construct_scc_graph(PlutoProg *prog, Graph *ddg, List *sccs)
 {
     unsigned i, j; //iterators
     Graph *graph;
     PlutoMatrix *adjacency;
     Node *it_1, *it_2;
-    SccCluster cluster_1, cluster_2;
-    bool is_connected;
+    unsigned n_nodes;
 
-    graph = graph_alloc(n_clusters);
+    n_nodes = list_get_size(*sccs);
+
+    graph = graph_alloc(n_nodes);
     adjacency = graph->adj;
-    for (i = 0; i < n_clusters; i++) {
-	cluster_1 = clusters[i];
-	for (j = i+1; j < n_clusters; j++) {
-	    cluster_2 = clusters[j];
-	    is_connected = false;
-	    assert(cluster_1.scc_list != NULL && cluster_2.scc_list != NULL);
-	    for (it_1 = (cluster_1.scc_list)->head; it_1 != NULL; it_1 = it_1->next) {
-		for (it_2 = (cluster_2.scc_list)->head; it_2 != NULL; it_2 = it_2->next) {
-		    if (it_1->data < it_2->data && ddg_sccs_direct_connected(ddg, prog, it_1->data, it_2->data)) {
-			is_connected = true;
-			break;
-		    }
-		    else if (it_2->data < it_1->data && ddg_sccs_direct_connected(ddg, prog, it_2->data, it_1->data)) {
-			is_connected = true;
-			break;
-		    }
-		}
-		if (is_connected) break;
-	    }
-
-	    if (is_connected) adjacency->val[i][j] = 1;
-	}
+    for (it_1 = sccs->head, i = 0; it_1 != NULL; it_1 = it_1->next, i++) {
+        for (it_2 = it_1->next, j = i+1; it_2 != NULL; it_2 = it_2->next, j++) {
+            if (it_1->data < it_2->data &&
+                ddg_sccs_direct_connected(ddg, prog, it_1->data, it_2->data)) {
+                adjacency->val[i][j] = 1;
+            }
+            else if (it_2->data < it_1->data &&
+                ddg_sccs_direct_connected(ddg, prog, it_2->data, it_1->data)) {
+                adjacency->val[j][i] = 1;
+            }
+        }
     }
 
     if (options->debug || options->moredebug) {
-	fprintf(stderr, "Cluster Graph(original):\n");
-	for (i = 0; i < n_clusters; i++) {
-	    for (j = 0; j < n_clusters; j++) {
-		if (adjacency->val[i][j]) fprintf(stderr, "(Cluster_%d)-->(Cluster_%d)\n", i, j);
+        fprintf(stderr, "SCC Graph(original):\n");
+        for (it_1 = sccs->head, i = 0; it_1 != NULL; it_1 = it_1->next, i++) {
+            for (it_2 = it_1->next, j = i+1; it_2 != NULL; it_2 = it_2->next, j++) {
+                if (adjacency->val[i][j]) {
+                    fprintf(stderr, "(SCC_%d)-->(SCC_%d)\n", it_1->data, it_2->data);
+                }
+                else if (adjacency->val[j][i]) {
+                    fprintf(stderr, "(SCC_%d)-->(SCC_%d)\n", it_2->data, it_1->data);
+                }
             }
-	}
+        }
     }
 
     return graph;
@@ -1035,6 +1092,7 @@ void print_cluster(SccCluster cluster)
     fprintf(stderr, "\tInvariant accesses: %d\n", cluster.invariant_access);
     fprintf(stderr, "\tSpatial accesses: %d\n", cluster.spatial_access);
     fprintf(stderr, "\tParallelism: %d\n", cluster.is_parallel);
+    fprintf(stderr, "\tSame dimensionality of SCCs: %d\n", cluster.are_dims_same);
     fprintf(stderr, "\tVectorizability: %d\n", cluster. is_vectorizable);
     fprintf(stderr, "\tGranularity: %d\n", cluster.granularity);
     fprintf(stderr, "\tDistinct accesses: %d\n", cluster.distinct_access);
@@ -1048,15 +1106,32 @@ void print_cluster(SccCluster cluster)
 }
 
 /**
+ * Scoring mechanism for maximal fusion based on the amount of self reuse and
+    group reuse.
+ * @return score.
+ **/
+double get_score_max(PlutoProg *prog, Graph *ddg, SccCluster cluster)
+{
+    double score;
+    score = ((cluster.num_access - cluster.distinct_access) /
+                ((double) cluster.num_access) +
+            (cluster.spatial_access + cluster.invariant_access) /
+                ((double) cluster.num_access)) * cluster.granularity;
+
+    return score;
+}
+
+/**
  * Need to test with different scoring mechanism.
- * Percentage of group reuse in the total access: (num_access-distinct_access)/num_access
- * Percentage of invariant and spatial reuse in total access: (invariant_access+spatial_access)/num_access
+ * Percentage of group reuse in the total access:
+    (num_access-distinct_access)/num_access
+ * Percentage of invariant and spatial reuse in total access:
+    (invariant_access+spatial_access)/num_access
  * Parallelism increase the current score by the factor of 1.5.
  * Number of distinct access (cache lines) per cluster group is maintained at a limit given by
     number of hardware prefetch buffers.
- * TODO: define score of the cluster to be linear function of its parameters.
  **/
-double get_score_test(SccCluster cluster)
+double get_score_test(PlutoProg *prog, Graph *ddg, SccCluster cluster)
 {
     double  score;
     unsigned num_sccs, limit;
@@ -1082,7 +1157,7 @@ double get_score_test(SccCluster cluster)
  * @param cluster, for which score need to computed.
  * @returns score, the score based on cluster parameters.
  **/
-double get_score_parallel(SccCluster cluster)
+double get_score_parallel(PlutoProg *prog, Graph *ddg, SccCluster cluster)
 {
 
     double score;
@@ -1091,8 +1166,9 @@ double get_score_parallel(SccCluster cluster)
     return score;
 }
 
-/* Checks if matrices are equal
-*/
+/* Checks if matrices are equal except for (last_row, last_col)
+ * @param mat_1, mat_2, matrices to compare.
+ */
 bool pluto_matrix_distinct_access_check(PlutoMatrix *mat_1, PlutoMatrix *mat_2)
 {
 
@@ -1120,18 +1196,23 @@ bool pluto_matrix_distinct_access_check(PlutoMatrix *mat_1, PlutoMatrix *mat_2)
 /**
  * Gets the number of distinct accesses among the statements to be considered.
  * @param stmts_to_consider, the set of statements to be considered.
+ * @param use_identity_transform, forces the function to use identity
+    transformation to compute distinct accesses.
  * @return number of distinct accesses.
- * TODO: Only considered different memory names to be different memory access.
-    Even A[i][j] and A[i-1][j] should be considered different memory access as it
-    triggers different cache lines.
+ * NOTE: If memory accesses change only in innermost dimension, then we consider
+  those to be single memory access. eg. B[i][j] = A[i][j]+A[i][j-1] + A[i+1][j]
+  Number of distinct accesses = 3 -> {(B[i][j]),(A[i][j],A[i][j-1]),(A[i+1][j])}
  **/
-unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
+unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider,
+    bool use_identity_transform)
 {
 
     unsigned i, j, k;
     Stmt *stmt;
     unsigned distinct_accesses, num_accesses;
-    PlutoAccess **accesses, *access_1, *access_2;
+    PlutoAccess **accesses;
+    int *access_stmt_id;
+    PlutoMatrix *access_1, *access_2;
     bool *access_to_analyze;
 
     num_accesses = 0;
@@ -1146,6 +1227,7 @@ unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
 
     // 2. Save the accesses.
     accesses = (PlutoAccess**) malloc(sizeof(PlutoAccess*) * num_accesses);
+    access_stmt_id = (int *) malloc(sizeof(int) *num_accesses);
     access_to_analyze = (bool *) malloc(sizeof(bool) * num_accesses);
     k = 0;
     for (i=0; i<prog->nstmts; i++) {
@@ -1155,10 +1237,12 @@ unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
         stmt = prog->stmts[i];
         for (j=0; j<stmt->nreads; j++) {
 	    access_to_analyze[k] = false;
+	    access_stmt_id[k] = i;
 	    accesses[k++] = stmt->reads[j];
 	}
 	for (j=0; j<stmt->nwrites; j++) {
 	    access_to_analyze[k] = false;
+	    access_stmt_id[k] = i;
 	    accesses[k++] = stmt->writes[j];
 	}
     }
@@ -1168,12 +1252,27 @@ unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
     for (i=0; i<num_accesses; i++) {
 	access_to_analyze[i] = true;
 	for (j=i+1; j<num_accesses; j++) {
-	    access_1 = accesses[i];
-	    access_2 = accesses[j];
+	    if (use_identity_transform) {
+		access_1 = accesses[i]->mat;
+		access_2 = accesses[j]->mat;
+	    }
+	    else {
+		int *divs;
+		access_1 = pluto_get_new_access_func(prog->stmts[access_stmt_id[i]],
+							accesses[i]->mat, &divs);
+		free(divs);
+		access_2 = pluto_get_new_access_func(prog->stmts[access_stmt_id[j]],
+							accesses[j]->mat, &divs);
+		free(divs);
 
-	    if (strcmp(access_1->name, access_2->name) || access_to_analyze[j]) continue;
+	    }
 
-	    if(pluto_matrix_distinct_access_check(access_1->mat, access_2->mat)) {
+	    if (strcmp(accesses[i]->name, accesses[j]->name) ||
+		    access_to_analyze[j]) {
+		continue;
+	    }
+
+	    if(pluto_matrix_distinct_access_check(access_1, access_2)) {
 		distinct_accesses--;
 		access_to_analyze[j] = true;
 	    }
@@ -1191,10 +1290,11 @@ unsigned get_distinct_accesses(PlutoProg *prog, bool *stmts_to_consider)
  * @param nstmts, number of statements in the set.
  * @param cluster, cluster which need to be updated.
  **/
-void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccCluster *cluster)
+void update_access_information(PlutoProg *prog, bool *stmts_to_consider,
+				SccCluster *cluster)
 {
 
-    unsigned i, j, k, n_loops;
+    int i, j, k, n_loops;
     Stmt *stmt, **stmts;
 
     stmts = prog->stmts;
@@ -1202,7 +1302,7 @@ void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccClus
     cluster->spatial_access = 0;
     cluster->is_vectorizable = false;
     cluster->num_access = 0;
-    cluster->distinct_access = get_distinct_accesses(prog, stmts_to_consider);
+    cluster->distinct_access = get_distinct_accesses(prog, stmts_to_consider, true);
 
     for (i = 0; i < prog->nstmts; i++) {
 
@@ -1221,8 +1321,12 @@ void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccClus
 	    }
 
 	    if (k == access_matrix->nrows-1) {
-		if (access_matrix->val[access_matrix->nrows-1][n_loops-1] != 0) cluster->spatial_access++;
-		else cluster->invariant_access++;
+		if (access_matrix->val[access_matrix->nrows-1][n_loops-1] != 0) {
+		    cluster->spatial_access++;
+		}
+		else {
+		    cluster->invariant_access++;
+		}
 	    }
 	}
 
@@ -1233,8 +1337,12 @@ void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccClus
 	    }
 
 	    if (k == access_matrix->nrows-1) {
-		if (access_matrix->val[access_matrix->nrows-1][n_loops-1] != 0) cluster->spatial_access++;
-		else cluster->invariant_access++;
+		if (access_matrix->val[access_matrix->nrows-1][n_loops-1] != 0) {
+		    cluster->spatial_access++;
+		}
+		else {
+		    cluster->invariant_access++;
+		}
 	    }
 	}
     }
@@ -1242,52 +1350,113 @@ void update_access_information(PlutoProg *prog, bool *stmts_to_consider, SccClus
 }
 
 /**
- * Creates the clusters with each cluster containing the unique SCC.
- * @returns the group of clusters with cluster[i] containing ith SCC.
- * TODO: Need to compute distinct accesses parameters.
+ * Checks if scc_1 and scc_2 are distributed at level 'depth'.
+ * @param depth, to check if two sccs are distributed at that level.
+ * @return status of distribution.
  **/
-SccCluster* create_clusters(PlutoProg *prog, Graph *ddg)
+bool pluto_are_sccs_distributed(PlutoProg *prog, Graph *ddg, int depth,
+                                    int scc_1, int scc_2)
 {
+    assert(depth < prog->num_hyperplanes);
 
-    SccCluster *clusters;
-    unsigned i, j, n_sccs;
-    bool *stmts_to_consider;
+    int *vertices_1, *vertices_2, npar, nvar, i;
+    Stmt *stmt_1, *stmt_2;
+    npar = prog->npar;
+    nvar = prog->nvar;
 
-    n_sccs = ddg->num_sccs;
-    clusters = (SccCluster *) malloc(sizeof(SccCluster) * n_sccs);
+    vertices_1 = ddg->sccs[scc_1].vertices;
+    vertices_2 = ddg->sccs[scc_2].vertices;
 
-    for (i = 0; i < n_sccs; i++) {
-	Stmt **stmts;   // Stmts corresponding to this cluster.
-	int n_stmts;
-	int *vertices;
+    stmt_1 = prog->stmts[vertices_1[0]];
+    stmt_2 = prog->stmts[vertices_2[0]];
 
-	vertices = ddg->sccs[i].vertices;
-	n_stmts = ddg->sccs[i].size;
-	stmts = (Stmt **) malloc(sizeof(Stmt *) * n_stmts);
-	stmts_to_consider = (bool *) malloc(sizeof(bool) * prog->nstmts);
-	for (j = 0; j < prog->nstmts; j++) {
-	    stmts_to_consider[j] = false;
+    for (i = 0; i <= depth; i++) {
+        if (prog->hProps[i].type != H_SCALAR) continue;
+
+        if (stmt_1->trans->val[i][nvar+npar]!=stmt_2->trans->val[i][nvar+npar]) {
+            return true;
         }
-
-	// 1. Find the statements corresponding to this cluster.
-	for (j = 0; j < n_stmts; j++) {
-	    stmts[j] = prog->stmts[vertices[j]];
-	    stmts_to_consider[vertices[j]] = true;
-	}
-
-	// 2. Compute the access informations.
-	update_access_information(prog, stmts_to_consider, &clusters[i]);
-
-	// 3. Compute the cluster parameters.
-	clusters[i].is_parallel = (get_solvability_status(prog, ddg, stmts_to_consider) == PARALLEL_HYPERPLANE);
-	clusters[i].granularity = n_stmts;
-	clusters[i].scc_list = create_empty_list();
-	push_node_to_list(clusters[i].scc_list, i);
-
-	free(stmts_to_consider);
     }
 
-    return clusters;
+    return false;
+}
+
+/**
+ * Creates set of SCC groups based on partial schedules upto 'depth'.
+ * This set is the partitions of SCCs that are distributed at given 'depth'.
+ * @param ngroups, updated to size of list.
+ **/
+List** get_groups_from_schedule(PlutoProg *prog, Graph *ddg, int depth,
+                                    int *n_groups)
+{
+
+    List **groups;
+    int i, j, current_num, n_sccs;
+
+    n_sccs = ddg->num_sccs;
+    if (depth >= prog->num_hyperplanes) {
+        *n_groups = 0;
+        return NULL;
+    }
+
+    current_num = 0;
+    groups = NULL;
+    for (i = 0; i < n_sccs; i++) {
+        // Check if it matches with any existing group
+        for (j = 0; j < current_num; j++) {
+            if (!pluto_are_sccs_distributed(prog, ddg, depth, i,
+                                                groups[j]->head->data)) {
+                push_node_to_list(groups[j], i);
+                break;
+            }
+        }
+        if (j == current_num) {
+            groups = (List **)realloc(groups, (current_num+1) * sizeof(List *));
+            groups[current_num] = create_empty_list();
+            push_node_to_list(groups[current_num], i);
+            current_num++;
+        }
+    }
+
+    *n_groups = current_num;
+    return groups;
+}
+
+/**
+* Wraps the given 'scc' into a basic cluster and also computes its properties.
+* @returns basic cluster corresponding to scc.
+**/
+SccCluster create_basic_cluster(PlutoProg *prog, Graph *ddg, int scc) {
+    SccCluster cluster;
+    bool *stmts_to_consider;
+    int *vertices, n_stmts;
+    unsigned i;
+
+    vertices = ddg->sccs[scc].vertices;
+    n_stmts = ddg->sccs[scc].size;
+    stmts_to_consider = (bool *) malloc(sizeof(bool) * prog->nstmts);
+
+    // Initialization.
+    for (i = 0; i < prog->nstmts; i++) {
+        stmts_to_consider[i] = false;
+    }
+
+    for (i = 0; i < n_stmts; i++) {
+        stmts_to_consider[vertices[i]] = true;
+    }
+
+    update_access_information(prog, stmts_to_consider, &cluster);
+
+    cluster.is_parallel = (get_solvability_status(prog, ddg, stmts_to_consider)
+                            == PARALLEL_HYPERPLANE);
+    cluster.granularity = n_stmts;
+    cluster.scc_list = create_empty_list();
+    push_node_to_list(cluster.scc_list, scc);
+    cluster.are_dims_same = true;
+
+    free(stmts_to_consider);
+
+    return cluster;
 }
 
 /**
@@ -1308,6 +1477,7 @@ SccCluster copy_cluster(SccCluster cluster)
     copy.distinct_access = cluster.distinct_access;
     copy.num_access = cluster.num_access;
     copy.scc_list = create_empty_list();
+    copy.are_dims_same = cluster.are_dims_same;
 
     assert(cluster.scc_list != NULL);
     for (tmp = (cluster.scc_list)->head; tmp != NULL; tmp = tmp->next) {
@@ -1317,6 +1487,27 @@ SccCluster copy_cluster(SccCluster cluster)
     return copy;
 }
 
+/**Checks if two clusters are distributed at level 'prog->num_hyperplanes-1'.
+ * @return true, if clusters are distributed.
+ **/
+bool pluto_are_clusters_distributed(PlutoProg *prog, Graph *ddg,
+                                        SccCluster cluster_1,
+                                        SccCluster cluster_2)
+{
+    assert(cluster_1.granularity > 0 && cluster_2.granularity > 0);
+    assert(cluster_1.scc_list != NULL && cluster_2.scc_list != NULL);
+
+    int scc_1, scc_2;
+
+    scc_1 = (cluster_1.scc_list)->head->data;
+    scc_2 = (cluster_2.scc_list)->head->data;
+
+    assert(ddg->sccs[scc_1].size > 0 && ddg->sccs[scc_2].size > 0);
+
+    return pluto_are_sccs_distributed(prog, ddg, prog->num_hyperplanes-1, scc_1,
+                                        scc_2);
+}
+
 /**
  * Combines the 2 clusters (cluster_1 and cluster_2) and saves the result in combined_cluster.
  * @params cluster_1, cluster_2, the clusters to be combined.
@@ -1324,20 +1515,23 @@ SccCluster copy_cluster(SccCluster cluster)
  * @params solvability_matrix, containing scc pairwise solvability status.
  * @returns true, if combining the two clusters is valid otherwise false.
  **/
-bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1, SccCluster cluster_2,
-	SccCluster *cluster, double (*get_score)(SccCluster))
+bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1,
+			SccCluster cluster_2,
+			SccCluster *cluster,
+			double (*get_score)(PlutoProg *, Graph *, SccCluster))
 {
 
     unsigned i;
     double score, score_1, score_2;
     Solvability status;
     bool *stmts_1, *stmts_2, *stmts;
+    Node *tmp;
 
     IF_DEBUG(fprintf(stderr, "\nTrying to combine the following clusters:\n"));
     IF_DEBUG(fprintf(stderr, "Cluster 1:\n"); print_cluster(cluster_1););
     IF_DEBUG(fprintf(stderr, "Cluster 2:\n"); print_cluster(cluster_2););
 
-    // 1. If any one of the cluster is empty, then copy the other cluster to the result.
+    // 1. If any one of the cluster is empty, then copy other cluster to result.
     if (cluster_1.granularity == 0) {
 	*cluster = copy_cluster(cluster_2);
 	return true;
@@ -1356,7 +1550,7 @@ bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1, SccClus
     free(stmts_1);
     free(stmts_2);
 
-    // 2. Check the validity of combining based on the score and return the result.
+    // 2. Check the validity of combining based on the score and return result.
     status = get_solvability_status(prog, ddg, stmts);
     if (status == NO_HYPERPLANE) {
 	IF_DEBUG(fprintf(stderr, "No solution exists!!!\n"));
@@ -1372,24 +1566,41 @@ bool combine_clusters(PlutoProg *prog, Graph *ddg, SccCluster cluster_1, SccClus
 	cluster->is_parallel = true;
     }
 
-    cluster->invariant_access = cluster_1.invariant_access + cluster_2.invariant_access;
-    cluster->spatial_access = cluster_1.spatial_access + cluster_2.spatial_access;
-    cluster->is_vectorizable = cluster_1.is_vectorizable && cluster_2.is_vectorizable;
-    cluster->granularity = cluster_1.granularity + cluster_2.granularity;
-    cluster->num_access = cluster_1.num_access + cluster_2.num_access;
-    cluster->distinct_access = get_distinct_accesses(prog, stmts);
+    cluster->invariant_access = cluster_1.invariant_access +
+                                    cluster_2.invariant_access;
+    cluster->spatial_access = cluster_1.spatial_access +
+                                cluster_2.spatial_access;
+    cluster->is_vectorizable = cluster_1.is_vectorizable &&
+                                cluster_2.is_vectorizable;
+    cluster->granularity = cluster_1.granularity +
+                            cluster_2.granularity;
+    cluster->num_access = cluster_1.num_access +
+                            cluster_2.num_access;
+    cluster->distinct_access = get_distinct_accesses(prog, stmts, true);
+    cluster->scc_list = merge_lists(cluster_1.scc_list, cluster_2.scc_list);
 
-    score = (*get_score)(*cluster);
-    score_1 = (*get_score)(cluster_1);
-    score_2 = (*get_score)(cluster_2);
+    cluster->are_dims_same = true;
+    for (tmp = cluster->scc_list->head; tmp->next != NULL; tmp = tmp->next) {
+	Scc scc_1, scc_2;
+	scc_1 = ddg->sccs[tmp->data];
+	scc_2 = ddg->sccs[tmp->next->data];
+	if (scc_1.max_dim != scc_2.max_dim) {
+	    cluster->are_dims_same = false;
+	    break;
+	}
+    }
+
+    score = (*get_score)(prog, ddg, *cluster);
+    score_1 = (*get_score)(prog, ddg, cluster_1);
+    score_2 = (*get_score)(prog, ddg, cluster_2);
     IF_DEBUG(fprintf(stderr, "cluster_1 score: %lf, cluster_2 score: %lf, combined score:%lf\n", score_1, score_2, score));
     if (score < score_1 || score < score_2) {
 	IF_DEBUG(fprintf(stderr, "Combining clusters REDUCED_SCORE\n"));
 	free(stmts);
+	deallocate_list(cluster->scc_list);
 	return false;
     }
 
-    cluster->scc_list = merge_lists(cluster_1.scc_list, cluster_2.scc_list);
     IF_DEBUG(fprintf(stderr, "Combined Cluster:\n"); print_cluster(*cluster););
     IF_DEBUG(fprintf(stderr, "Above clusters are fusable without reducing score.\n"));
     free(stmts);
@@ -1411,40 +1622,43 @@ SccCluster create_empty_cluster(void)
     cluster.granularity = 0;
     cluster.distinct_access = 0;
     cluster.num_access = 0;
+    cluster.are_dims_same = true;
     cluster.scc_list = create_empty_list();
 
     return cluster;
 }
 
 /**
- * The given set of clusters are grouped based on the score given by the get_score method.
+ * The given set of basic_clusters are grouped based on the score given by the get_score method.
  * @returns the cluster groups sorted by topological order.
  **/
-SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
-	SccCluster *clusters,unsigned *n_groups,double (*get_score)(SccCluster))
+SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *scc_graph,
+			    SccCluster *basic_clusters, unsigned *n_groups,
+			double (*get_score)(PlutoProg *, Graph *, SccCluster))
 {
 
-    unsigned i,j, n_partitioned_index, n_clusters;
-    SccCluster tmp_groups[cluster_graph->nVertices], *cluster_groups;
-    int64 indegree[cluster_graph->nVertices];
-    bool is_partitioned[cluster_graph->nVertices]; // Used to check if the cluster has been assigned a group.
+    unsigned i,j, n_partitioned_index, n_basic_clusters;
+    SccCluster tmp_groups[scc_graph->nVertices], *cluster_groups;
+    int64 indegree[scc_graph->nVertices];
+    // Used to check if the cluster has been assigned a group.
+    bool is_partitioned[scc_graph->nVertices];
     PlutoMatrix *adjacency;
     bool status;
 
-    adjacency = cluster_graph->adj;
-    n_clusters = cluster_graph->nVertices;
+    adjacency = scc_graph->adj;
+    n_basic_clusters = scc_graph->nVertices;
     n_partitioned_index = 0;
 
     // 1a. Initialize the indegree of the cluster using the cluster graph;
-    for (i = 0; i < n_clusters; i++) {
+    for (i = 0; i < n_basic_clusters; i++) {
 	indegree[i] = 0;
-	for (j = 0; j < n_clusters; j++) {
+	for (j = 0; j < n_basic_clusters; j++) {
 	    if (adjacency->val[j][i]) indegree[i]++;
-        }
+	}
     }
 
-    // 1b. Initially no clusters belong to any group.
-    for (i = 0; i < n_clusters; i++) {
+    // 1b. Initially no basic_clusters belong to any group.
+    for (i = 0; i < n_basic_clusters; i++) {
 	is_partitioned[i] = false;
     }
 
@@ -1452,11 +1666,11 @@ SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
 	SccCluster current_cluster;
 
 	// 2. If every cluster belong to a group, stop the algorithm.
-	for (i = 0; i < n_clusters; i++) {
+	for (i = 0; i < n_basic_clusters; i++) {
 	    if (!is_partitioned[i]) break;
-        }
+	}
 
-	if (i == n_clusters) break;
+	if (i == n_basic_clusters) break;
 
 	current_cluster = create_empty_cluster();
 
@@ -1469,13 +1683,14 @@ SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
 	       with which cluster achieves the highest score.*/
 	    max_score = -1;
 	    cluster_to_combine = -1;
-	    for (i = 0; i < n_clusters; i++) {
+	    for (i = 0; i < n_basic_clusters; i++) {
 		SccCluster tmp;
 		if (!is_partitioned[i] && indegree[i] == 0) {
-		    status = combine_clusters(prog, ddg, current_cluster, clusters[i], &tmp, get_score);
-		    if (status && max_score < (*get_score)(tmp)) {
+		    status = combine_clusters(prog, ddg, current_cluster,
+					    basic_clusters[i], &tmp, get_score);
+		    if (status && max_score < (*get_score)(prog, ddg, tmp)) {
 			result = tmp;
-			max_score = (*get_score)(tmp);
+			max_score = (*get_score)(prog, ddg, tmp);
 			cluster_to_combine = i;
 		    }
 		}
@@ -1487,12 +1702,12 @@ SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
 	    current_cluster = result;
 	    is_partitioned[cluster_to_combine] = true;
 
-	    for (i = 0; i < n_clusters; i++) {
+	    for (i = 0; i < n_basic_clusters; i++) {
 		if (adjacency->val[cluster_to_combine][i]) indegree[i]--;
-            }
+	    }
 	}
 
-	// 5. Continue till all clusters are partitioned.
+	// 5. Continue till all basic_clusters are partitioned.
 	tmp_groups[n_partitioned_index++] = current_cluster;
     }
 
@@ -1505,74 +1720,80 @@ SccCluster *group_clusters(PlutoProg *prog, Graph *ddg, Graph *cluster_graph,
     return cluster_groups;
 }
 
-/*
- * Get partition from the cluster group.
- * NOTE: Cluster group should be in topological order.
- * @returns partition, where partition[i] = k represents ith SCC belongs to kth partition(cluster_groups).
- */
-int64 *get_partition(SccCluster *cluster_groups, unsigned n_groups, unsigned n_sccs)
-{
-    int64 *partition;
-    SccCluster cluster;
-    Node *it;
-    unsigned i;
-
-    partition = (int64 *) malloc(sizeof(int64) * n_sccs);
-    for (i = 0; i < n_groups; i++) {
-	cluster = cluster_groups[i];
-	assert(cluster.scc_list != NULL);
-	for (it = (cluster.scc_list)->head; it != NULL; it = it->next) {
-	    partition[it->data] = i;
-	}
-    }
-
-    return partition;
-}
-
 /**
- * Score based algorithm for initial cut.
+ * Greedy Score-based algorithm.
  **/
-bool cut_based_on_cost_model(PlutoProg *prog, Graph *ddg, double (*get_score)(SccCluster))
+bool cut_based_on_cost_model(PlutoProg *prog, Graph *ddg,
+			double (*get_score)(PlutoProg *, Graph *, SccCluster))
 {
 
     Graph *graph;
-    SccCluster *clusters, *cluster_groups;
+    SccCluster *cluster_groups;
     int64 *partition;
-    unsigned n_sccs, i, n_groups;
+    unsigned n_sccs, i, j, n_groups;
     bool status;
+    List **scc_groups;
+    int n_scc_groups;
 
     n_sccs = ddg->num_sccs;
     status = false;
 
-    // 1. Create clusters with each clusters containing unique SCCs.
-    clusters = create_clusters(prog, ddg);
+    partition = (int64 *) malloc(sizeof(int64) * n_sccs);
+    // 1. Get the SCC groups from the partial schedule found so far.
+    scc_groups = get_groups_from_schedule(prog, ddg, prog->num_hyperplanes - 1,
+					    &n_scc_groups);
 
-    // 2. Construct the cluster graph.
-    graph = construct_cluster_graph(prog, ddg, clusters, n_sccs);
-    transitive_closure(graph);
+    assert (n_scc_groups > 0 && n_scc_groups <= n_sccs);
 
-    // 3. Apply greedy algorithm to group the clusters.
-    cluster_groups = group_clusters(prog, ddg, graph, clusters, &n_groups, get_score);
+    // 2. Run the algorithm for each group.
+    for (i = 0; i < n_scc_groups; i++) {
 
-    // 4. Cut as dictated by partition
-    if (n_groups > 1) {
-	partition = get_partition(cluster_groups, n_groups, n_sccs);
-	cut_based_on_partition(prog, ddg, partition);
-	free(partition);
-	status = true;
+	SccCluster *basic_clusters, cluster;
+	Node *it;
+
+	graph = construct_scc_graph(prog, ddg, scc_groups[i]);
+	transitive_closure(graph);
+
+	// 2a. Compute the basic clusters corresponding to current SCC group.
+	basic_clusters = (SccCluster *) malloc (sizeof(SccCluster) * graph->nVertices);
+	for (it = scc_groups[i]->head, j = 0; it != NULL; it = it->next, j++) {
+	    basic_clusters[j] = create_basic_cluster(prog, ddg, it->data);
+	}
+
+	/* 3. Apply greedy algorithm to group basic clusters present in current
+	    SCC group.
+	*/
+	cluster_groups = group_clusters(prog, ddg, graph, basic_clusters,
+					    &n_groups, get_score);
+
+	// 4. Assign partition number to SCCs based on the cluster groups
+	for (j = 0; j < n_groups; j++) {
+	    cluster = cluster_groups[j];
+	    assert(cluster.scc_list != NULL);
+	    for (it = (cluster.scc_list)->head; it != NULL; it = it->next) {
+		partition[it->data] = j;
+	    }
+	}
+	if (n_groups > 1) status = true;
+
+	//freeing resources
+	for (j = 0; j < graph->nVertices; j++) {
+	    deallocate_list(basic_clusters[j].scc_list);
+	}
+	free(basic_clusters);
+	for (j = 0; j < n_groups; j++) {
+	    deallocate_list(cluster_groups[j].scc_list);
+	}
+	free(cluster_groups);
     }
 
-    //freeing resources
-    for (i = 0; i < n_groups; i++) {
-	deallocate_list(cluster_groups[i].scc_list);
-    }
-    free(cluster_groups);
+    if (status) cut_based_on_partition(prog, ddg, partition);
+    free(partition);
 
-    for (i = 0; i < n_sccs; i++) {
-	deallocate_list(clusters[i].scc_list);
+    for (i = 0; i < n_scc_groups; i++) {
+	deallocate_list(scc_groups[i]);
     }
-    free(clusters);
-
+    free(scc_groups);
     return status;
 }
 
@@ -1585,6 +1806,93 @@ void cut_at_parallelism_loss(PlutoProg *prog, Graph *ddg)
 }
 
 /* 
+ * Determine constraints to ensure linear independence of hyperplanes for the statements
+    given by stmts_to_consider
+ *
+ * lin_ind_mode = EAGER: all statement hyperplanes have to be linearly independent
+ * w.r.t existing ones (ignoring stmts that already have enough lin ind solns)
+ *              = LAZY: at least one statement that does not have enough
+ * linearly independent solutions will get a new linearly independent
+ * hyperplane (this is enough to make progress)
+ */
+PlutoConstraints *get_selective_linear_ind_constraints(const PlutoProg *prog,
+        const PlutoConstraints *cst, bool lin_ind_mode, bool *stmts_to_consider)
+{
+    int npar, nvar, nstmts, i, j, k, orthosum, nstmts_to_consider;
+    int *orthonum;
+    PlutoConstraints ***orthcst;
+    Stmt **stmts;
+
+    IF_DEBUG(printf("[pluto] get_selective_linear_ind_constraints\n"););
+
+    npar = prog->npar;
+    nvar = prog->nvar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    nstmts_to_consider = 0;
+    for (i=0; i<nstmts; i++) {
+        if (stmts_to_consider[i]) nstmts_to_consider++;
+    }
+
+    orthcst = (PlutoConstraints ***) malloc(nstmts_to_consider*
+                                            sizeof(PlutoConstraints **));
+
+    orthosum = 0;
+    orthonum = (int *) malloc(nstmts_to_consider * sizeof(int));
+
+    /* Get orthogonality constraints for each statement */
+    k = 0;
+    for (j=0; j<nstmts; j++)    {
+        if (!stmts_to_consider[j]) continue;
+
+        orthcst[k] = get_stmt_ortho_constraints(stmts[j],
+                prog, cst, &orthonum[k]);
+        orthosum += orthonum[k];
+	k++;
+    }
+
+    PlutoConstraints *indcst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    if (orthosum >= 1) {
+        if (lin_ind_mode == EAGER) {
+            /* Look for linearly independent hyperplanes for all stmts */
+            for (j=0; j<nstmts_to_consider; j++)    {
+                if (orthonum[j] >= 1)   {
+                    pluto_constraints_add(indcst, orthcst[j][orthonum[j]-1]);
+                }
+            }
+        }else{
+            assert(lin_ind_mode == LAZY);
+            /* At least one stmt should have a linearly independent hyperplane */
+            for (i=0; i<nstmts_to_consider; i++) {
+                /* Everything was initialized to zero */
+                if (orthonum[i] >= 1) {
+                    for (j=0; j<CST_WIDTH-1; j++) {
+                        indcst->val[0][j] += orthcst[i][orthonum[i]-1]->val[0][j];
+                    }
+                }
+            }
+            indcst->val[0][CST_WIDTH-1] = -1;
+            indcst->nrows = 1;
+            IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
+            IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
+        }
+    }
+
+    for (j=0; j<nstmts_to_consider; j++)    {
+        for (k=0; k<orthonum[j]; k++)   {
+            pluto_constraints_free(orthcst[j][k]);
+        }
+        free(orthcst[j]);
+    }
+    free(orthcst);
+    free(orthonum);
+
+    return indcst;
+}
+
+/*
  * Determine constraints to ensure linear independence of hyperplanes 
  *
  * lin_ind_mode = EAGER: all statement hyperplanes have to be linearly independent
@@ -1765,12 +2073,13 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     return num_sols_found;
 }
 
-/*Finds the best hyperplane considering only scc1 and scc2*/
+/*Finds the best hyperplane considering only statements specified by stmts_to_consider.*/
 int64* get_best_solution(PlutoProg *prog, Graph *ddg, bool *stmts_to_consider)
 {
     int64 *bestsol;
-    PlutoConstraints *basecst, *nzcst, *boundcst;
+    PlutoConstraints *basecst, *nzcst, *boundcst, *indcst;
     PlutoConstraints *currcst;
+    bool status;
 
     int nstmts = prog->nstmts;
     int nvar = prog->nvar;
@@ -1791,11 +2100,22 @@ int64* get_best_solution(PlutoProg *prog, Graph *ddg, bool *stmts_to_consider)
             CST_WIDTH);
 
     pluto_constraints_copy(currcst, basecst);
-    nzcst = get_selective_non_trivial_sol_constraints(prog, EAGER, stmts_to_consider);
+    nzcst = get_selective_non_trivial_sol_constraints(prog, EAGER,
+                                                        stmts_to_consider);
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
-    bestsol = pluto_prog_constraints_lexmin(currcst, prog);
+    status = false;
+    if (prog->num_hyperplanes != 0) {
+        indcst = get_selective_linear_ind_constraints(prog, currcst, EAGER,
+                                                        stmts_to_consider);
+        if (indcst->nrows != 0) pluto_constraints_add(currcst, indcst);
+        else status = true;
+        pluto_constraints_free(indcst);
+    }
+    if (status) bestsol = NULL;
+    else bestsol = pluto_prog_constraints_lexmin(currcst, prog);
+
     pluto_constraints_free(currcst);
 
     /* Same number of solutions are found for each stmt */
@@ -2686,10 +3006,14 @@ int pluto_auto_transform(PlutoProg *prog)
         prog->deps[i]->satisfied = false;
     }
 
+    /* Initialize intra_tile_distribute_depth to -1*/
+    for (i = 0; i < prog->nstmts; i++) {
+        prog->stmts[i]->intra_tile_distribute_depth = -1;
+    }
+
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);
     ddg_compute_scc(prog);
-    compute_scc_vertices(prog->ddg);
 
     Graph *ddg = prog->ddg;
      int nvar = prog->nvar;
@@ -2809,9 +3133,7 @@ int pluto_auto_transform(PlutoProg *prog)
                     /* Smart fuse (default) */
                     cut_smart(prog, ddg);
                 }else if (options->fuse == TYPED_FUSE) {
-                    /*Max fuse each partition*/
-                    if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
-                    else cut_conservative(prog, ddg);
+                    cut_based_on_cost_model(prog, ddg, get_score_max);
                 }else{
                     /* Max fuse */
                     if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
@@ -3055,6 +3377,8 @@ void ddg_compute_scc(PlutoProg *prog)
         g->sccs[i].size = get_scc_size (prog, i);
         g->sccs[i].id = gT->sccs[i].id;
     }
+
+    compute_scc_vertices(prog->ddg);
 
     graph_free(gT);
 

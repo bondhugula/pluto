@@ -305,10 +305,21 @@ void pluto_tile(PlutoProg *prog)
         }
     }
 
+    // Post-transform distribution phase available only with TYPED_FUSE (as of now).
+    if (options->fuse == TYPED_FUSE) pluto_intratile_loops_distribute(prog);
+
     if (options->intratileopt) {
+        Band **ibands_opts;
+        int n_ibands_opts;
+        ibands_opts = pluto_get_innermost_permutable_bands_intraopt(prog,
+                                                                &n_ibands_opts);
+        if (options->debug || options->moredebug) {
+            fprintf(stdout, "Intratile optimization bands:\n");
+            pluto_bands_print(ibands_opts, n_ibands_opts);
+        }
         int retval = 0;
-        for (i=0; i<nbands; i++) {
-            retval |= pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);
+        for (i=0; i<n_ibands_opts; i++) {
+            retval |= pluto_intra_tile_optimize_band(ibands_opts[i], 0, prog);
         }
         if (retval) {
             pluto_compute_dep_directions(prog);
@@ -319,7 +330,6 @@ void pluto_tile(PlutoProg *prog)
             }
         }
     }
-
 
     /* DEPRECATED: now taken care of in intra_tile_optimize */
 #if 0
