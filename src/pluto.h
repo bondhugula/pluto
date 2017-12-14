@@ -51,6 +51,7 @@
 #define DEFAULT_L2_CACHE_SIZE (256*1024)
 #define DEFAULT_L1_CACHE_LINESIZE 64
 #define DEFAULT_DATA_TYPE double
+#define BASE_TILE_SIZE 8
 
 #define CST_WIDTH (npar+1+nstmts*(nvar+1)+1)
 
@@ -467,6 +468,7 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 isl_union_map *isl_union_map_for_pluto_schedule(PlutoProg *prog, isl_ctx *ctx, isl_space *space);
+int get_tile_dim(PlutoProg *prog, isl_union_set *domains);
 int *get_auto_tile_size(PlutoProg *prog, isl_union_set *domains, isl_union_map *read,
                         isl_union_map *write);
 void pluto_tile(PlutoProg *, int *);
@@ -526,6 +528,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, int *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
+int *calc_score_for_loops(Ploop **loops, int nloops, PlutoProg *prog);
 
 int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
