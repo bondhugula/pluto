@@ -236,16 +236,19 @@ static int extract_access_fns(__isl_keep isl_union_map *reads,
     struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, 0};
 
     if (stmt->nreads >= 1) {
-    stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
+        stmt->reads = (PlutoAccess **) malloc(stmt->nreads*sizeof(PlutoAccess *));
     }
+
     if (stmt->nwrites >= 1) {
-    stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
+        stmt->writes = (PlutoAccess **) malloc(stmt->nwrites*sizeof(PlutoAccess *));
     }
+
     for (j=0; j<stmt->nreads; j++) {
-    stmt->reads[j] = NULL;
+        stmt->reads[j] = NULL;
     }
+
     for (j=0; j<stmt->nwrites; j++) {
-    stmt->writes[j] = NULL;
+        stmt->writes[j] = NULL;
     }
 
     isl_union_map_foreach_map(reads, &isl_map_extract_access_func, &e_reads);
@@ -287,8 +290,6 @@ struct pluto_tile_footprint_meta_info {
     isl_union_map *read;
     isl_union_map *write;
     isl_union_set *domain;
-    //int *best_fit_size;
-    //long best_fit_footprint;
     bool exponential;
 };
 
@@ -305,8 +306,11 @@ static int get_tile_data_access_points(__isl_take isl_map *map, void *user)
     isl_union_map *sched = ptfmi->sched;
     PlutoProg *prog = ptfmi->prog;
     isl_map *mem_to_stmt;
-    int num, j, param_offset;
-    isl_union_map *mem_to_sched, *mem_to_stmt2;
+    int num;
+    int j;
+    int param_offset;
+    isl_union_map *mem_to_sched
+    isl *mem_to_stmt2;
     isl_map *mem_to_sched_map;
     isl_space *space;
     isl_constraint *c;
@@ -356,8 +360,8 @@ static int get_tile_data_access_points(__isl_take isl_map *map, void *user)
           c = isl_constraint_alloc_inequality(isl_local_space_from_space(isl_space_copy(space)));
           c = isl_constraint_set_coefficient_si(c, isl_dim_out, n, -div);
           c = isl_constraint_set_coefficient_si(c, isl_dim_in, j, 1);
-        }
-        else {
+        
+        }else{
           c = isl_constraint_alloc_equality(isl_local_space_from_space(isl_space_copy(space)));
           c = isl_constraint_set_coefficient_si(c, isl_dim_out, n, 1);
           c = isl_constraint_set_coefficient_si(c, isl_dim_in, j, -1);
@@ -417,9 +421,11 @@ static int get_tile_data_access_points(__isl_take isl_map *map, void *user)
         isl_space_free(s1);
         isl_space_free(s2);
         isl_map_free(m);
-        if (found) { break; }
+        if (found)  break; 
     }
-    if (!found) { *tile_access_points = isl_map_list_add(*tile_access_points, isl_map_copy(mem_to_sched_map)); }
+    if (!found) {
+        *tile_access_points = isl_map_list_add(*tile_access_points, isl_map_copy(mem_to_sched_map)); 
+    }
 
     isl_map_free(map);
     isl_map_free(mem_to_stmt);
@@ -432,7 +438,7 @@ static int get_tile_data_access_points(__isl_take isl_map *map, void *user)
 
 static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
 {
-    int *tile_footprint = (int *) user;
+    int *tile_footprint = (int*) user;
     isl_set *range = isl_map_range(map);
     isl_pw_qpolynomial *card = isl_set_card(range);
     isl_val *max = isl_pw_qpolynomial_max(card);
@@ -442,6 +448,7 @@ static int count_tile_footprint_for_access(__isl_take isl_map *map, void *user)
     return isl_stat_ok;
 }
 
+/* Computes tile footprint */
 long compute_tile_footprint(isl_union_set *domains,
                            isl_union_map *schedule,
                            isl_union_map *read,
@@ -577,7 +584,7 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     tile_size_space = isl_point_get_space(pnt);
     tile_dim = isl_space_dim(tile_size_space, isl_dim_set);
     isl_space_free(tile_size_space);
-    tile_size = (int *) malloc(tile_dim * sizeof (int));
+    tile_size = (int*) malloc(tile_dim * sizeof(int));
 
     
     /* Pruning Candidate Tile Size */
@@ -746,8 +753,7 @@ static int tile_footprint_for_tile_size(__isl_take isl_point *pnt, void *user)
     return isl_stat_ok;
 }
 
-int get_tile_dim(PlutoProg *prog,
-                        isl_union_set *domains)
+int get_tile_dim(PlutoProg *prog, isl_union_set *domains)
 {
     int i, j;
     Band **bands;
@@ -758,22 +764,22 @@ int get_tile_dim(PlutoProg *prog,
 
     for (b = 0; b < nbands; b++) {
         int dim=0;
-        for (i=0; i < bands[b]->width; i++)   {
+        for (i=0; i < bands[b]->width; i++){
             for (j=0; j<bands[b]->loop->nstmts; j++) {
-                if (pluto_is_hyperplane_loop(bands[b]->loop->stmts[j], bands[b]->loop->depth+i))
+                if (pluto_is_hyperplane_loop(bands[b]->loop->stmts[j], bands[b]->loop->depth+i)){
                     break;
+                }
             }
+
             int loop = (j<bands[b]->loop->nstmts);
-            if (loop) {
-                dim++;
-            }
+            if (loop)   dim++;
         }
         max_dim = (dim > max_dim) ? dim : max_dim;
     }
-
     return max_dim;
 }
 
+/*Analytical Model calculates the optimal tile sizes*/
 int *get_auto_tile_size(PlutoProg *prog,
                         isl_union_set *domains,
                         isl_union_map *read,
@@ -795,21 +801,17 @@ int *get_auto_tile_size(PlutoProg *prog,
 
     Ploop **loops;
     
-    for (i=0; i<nbands; i++)
-    {
-        if(pluto_is_band_innermost(bands[i], num_tiled_levels))
-        {
+    for (i=0; i<nbands; i++) {
+        if(pluto_is_band_innermost(bands[i], num_tiled_levels)) {
             max_score = 0;
-
             loops = pluto_get_loops_under(bands[i]->loop->stmts, bands[i]->loop->nstmts, 
                 bands[i]->loop->depth + num_tiled_levels*bands[i]->width, prog, &nloops);
             
             int* loop_scores = calc_score_for_loops(loops, nloops, prog);
 
-            for (l=0; l<nloops; l++){
+            for (l=0; l<nloops; l++) {
                 //Using >= since we'll take the last one if all else is the same 
-                if (loop_scores[l] >= max_score) 
-                {
+                if (loop_scores[l] >= max_score) {
                     max_score = loop_scores[l];
                     is_vectorisable = pluto_loop_is_vectorizable(loops[l], prog);
                     vectorized = l;
@@ -849,10 +851,8 @@ int *get_auto_tile_size(PlutoProg *prog,
     isl_set_free(tile_sizes);
     isl_space_free(tile_space);
 
-    if(vectorized>0)
-    {
-        for(i=0; i< max_dim-1; i++)
-        {
+    if(vectorized>0) {
+        for(i=0; i< max_dim-1; i++) {
             int t = i*4;
             float temp = patmi.slope_data[t+1];
             patmi.slope_data[t+1] = patmi.slope_data[t+2];
@@ -860,8 +860,7 @@ int *get_auto_tile_size(PlutoProg *prog,
         } 
     }
 
-    for(i=0; i< max_dim; i++)
-    {
+    for(i=0; i< max_dim; i++) {
         int temp = (int) pow(2, i);
         float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
         float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
@@ -869,24 +868,21 @@ int *get_auto_tile_size(PlutoProg *prog,
         printf("%f\n", slope);
     }
 
-    for(i=0; i< max_dim; i++)
-    {
+    for(i=0; i< max_dim; i++) {
         int temp = (int) pow(2, i);
         float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
         float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
         slopes[i] = slope;
     }
 
-    for(i=0; i< max_dim; i++)
-    {
+    for(i=0; i< max_dim; i++) {
         int temp = (int) pow(2, i);
         float growth_ratio = (float) patmi.slope_data[temp]/patmi.slope_data[0];
         float slope = (growth_ratio - 1)/BASE_TILE_SIZE;
         slopes[i] = slope;
     }
 
-    for(i=1; i<max_dim; i++)
-    {
+    for(i=1; i<max_dim; i++) {
         int temp = (int) pow(2, i-1);
         float gr1 = (float) patmi.slope_data[temp]/patmi.slope_data[0];
         float gr2 = (float) patmi.slope_data[3*temp]/patmi.slope_data[0];
@@ -901,121 +897,103 @@ int *get_auto_tile_size(PlutoProg *prog,
     float tile_size_range;
     float base;
 
-    if(patmi.slope_data[0]<DEFAULT_L1_CACHE_SIZE)
-    {
-    for(i=0; i<max_dim; i++)
-    {
-      if(slopes[i]!=0)
-        tsum+=(int)inverse(slopes[i]);
-      tile_size_final[i]=BASE_TILE_SIZE;
-    }
-    
-    if(is_vectorisable && slopes[vectorized]!=0)
-    {
-        //Task - Choosing appropriate y-coeffs
-        max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
-        y_coeffs[0] = 1.0*DEFAULT_L1_CACHE_SIZE/slope_data[0];
-        y_coeffs[max_dim-1] = 0.85*max_limit;
-        tsum -= (int)inverse(slopes[0]);
-        partial_sum = 0;
-        base = y_coeffs[0];
-    }
-
-    else
-    {
-        max_limit = (float) DEFAULT_L1_CACHE_SIZE/slope_data[0];
-        partial_sum = inverse(slopes[0]);
-        fraction = partial_sum/(tsum*1.0);        
-        y_coeffs[0] = fraction*max_limit;
-        y_coeffs[max_dim-1] = 0.95*max_limit;
-        base = 0;
-    }
-
-    //Tile size for innermost loop
-    tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
-
-    if(slopes[vectorized] == 0)
-    {
-        tile_size_final[max_dim-1-vectorized] = 1016;
-    }
-    //round it to the nearest powers of 2
-    if(is_vectorisable)
-    {
-        int count = 0; 
-        if (!(tile_size_final[max_dim-1] && !(tile_size_final[max_dim-1]&(tile_size_final[max_dim-1]-1))))
-        {
-            while( tile_size_final[max_dim-1] != 0)
-            {
-                tile_size_final[max_dim-1]  >>= 1;
-                count += 1;
-            }
-            tile_size_final[max_dim-1] = (1 << count)-BASE_TILE_SIZE;
+    if(patmi.slope_data[0]<DEFAULT_L1_CACHE_SIZE) {
+        for(i=0; i<max_dim; i++) {
+          if(slopes[i]!=0)  tsum+=(int)inverse(slopes[i]);
+          tile_size_final[i]=BASE_TILE_SIZE;
         }
-        //reset the coeff
-        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]);
-        if(is_vectorisable)
-        {
+        
+        if(is_vectorisable && slopes[vectorized]!=0) {
+            //Task - Choosing appropriate y-coeffs
+            max_limit = (float) DEFAULT_L2_CACHE_SIZE/slope_data[0];
+            y_coeffs[0] = 1.0*DEFAULT_L1_CACHE_SIZE/slope_data[0];
+            y_coeffs[max_dim-1] = 0.85*max_limit;
+            tsum -= (int)inverse(slopes[0]);
+            partial_sum = 0;
             base = y_coeffs[0];
+        
+        }else{
+            max_limit = (float) DEFAULT_L1_CACHE_SIZE/slope_data[0];
+            partial_sum = inverse(slopes[0]);
+            fraction = partial_sum/(tsum*1.0);        
+            y_coeffs[0] = fraction*max_limit;
+            y_coeffs[max_dim-1] = 0.95*max_limit;
+            base = 0;
         }
-    }
-    else
-    {
-        tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%4;
-        y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]); 
-    }
 
-    tile_size_range = y_coeffs[max_dim-1]-base;
+        //Tile size for innermost loop
+        tile_size_final[max_dim-1] = (y_coeffs[0]-1.0)/slopes[0];
 
-    for(i=1; i<max_dim-1; ++i)
-    {
-        if (slopes[i]!=0)
-	  partial_sum += inverse(slopes[i]);
-        fraction = partial_sum/(tsum*1.0);        
-        y_coeffs[i] = fraction*tile_size_range;
-        y_coeffs[i] += base;
-    }
-
-    //Model
-    float numerator;
-    float partial_denominator=0;
-    float denominator;
-    for(i = 1; i< max_dim ; i++)
-    {
-        numerator = y_coeffs[i]-y_coeffs[i-1];
-        partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
-        denominator = slopes[i]+partial_denominator;
-        tile_size_final[max_dim-1-i] = numerator/denominator;
-        tile_size_final[max_dim-1-i] -= tile_size_final[max_dim-1-i]%4;
-	if(slopes[i]==0)
-	  tile_size_final[max_dim-1-i] = 1016;
-	printf("TSF: %d\n", tile_size_final[max_dim-1-i]);
-    }
-
-    for (i = 0; i < max_dim; ++i)
-    {
-      tile_size_final[i] += BASE_TILE_SIZE;
-      IF_DEBUG(printf("%d - ", tile_size_final[i]););
-      /* Default */
-      //tile_size_final[i] = 32;
-    }
-
-    if(vectorized>0)
-    {
-        int vec_tile_size = tile_size_final[max_dim-vectorized-1];
-
-        for(i = max_dim-vectorized-1; i<max_dim-1; i++)
-        {
-           tile_size_final[i] =tile_size_final[i+1];
+        if(slopes[vectorized] == 0) {
+            tile_size_final[max_dim-1-vectorized] = 1016;
         }
-        tile_size_final[max_dim-1] = vec_tile_size;
-    }
-    }
+        
+        //round it to the nearest powers of 2
+        if(is_vectorisable) {
+            int count = 0; 
+            if (!(tile_size_final[max_dim-1] && !(tile_size_final[max_dim-1]&(tile_size_final[max_dim-1]-1))))
+            {
+                while( tile_size_final[max_dim-1] != 0)
+                {
+                    tile_size_final[max_dim-1]  >>= 1;
+                    count += 1;
+                }
+                tile_size_final[max_dim-1] = (1 << count)-BASE_TILE_SIZE;
+            }
+            //reset the coeff
+            y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]);
+            if(is_vectorisable)
+            {
+                base = y_coeffs[0];
+            }
+        }else{
+            tile_size_final[max_dim-1] -= tile_size_final[max_dim-1]%4;
+            y_coeffs[0] = 1.0 + (slopes[0]*tile_size_final[max_dim-1]); 
+        }
 
-    else
-    {
-      printf("mark");
-      for (i = 0; i < max_dim; ++i)
-	tile_size_final[i] = 8;
+        tile_size_range = y_coeffs[max_dim-1]-base;
+
+        for(i=1; i<max_dim-1; ++i) {
+            if (slopes[i]!=0) partial_sum += inverse(slopes[i]);
+            fraction = partial_sum/(tsum*1.0);        
+            y_coeffs[i] = fraction*tile_size_range;
+            y_coeffs[i] += base;
+        }
+
+        //Model
+        float numerator;
+        float partial_denominator=0;
+        float denominator;
+        for(i = 1; i< max_dim ; i++) {
+            numerator = y_coeffs[i]-y_coeffs[i-1];
+            partial_denominator += ((coeffs[i]*tile_size_final[i-1])/BASE_TILE_SIZE);
+            denominator = slopes[i]+partial_denominator;
+            tile_size_final[max_dim-1-i] = numerator/denominator;
+            tile_size_final[max_dim-1-i] -= tile_size_final[max_dim-1-i]%4;
+    	    if(slopes[i]==0)   tile_size_final[max_dim-1-i] = 1016;
+            printf("TSF: %d\n", tile_size_final[max_dim-1-i]);
+        }
+
+        for (i = 0; i < max_dim; ++i) {
+          tile_size_final[i] += BASE_TILE_SIZE;
+          IF_DEBUG(printf("%d - ", tile_size_final[i]););
+          /* Default */
+          //tile_size_final[i] = 32;
+        }
+
+        if(vectorized>0) {
+            int vec_tile_size = tile_size_final[max_dim-vectorized-1];
+
+            for(i = max_dim-vectorized-1; i<max_dim-1; i++) {
+               tile_size_final[i] =tile_size_final[i+1];
+            }
+            tile_size_final[max_dim-1] = vec_tile_size;
+        }
+    
+    }else {
+        printf("mark");
+        for (i = 0; i < max_dim; ++i)
+        tile_size_final[i] = 8;
     }
 
     /*
@@ -1197,7 +1175,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         }
     }
 
-    if ((options->parallel) && !options->tile && !options->identity)   {
+    if ((options->parallel) && !options->tile && !options->identity) {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
         int nbands;
@@ -1209,7 +1187,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
         /* If the user hasn't supplied --tile and there is only pipelined
          * parallelism, we will warn the user */
-        if (retval)   {
+        if (retval) {
             printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("[pluto] WARNING: use --tile for better parallelization \n");
             fprintf(stdout, "[pluto] After skewing:\n");
@@ -1281,7 +1259,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
         Stmt *stmt = prog->stmts[0];
         prog->npar = stmt->domain->ncols - stmt->dim - 1;
         prog->params = (char **) malloc(sizeof(char *)*prog->npar);
-    }else prog->npar = 0;
+    }   else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
         char *param = malloc(5);
@@ -1296,7 +1274,6 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     for (i=0; i<prog->ndeps; i++) {
         prog->deps[i] = pluto_dep_alloc();
     }
-
 
     extract_deps(prog->deps, 0, prog->stmts,
             dependences, OSL_DEPENDENCE_RAW);
