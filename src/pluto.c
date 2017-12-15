@@ -365,7 +365,6 @@ PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoP
         j += prog->stmts[i]->dim_orig + 1;
     }
     return obj;
-
 }
 
 
