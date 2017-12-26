@@ -236,6 +236,37 @@ static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(Plut
     return cst;
 }
 
+PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog)
+{
+    int npar = prog->npar;
+    int nvar = prog->nvar;
+    int i, j, k;
+
+    PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
+    pluto_matrix_set(obj, 0);
+
+    /* u
+     * */
+    for (j=0; j<npar; j++) {
+        obj->val[0][j] = 5*5*nvar*prog->nstmts;
+    }
+    /* w
+     * */
+    obj->val[0][npar] = 5*nvar*prog->nstmts;
+
+    for (i=0, j=npar+1; i<prog->nstmts; i++) {
+        for (k=j; k<j+prog->stmts[i]->dim_orig; k++) {
+            obj->val[0][k] = (nvar+2)*(prog->stmts[i]->dim_orig-(k-j));
+        }
+        /* constant
+         * shift
+         * */
+        obj->val[0][k] = 1;
+        j += prog->stmts[i]->dim_orig + 1;
+    }
+    return obj;
+}
+
 /*
  * This calls pluto_constraints_lexmin, but before doing that does some preprocessing
  * - removes variables that we know will be assigned 0 - also do some
@@ -307,13 +338,21 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
+    /* Solve the constraints using chosen solvers*/
+    if (options->islsolve) {
+        sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    }
 #ifdef GLPK
-    if (options->glpk) {
-        pluto_prog_constraints_lexmin_glpk(newcst, prog);
+    else if (options->glpk) {
+        PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
+        sol = pluto_prog_constraints_lexmin_glpk(newcst, obj);
+        pluto_matrix_free(obj);
     }
 #endif
-    /* Solve the constraints */
-    sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    else {
+         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    }
+    /* sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
     /* print_polylib_visual_sets("csts", newcst); */
 
 

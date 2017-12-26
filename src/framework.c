@@ -893,6 +893,7 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
     } else {
         obj_offset = npar+1;
     }
+
     /* Lower bound for bounding coefficients (all non-negative) */
     for (i=0; i<obj_offset; i++)  {
         pluto_constraints_add_lb(cst, i, 0);
