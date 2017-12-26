@@ -240,27 +240,35 @@ PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoP
 {
     int npar = prog->npar;
     int nvar = prog->nvar;
-    int i, j, k;
+    int i, j, k, offset, num_ccs;
 
     PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
     pluto_matrix_set(obj, 0);
 
-    /* u
-     * */
-    for (j=0; j<npar; j++) {
-        obj->val[0][j] = 5*5*nvar*prog->nstmts;
+    if (options->multiopt) {
+        num_ccs = prog->ddg->num_ccs;
+        offset = (num_ccs)*(npar+1)+1;
+        for (i=0; i<num_ccs; i++) {
+            for(j=0; j<npar; j++) {
+                obj->val[0][i*(npar+1)+j+1] = 5*5*nvar*prog->nstmts;
+            }
+            obj->val[0][i*(npar+1)+j+1] = 5*nvar*prog->nstmts;
+        }
+    } else {
+        offset = npar+1;
+        /* u */
+        for (j=0; j<npar; j++) {
+            obj->val[0][j] = 5*5*nvar*prog->nstmts;
+        }
+        /* w */
+        obj->val[0][npar] = 5*nvar*prog->nstmts;
     }
-    /* w
-     * */
-    obj->val[0][npar] = 5*nvar*prog->nstmts;
 
-    for (i=0, j=npar+1; i<prog->nstmts; i++) {
+    for (i=0, j=offset; i<prog->nstmts; i++) {
         for (k=j; k<j+prog->stmts[i]->dim_orig; k++) {
             obj->val[0][k] = (nvar+2)*(prog->stmts[i]->dim_orig-(k-j));
         }
-        /* constant
-         * shift
-         * */
+        /* constant shift */
         obj->val[0][k] = 1;
         j += prog->stmts[i]->dim_orig + 1;
     }
