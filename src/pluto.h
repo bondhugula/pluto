@@ -151,6 +151,10 @@ struct statement{
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
 
+    /* ID of the SCC to which the statement belongs to (at each level),
+     * in the input program. */
+    int* orig_scc_id;
+
     int first_tile_dim;
     int last_tile_dim;
 
@@ -207,6 +211,13 @@ struct dependence{
 
     /* Has this dependence been satisfied? */
     bool satisfied;
+
+    /* Whether the dependence can be ignored. Used with variable liberalization
+     * to ignore false dependences in presence of scalar variables in the loop nest */
+    bool skipdep;
+
+    int fuse_depth;
+    bool temp_across;
 
     /* Level at which this dependence is completely satisfied (when doing
      * conservative computation) or level *by* which the dependence is
@@ -439,6 +450,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl, FILE *cl
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
+int get_loop_type(Stmt *stmt, int level);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);

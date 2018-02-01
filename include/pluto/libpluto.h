@@ -56,6 +56,9 @@ struct plutoOptions{
     /* consider RAR dependences */
     int rar;
 
+    /* Perform variable liberalization */
+    int varliberalize;
+
     /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
     int fuse;
 

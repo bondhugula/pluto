@@ -2690,6 +2690,9 @@ PlutoOptions *pluto_options_alloc()
     /* Ignore input deps */
     options->rar = 0;
 
+    /* Do not perform variable liberalization */
+    options->varliberalize = 0;
+
     /* Override for first and last levels to tile */
     options->ft = -1;
     options->lt = -1;

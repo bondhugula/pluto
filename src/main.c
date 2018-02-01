@@ -91,6 +91,7 @@ void usage_message(void)
     fprintf(stdout, "       --codegen-context=<value> Parameters are at least as much as <value>\n");
     fprintf(stdout, "\n   Miscellaneous\n");
     fprintf(stdout, "       --rar                     Consider RAR dependences too (disabled by default)\n");
+    fprintf(stdout, "       --varliberalize           Remove some anti dependencies by variable liberalization (disabled by default)\n");
     fprintf(stdout, "       --[no]unroll              Unroll-jam (disabled by default)\n");
     fprintf(stdout, "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
     fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths (1-indexed) to force parallel (0th bit represents depth 1)\n");
@@ -159,6 +160,7 @@ int main(int argc, char *argv[])
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
+        {"varliberalize", no_argument, &options->varliberalize, 1},
         {"identity", no_argument, &options->identity, 1},
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
@@ -345,6 +347,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->multipar == 1 && options->parallel == 0)    {
         fprintf(stdout, "Warning: multipar needs parallel to be on; turning on parallel\n");
         options->parallel = 1;
+    }
+
+    if (options->varliberalize && !options->lastwriter) {
+        printf("[pluto] Variable Liberalization requires lastwriter dependence analysis; turning on lastwriter \n");
+        options->lastwriter = 1;
     }
 
 #ifdef GLPK
