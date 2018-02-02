@@ -401,10 +401,6 @@ void get_unique_deps_between_statements (struct dist ***dist_, PlutoProg *prog)
 
 }
 
-
-
-
-
 /*
  * Marks the dependencies that can be skipped in case of false dependencies
  * involving loop temporary variables. This implemation has been adopted 
@@ -413,12 +409,11 @@ void get_unique_deps_between_statements (struct dist ***dist_, PlutoProg *prog)
  */
 void pluto_variable_liberalize(PlutoProg *prog)
 {
-    int nvar, nstmts, i, j, k, ndeps, num;
+    int nvar, nstmts, i, j, k, ndeps;
     Graph *ddg;
     Stmt **stmts;
     Dep **deps;
     int* iter_priv_sccs_depth;
-    FILE *marker, *skipdeps;
 
       /* dist_[i][j] points to the list of all unique dependences between statements i and j */
     struct dist ***dist_;
@@ -438,18 +433,18 @@ void pluto_variable_liberalize(PlutoProg *prog)
 
     dist_ = (struct dist***) malloc(sizeof(struct dist**)*nstmts);
 
-    for(i=0; i<nstmts; i++) {
+    for (i=0; i<nstmts; i++) {
         dist_[i] = (struct dist**)malloc(sizeof(struct dist*)*nstmts);
-        for(j=0; j<nstmts; j++) {
+        for (j=0; j<nstmts; j++) {
             dist_[i][j] = NULL;
         }
     }
 
-    for(i=0;i<prog->nstmts;i++) {
+    for (i=0; i<prog->nstmts; i++) {
         prog->stmts[i]->orig_scc_id = (int*)malloc(prog->num_hyperplanes*sizeof(int));
     }
 
-    for(j=0;j<prog->num_hyperplanes;j++) {
+    for (j=0; j<prog->num_hyperplanes; j++) {
         dep_satisfaction_update(prog,j);
         ddg_update(ddg,prog);
         ddg_compute_scc(prog);
@@ -459,7 +454,7 @@ void pluto_variable_liberalize(PlutoProg *prog)
     pluto_compute_dep_directions(prog);
     /* pluto_print_dep_directions(prog); */
 
-    for (j=0;j<prog->ndeps;j++) {
+    for (j=0; j<prog->ndeps; j++) {
         deps[j]->satisfied = false;
         deps[j]->skipdep = false;
     }
@@ -497,7 +492,7 @@ void pluto_variable_liberalize(PlutoProg *prog)
                 }
             }
 
-            IF_DEBUG(printf ("Dep %d, k: %d, ipscc: %d\n", i,k, iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id]););
+            IF_DEBUG(printf("Dep %d, k: %d, ipscc: %d\n", i,k, iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id]););
             if ((k < iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id]) ||
                     (iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id] == -1)){
                 iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id] = k;
@@ -506,10 +501,11 @@ void pluto_variable_liberalize(PlutoProg *prog)
         }
     }
 
-    /* The file marker will contain the set of all unique dependences */
+    bool *unique_deps;
+    unique_deps = (bool*)malloc(ndeps * sizeof (bool));
+    bzero(unique_deps, ndeps*sizeof(bool));
 
-    marker = fopen("marker","w");
-    skipdeps = fopen("skipdeps.txt","w");
+
 
     for(i=0; i<nstmts; i++)
     {
@@ -518,32 +514,23 @@ void pluto_variable_liberalize(PlutoProg *prog)
             d = dist_[i][j];
             while(d != NULL)
             {
-                fprintf(marker,"%d\n",d->dep);
+                unique_deps[d->dep] = true;
                 d=d->next;
             }
         }
     }
-    fclose(marker);
 
 
     int* order = (int*) calloc(nvar,sizeof(int));
     for(i=0; i<ndeps; i++)
     {
         IF_DEBUG(printf("Dep being considered for skipping : %d\n",i););
-        marker = fopen("marker","r");
         deps[i]->temp_across = false;
         deps[i]->fuse_depth = 0;
 
-        while (!feof(marker)) {
-            fscanf(marker, "%d", &num);
-            /* I^th dependence is unique. However, it can be skipped if it satisfies certain conditions described later */
-            if (num == i)
-                break;
-        }
-        /* I^th dependence is not unique. Hence can be skipped */
-        if (feof(marker)) {
-            IF_DEBUG(printf("[Pluto] Dep %d is not unique. Skipping it\n", i););
-           fprintf(skipdeps,"%d\n",i);
+
+        if (!unique_deps[i]) {
+            deps[i]->skipdep = true;
         }
         /* The case where the dependence is in the same SCC */
         else if (stmts[prog->deps[i]->src]->scc_id == stmts[prog->deps[i]->dest]->scc_id) {
@@ -562,7 +549,7 @@ void pluto_variable_liberalize(PlutoProg *prog)
                     j = -1;
                     continue;
                 }
-                    IF_DEBUG(printf("Dep %d is loop independent in level %d\n",i,k););
+                IF_DEBUG(printf("Dep %d is loop independent in level %d\n",i,k););
             }
             IF_DEBUG(printf("depth of iteration private live range %d\n", iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id]););
             /* k will point to the outermost dimension that is loop independent */
@@ -573,7 +560,6 @@ void pluto_variable_liberalize(PlutoProg *prog)
                     if(get_loop_type(stmts[deps[i]->src],j) == H_LOOP) { /* its a loop-hyperplane */
                         l++;
                         if((stmts[deps[i]->src]->orig_scc_id[j] != stmts[deps[i]->dest]->orig_scc_id[j]) && (k<l)) {
-                            fprintf(skipdeps,"%d\n",i);
                             deps[i]->skipdep = true;
                             break;
                         }
@@ -581,9 +567,7 @@ void pluto_variable_liberalize(PlutoProg *prog)
                 }
             }
         }
-        fclose(marker);
     }
-    fclose(skipdeps);
 
     for(i=0; i<ndeps; i++) {
         deps[i]->temp_across = false;
@@ -620,7 +604,8 @@ void pluto_variable_liberalize(PlutoProg *prog)
                 }
             }
 
-            for(k=0; k<min(iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id],iter_priv_sccs_depth[stmts[deps[i]->dest]->scc_id]) && order[k]!=-1; k++) {
+            for(k=0; k<min(iter_priv_sccs_depth[stmts[deps[i]->src]->scc_id],
+                        iter_priv_sccs_depth[stmts[deps[i]->dest]->scc_id]) && order[k]!=-1; k++) {
                 IF_DEBUG(printf("Adding equality constraints for dep %d\n",i););
                 pluto_constraints_add_equality(polytope);
                 polytope->val[j][k] = 1;
@@ -653,6 +638,24 @@ void pluto_variable_liberalize(PlutoProg *prog)
         free(stmts[j]->orig_scc_id);
     }
     free(dist_);
+
+    if (options->debug) {
+        printf("[Pluto] Unique dependences \n");
+        for (i=0; i<ndeps ; i++) {
+            if (unique_deps[i]) {
+                printf("%d,",i);
+            }
+        }
+        printf("\n");
+        printf("[Pluto] Dependences skipped by variable liberalization \n");
+        for (i=0; i<ndeps; i++) {
+            if (deps[i]->skipdep)
+                printf("%d,", i);
+        }
+        printf("\n");
+    }
+
+    free (unique_deps);
 
 
     free(iter_priv_sccs_depth);
@@ -1232,7 +1235,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                             if (bestsol[npar+1+(deps[j]->src)*(nvar+1)+k] != bestsol[npar+1+(deps[j]->dest)*(nvar+1)+k])
                                 break;
                         }
-                        if(k!=nvar || (bestsol[npar+1+(deps[j]->src)*(nvar+1)+nvar] !=
+                        if (k!=nvar || (bestsol[npar+1+(deps[j]->src)*(nvar+1)+nvar] !=
                                     bestsol[npar+1+(deps[j]->dest)*(nvar+1)+nvar])) {
                            IF_DEBUG(printf("[pluto] Cutting between SCCs to prevent illegal transformation with var-lib"););
                             cut=1;
