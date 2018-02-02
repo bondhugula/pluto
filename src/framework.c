@@ -322,6 +322,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
         if (skipdeps[i]) continue;
 
+        if (options->varliberalize && dep->skipdep) continue;
+
 		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
         if (options->rar == 0 && IS_RAR(dep->type)) continue;
