@@ -2198,7 +2198,7 @@ int pluto_auto_transform(PlutoProg *prog)
         stmt->hyp_types = NULL;
     }
 
-    /* normalize_domains(prog); */
+    normalize_domains(prog);
 
     hyp_search_mode = EAGER;
 
