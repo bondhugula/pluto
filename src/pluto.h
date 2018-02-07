@@ -439,6 +439,9 @@ void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
+int dep_satisfaction_update(PlutoProg *prog, int level);
+void pluto_dep_satisfaction_reset(PlutoProg *prog);
+
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
@@ -495,4 +498,9 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
+void pluto_variable_liberalize(PlutoProg *prog);
+bool pluto_domain_equality(Stmt* stmt1, Stmt* stmt2);
+bool pluto_domain_equality1(PlutoConstraints* mat1, PlutoConstraints* mat2);
+
 #endif
