@@ -35,6 +35,10 @@
 #include "ddg.h"
 #include "version.h"
 
+void pluto_print_colours(int *colour,PlutoProg *prog);
+bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps);
+bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog);
+
 
 int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
@@ -314,6 +318,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
+    /* We do not need to permute in cases where skewing is disabled */
+    if (!options->disableSkew){
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
         for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -323,6 +329,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         j += stmts[i]->dim_orig+1;
     }
 
+    }
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
@@ -331,7 +338,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     }
 #ifdef GLPK
-    else if (options->glpk) {
+    else if (options->glpk || options->disableSkew) {
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj);
         pluto_matrix_free(obj);
@@ -349,6 +356,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
+        if(!options->disableSkew){
         j = npar + 1;
         for (i=0; i<nstmts; i++)    {
             for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -360,6 +368,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             }
             j += stmts[i]->dim_orig+1;
         }
+}
 
         fsol = (int64 *) malloc((cst->ncols-1)*sizeof(int64));
 
@@ -1670,6 +1679,8 @@ int pluto_auto_transform(PlutoProg *prog)
     int num_ind_sols_found;
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
+    double t_start;
+    Graph* fcg;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -1681,10 +1692,28 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Create the data dependence graph */
     prog->ddg = ddg_create(prog);
     ddg_compute_scc(prog);
+    for (i=0; i<prog->ddg->num_sccs; i++){
+        prog->ddg->sccs[i].vertices = NULL;
+    }
 
     Graph *ddg = prog->ddg;
-     int nvar = prog->nvar;
+    int nvar = prog->nvar;
     int npar = prog->npar;
+
+    prog->cst_solve_time = 0.0;
+    prog->cst_const_time = 0.0;
+    prog->scaling_cst_sol_time = 0.0;
+    prog->mipTime = 0.0;
+    prog->ilpTime = 0.0;
+    prog->skew_time = 0.0;
+    prog->cst_write_time = 0.0;
+    prog->fcg_const_time = 0.0;
+    prog->fcg_update_time = 0.0;
+    prog->fcg_colour_time = 0.0;
+    prog->fcg_dims_scale_time = 0.0;
+    prog->fcg_cst_alloc_time = 0.0;
+
+    prog->num_lp_calls = 0;
 
     if (nstmts == 0)  return 0;
 
@@ -1703,6 +1732,7 @@ int pluto_auto_transform(PlutoProg *prog)
         stmt->trans = pluto_matrix_alloc(2*stmt->dim+1, stmt->dim+npar+1);
         stmt->trans->nrows = 0;
         stmt->hyp_types = NULL;
+        stmt->intra_stmt_dep_cst = NULL;
     }
 
     normalize_domains(prog);
@@ -1850,6 +1880,14 @@ int pluto_auto_transform(PlutoProg *prog)
     }while (!pluto_transformations_full_ranked(prog) || 
             !deps_satisfaction_check(prog));
 
+ /* Deallocate the fusion conflict graph */
+    if (options->disableSkew){
+        ddg = prog->ddg;
+        for(i=0; i<ddg->num_sccs; i++){
+            free(ddg->sccs[i].vertices);
+        }
+        graph_free(prog->fcg);
+    }
     if (options->lbtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
     }
@@ -2012,6 +2050,37 @@ static int get_scc_size(PlutoProg *prog, int scc_id)
     return num;
 }
 
+/* Compute the connected components of the graph */
+void ddg_compute_cc(PlutoProg *prog)
+{
+    int i;
+    int cc_id = -1;
+    int num_cc = 0;
+    int stmt_id;
+    int time = 0;
+    IF_DEBUG(printf("[pluto] ddg_compute_cc\n"););
+    Graph *g = prog->ddg;
+    /* Make the graph undirected. */
+    Graph *gU = get_undirected_graph(g);
+    for (i=0; i<gU->nVertices; i++){
+        gU->vertices[i].vn = 0;
+    }
+    for (i=0; i<gU->nVertices; i++){
+        if (gU->vertices[i].vn == 0){
+            cc_id++;
+            num_cc++;
+            gU->vertices[i].cc_id = cc_id;
+            dfs_vertex(gU,&gU->vertices[i],&time);
+            gU->vertices[i].cc_id = cc_id;
+        }
+        g->vertices[i].cc_id = gU->vertices[i].cc_id;
+        stmt_id = g->vertices[i].id;
+        assert(stmt_id == i);
+        prog->stmts[i]->cc_id = g->vertices[i].cc_id;
+    }
+    g->num_ccs = num_cc;
+    graph_free(gU);
+}
 
 /* Compute the SCCs of a graph (usig Kosaraju's algorithm) */
 void ddg_compute_scc(PlutoProg *prog)
@@ -2041,6 +2110,8 @@ void ddg_compute_scc(PlutoProg *prog)
         g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
         g->sccs[i].size = get_scc_size (prog, i);
         g->sccs[i].id = gT->sccs[i].id;
+        g->sccs[i].sol = NULL;
+        g->sccs[i].is_parallel = 0;
     }
 
     graph_free(gT);
