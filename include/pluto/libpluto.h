@@ -157,6 +157,18 @@ struct plutoOptions{
     /* Use glpk as ilp solver. */
     int glpk;
 
+    /* Use MIP instead of ILP. */
+    int mip;
+
+    /* Just look for permutations. No skews allowed */
+    int disableSkew;
+
+    /* Use ILP with pluto-dfp instead of LP. */
+    int ilp;
+
+    /* Use LP solutions to colour SCCs */
+    int lpcolour;
+
     /* Index set splitting */
     int iss;
 
