@@ -255,6 +255,43 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     pluto_constraints_free(bounding_func_cst);
 }
 
+/* Computes permutability constraints for a dependence. 
+ * An interfacing routine to expose compute_permutability_constraints_dep
+ */
+void compute_pairwise_permutability(Dep *dep,PlutoProg *prog)
+{
+    compute_permutability_constraints_dep(dep,prog);
+}
+
+/* Computes permutatbility constraints for all the dependences within the input SCC */
+PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog)
+{
+    int i, ndeps, src, dest;
+    Dep *dep;
+    PlutoConstraints* scc_dep_cst;
+
+    ndeps = prog->ndeps;
+
+    scc_dep_cst = NULL;
+
+    for (i=0; i<ndeps; i++) {
+        dep = prog->deps[i];
+        src = dep->src;
+        dest = dep->dest;
+        if (prog->stmts[src]->scc_id == scc_id && prog->stmts[src]->scc_id == prog->stmts[dest]->scc_id) {
+            if (dep->cst == NULL) {
+                compute_permutability_constraints_dep(dep, prog);
+            }
+            if(scc_dep_cst == NULL) {
+                scc_dep_cst = pluto_constraints_alloc((prog->ddg->sccs[scc_id].size * dep->cst->nrows), dep->cst->ncols);
+                scc_dep_cst->nrows = 0;
+                scc_dep_cst->ncols = dep->cst->ncols;
+            }
+            pluto_constraints_add(scc_dep_cst, dep->cst);
+        }
+    }
+    return scc_dep_cst;
+}
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
