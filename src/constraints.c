@@ -1353,8 +1353,6 @@ glp_prob* scaling_constraints(double* fpsol, int num_sols, double **val, int **i
 
     num_rows = 0;
 
-    /* stmt_offset = npar+1; */
-
     for (i=npar+1; i<num_sols; i++) {
            col_num = i - (npar+1) + num_ccs + 1;
         if (fabs(fpsol[i]) > 1e-7) {
@@ -1369,28 +1367,6 @@ glp_prob* scaling_constraints(double* fpsol, int num_sols, double **val, int **i
                 glp_set_col_bnds(lp, col_num, GLP_FX, 0.0, 0.0);
         }
     }
-
-    /* for (i=0; i<nstmts; i++) { */
-    /*     for (j=0; j<stmts[i]->dim_orig+1; j++) { */
-    /*         if (fabs(fpsol[stmt_offset+j]) > 1e-7f) { */
-    /*             num_rows ++; */
-    /*             cc_id = prog->stmts[i]->cc_id; */
-    /*             glp_add_rows(lp, 1); */
-    /*             index[1] = cc_id+1; */
-    /*             val[1] = fpsol[stmt_offset+j]; */
-    /*             index[2] = num_ccs + stmt_offset+j-npar; */
-    /*             val[2] = -1.0; */
-    /*             glp_set_row_bnds(lp, num_rows, GLP_FX, 0.0, 0.0); */
-    /*             glp_set_col_bnds(lp, num_ccs+stmt_offset+j-npar, GLP_LO, 1.0, 0.0); */
-    /*             glp_set_col_kind(lp, num_ccs+stmt_offset+j-npar,GLP_IV); */
-    /*             glp_set_mat_row (lp,num_rows, 2, index, val); */
-    /*         } else { */
-    /*             glp_set_col_bnds(lp, num_ccs+stmt_offset+j-npar, GLP_FX, 0.0, 0.0); */
-    /*         } */
-    /*         glp_set_obj_coef(lp, num_ccs+stmt_offset+j-npar, 0.0); */
-    /*     } */
-    /*     stmt_offset += stmts[i]->dim_orig+1; */
-    /* } */
 
     /* The lower bound of the scaling factor for each CC has to be one */
     for (i=0; i<num_ccs; i++) {
