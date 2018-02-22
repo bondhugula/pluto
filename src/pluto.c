@@ -338,7 +338,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     }
 #ifdef GLPK
-    else if (options->glpk || options->mip || options->disableSkew) {
+    else if (options->glpk || options->lp || options->disableSkew) {
          
         double **val = NULL;
         int **index = NULL;
@@ -347,14 +347,14 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
 
-        if (options->mip) {
+        if (options->lp) {
             nrows = newcst->ncols-1-npar-1;
             populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
             num_ccs = prog->ddg->num_ccs;
         }
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
         pluto_matrix_free(obj);
-        if (options->mip) {
+        if (options->lp) {
             for (i=0; i<nrows; i++) {
                 free(val[i]);
                 free(index[i]);
