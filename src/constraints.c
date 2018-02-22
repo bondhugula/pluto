@@ -1332,7 +1332,7 @@ double *pluto_mip_scale_solutions_glpk(glp_prob *ilp)
     return scale_sols;
 }
 
-glp_prob* scaling_constraints(double* fpsol, int num_sols, double **val, int **index, int npar, int num_ccs)
+glp_prob* get_scaling_lp_gplk(double* fpsol, int num_sols, double **val, int **index, int npar, int num_ccs)
 {
     int i, num_rows, num_sols_to_be_scaled, col_num;
     glp_prob *lp;
@@ -1428,7 +1428,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         num_sols = glp_get_num_cols (lp);
         glp_delete_prob(lp);
 
-        lp = scaling_constraints(fpsol, num_sols, val, index, npar, num_ccs);
+        lp = get_scaling_lp_gplk(fpsol, num_sols, val, index, npar, num_ccs);
         /* t_mip = rtclock()-t_mip_start; */
         /* prog->mipTime += t_mip; */
 
