@@ -338,10 +338,60 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     }
 #ifdef GLPK
-    else if (options->glpk || options->disableSkew) {
+    else if (options->glpk || options->mip || options->disableSkew) {
+         
+        double **val = NULL;
+        int **index = NULL;
+        int num_ccs, nrows;
+        num_ccs = 0;
+
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
-        sol = pluto_prog_constraints_lexmin_glpk(newcst, obj);
+
+        if (options->mip) {
+
+            nrows = newcst->ncols-1-npar-1;
+            populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
+            num_ccs = prog->ddg->num_ccs;
+            /* ddg_compute_cc(prog); */
+
+            /* val = (double**)malloc(sizeof(double*)*nrows); */
+            /* index = (int**)malloc(sizeof(int*)*nrows); */
+            /* for (i=0; i<nrows; i++) { */
+            /*     val[i] = (double*) malloc (sizeof(double) * 3); */
+            /*     index[i] = (int*) malloc (sizeof(int) * 3); */
+            /* } */
+            /*  */
+            /* num_rows = 0; */
+            /* stmt_offset = 0; */
+            /* for (i=0; i<nstmts; i++) { */
+            /*     cc_id = stmts[i]->cc_id; */
+            /*     for (j=0; j<stmts[i]->dim_orig+1; j++) { */
+            /*         index[num_rows][0] = 0; */
+            /*         val[num_rows][0] = 0.0f; */
+            /*  */
+            /*         index[num_rows][1] = cc_id+1;  */
+            /*         #<{(| val[num_row][i] will be set once the mip solution is found |)}># */
+            /*  */
+            /*         index[num_rows][2] = num_ccs+stmt_offset+j+1; */
+            /*         val[num_rows][2] = -1.0; */
+            /*         num_rows ++; */
+            /*     } */
+            /*     stmt_offset += stmts[i]->dim_orig+1; */
+            /* } */
+            /*  */
+            /* #<{(| This is a safety check. Can be removed after testing the implementation |)}># */
+            /* assert (nrows == num_rows); */
+        }
+        sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
         pluto_matrix_free(obj);
+        if (options->mip) {
+            for (i=0; i<nrows; i++) {
+                free(val[i]);
+                free(index[i]);
+            }
+            free(val);
+            free(index);
+        }
     }
 #endif
     else {

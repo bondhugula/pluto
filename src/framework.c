@@ -1280,3 +1280,45 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     /* Neither ZERO, nor PLUS, nor MINUS, has to be STAR */
     return DEP_STAR;
 }
+
+/* The routine is used to populate the csr matrices for scaling rational 
+ * solutions of pluto-lp. These matrices are used to construct constraints for scaling MIP */
+void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog)
+{
+    int i, j, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
+    Stmt **stmts;
+
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    ddg_compute_cc(prog);
+    num_ccs = prog->ddg->num_ccs;
+
+    *val = (double**)malloc(sizeof(double*)*nrows);
+    *index = (int**)malloc(sizeof(int*)*nrows);
+    for (i=0; i<nrows; i++) {
+        (*val)[i] = (double*) malloc (sizeof(double) * 3);
+        (*index)[i] = (int*) malloc (sizeof(int) * 3);
+    }
+
+    num_rows = 0;
+    stmt_offset = 0;
+    for (i=0; i<nstmts; i++) {
+        cc_id = stmts[i]->cc_id;
+        for (j=0; j<stmts[i]->dim_orig+1; j++) {
+            (*index)[num_rows][0] = 0;
+            (*val)[num_rows][0] = 0.0f;
+
+            (*index)[num_rows][1] = cc_id+1; 
+            /* val[num_row][i] will be set once the mip solution is found */
+
+            (*index)[num_rows][2] = num_ccs+stmt_offset+j+1;
+            (*val)[num_rows][2] = -1.0;
+            num_rows ++;
+        }
+        stmt_offset += stmts[i]->dim_orig+1;
+    }
+
+    /* This is a safety check.  Can be removed after testing the implementation */
+    assert (nrows == num_rows);
+}
