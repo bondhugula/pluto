@@ -63,7 +63,7 @@ void usage_message(void)
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
     fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
-fprintf(stdout, "       --mip                     Solve MIP instead of ILP\n");
+    fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
     fprintf(stdout, "       --disableskew             Just look for Loop permutations. Disables skewing [disabled by default]\n");
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
         {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
         {"glpk", no_argument, &options->glpk, 1},
- {"mip", no_argument, &options->mip, 1},
+        {"lp", no_argument, &options->lp, 1},
         {"disableskew", no_argument, &options->disableSkew, 1},
         {"ilp", no_argument, &options->ilp, 1},
         {"lpcolor", no_argument, &options->lpcolour, 1},
@@ -357,6 +357,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
 #ifdef GLPK
+    if (options->lp && !options->glpk) {
+        printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
+    }
+        
     if (options->glpk) {
         /* Turn off islsolve */
         options->islsolve = 0;

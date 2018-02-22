@@ -1408,7 +1408,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
     }
 
-    if(!options->mip) {
+    if (!options->lp) {
         for (i=0; i<cst->ncols-1; i++) {
             glp_set_col_kind(lp, i+1, GLP_IV);
         }
@@ -1422,7 +1422,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         return NULL;
     }
 
-    if (options->mip || options->disableSkew) {
+    if (options->lp || options->disableSkew) {
 
         fpsol = get_lp_solution_from_glpk_problem(lp);
         num_sols = glp_get_num_cols (lp);

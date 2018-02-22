@@ -2730,7 +2730,7 @@ PlutoOptions *pluto_options_alloc()
     options->islsolve = 1;
     options->glpk = 0;
 
-    options->mip = 0;
+    options->lp = 0;
     options->disableSkew = 0;
     options->ilp = 0;
 

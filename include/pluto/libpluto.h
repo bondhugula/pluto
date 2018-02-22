@@ -157,8 +157,8 @@ struct plutoOptions{
     /* Use glpk as ilp solver. */
     int glpk;
 
-    /* Use MIP instead of ILP. */
-    int mip;
+    /* Use lp instead of ILP. */
+    int lp;
 
     /* Just look for permutations. No skews allowed */
     int disableSkew;
