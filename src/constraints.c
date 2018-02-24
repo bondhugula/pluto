@@ -1153,6 +1153,7 @@ int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar)
     }
 }
 
+
 #ifdef GLPK
 
 /* Constructs constraints for glpk problem in-memory.  Assumes that there
@@ -1379,6 +1380,14 @@ glp_prob* get_scaling_lp_gplk(double* fpsol, int num_sols, double **val, int **i
     return lp;
 }
 
+void set_glpk_objective_from_pluto_matrix(glp_prob *lp, PlutoMatrix* obj)
+{
+    int j;
+    for (j=0; j<obj->ncols; j++) {
+        glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
+    }
+}
+
 /* Construct ILP in cplex format. The last four parameters are used for
  * scaling solutions to integers */
 int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
@@ -1400,9 +1409,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
 
     set_glpk_constraints_from_pluto_constraints(lp, cst);
 
-    for (j=0; j<obj->ncols; j++) {
-        glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
-    }
+    set_glpk_objective_from_pluto_matrix (lp, obj);
 
     for (i=0; i<cst->ncols-1; i++) {
         glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
@@ -1419,6 +1426,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     is_unsat = pluto_constraints_solve_glpk(lp);
 
     if (is_unsat) {
+        glp_delete_prob(lp);
         return NULL;
     }
 
@@ -1470,6 +1478,45 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         glp_delete_prob(lp);
         return sol;
     }
+}
+
+double* pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst, PlutoMatrix *obj)
+{
+    glp_prob *lp;
+    double *sol;
+    int i, is_unsat;
+
+    lp = glp_create_prob();
+
+    glp_set_obj_dir(lp, GLP_MIN);
+
+
+    set_glpk_constraints_from_pluto_constraints(lp, cst);
+
+    set_glpk_objective_from_pluto_matrix (lp, obj);
+
+    for (i=0; i<cst->ncols-1; i++) {
+        glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
+    }
+
+    if (options->ilp) {
+        for (i=0; i<cst->ncols-1; i++) {
+            glp_set_col_kind(lp, i+1, GLP_IV);
+        }
+    }
+    IF_DEBUG(glp_write_lp(lp, NULL, "pluto-pairwise-constraints-glpk.lp"););
+
+
+    is_unsat = pluto_constraints_solve_glpk(lp);
+
+    if (is_unsat) {
+        glp_delete_prob(lp);
+        return NULL;
+    } else {
+        sol = get_lp_solution_from_glpk_problem(lp);
+        return sol;
+    }
+
 }
 
 #endif
