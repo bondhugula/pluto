@@ -36,7 +36,6 @@
 #include "version.h"
 
 
-int dep_satisfaction_update(PlutoProg *prog, int level);
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
