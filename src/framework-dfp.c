@@ -47,6 +47,8 @@ static double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
+/*********************************** FCG construction routines *****************************************/
+
 /* Checks for feasibility of constraints.
  * If feasible then return the solution else returns NULL */
 /* double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, PlutoProg *prog, int src_dim, int target_dim, int fcg_src, int fcg_dest) */
@@ -573,4 +575,449 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     IF_DEBUG(printf("[Pluto] Build FCG: Total number of LP calls in building the FCG: %ld\n",prog->num_lp_calls););
     return fcg;
+}
+
+
+/******************  FCG Colouring Routines **********************************/
+
+/* Check if it is valid to give colour c to a vertex v in the fcg.
+ * Colour is the array containing the colours assigned to each vertex */
+bool is_valid_colour(int v, int c, Graph *fcg, int * colour)
+{
+    int i, fcg_nVertices;
+    fcg_nVertices = fcg->nVertices;
+    for (i=0;i< fcg_nVertices;i++){
+        if((fcg->adj->val[i][v]==1||fcg->adj->val[v][i]==1) && colour[i]==c){
+            return false;
+        }
+    }
+    return true;
+}
+
+bool is_discarded(int v, int list[], int num)
+{
+    int i;
+    for (i=0; i<num; i++){
+        if(list[i]==v)
+            return true;
+    }
+    return false;
+}
+
+
+int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, int pv, PlutoProg *prog){
+    int i, min, npar, nvar, stmt_offset;
+    Stmt **stmts;
+    int scc_id;
+    double *sol;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    stmts = prog->stmts;
+    min = 0;
+
+    /* if(pv == -1){ */
+    /*     return min; */
+    /* } */
+    for (i=0; i<stmts[stmt_id]->dim_orig; i++) {
+        if(!is_discarded(fcg_stmt_offset+i, list, num)) {
+            if (options->lpcolour) {
+                scc_id = stmts[stmt_id]->scc_id;
+                sol = prog->ddg->sccs[scc_id].sol;
+                assert (sol != NULL);
+                stmt_offset = npar+1+(nvar+1)*stmt_id+i;
+                if (sol[stmt_offset] == 0.0f) {
+                    continue;
+                }
+            }
+            min = i;
+            break;
+        }
+        /* if(!is_discarded(fcg_stmt_offset + i, list, num)){ */
+        /*     if(pv == -1){ */
+        /*         return i; */
+        /*     } */
+        /*    #<{(| Set the first value of min_cost |)}># */
+        /*     if(min_cost < 0){ */
+        /*         min_cost = prog->costMatrix->val[fcg_stmt_offset+i][pv]; */
+        /*         min = i; */
+        /*     } */
+        /*  */
+        /*     if(prog->costMatrix->val[fcg_stmt_offset+i][pv]< min_cost){ */
+        /*         min = i; */
+        /*         min_cost = prog->costMatrix->val[fcg_stmt_offset+i][pv]; */
+        /*     } */
+        /* }  */
+    }
+    return min;
+}
+
+
+
+/* Colours the input SCC recursively.  The statement pos refers to the position 
+ * of the statement in the list of vertices in the scc and pv refers to the 
+ * previous vertex.  Returns true if the colouring is successful; 
+ * else returns false.  */
+
+bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog)
+{
+    int j, v, fcg_offset, stmt_id, nvar;
+    Graph *ddg,*fcg;
+    Scc *sccs;
+
+    nvar = prog->nvar;
+    ddg = prog->ddg;
+    fcg = prog->fcg;
+    sccs = ddg->sccs;
+
+    int list[nvar];
+    int num_discarded = 0;
+    /* memset(list, -1, nvar); */
+
+    /* ToDo: Check if this condition can really happen.  */
+    if(stmt_pos >= sccs[scc_id].size){
+        return true;
+    }
+
+    if(prog->coloured_dims >= sccs[scc_id].max_dim) {
+        if(prog->coloured_dims > sccs[scc_id].max_dim){
+            return true;
+        }
+        IF_DEBUG(printf("[colour SCC]: All Dimensions of statment %d in SCC %d have been coloured\n", sccs[scc_id].vertices[stmt_pos], scc_id););
+        /* cut if the scc's are not already distributed and you can not colour further. */
+        /* for each SCC which is greater than the current scc, if there is a dep edge 
+         * between these scc's then cut between these scc's. The cut has to respect 
+         * the existing dependence */
+
+        /* This is just for experimental purposes. The following if code can be removed if the assert never fails */
+        if(sccs[scc_id].size !=1 ){
+            printf("SCC %d has size %d\n", scc_id,sccs[scc_id].size);
+            int i;
+            for(i=0;i<sccs[scc_id].size; i++){
+                printf("S%d,,",sccs[scc_id].vertices[i]);
+            }
+            printf("\n");
+        }
+        assert (sccs[scc_id].size ==1);
+
+        if(sccs[scc_id].size == 1){
+            for(j=0;j<ddg->num_sccs; j++){
+                if(scc_id!=j){
+                    if((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
+                        IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
+                        if(options->fuse == NO_FUSE) { 
+                            cut_all_sccs(prog,ddg);
+                        } else {
+                            cut_between_sccs(prog,ddg,j,scc_id);
+                            /* cut_smart(prog,ddg); */
+                            /* You also need to cut between a successor node as well */
+                            for (j=scc_id+1; j<ddg->num_sccs; j++) {
+                                if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
+                                    IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
+                                    /* cut_between_sccs(prog, ddg, scc_id, j); */
+                                    cut_all_sccs(prog, ddg);
+                                    /* cut_smart(prog,ddg); */
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    } else if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
+                        IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
+
+                        if (options->fuse == NO_FUSE) {
+                            cut_all_sccs(prog,ddg);
+                        }
+                        else {
+                            cut_between_sccs(prog, ddg, scc_id, j);
+                        }
+                        /* cut_smart(prog,ddg); */
+                        break;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    stmt_id = sccs[scc_id].vertices[stmt_pos];
+    fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+
+    while(num_discarded!=nvar){
+        j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
+        IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+
+        v = fcg_offset+j;
+
+        /* If the dimension is already coloured with a different colour. 
+         * Else it tries to check if the existing colour is fine. This is done 
+         * as opposed to undoing the existing colour and then redoing it in 
+         * the next step once FCG is rebuilt */
+        if(colour[v]>0 && colour[v]!=c){
+            IF_DEBUG(printf("[Colour SCC]Dimension %d of statement %d already coloured with colour %d\n",j,stmt_id,colour[v]););
+            list[num_discarded] = v;
+            num_discarded++;
+            continue;
+        }
+
+        /* Can not colour a vertex with a self edge. 
+         * This dimension is not permutable */
+        if (fcg->adj->val[v][v] != 0) {
+            list[num_discarded] = v;
+            num_discarded++;
+            continue;
+        }
+
+        if (pv>=0 && is_adjecent(fcg,v,pv)) {
+            list[num_discarded] = v;
+            num_discarded++;
+            continue;
+        }
+
+        /* Check if this is a valid colour */
+        if (is_valid_colour(v,c,fcg,colour)) {
+            colour[v] = c;
+            /* If this is a valid colour, then try colouring the next vertex in the SCC */
+            if(colour_scc(scc_id,colour,c,stmt_pos+1, v, prog)){
+                IF_DEBUG(printf("[Colour SCC]Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+                return true;
+            } else { 
+                list[num_discarded] = v;
+                num_discarded++;
+                IF_DEBUG(printf("[Colour SCC] Unable to Colour dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+                /* Undo the colouring. Try the next vertex. */
+                colour[v] = 0;
+            }
+        } else {
+            colour[v] = 0;
+            list[num_discarded] = v;
+            num_discarded++;
+        }
+    }
+    return false;
+}
+
+
+
+/* Colours all scc's with a colour c.  Returns true if the SCC's had to be distributed.  Else returns false */
+bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
+{
+    int i,j,nsccs,prev_scc;
+    bool is_distributed;
+    Graph *ddg,*fcg;
+    double t_start;
+
+    ddg = prog->ddg;
+    fcg = prog->fcg;
+    nsccs = ddg->num_sccs;
+
+    is_distributed = false;
+    prev_scc = -1;
+
+
+    for (i=0; i<nsccs; i++) {
+        IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
+        /* If colouring fails in the fist SCC */
+        if(!colour_scc(i,colour,c,0, -1, prog)) {
+            IF_DEBUG(printf("Unable to colour SCC %d\n",i););
+
+            fcg = prog->fcg;
+            /* In case of first scc, no inter scc deps can be satisfied. A permute 
+             * preventing dependence has prevented colouring. 
+             * Update the DDG whenever an inter SCC is satisfied dependence is
+             * satisfied.  Note that dependencies that are satisfied by previous dimensions 
+             * are updated in the DDG.  However, updating the FCG is delayed in order to 
+             * account for permute preventing dependences.  Whenever the colouring fails, 
+             * one has to update FCG with respect to the dependences that have already been 
+             * satisfied along with the dependences those satisfied by the cut*/
+            if (fcg->to_be_rebuilt == true || i == 0) {
+                IF_DEBUG(printf("FCG Before Reconstruction\n"););
+                IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
+
+                if (options->fuse == NO_FUSE) {
+                    cut_all_sccs(prog, ddg);
+                }
+                prog->fcg_colour_time += rtclock() - t_start;
+                /* Current colour that is being used to colour the fcg is c */
+                printf("FCG to be rebuilt due to a permute preventing dep: Colouring with colour %d\n",c);
+                prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
+
+                t_start = rtclock();
+                prog->fcg->num_coloured_vertices = fcg->num_coloured_vertices;
+                /* need not update the FCG till the next hyperplane is found */
+                prog->fcg->to_be_rebuilt = false;
+                graph_free(fcg);
+                fcg = prog->fcg;
+                IF_DEBUG(printf("[Pluto]: Fcg After reconstruction\n"););
+                IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
+                /* Needed only if it is not the first SCC */
+                if (i!=0) {
+                    is_distributed = colour_scc(i, colour, c, 0, -1, prog);
+                    if (!is_distributed){
+                        /* Colouring was prevented by a fusion preventing dependence. 
+                         * Therefore cut DDG then update FCG and then colour */
+                        IF_DEBUG(printf("FCG Before Updating\n"););
+                        IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
+                        IF_DEBUG(printf("[colour_fcg_scc_based]:Total Number of SCCs %d\n",nsccs););
+
+                        if (options->fuse == NO_FUSE) {
+                            cut_all_sccs(prog,ddg);
+                            /* TODO: Update this call testing is done */
+                            update_fcg_between_sccs(fcg, 0, 0, prog);
+                        } else {
+                            for(j=prev_scc; j>=0; j--) {
+                                if (ddg_sccs_direct_connected(ddg, prog, j, i)) {
+
+                                    IF_DEBUG(printf("[colour_fcg_scc_based]:Cutting between SCC %d and %d\n",i,j););
+                                    cut_between_sccs(prog,ddg,j,i);
+                                    break;
+                                }
+                            }
+
+                            update_fcg_between_sccs(fcg,prev_scc,i,prog);
+                        }
+                        IF_DEBUG(printf("DDG after Cut\n"););
+                        IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+                        IF_DEBUG(printf("[Pluto] Colour_fcg_dim_based: Updating FCG\n"););
+
+                        IF_DEBUG( printf("FCG after Updating \n"););
+                        IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
+                        is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                    }
+                } else {
+                    /* If the colouring of first SCC had failed previously */ 
+                    is_distributed = colour_scc(i, colour, c, 0,  -1, prog);
+                }
+            } else {
+                IF_DEBUG(printf("FCG Before Updating\n"););
+                IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
+                IF_DEBUG(printf("[Pluto] Colour_fcg_dim_based: Updating FCG\n"););
+                if (options->fuse == NO_FUSE) {
+                    cut_all_sccs(prog,ddg);
+
+                    update_fcg_between_sccs(fcg, 0, 0, prog);
+                } else {
+                    for(j=prev_scc; j>=0; j--) {
+                        if (ddg_sccs_direct_connected(ddg, prog, j, i)) {
+
+                            IF_DEBUG(printf("[colour_fcg_scc_based]:Cutting between SCC %d and %d\n",i,j););
+                            cut_between_sccs(prog,ddg,j,i);
+                            break;
+                        }
+                    }
+                    update_fcg_between_sccs(fcg,prev_scc,i,prog);
+                }
+                IF_DEBUG(printf("DDG after Cut\n"););
+                IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+                IF_DEBUG( printf("FCG after Updating \n"););
+                IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
+                is_distributed = colour_scc(i,colour,c,0, -1, prog);
+            }
+
+            /* Needed in case of partial satisfaction */
+            if (is_distributed == false) {
+                printf("Num Deps satisfied with precise check %d\n",pluto_compute_dep_satisfaction_precise(prog));
+
+                pluto_transformations_pretty_print(prog);
+                pluto_compute_dep_directions(prog);
+                /* pluto_compute_dep_satisfaction(prog); */
+                pluto_print_dep_directions(prog);
+
+                prog->fcg_colour_time += rtclock() - t_start;
+                prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices,c);
+                t_start = rtclock();
+                prog->fcg->num_coloured_vertices = fcg->num_coloured_vertices;
+
+                /* need not update the FCG till the next hyperplane is found */
+                prog->fcg->to_be_rebuilt = false;
+                graph_free(fcg);
+                fcg = prog->fcg;
+                IF_DEBUG(printf("[Pluto]: Fcg After reconstruction\n"););
+                IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
+                is_distributed = colour_scc(i,colour,c,0, -1, prog);
+
+            }
+            assert (is_distributed == true);
+        }
+        fcg->num_coloured_vertices += ddg->sccs[i].size;
+        prog->total_coloured_stmts[c-1] += ddg->sccs[i].size;
+        prev_scc = i;
+        prog->fcg_colour_time += rtclock() - t_start;
+    }
+    for (i=0; i<nsccs; i++) {
+        if (prog->ddg->sccs[i].sol != NULL) {
+            free(prog->ddg->sccs[i].sol);
+            prog->ddg->sccs[i].sol = NULL;
+        }
+    }
+
+    return is_distributed;
+}
+
+void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
+{
+    int i,j,num_coloured_dims,max_colours;
+    Stmt **stmts;
+    Graph *ddg;
+    double t_start;
+
+    max_colours = prog->nvar;
+    stmts = prog->stmts;
+
+    for (i=1; i<=max_colours; i++) {
+        colour_fcg_scc_based(i, colour, prog);
+
+        t_start = rtclock();
+
+/* TODO: Fix the next two lines once scaling routines are ported. */
+        /* num_coloured_dims = scale_coeffs(prog, colour, i-1); */
+        num_coloured_dims = 0;
+        prog->fcg_dims_scale_time += rtclock() - t_start;
+        if (num_coloured_dims == 0){
+            printf ("[Pluto]: Num hyperplanes found: %d\n", prog->num_hyperplanes);
+            printf("[Pluto]: This appears to be a bug in Pluto FCG based auto-transformation.\n");
+            printf("[Pluto]: Transformation found so far\n");
+            pluto_transformations_pretty_print(prog);
+            /* pluto_print_colours(colour,prog); */
+            pluto_compute_dep_directions(prog);
+            pluto_compute_dep_satisfaction(prog);
+            pluto_print_dep_directions(prog);
+            assert(0);
+
+        }
+        IF_DEBUG(printf ("[Pluto]: Num hyperplanes found: %d\n", prog->num_hyperplanes););
+        prog->scaled_dims[i-1] = 1;
+
+
+        prog->coloured_dims += num_coloured_dims;
+        t_start = rtclock();
+        for (j=0; j<num_coloured_dims; j++) {
+            dep_satisfaction_update(prog,stmts[0]->trans->nrows-num_coloured_dims+j);
+        }
+
+        prog->fcg->to_be_rebuilt = 1;
+
+        /* Recompute the SCC's in the updated DDG */
+        ddg = prog->ddg;
+        IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
+        free_scc_vertices(ddg);
+
+        /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
+         * edges wich prevents permutation which is unsound */
+        ddg_update(ddg, prog);
+        IF_DEBUG(printf("DDG after colouring with colour %d\n",i););
+        IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+        ddg_compute_scc(prog);
+        compute_scc_vertices(ddg);
+        IF_DEBUG2(pluto_transformations_pretty_print(prog););
+        IF_DEBUG2(pluto_compute_dep_directions(prog););
+        IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
+        IF_DEBUG2(pluto_print_dep_directions(prog););
+    }
+    /* All dimensions have been coloured but still there are some deps that 
+     * need to be satisfied at the innermost level by distribution.  */
+    if (i == max_colours+1 && !deps_satisfaction_check(prog)) {
+        cut_all_sccs(prog, prog->ddg);
+    }
 }

@@ -1846,7 +1846,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
-        /* find_permutable_dimensions_scc_based(colour, prog); */
+        find_permutable_dimensions_scc_based(colour, prog);
 
         /* IF_DEBUG(printf("[Pluto] Colouring Successful\n");); */
         /* IF_DEBUG(pluto_print_colours(colour,prog);); */

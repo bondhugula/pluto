@@ -462,6 +462,7 @@ void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 int dep_satisfaction_update(PlutoProg *prog, int level);
+int deps_satisfaction_check(PlutoProg *prog);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
@@ -522,4 +523,5 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val
 PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog);
 
 Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour);
+void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
 #endif
