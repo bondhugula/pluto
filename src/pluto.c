@@ -1688,7 +1688,7 @@ static void swap_hyperplanes(int64 *h1, int64 *h2, int ncols)
  */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
-    int i, j, s, nsols, conc_start_found, depth;
+    int i, j, s, nsols, conc_start_found, depth, nVertices;
     /* The maximum number of linearly independent solutions needed across all
      * statements */
     int num_ind_sols_req;
@@ -1699,7 +1699,9 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
     double t_start;
+
     Graph* fcg;
+    int *colour;
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -1783,121 +1785,198 @@ int pluto_auto_transform(PlutoProg *prog)
             cut_scc_dim_based(prog,ddg);
         }
     }
+    
 
 
     /* For diamond tiling */
     conc_start_found = 0;
 
-    do{
-        /* Number of linearly independent solutions remaining to be found
-         * (maximum across all statements) */
-        int num_sols_left;
-
-        if (options->fuse == NO_FUSE)   {
+    if (options->disableSkew) {
+        if(options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
-
-        num_sols_left = 0;
-        for (s=0; s<nstmts; s++) {
-            /* Num linearly independent hyperplanes remaining to be
-             * found for a statement; take max across all */
-            num_sols_left = PLMAX(num_sols_left, stmts[s]->dim_orig
-                    - pluto_stmt_get_num_ind_hyps(stmts[s]));
+        compute_scc_vertices(prog->ddg);
+        IF_DEBUG(printf("[Pluto] Initial DDG\n"););
+        IF_DEBUG(pluto_matrix_print(stdout, prog->ddg->adj););
+        /* ddg_compute_scc(prog); */
+        if (!options->silent) {
+            printf("[Pluto] Building fusion conflict graph\n");
         }
-        /* Progress in the EAGER mode is made every time a solution is found;
-         * thus, the maximum number of linearly independent solutions
-         * remaining to be found is the difference between the number required
-         * for the deepest statement and the number found so far for the
-         * deepest statement (since in EAGER mode, if there was a statement
-         * that had fewer than num_ind_sols_found linearly independent hyperplanes,
-         * it means it didn't need that many hyperplanes and all of its
-         * linearly independent solutions had been found */
-        assert(hyp_search_mode == LAZY || num_sols_left == num_ind_sols_req - num_ind_sols_found);
 
-        nsols = find_permutable_hyperplanes(prog, hyp_search_mode,
-                num_sols_left, depth);
+        nVertices = 0;
+        for (i=0; i<nstmts; i++) {
+            ddg->vertices[i].fcg_stmt_offset = nVertices;
+            nVertices += stmts[i]->dim_orig;
+        }
 
-        IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
-                    depth, nsols));
-        IF_DEBUG2(pluto_transformations_pretty_print(prog));
+        colour = (int*) malloc(nVertices*sizeof(int));
+        for(i=0; i<nVertices;i++){
+            colour[i] = 0;
+        }
 
-        num_ind_sols_found = pluto_get_max_ind_hyps(prog);
-        
-        if (nsols >= 1) {
-            /* Diamond tiling: done for the first band of permutable loops */
-            if (options->lbtile && nsols >= 2 && !conc_start_found) {
-                conc_start_found = pluto_diamond_tile(prog);
+        PlutoConstraints *permutecst = get_permutability_constraints(prog);
+        IF_DEBUG(pluto_constraints_cplex_print(stdout,permutecst););
+
+        /* Yet to start colouring hence the current_colour can be either 0 or 1 */
+        prog->fcg = build_fusion_conflict_graph(prog,colour, nVertices, 0);
+
+        /* if (!options->silent) { */
+        /*     printf("[Pluto] Constraint construction time in FCG construction: %0.6lfs\n", prog->fcg_cst_alloc_time); */
+        /*     printf("[Pluto] Constraint Writing time in building FCG: %0.6lfs\n", prog->cst_write_time); */
+        /*     printf("[Pluto] Constraint Solving time in building FCG (Includes constraint writing time + minor modifications to constraints ): %0.6lfs\n", prog->cst_solve_time); */
+        /*     printf("[Pluto] Time taken for initial construction of FCG: %0.6lfs\n",prog->fcg_const_time); */
+        /* } */
+
+        fcg = prog->fcg;
+        fcg->num_coloured_vertices = 0;
+        fcg->to_be_rebuilt = false;
+
+        printf("[pluto] Fusion Conflict graph\n");
+        pluto_matrix_print(stdout, fcg->adj);
+        exit (0);
+
+
+        prog->total_coloured_stmts = (int*) malloc(nvar*sizeof(int));
+        prog->scaled_dims = (int*) malloc(nvar*sizeof(int));
+        prog->coloured_dims = 0;
+        for (i=0;i<nvar;i++) {
+            prog->total_coloured_stmts[i] = 0;
+            prog->scaled_dims[i] = 0;
+        }
+
+        /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
+        /* find_permutable_dimensions_scc_based(colour, prog); */
+
+        /* IF_DEBUG(printf("[Pluto] Colouring Successful\n");); */
+        /* IF_DEBUG(pluto_print_colours(colour,prog);); */
+
+        /* if(!options->silent && options->debug) { */
+        /*     printf("[Pluto]: Transformations before skewing \n"); */
+        /*     pluto_transformations_pretty_print(prog); */
+        /* } */
+
+        /* t_start = rtclock (); */
+        /* introduce_skew(prog); */
+        /* prog->skew_time = rtclock()-t_start; */
+
+        free(colour);
+        free(prog->total_coloured_stmts);
+        free(prog->scaled_dims);
+
+    } else {
+
+        do{
+            /* Number of linearly independent solutions remaining to be found
+             * (maximum across all statements) */
+            int num_sols_left;
+
+            if (options->fuse == NO_FUSE)   {
+                ddg_compute_scc(prog);
+                cut_all_sccs(prog, ddg);
             }
 
-            for (j=0; j<nsols; j++)      {
-                /* Mark dependences satisfied by this solution */
-                dep_satisfaction_update(prog, stmts[0]->trans->nrows - nsols + j);
-                ddg_update(ddg, prog);
+            num_sols_left = 0;
+            for (s=0; s<nstmts; s++) {
+                /* Num linearly independent hyperplanes remaining to be
+                 * found for a statement; take max across all */
+                num_sols_left = PLMAX(num_sols_left, stmts[s]->dim_orig
+                        - pluto_stmt_get_num_ind_hyps(stmts[s]));
             }
-        }else{
-            /* Satisfy inter-scc dependences via distribution since we have 
-             * no more fusable loops */
+            /* Progress in the EAGER mode is made every time a solution is found;
+             * thus, the maximum number of linearly independent solutions
+             * remaining to be found is the difference between the number required
+             * for the deepest statement and the number found so far for the
+             * deepest statement (since in EAGER mode, if there was a statement
+             * that had fewer than num_ind_sols_found linearly independent hyperplanes,
+             * it means it didn't need that many hyperplanes and all of its
+             * linearly independent solutions had been found */
+            assert(hyp_search_mode == LAZY || num_sols_left == num_ind_sols_req - num_ind_sols_found);
 
-            ddg_compute_scc(prog);
+            nsols = find_permutable_hyperplanes(prog, hyp_search_mode,
+                    num_sols_left, depth);
 
-            if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
-                if (options->fuse == NO_FUSE)  {
-                    /* No fuse */
-                    cut_all_sccs(prog, ddg);
-                }else if (options->fuse == SMART_FUSE)  {
-                    /* Smart fuse (default) */
-                    cut_smart(prog, ddg);
-                }else{
-                    /* Max fuse */
-                    if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
-                    else cut_conservative(prog, ddg);
+            IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; %d hyperplane(s) found\n",
+                        depth, nsols));
+            IF_DEBUG2(pluto_transformations_pretty_print(prog));
+
+            num_ind_sols_found = pluto_get_max_ind_hyps(prog);
+
+            if (nsols >= 1) {
+                /* Diamond tiling: done for the first band of permutable loops */
+                if (options->lbtile && nsols >= 2 && !conc_start_found) {
+                    conc_start_found = pluto_diamond_tile(prog);
+                }
+
+                for (j=0; j<nsols; j++)      {
+                    /* Mark dependences satisfied by this solution */
+                    dep_satisfaction_update(prog, stmts[0]->trans->nrows - nsols + j);
+                    ddg_update(ddg, prog);
                 }
             }else{
-                /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
-                 * deps, and no solutions found  */
-                if (hyp_search_mode == EAGER)   {
-                    IF_DEBUG(printf("[pluto] Switching to LAZY mode\n"););
-                    hyp_search_mode = LAZY;
-                }else if (!deps_satisfaction_check(prog)) {
-                    assert(hyp_search_mode == LAZY);
-                    /* There is a problem; solutions should have been found if
-                     * there were no inter-scc deps, and some unsatisfied deps
-                     * existed */
-                    if (options->debug || options->moredebug) {
-                        printf("\tNumber of unsatisfied deps: %d\n",
-                                get_num_unsatisfied_deps(prog->deps, prog->ndeps));
-                        printf("\tNumber of unsatisfied inter-scc deps: %d\n",
-                                get_num_unsatisfied_inter_scc_deps(prog));
-                        fprintf(stdout, "[pluto] WARNING: Unfortunately, pluto cannot find any more hyperplanes.\n");
-                        fprintf(stdout, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
-                        fprintf(stdout, "\tor (2) a bug in Pluto's auto transformation,\n");
-                        fprintf(stdout, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
-                        fprintf(stdout, "\tTransformation found so far:\n");
-                        pluto_transformations_pretty_print(prog);
-                        pluto_compute_dep_directions(prog);
-                        pluto_compute_dep_satisfaction(prog);
-                        pluto_print_dep_directions(prog);
+                /* Satisfy inter-scc dependences via distribution since we have 
+                 * no more fusable loops */
+
+                ddg_compute_scc(prog);
+
+                if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
+                    if (options->fuse == NO_FUSE)  {
+                        /* No fuse */
+                        cut_all_sccs(prog, ddg);
+                    }else if (options->fuse == SMART_FUSE)  {
+                        /* Smart fuse (default) */
+                        cut_smart(prog, ddg);
+                    }else{
+                        /* Max fuse */
+                        if (depth >= 2*nvar+1) cut_all_sccs(prog, ddg);
+                        else cut_conservative(prog, ddg);
                     }
-                    denormalize_domains(prog);
-                    printf("[pluto] WARNING: working with original (identity) transformation (if they exist)\n");
-                    /* Restore original ones */
-                    for (i=0; i<nstmts; i++) {
-                        stmts[i]->trans = orig_trans[i];
-                        stmts[i]->hyp_types = orig_hyp_types[i];
-                        prog->num_hyperplanes = orig_num_hyperplanes;
-                        prog->hProps = orig_hProps;
+                }else{
+                    /* Only one SCC or multiple SCCs with no unsatisfied inter-SCC
+                     * deps, and no solutions found  */
+                    if (hyp_search_mode == EAGER)   {
+                        IF_DEBUG(printf("[pluto] Switching to LAZY mode\n"););
+                        hyp_search_mode = LAZY;
+                    }else if (!deps_satisfaction_check(prog)) {
+                        assert(hyp_search_mode == LAZY);
+                        /* There is a problem; solutions should have been found if
+                         * there were no inter-scc deps, and some unsatisfied deps
+                         * existed */
+                        if (options->debug || options->moredebug) {
+                            printf("\tNumber of unsatisfied deps: %d\n",
+                                    get_num_unsatisfied_deps(prog->deps, prog->ndeps));
+                            printf("\tNumber of unsatisfied inter-scc deps: %d\n",
+                                    get_num_unsatisfied_inter_scc_deps(prog));
+                            fprintf(stdout, "[pluto] WARNING: Unfortunately, pluto cannot find any more hyperplanes.\n");
+                            fprintf(stdout, "\tThis is usually a result of (1) a bug in the dependence tester,\n");
+                            fprintf(stdout, "\tor (2) a bug in Pluto's auto transformation,\n");
+                            fprintf(stdout, "\tor (3) an inconsistent .fst/.precut in your working directory.\n");
+                            fprintf(stdout, "\tTransformation found so far:\n");
+                            pluto_transformations_pretty_print(prog);
+                            pluto_compute_dep_directions(prog);
+                            pluto_compute_dep_satisfaction(prog);
+                            pluto_print_dep_directions(prog);
+                        }
+                        denormalize_domains(prog);
+                        printf("[pluto] WARNING: working with original (identity) transformation (if they exist)\n");
+                        /* Restore original ones */
+                        for (i=0; i<nstmts; i++) {
+                            stmts[i]->trans = orig_trans[i];
+                            stmts[i]->hyp_types = orig_hyp_types[i];
+                            prog->num_hyperplanes = orig_num_hyperplanes;
+                            prog->hProps = orig_hProps;
+                        }
+                        return 1;
                     }
-                    return 1;
                 }
             }
-        }
-        /* Under LAZY mode, do a precise dep satisfaction check to take 
-         * care of partial satisfaction (rarely needed) */
-        if (hyp_search_mode == LAZY) pluto_compute_dep_satisfaction_precise(prog);
-        depth++;
-    }while (!pluto_transformations_full_ranked(prog) || 
-            !deps_satisfaction_check(prog));
+            /* Under LAZY mode, do a precise dep satisfaction check to take 
+             * care of partial satisfaction (rarely needed) */
+            if (hyp_search_mode == LAZY) pluto_compute_dep_satisfaction_precise(prog);
+            depth++;
+        }while (!pluto_transformations_full_ranked(prog) || 
+                !deps_satisfaction_check(prog));
+    }
 
  /* Deallocate the fusion conflict graph */
     if (options->disableSkew){
