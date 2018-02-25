@@ -452,7 +452,9 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp, FI
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
-int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
+int    cut_all_sccs(PlutoProg *prog, Graph *ddg);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
@@ -460,6 +462,7 @@ void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
+int dep_satisfaction_update(PlutoProg *prog, int level);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
