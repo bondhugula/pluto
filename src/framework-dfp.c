@@ -580,6 +580,28 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
 /******************  FCG Colouring Routines **********************************/
 
+/* Prints colour of each vertex of the FCG */
+void pluto_print_colours(int *colour,PlutoProg *prog)
+{
+    int nstmts,i,j,stmt_offset;
+    Stmt **stmts;
+
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    stmt_offset = 0;
+
+
+    for (i=0; i<nstmts;i++){
+        for (j=0;j<stmts[i]->dim_orig;j++){
+            printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,colour[stmt_offset+j]);
+        }
+        stmt_offset+=j;
+    }
+}
+
+
+
 /* Check if it is valid to give colour c to a vertex v in the fcg.
  * Colour is the array containing the colours assigned to each vertex */
 bool is_valid_colour(int v, int c, Graph *fcg, int * colour)
@@ -970,7 +992,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
         t_start = rtclock();
 
-/* TODO: Fix the next two lines once scaling routines are ported. */
+        /* TODO: Fix the next two lines once scaling routines are ported. */
         /* num_coloured_dims = scale_coeffs(prog, colour, i-1); */
         num_coloured_dims = 0;
         prog->fcg_dims_scale_time += rtclock() - t_start;
@@ -979,7 +1001,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
             printf("[Pluto]: This appears to be a bug in Pluto FCG based auto-transformation.\n");
             printf("[Pluto]: Transformation found so far\n");
             pluto_transformations_pretty_print(prog);
-            /* pluto_print_colours(colour,prog); */
+            pluto_print_colours(colour,prog);
             pluto_compute_dep_directions(prog);
             pluto_compute_dep_satisfaction(prog);
             pluto_print_dep_directions(prog);
@@ -1020,4 +1042,10 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
     if (i == max_colours+1 && !deps_satisfaction_check(prog)) {
         cut_all_sccs(prog, prog->ddg);
     }
+
+    IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
+    IF_DEBUG(pluto_print_colours(colour,prog););
+
+
+    return;
 }
