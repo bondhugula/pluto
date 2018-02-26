@@ -443,6 +443,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
+void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
