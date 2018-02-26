@@ -1207,3 +1207,366 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     /* } */
 }
 
+/* Routines that introduce loop skewing after loop permutations, loop skewing
+ * and loop shifting transfomations have been found. */
+bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg *prog, int level)
+{
+    int i;
+    bool has_negative_comp;
+    HyperplaneProperties *hProps;
+    int loop_dims;
+
+    hProps = prog->hProps;
+    has_negative_comp = false;
+    loop_dims = 0;
+    /* printf("[get_negative_comp]: Level :%d \n",level); */
+    for (i=0; i<prog->num_hyperplanes; i++){
+        if(hProps[i].type == H_SCALAR && i < level){
+            continue;
+        }
+        if(hProps[i].type == H_LOOP && i < level){
+            loop_dims++;
+            continue;
+        }
+        if(hProps[i].type == H_SCALAR && i >= level){
+            continue;
+            /* return has_negative_comp; */
+        }
+        if (dep->dirvec[i] == DEP_MINUS || dep->dirvec[i] == DEP_STAR ) {
+            /* printf("dep %d has a negative component in level %d \n", dep->id,i); */
+            dims_with_neg_components[loop_dims] = 1;
+            has_negative_comp = true;
+            break;
+        }
+        loop_dims++;
+    }
+    /* printf("Negative component for Dep %d : %d\n", dep->id, has_negative_comp); */
+    return has_negative_comp;
+}
+
+
+bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps, int level)
+{
+    int i, ndeps, nvar;
+    Stmt **stmts;
+    Dep *dep;
+    bool* dims_with_neg_components;
+    
+    nvar = prog->nvar;
+    ndeps = prog->ndeps;
+    stmts = prog->stmts;
+
+    dims_with_neg_components = (bool*) malloc (nvar*sizeof(bool*));
+    bzero(dims_with_neg_components, nvar*sizeof(bool));
+
+
+    /* For each dep find whether it is satisfied by a cut or loop; */
+    for (i=0; i<ndeps; i++) {
+        dep = prog->deps[i];
+        if (!options->rar && IS_RAR(dep->type))
+            continue;
+        if (!(stmts[dep->src]->scc_id == scc_id) || !(stmts[dep->dest]->scc_id ==scc_id))
+            continue;
+        /* if (options->varliberalize && dep->skipdep) { */
+        /*     continue; */
+        /* } */
+      
+        if (dep_is_satisfied(dep)) {
+            if(get_negative_components(dep,dims_with_neg_components, prog, level)){
+                tile_preventing_deps[i] = 1;
+            }
+        }
+    }
+    return dims_with_neg_components;
+}
+
+
+bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps)
+{
+    int i, j, ndeps, loop_dims;
+    Dep *dep;
+    bool* sat_dim;
+    HyperplaneProperties *hProps;
+
+    sat_dim = (bool*)malloc(prog->nvar*sizeof(bool));
+    bzero(sat_dim, (prog->nvar)*sizeof(bool));
+    ndeps = prog->ndeps;
+    hProps = prog->hProps;
+
+    for (i=0; i<ndeps; i++) {
+        dep = prog->deps[i];
+        loop_dims = 0;
+        if (tile_preventing_deps[i]) {
+            /* Update this. Make src_dims to be the levels instead of dimensions. */
+            for(j=0; j<prog->num_hyperplanes; j++) {
+                if (j == dep->satisfaction_level) {
+                    break;
+                }
+                else if(hProps[j].type == H_LOOP) {
+                    loop_dims++;
+                }
+                /* if(hProps[j].type == H_SCALAR){ */
+                /*     continue; */
+                /* } */
+                /* if(dep->dirvec[j] == DEP_MINUS || dep->dirvec[j] == DEP_STAR) */
+                /*     break; */
+                /* if(dep->dirvec[j] == DEP_PLUS ) */
+                /*     innermost_sat_dim = loop_dims; */
+            }
+            sat_dim[loop_dims] = 1;
+        }
+    }
+    return sat_dim;
+}
+
+PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int scc_id, PlutoProg* prog, int level, PlutoConstraints *skewCst)
+{
+    int i, j, nvar, npar, nstmts;
+    Stmt **stmts;
+    /* PlutoConstraints *skewCst, *boundcst; */
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    assert (skewCst->ncols == CST_WIDTH);
+    
+    for (i=0; i<nstmts; i++) {
+        for(j=0; j<stmts[i]->dim_orig; j++){
+            /* printf("Scc_ids: %d %d\n",stmts[i]->scc_id, scc_id); */
+            if (src_dims[j] && stmts[i]->scc_id == scc_id) {
+                /* printf("Coeff %d of Statemtnt %d >=1\n", j, i); */
+                pluto_constraints_add_lb(skewCst, npar+1+ i*(nvar+1)+j, 1);
+            }
+            else {
+                /* printf("Coeff %d of Statemtnt %d  = %lld\n", j, i, stmts[i]->trans->val[level][j]); */
+                pluto_constraints_add_equality(skewCst);
+                skewCst->val[skewCst->nrows-1][npar+1+i*(nvar+1)+j]= 1;
+                /* Set the value of the current coeff to the one that you have already found */
+                skewCst->val[skewCst->nrows-1][CST_WIDTH-1] = -stmts[i]->trans->val[level][j];
+            }
+        }
+        /* printf("Adding Coeff bound for the constant of statement %d \n", i); */
+        pluto_constraints_add_lb(skewCst, npar+1+i*(nvar+1)+nvar, 0); 
+    }
+    /* prog->cst_const_time += rtclock() - tstart; */
+    return skewCst;
+}
+
+
+/* Introduce Skewing Transformations if necessary: Called only when using the FCG based appraoch */
+void introduce_skew(PlutoProg *prog)
+{
+    int i, j, k, num_sccs, nvar, npar, nstmts, level,ndeps;
+    int initial_cuts;
+    Graph *orig_ddg;
+    int64* sol;
+    PlutoConstraints *skewingCst, *basecst, *const_dep_check_cst;
+    HyperplaneProperties *hProps;
+    Stmt **stmts;
+    bool *src_dims, *skew_dims, tile_preventing_deps[prog->ndeps];
+    double tstart;
+
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+    ndeps = prog->ndeps;
+
+    /* If there are zero or one hyperpane then you dont need to skew */
+    if (prog->num_hyperplanes <=1) {
+        return;
+    }
+    assert (prog->hProps != NULL);
+    hProps = prog->hProps;
+
+    if (!options->silent) {
+        printf("[Pluto]: Tileabilty with skew\n");
+    }
+    /* Reset dependence satisfaction */
+    /* pluto_dep_satisfaction_reset(prog); */
+    tstart = rtclock();
+    pluto_compute_dep_directions(prog);
+    printf("Dep direction computation time %0.6lf\n", rtclock()-tstart);
+
+    tstart = rtclock();
+    /* pluto_transformations_pretty_print(prog); */
+    /* pluto_compute_dep_satisfaction(prog); */
+    /* printf("Dep satisfaction computation time %0.6lf\n", rtclock()-tstart); */
+    /* pluto_print_dep_directions(prog); */
+    pluto_dep_satisfaction_reset(prog);
+
+    /* tstart = rtclock(); */
+    Graph *newDDG = ddg_create (prog);
+    orig_ddg = prog->ddg;
+    prog->ddg = newDDG;
+
+    for(i=0; i<prog->ndeps; i++) {
+        tile_preventing_deps[i] = 0;
+    }
+
+    initial_cuts = 0;
+    for (level = 0; level< prog->num_hyperplanes; level++) {
+        if(hProps[level].type == H_LOOP){
+            break;
+        }
+        initial_cuts ++; 
+        dep_satisfaction_update(prog, level);
+    }
+
+    /* printf("Initial cuts: %d \n", initial_cuts); */
+    /* Needed to handle the case when there are no loops  */
+    if(initial_cuts == prog->num_hyperplanes) {
+        return;
+    }
+    basecst = get_permutability_constraints(prog);
+    ddg_update(newDDG, prog);
+
+    assert(level == initial_cuts);
+    ddg_compute_scc(prog);
+    num_sccs = newDDG->num_sccs;
+    /* prog->cst_const_time += rtclock() -tstart; */
+    /* printf("Pre processing before skewing %0.6lf\n", rtclock()-tstart ); */
+
+    /* printf("Num SCCs: %d\n", num_sccs); */
+    const_dep_check_cst = pluto_constraints_alloc(ndeps*nvar+1, CST_WIDTH);
+    skewingCst = pluto_constraints_alloc(basecst->nrows+nstmts*(nvar+1), basecst->ncols);
+    skewingCst->nrows = 0;
+    skewingCst->ncols = CST_WIDTH;
+    pluto_constraints_add(skewingCst, basecst);
+    dep_satisfaction_update(prog,level);
+    for (i =0; i<num_sccs; i++) {
+        IF_DEBUG(printf("-------Looking for skews in SCC %d -----------------\n", i););
+        tstart = rtclock();
+
+        /* dep_satisfaction_update(prog,level); */
+        /* if (!constant_deps_in_scc(i, level, const_dep_check_cst, prog)) { */
+        /*  */
+        /*     IF_DEBUG(printf("Scc %d has atleast one non constant dep \n",i);); */
+        /*     continue; */
+        /* } */
+        IF_DEBUG(printf("-------Analyzing for skews in SCC %d ----------------\n", i););
+        skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
+        src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
+        /* prog->cst_const_time += rtclock() - tstart; */
+        /* printf("Src Dims\n"); */
+        /* for(j = 0; j<nvar; j++) { */
+        /*     printf("%d %d\n", j, src_dims[j]); */
+        /* } */
+        level++;
+        for (; level <prog->num_hyperplanes; level++) {
+            if (hProps[level].type != H_LOOP) {
+                continue;
+            }
+
+            /* printf("Skew dims\n"); */
+            /* for( j=0; j<nvar; j++) { */
+            /*     printf("%d %d \n", j, skew_dims[j]); */
+            /* } */
+            int skew_dim = 0;
+            for(j=initial_cuts; j<prog->num_hyperplanes; j++) {
+                if(prog->hProps[j].type == H_LOOP && skew_dims[skew_dim] == 1) {
+                    level = j;
+                    break;
+                }
+                else if (prog->hProps[j].type == H_LOOP){
+                    skew_dim++;
+                }
+            }
+
+            /* Skewing has to be done at level j+1 */
+            if (j==prog->num_hyperplanes) {
+                /* printf("[Pluto]: No skews required for SCC %d \n", i); */
+                /* prog->ddg = orig_ddg; */
+                /* graph_free(newDDG); */
+                break;
+            }
+            /* printf("Skewing at level :%d\n", level); */
+
+            skewingCst->nrows = basecst->nrows;
+            get_skewing_constraints(src_dims, skew_dims, i, prog, level, skewingCst);
+            /* pluto_constraints_cplex_print(stdout,skewingCst); */
+
+            /* Solve Skewing Constraints */
+            //tstart = rtclock();
+
+            if (options->glpk) {
+                double **val = NULL;
+                int **index = NULL;
+                int num_ccs, nrows;
+                num_ccs = 0;
+
+                PlutoMatrix *obj = construct_cplex_objective(skewingCst, prog);
+
+                if (!options->ilp) {
+                    nrows = skewingCst->ncols-1-npar-1;
+                    populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
+                    num_ccs = prog->ddg->num_ccs;
+                }
+
+                sol = pluto_prog_constraints_lexmin_glpk(skewingCst, obj, val, index, npar, num_ccs);
+                if (!options->ilp) {
+                    for (j=0; j<nrows; j++) {
+                        free(val[j]);
+                        free(index[j]);
+                    }
+                    free(val);
+                    free(index);
+                }
+            } else {
+                sol = pluto_constraints_lexmin(skewingCst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+            }
+            /* sol = solve_scaling_constraints_glpk(coeffcst,colour,select,prog);  */
+
+            /* sol = pluto_prog_constraints_lexmin(skewingCst, prog); */
+
+            if(sol){
+                /* Set the Appropriate coeffs in the transformation matrix */
+                for (j=0; j<nstmts; j++) {
+                    for (k = 0; k<nvar; k++){
+                        stmts[j]->trans->val[level][k] = sol[npar+1+j*(nvar+1)+k];
+                    }
+                    /* No parametric Shifts */
+                    for (k=nvar; k<nvar+npar; k++)    {
+                        stmts[j]->trans->val[level][k] = 0;
+                    }
+                    /* The constant Shift */
+                    stmts[j]->trans->val[level][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
+
+                }
+                //printf("Trransformation Matrix After skewing \n");
+                //pluto_transformations_pretty_print(prog);
+                dep_satisfaction_update(prog, level);
+                pluto_compute_dep_directions(prog);
+                /* pluto_print_dep_directions(prog); */
+                free(skew_dims);
+                if(level < prog->num_hyperplanes-1) {
+                    skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level+1);
+                    free(src_dims);
+                    src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
+                }
+            }
+            else {
+                /* printf("No Solution found \n"); */
+                /* The loop nest is not tilable */
+                free(skew_dims);
+                break;
+            }
+        }
+        free(src_dims);
+        level = initial_cuts;
+    }
+
+    pluto_constraints_free(const_dep_check_cst);
+    pluto_constraints_free(skewingCst);
+    /* printf("All SCC's tested for skew\n"); */
+    prog->ddg = orig_ddg;
+    graph_free(newDDG);
+    if (!options->silent) {
+        printf("[Pluto]: Post processing skewing complete\n");
+    }
+    return;
+}
+
