@@ -160,8 +160,8 @@ struct plutoOptions{
     /* Use lp instead of ILP. */
     int lp;
 
-    /* Just look for permutations. No skews allowed */
-    int disableSkew;
+    /* Use pluto-(i)lp-dfp framework instead of pluto-ilp */
+    int dfp;
 
     /* Use ILP with pluto-dfp instead of LP. */
     int ilp;

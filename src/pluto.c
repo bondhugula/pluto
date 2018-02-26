@@ -318,7 +318,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in cases where skewing is disabled */
-    if (!options->disableSkew){
+    if (!options->dfp){
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
         for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -337,7 +337,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     }
 #ifdef GLPK
-    else if (options->glpk || options->lp || options->disableSkew) {
+    else if (options->glpk || options->lp || options->dfp) {
          
         double **val = NULL;
         int **index = NULL;
@@ -375,7 +375,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
-        if(!options->disableSkew){
+        if(!options->dfp){
         j = npar + 1;
         for (i=0; i<nstmts; i++)    {
             for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -1791,7 +1791,7 @@ int pluto_auto_transform(PlutoProg *prog)
     /* For diamond tiling */
     conc_start_found = 0;
 
-    if (options->disableSkew) {
+    if (options->dfp) {
         if(options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
@@ -1977,7 +1977,7 @@ int pluto_auto_transform(PlutoProg *prog)
     }
 
  /* Deallocate the fusion conflict graph */
-    if (options->disableSkew){
+    if (options->dfp){
         ddg = prog->ddg;
         for(i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);

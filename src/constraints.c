@@ -1429,7 +1429,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         return NULL;
     }
 
-    if (options->lp || options->disableSkew) {
+    if (options->lp || options->dfp) {
 
         fpsol = get_lp_solution_from_glpk_problem(lp);
         num_sols = glp_get_num_cols (lp);

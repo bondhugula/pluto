@@ -2731,7 +2731,7 @@ PlutoOptions *pluto_options_alloc()
     options->glpk = 0;
 
     options->lp = 0;
-    options->disableSkew = 0;
+    options->dfp = 0;
     options->ilp = 0;
 
     options->lpcolour = 0;
