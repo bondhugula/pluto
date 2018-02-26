@@ -343,10 +343,10 @@ void compute_intra_stmt_deps(PlutoProg *prog)
  * are added as self loops on FCG vertices.  These vertices can not be coloured.
  * Inter statement permute preventing deps do not cause a problem as they will be
  * represented by the inter statement edges */
-#if 0
-void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour)
+void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj)
 {
     int nstmts,nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
+    int nrows;
     double *sol;
     Stmt **stmts;
     PlutoConstraints *intra_stmt_dep_cst, *coeff_bounds;
@@ -356,6 +356,9 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
     npar = prog->npar;
 
     stmts = prog->stmts;
+
+    nrows = boundcst->nrows-CST_WIDTH+1;
+
 
     /* Compute the intra statment dependence constraints */
     compute_intra_stmt_deps(prog);
@@ -367,24 +370,27 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
             double tstart = rtclock();
             coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
             prog->fcg_cst_alloc_time += rtclock() - tstart;
-            coeff_bounds->nrows = 1;
+            coeff_bounds->nrows = 0;
             coeff_bounds->ncols = CST_WIDTH;
             /* Add the intra statement dependence constraints and bounding constraints */
             intra_stmt_dep_cst = stmts[i]->intra_stmt_dep_cst;
 
-            pluto_constraints_add(coeff_bounds,intra_stmt_dep_cst);
             pluto_constraints_add(coeff_bounds,boundcst);
 
+            pluto_constraints_add(coeff_bounds,intra_stmt_dep_cst);
+
             stmt_offset = (npar+1)+ i*(nvar+1);
-            coeff_bounds->val[0][CST_WIDTH-1] = -1;
+            /* coeff_bounds->val[0][CST_WIDTH-1] = -1; */
 
             for (j=0; j<stmts[i]->dim_orig; j++) {
                 if (colour[fcg_stmt_offset + j]==0 || colour[fcg_stmt_offset+j] == current_colour) {
                     IF_DEBUG(printf("[Permute_preventing_edges]: Checking permutability of dimension %d of statement %d \n",j,i););
-                    coeff_bounds->val[0][stmt_offset+j] = 1;
+                    coeff_bounds->is_eq[nrows+stmt_offset+j] = 0;
+                    coeff_bounds->val[nrows+stmt_offset+j][CST_WIDTH-1] = -1;
+                    /* coeff_bounds->val[0][stmt_offset+j] = 1; */
                     prog->num_lp_calls++;
 
-                    sol = pluto_fusion_constraints_feasibility_solve_glpk(coeff_bounds,prog,stmt_offset+j, stmt_offset+j, fcg_stmt_offset+j, fcg_stmt_offset+j);
+                    sol = pluto_fusion_constraints_feasibility_solve_glpk(coeff_bounds,obj);
                     /* If the constraints are infeasible then add a self edge in the FCG */
 
                     if (sol == NULL) {
@@ -394,7 +400,9 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
                         free(sol);
                     }
                     /* reset the coeff bound of this dimension */
-                    coeff_bounds->val[0][stmt_offset+j] = 0;
+                    coeff_bounds->is_eq[nrows+stmt_offset+j] = 1;
+                    coeff_bounds->val[nrows+stmt_offset+j][CST_WIDTH-1] = 0;
+                    /* coeff_bounds->val[0][stmt_offset+j] = 0; */
                 }
             }
             tstart = rtclock();
@@ -404,7 +412,6 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
         fcg_stmt_offset += stmts[i]->dim_orig;
     }
 }
-#endif
 
 /* Removes all the edges in the FCG from a dimension of a statement that is in an 
  * SCC whose ID is less than or equal to scc1 to the dimension of a statement 
@@ -495,16 +502,9 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     fcg = graph_alloc(num_nodes);
 
     boundcst = get_coeff_bounding_constraints(prog);
-    /* Add premutation preventing intra statement dependence edges in the FCG.
-     * These are self loops on vertices of the FCG. */ 
 
     t_start2 = rtclock();
-    /* add_permute_preventing_edges(fcg, colour, prog, boundcst, current_colour); */
-    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2););
-    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls););
 
-    /* Add inter statement fusion and permute preventing edges.  */
-    t_start2 = rtclock();
     conflicts = (PlutoConstraints**)malloc(sizeof(PlutoConstraints*));
 
     /* The last CST_WIDTH-1 number of rows represent the bounds on the coeffcients  */
@@ -534,6 +534,16 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     
     pluto_constraints_cplex_print(stdout, *conflicts);
 
+    /* Add premutation preventing intra statement dependence edges in the FCG.
+     * These are self loops on vertices of the FCG. */ 
+    add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
+
+    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2););
+    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls););
+
+    /* Add inter statement fusion and permute preventing edges.  */
+    t_start2 = rtclock();
+
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
         (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 0;
@@ -548,6 +558,8 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 1;
     }
     IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2););
+
+    pluto_matrix_free(obj);
 
     /* Add egdes between different dimensions of the same statement */
     stmt_offset=0;
@@ -994,7 +1006,6 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
         t_start = rtclock();
 
-        /* TODO: Fix the next two lines once scaling routines are ported. */
         num_coloured_dims = scale_shift_permutations(prog, colour, i-1);
 
         prog->fcg_dims_scale_time += rtclock() - t_start;
