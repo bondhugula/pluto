@@ -1,8 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
- * Copyright (C) 2007-2012 Uday Bondhugula
- *
+ * Author: Aravind Acharya
+ *  
  * This file is part of Pluto.
  *
  * Pluto is free software: you can redistribute it and/or modify
@@ -36,6 +35,8 @@
 #include <isl/mat.h>
 #include <isl/set.h>
 #include "candl/candl.h"
+
+int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 
 static double rtclock()
 {
@@ -578,6 +579,8 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 }
 
 
+
+
 /******************  FCG Colouring Routines **********************************/
 
 /* Prints colour of each vertex of the FCG */
@@ -992,8 +995,8 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         t_start = rtclock();
 
         /* TODO: Fix the next two lines once scaling routines are ported. */
-        /* num_coloured_dims = scale_coeffs(prog, colour, i-1); */
-        num_coloured_dims = 0;
+        num_coloured_dims = scale_shift_permutations(prog, colour, i-1);
+
         prog->fcg_dims_scale_time += rtclock() - t_start;
         if (num_coloured_dims == 0){
             printf ("[Pluto]: Num hyperplanes found: %d\n", prog->num_hyperplanes);
@@ -1048,3 +1051,159 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
     return;
 }
+
+
+/*************************** Scaling Routines ******************/
+
+/* Once the permutation is found, it finds the scling and shifting factors for the permtation
+ * Scales the dimensions in the with colour c+1. Returns 1 if scaling
+ * was successful. Else returns 0. */
+int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
+{
+    int j, k, stmt_offset, select;
+    int nvar, npar;
+    int nstmts;
+    double t_start;
+    PlutoConstraints *basecst,*coeffcst,*boundcst;
+    int64 *sol;
+
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    stmts = prog->stmts;
+    nstmts = prog->nstmts;
+
+
+    t_start = rtclock();
+    basecst = get_permutability_constraints(prog);
+    assert (basecst->ncols == CST_WIDTH);
+
+    boundcst = get_coeff_bounding_constraints(prog);
+    pluto_constraints_add(basecst,boundcst);
+    pluto_constraints_free(boundcst);
+
+
+    coeffcst = pluto_constraints_alloc(basecst->nrows + (nstmts*nvar), basecst->ncols);
+    coeffcst->nrows = basecst->nrows;
+    coeffcst->ncols = basecst->ncols;
+    assert (coeffcst->ncols == CST_WIDTH);
+
+
+    IF_DEBUG(printf("Num stmts coloured with colour %d: %d\n", c+1, prog->total_coloured_stmts[c]););
+
+    if (prog->total_coloured_stmts[c] == nstmts) {
+        coeffcst = pluto_constraints_copy(coeffcst,basecst);
+
+        /* Pick a colour that you would start with. This is buggy. You need to pick a colour*/
+        select = c+1;
+        IF_DEBUG(printf("[pluto] Finding Scaling factors for colour %d\n",select););
+        /* Stmt offset in the colour array. This corresponds to FCG */
+        stmt_offset = 0;
+        /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set the rest to 0
+         * These redundant cols are then removed. */
+
+        for (j=0; j<nstmts; j++){
+            for (k=0; k<nvar; k++){
+                if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select){
+                    pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
+                }
+                else {
+                    pluto_constraints_add_equality(coeffcst);
+                    coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
+                }
+            }
+            stmt_offset += stmts[j]->dim_orig;
+        }
+
+        /* Solve the constraints to find the hyperplane at this level */
+        t_start = rtclock();
+
+        if (options->glpk) {
+            double **val = NULL;
+            int **index = NULL;
+            int num_ccs, nrows;
+            num_ccs = 0;
+
+            PlutoMatrix *obj = construct_cplex_objective(coeffcst, prog);
+
+            if (!options->ilp) {
+                nrows = coeffcst->ncols-1-npar-1;
+                populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
+                num_ccs = prog->ddg->num_ccs;
+            }
+
+            sol = pluto_prog_constraints_lexmin_glpk(coeffcst, obj, val, index, npar, num_ccs);
+            if (!options->ilp) {
+                for (j=0; j<nrows; j++) {
+                    free(val[j]);
+                    free(index[j]);
+                }
+                free(val);
+                free(index);
+            }
+        } else {
+            sol = pluto_constraints_lexmin(coeffcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        }
+        /* sol = solve_scaling_constraints_glpk(coeffcst,colour,select,prog);  */
+
+        if (sol != NULL) {
+            IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
+            /* num_sols_found++; */
+
+            /* if (options->varliberalize) { */
+            /*     for (j=0; j<ndeps; j++) { */
+            /*         #<{(| Check if it has to be c or c+1 |)}># */
+            /*         if(deps[j]->temp_across && c < deps[j]->fuse_depth  */
+            /*                 && pluto_domain_equality(stmts[deps[j]->src],stmts[deps[j]->dest])) { */
+            /*             for(k=0;k<nvar;k++) { */
+            /*                 if(sol[npar+1+(deps[j]->src)*(nvar+1)+k] != sol[npar+1+(deps[j]->dest)*(nvar+1)+k]) */
+            /*                     break; */
+            /*             } */
+            /*             if(k!=nvar || (sol[npar+1+(deps[j]->src)*(nvar+1)+nvar]!=sol[npar+1+(deps[j]->dest)*(nvar+1)+nvar])) { */
+            /*                 printf("Cutting between SCCs to prevent illegal transformation with var-lib"); */
+            /*                 cut_between_sccs(prog,ddg,stmts[deps[j]->src]->scc_id, stmts[deps[j]->dest]->scc_id); */
+            /*             } */
+            /*         } */
+            /*     } */
+            /* } */
+            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+
+            for (j=0; j<nstmts; j++)    {
+                Stmt *stmt = stmts[j];
+                pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
+                for (k=0; k<nvar; k++)    {
+                    stmt->trans->val[stmt->trans->nrows-1][k] = sol[npar+1+j*(nvar+1)+k];
+                }
+                /* No parameteric shifts */
+                for (k=nvar; k<nvar+npar; k++)    {
+                    stmt->trans->val[stmt->trans->nrows-1][k] = 0;
+                }
+                /* Constant loop shift */
+                stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
+
+                stmt->hyp_types[stmt->trans->nrows-1] =  
+                    pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
+                    H_SCALAR: H_LOOP;
+
+            }
+            free(sol);
+            IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
+            pluto_constraints_free(coeffcst);
+            prog->scaling_cst_sol_time += rtclock()-t_start;
+            return 1;
+        } else {
+            printf("[pluto] No Hyperplane found\n");
+            pluto_constraints_free(coeffcst);
+            prog->scaling_cst_sol_time += rtclock()-t_start;
+            return 0;
+        }
+
+    } else {
+        IF_DEBUG(printf("Not All statements have been coloured\n"););
+        pluto_constraints_free(coeffcst);
+        return 0;
+    }
+    /* } */
+}
+

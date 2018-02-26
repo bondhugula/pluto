@@ -1834,8 +1834,6 @@ int pluto_auto_transform(PlutoProg *prog)
 
         printf("[pluto] Fusion Conflict graph\n");
         pluto_matrix_print(stdout, fcg->adj);
-        exit (0);
-
 
         prog->total_coloured_stmts = (int*) malloc(nvar*sizeof(int));
         prog->scaled_dims = (int*) malloc(nvar*sizeof(int));
@@ -1848,13 +1846,13 @@ int pluto_auto_transform(PlutoProg *prog)
         /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
         find_permutable_dimensions_scc_based(colour, prog);
 
-        /* IF_DEBUG(printf("[Pluto] Colouring Successful\n");); */
-        /* IF_DEBUG(pluto_print_colours(colour,prog);); */
+        IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
+        IF_DEBUG(pluto_print_colours(colour,prog););
 
-        /* if(!options->silent && options->debug) { */
-        /*     printf("[Pluto]: Transformations before skewing \n"); */
-        /*     pluto_transformations_pretty_print(prog); */
-        /* } */
+        if(!options->silent && options->debug) {
+            printf("[Pluto]: Transformations before skewing \n");
+            pluto_transformations_pretty_print(prog);
+        }
 
         /* t_start = rtclock (); */
         /* introduce_skew(prog); */
