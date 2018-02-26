@@ -414,6 +414,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
+void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
 void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
