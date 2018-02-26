@@ -191,7 +191,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     conflictcst = *conflicts;
 
     prog->fcg_cst_alloc_time += rtclock() - tstart;
-    row_offset = conflictcst->nrows-CST_WIDTH-1;
+    row_offset = conflictcst->nrows-CST_WIDTH+1;
     /* conflictcst->ncols = CST_WIDTH; */
 
     /* conflictcst->val[row_offset][CST_WIDTH-1] = -1; */
@@ -527,7 +527,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     /* In the last CST_WIDTH-npar+1 number of rows, correspond to equality constraints.
      * These are changed during dimension wise computation of edges of the FCG*/
     for (i=npar+1; i<CST_WIDTH-1; i++) {
-        (*conflicts)->is_eq[nrows+i] = 0;
+        (*conflicts)->is_eq[nrows+i] = 1;
         (*conflicts)->val[nrows+i][i] = 1;
     }
     
@@ -535,16 +535,16 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
-        (*conflicts)->is_eq[npar+1+i*(nvar+1)+nvar] = 0;
+        (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 0;
         for (j=i+1; j<nstmts; j++) {
             if (is_adjecent(ddg,i,j)) {
                 /* Set the lower bound of the constant shift to be 1. */
-                (*conflicts)->is_eq[npar+1+j*(nvar+1)+nvar] = 0;
+                (*conflicts)->is_eq[nrows + npar+1+j*(nvar+1)+nvar] = 0;
                 fcg_add_pairwise_edges(fcg,i,j,prog, colour, boundcst, current_colour, conflicts, obj);
-                (*conflicts)->is_eq[npar+1+j*(nvar+1)+nvar] = 1;
+                (*conflicts)->is_eq[nrows + npar+1+j*(nvar+1)+nvar] = 1;
             }
         }
-        (*conflicts)->is_eq[npar+1+i*(nvar+1)+nvar] = 1;
+        (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 1;
     }
     IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2););
 
@@ -600,8 +600,6 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
     }
 }
 
-
-
 /* Check if it is valid to give colour c to a vertex v in the fcg.
  * Colour is the array containing the colours assigned to each vertex */
 bool is_valid_colour(int v, int c, Graph *fcg, int * colour)
@@ -627,6 +625,7 @@ bool is_discarded(int v, int list[], int num)
 }
 
 
+/* Routine that returns the next vertex to be coloured. Currently returns the next vertex in the ordered list. */
 int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, int pv, PlutoProg *prog){
     int i, min, npar, nvar, stmt_offset;
     Stmt **stmts;
