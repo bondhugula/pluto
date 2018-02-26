@@ -1855,7 +1855,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         /* t_start = rtclock (); */
-        /* introduce_skew(prog); */
+        introduce_skew(prog);
         /* prog->skew_time = rtclock()-t_start; */
 
         free(colour);
