@@ -766,26 +766,27 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         bool hyp_search_mode)
 {
     PlutoConstraints *nzcst;
-    int i, j, stmt_offset, nvar, npar, nstmts;
+    int i, j, stmt_offset, nvar, npar, nstmts, nloops;
 
     Stmt **stmts = prog->stmts;
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    nloops = prog->nloops;
 
     nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
     nzcst->ncols = CST_WIDTH;
 
     if (hyp_search_mode == EAGER) {
-        for (i=0; i<nstmts; i++) {
+        for (i=0; i<nloops; i++) {
             /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
                 continue;
             }
             stmt_offset = npar+1+i*(nvar+1);
             for (j=0; j<nvar; j++)  {
-                if (stmts[i]->is_orig_loop[j] == 1) {
+                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
                     nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
                 }
             }
@@ -794,15 +795,15 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
         }
     }else{
         assert(hyp_search_mode == LAZY);
-        for (i=0; i<nstmts; i++) {
+        for (i=0; i<nloops; i++) {
             /* Don't add the constraint if enough solutions have been found */
-            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
-                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+            if (pluto_stmt_get_num_ind_hyps(stmts[prog->loops[i]]) >= stmts[prog->loops[i]]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", prog->loops[i]));
                 continue;
             }
             stmt_offset = npar+1+i*(nvar+1);
             for (j=0; j<nvar; j++)  {
-                if (stmts[i]->is_orig_loop[j] == 1) {
+                if (stmts[prog->loops[i]]->is_orig_loop[j] == 1) {
                     nzcst->val[0][stmt_offset+j] = 1;
                 }
             }
@@ -814,18 +815,15 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     return nzcst;
 }
 
-
 /**
  * Bounds for Pluto ILP variables
  */
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
 {
-    int i, npar, nstmts, nvar;
+    int i, npar;
     PlutoConstraints *cst;
 
     npar = prog->npar;
-    nstmts = prog->nstmts;
-    nvar = prog->nvar;
 
     cst = pluto_constraints_alloc(1, CST_WIDTH);
 
