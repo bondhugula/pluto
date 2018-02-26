@@ -61,6 +61,10 @@ extern int* skipdeps_;
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
 
+/* Iterative search modes */
+#define EAGER 0
+#define LAZY 1
+
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
 /* H_TILE_SPACE_LOOP may not always be distinguished from H_LOOP */
@@ -413,6 +417,7 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
+void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
@@ -422,6 +427,7 @@ PlutoConstraints *get_global_independence_cst(
         PlutoConstraints ***ortho_cst, int *orthonum, 
         const PlutoProg *prog);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
 int pluto_auto_transform(PlutoProg *prog);
 int  pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
@@ -450,7 +456,9 @@ int pluto_omp_parallelize(PlutoProg *prog);
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
-int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
+int    cut_all_sccs(PlutoProg *prog, Graph *ddg);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
@@ -458,6 +466,7 @@ void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
+int dep_satisfaction_update(PlutoProg *prog, int level);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);

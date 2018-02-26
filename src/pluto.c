@@ -35,9 +35,6 @@
 #include "ddg.h"
 #include "version.h"
 
-/* Iterative search modes */
-#define EAGER 0
-#define LAZY 1
 
 bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
 
@@ -304,6 +301,8 @@ int num_inter_scc_deps (Stmt *stmts, Dep *deps, int ndeps)
 }
 
 
+#if 0
+
 /* PlutoConstraints to avoid trivial solutions (all zeros)
  *
  * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked, 
@@ -413,6 +412,7 @@ static PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog)
 
     return cst;
 }
+#endif
 
 
 /**
@@ -448,6 +448,38 @@ static PlutoConstraints *get_coeff_bounding_constraints_for_cone_complement(Plut
         pluto_constraints_add_lb(cst, npar+1+s*(nvar+1)+nvar, 0);
     }
     return cst;
+}
+
+
+PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog)
+{
+    int npar = prog->npar;
+    int nvar = prog->nvar;
+    int i, j, k;
+
+    PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
+    pluto_matrix_set(obj, 0);
+
+    /* u
+     * */
+    for (j=0; j<npar; j++) {
+        obj->val[0][j] = 5*5*nvar*prog->nloops;
+    }
+    /* w
+     * */
+    obj->val[0][npar] = 5*nvar*prog->nloops;
+
+    for (i=0, j=npar+1; i<prog->nloops; i++) {
+        for (k=j; k<j+prog->stmts[prog->loops[i]]->dim_orig; k++) {
+            obj->val[0][k] = (nvar+2)*(prog->stmts[prog->loops[i]]->dim_orig-(k-j));
+        }
+        /* constant
+         * shift
+         * */
+        obj->val[0][k] = 1;
+        j += prog->stmts[prog->loops[i]]->dim_orig + 1;
+    }
+    return obj;
 }
 
 
@@ -507,13 +539,21 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
                 cst->ncols-1, cst->nrows););
 
+    /* Solve the constraints using chosen solvers*/
+    if (options->islsolve) {
+        sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    }
 #ifdef GLPK
-    if (options->glpk) {
-        pluto_prog_constraints_lexmin_glpk(newcst, prog);
+    else if (options->glpk) {
+        PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
+        sol = pluto_prog_constraints_lexmin_glpk(newcst, obj);
+        pluto_matrix_free(obj);
     }
 #endif
-    /* Solve the constraints */
-    sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    else {
+         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    }
+    /* sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
     /* print_polylib_visual_sets("csts", newcst); */
 
 

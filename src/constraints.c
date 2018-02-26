@@ -1154,34 +1154,6 @@ int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar)
 }
 
 #ifdef GLPK
-PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog)
-{
-    int npar = prog->npar;
-    int nvar = prog->nvar;
-    int i, j, k;
-
-    PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
-    pluto_matrix_set(obj, 0);
-
-    /* u */
-    for (j=0; j<npar; j++) {
-        obj->val[0][j] = 5*5*nvar*prog->nloops;
-    }
-    /* w  */
-    obj->val[0][npar] = 5*nvar*prog->nloops;
-
-    for (i=0, j=npar+1; i<prog->nloops; i++) {
-        for (k=j; k<j+prog->stmts[prog->loops[i]]->dim_orig; k++) {
-            obj->val[0][k] = (nvar+2)*(prog->stmts[prog->loops[i]]->dim_orig-(k-j));
-        }
-        /* constant shift */
-        obj->val[0][k] = 1;
-        j += prog->stmts[prog->loops[i]]->dim_orig + 1;
-    }
-    return obj;
-
-}
-
 /* Constructs constraints for glpk problem in-memory.  Assumes that there
  * are no rows or cols in glp_prob lp.*/
 void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstraints *cst)
@@ -1229,9 +1201,26 @@ void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstr
     free(coeff);
 }
 
-int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
+/* Retrives ilp solution from the input glpk problem. 
+ * Assumes that the optimal solution exists and has been found*/
+int64 *get_ilp_solution_from_glpk_problem(glp_prob *lp)
 {
-    int j;
+    int i, ncols;
+    int64* sol;
+
+    ncols = glp_get_num_cols(lp);
+    sol = (int64*) malloc (sizeof(int64)*ncols);
+    for (i=0; i<glp_get_num_cols(lp); i++) {
+        double x = glp_mip_col_val(lp, i+1);
+        IF_DEBUG(printf("c%d = %lld, ", i, (int64) round(x)););
+        sol[i] = (int64) round(x);
+    }
+    return sol;
+}
+
+/* Set glpk problem parameters. 
+ * Checks feasibility of the LP problem using simplex */
+void set_glpk_problem_params(glp_prob *lp) {
     if (!options->debug && !options->moredebug) {
         glp_term_out(GLP_OFF);
     }
@@ -1248,7 +1237,30 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
     glp_scale_prob(lp, GLP_SF_AUTO);
     glp_adv_basis(lp, 0);
     glp_simplex(lp, &parm);
+}
 
+void find_optimal_solution_glpk(glp_prob *lp, double tol)
+{
+    glp_iocp iocp;
+    glp_init_iocp(&iocp);
+    /* The default is 1e-5; one may need to reduce it even further
+     * depending on how large a coefficient we might see */
+    iocp.tol_int = tol;
+    IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
+
+    iocp.msg_lev = GLP_MSG_OFF;
+    IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
+    IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
+
+    /* Find optimal solution */
+    glp_intopt(lp, &iocp);
+}
+
+int64 *pluto_constraints_solve_glpk(glp_prob *lp)
+{
+    int64 *sol;
+
+    set_glpk_problem_params(lp);
     int lp_status = glp_get_status(lp);
 
     if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) {
@@ -1256,18 +1268,8 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
         return NULL;
     }
 
-    glp_iocp iocp;
-    glp_init_iocp(&iocp);
-    /* The default is 1e-5; one may need to reduce it even further
-     * depending on how large a coefficient we might see */
-    iocp.tol_int = 1e-7;
-    IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
 
-    iocp.msg_lev = GLP_MSG_OFF;
-    IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
-    IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
-
-    glp_intopt(lp, &iocp);
+    find_optimal_solution_glpk(lp, 1e-7);
 
     int ilp_status = glp_mip_status(lp);
 
@@ -1278,23 +1280,16 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp, const PlutoConstraints *cst)
 
     double z = glp_mip_obj_val(lp);
     IF_DEBUG(printf("z = %lf\n", z););
-    int64* sol = malloc(sizeof(int64)*(cst->ncols-1));
-    for (j=0; j<glp_get_num_cols(lp); j++) {
-        double x = glp_mip_col_val(lp, j+1);
-        IF_DEBUG(printf("c%d = %lld, ", j, (int64) round(x)););
-        sol[j] = (int) round(x);
-    }
-    IF_DEBUG(printf("\n"););
+    sol = get_ilp_solution_from_glpk_problem(lp);
     glp_delete_prob(lp);
     return sol;
 }
 
 /* Construct ILP in cplex format */
 int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-        PlutoProg *prog)
+        PlutoMatrix *obj)
 {
     int i, j;
-    PlutoMatrix *obj;
     int64 *sol;
 
 
@@ -1306,17 +1301,15 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
 
     glp_set_obj_dir(lp, GLP_MIN);
 
-    obj = construct_cplex_objective(cst, prog);
 
     set_glpk_constraints_from_pluto_constraints(lp, cst);
 
     for (j=0; j<obj->ncols; j++) {
         glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
     }
-    pluto_matrix_free(obj);
 
     for (i=0; i<cst->ncols-1; i++) {
-        glp_set_col_bnds(lp, i+1, GLP_FR, 0.0, 0.0);
+        glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
     }
     for (i=0; i<cst->ncols-1; i++) {
         glp_set_col_kind(lp, i+1, GLP_IV);
@@ -1324,7 +1317,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     IF_DEBUG(glp_write_lp(lp, NULL, "pluto-debug-glpk.lp"););
 
 
-    sol = pluto_constraints_solve_glpk(lp, cst);
+    sol = pluto_constraints_solve_glpk(lp);
 
     return sol;
 }
