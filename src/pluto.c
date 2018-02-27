@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <sys/time.h>
+
 #include "pluto.h"
 #include "math_support.h"
 #include "constraints.h"
@@ -47,6 +49,16 @@ int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
 int pluto_diamond_tile(PlutoProg *prog);
+
+static double rtclock()
+{
+    struct timezone Tzp;
+    struct timeval Tp;
+    int stat;
+    stat = gettimeofday (&Tp, &Tzp);
+    if (stat != 0) printf("Error return from gettimeofday: %d",stat);
+    return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
+}
 
 /*
  * Returns the number of (new) satisfied dependences at this level
@@ -280,6 +292,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     int nstmts, nvar, npar, del_count;
     int64 *sol, *fsol;
     PlutoConstraints *newcst;
+    double t_start;
 
     stmts = prog->stmts;
     nstmts = prog->nstmts;
@@ -330,7 +343,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     /* Solve the constraints using chosen solvers*/
     if (options->islsolve) {
+        t_start = rtclock(); 
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        prog->mipTime += rtclock()-t_start;
     }
 #ifdef GLPK
     else if (options->glpk || options->lp || options->dfp) {
@@ -347,7 +362,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
             num_ccs = prog->ddg->num_ccs;
         }
+
+        t_start = rtclock(); 
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
+        prog->mipTime += rtclock()-t_start;
+
         pluto_matrix_free(obj);
         if (options->lp) {
             for (i=0; i<nrows; i++) {
@@ -360,7 +379,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     }
 #endif
     else {
-         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        t_start = rtclock(); 
+        sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+        prog->mipTime += rtclock()-t_start;
     }
     /* sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
     /* print_polylib_visual_sets("csts", newcst); */

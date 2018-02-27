@@ -1438,10 +1438,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         glp_delete_prob(lp);
 
         lp = get_scaling_lp_glpk(fpsol, num_sols, val, index, npar, num_ccs);
-        /* t_mip = rtclock()-t_mip_start; */
-        /* prog->mipTime += t_mip; */
 
-        /* t_ilp_start = rtclock(); */
         scale_sols = pluto_mip_scale_solutions_glpk(lp);
         int64 *sol = malloc(sizeof(int64)*(num_sols));
 
@@ -1471,8 +1468,6 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         glp_delete_prob(lp);
         free(fpsol);
         free(scale_sols);
-        /* t_ilp = rtclock() - t_ilp_start; */
-        /* prog->ilpTime += t_ilp; */
         return sol;
     } else {
         sol = get_ilp_solution_from_glpk_problem(lp);
