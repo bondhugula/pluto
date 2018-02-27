@@ -361,6 +361,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
     }
+
+    /* By default Pluto-dfp uses lp. */
+    if (options->dfp && !options->ilp) {
+        options->lp = 1;
+    }
         
     if (options->dfp && !options->glpk) {
         printf("[pluto]: Dfp framework is currently supported only with GLPK solver. Using GLPK for constraint solving \n");

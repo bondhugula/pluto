@@ -1130,33 +1130,33 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         /* Solve the constraints to find the hyperplane at this level */
         t_start = rtclock();
 
-        if (options->glpk) {
-            double **val = NULL;
-            int **index = NULL;
-            int num_ccs, nrows;
-            num_ccs = 0;
-
-            PlutoMatrix *obj = construct_cplex_objective(coeffcst, prog);
-
-            if (!options->ilp) {
-                nrows = coeffcst->ncols-1-npar-1;
-                populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
-                num_ccs = prog->ddg->num_ccs;
-            }
-
-            sol = pluto_prog_constraints_lexmin_glpk(coeffcst, obj, val, index, npar, num_ccs);
-            if (!options->ilp) {
-                for (j=0; j<nrows; j++) {
-                    free(val[j]);
-                    free(index[j]);
-                }
-                free(val);
-                free(index);
-            }
-        } else {
-            sol = pluto_constraints_lexmin(coeffcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
-        }
-        /* sol = solve_scaling_constraints_glpk(coeffcst,colour,select,prog);  */
+        /* if (options->glpk) { */
+        /*     double **val = NULL; */
+        /*     int **index = NULL; */
+        /*     int num_ccs, nrows; */
+        /*     num_ccs = 0; */
+        /*  */
+        /*     PlutoMatrix *obj = construct_cplex_objective(coeffcst, prog); */
+        /*  */
+        /*     if (!options->ilp) { */
+        /*         nrows = coeffcst->ncols-1-npar-1; */
+        /*         populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog); */
+        /*         num_ccs = prog->ddg->num_ccs; */
+        /*     } */
+        /*  */
+        /*     sol = pluto_prog_constraints_lexmin_glpk(coeffcst, obj, val, index, npar, num_ccs); */
+        /*     if (!options->ilp) { */
+        /*         for (j=0; j<nrows; j++) { */
+        /*             free(val[j]); */
+        /*             free(index[j]); */
+        /*         } */
+        /*         free(val); */
+        /*         free(index); */
+        /*     } */
+        /* } else { */
+        /*     sol = pluto_constraints_lexmin(coeffcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
+        /* } */
+        sol = pluto_prog_constraints_lexmin(coeffcst, prog);
 
         if (sol != NULL) {
             IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
@@ -1503,35 +1503,35 @@ void introduce_skew(PlutoProg *prog)
             /* Solve Skewing Constraints */
             //tstart = rtclock();
 
-            if (options->glpk) {
-                double **val = NULL;
-                int **index = NULL;
-                int num_ccs, nrows;
-                num_ccs = 0;
-
-                PlutoMatrix *obj = construct_cplex_objective(skewingCst, prog);
-
-                if (!options->ilp) {
-                    nrows = skewingCst->ncols-1-npar-1;
-                    populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
-                    num_ccs = prog->ddg->num_ccs;
-                }
-
-                sol = pluto_prog_constraints_lexmin_glpk(skewingCst, obj, val, index, npar, num_ccs);
-                if (!options->ilp) {
-                    for (j=0; j<nrows; j++) {
-                        free(val[j]);
-                        free(index[j]);
-                    }
-                    free(val);
-                    free(index);
-                }
-            } else {
-                sol = pluto_constraints_lexmin(skewingCst, DO_NOT_ALLOW_NEGATIVE_COEFF);
-            }
+            /* if (options->glpk) { */
+            /*     double **val = NULL; */
+            /*     int **index = NULL; */
+            /*     int num_ccs, nrows; */
+            /*     num_ccs = 0; */
+            /*  */
+            /*     PlutoMatrix *obj = construct_cplex_objective(skewingCst, prog); */
+            /*  */
+            /*     if (!options->ilp) { */
+            /*         nrows = skewingCst->ncols-1-npar-1; */
+            /*         populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog); */
+            /*         num_ccs = prog->ddg->num_ccs; */
+            /*     } */
+            /*  */
+            /*     sol = pluto_prog_constraints_lexmin_glpk(skewingCst, obj, val, index, npar, num_ccs); */
+            /*     if (!options->ilp) { */
+            /*         for (j=0; j<nrows; j++) { */
+            /*             free(val[j]); */
+            /*             free(index[j]); */
+            /*         } */
+            /*         free(val); */
+            /*         free(index); */
+            /*     } */
+            /* } else { */
+            /*     sol = pluto_constraints_lexmin(skewingCst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
+            /* } */
             /* sol = solve_scaling_constraints_glpk(coeffcst,colour,select,prog);  */
 
-            /* sol = pluto_prog_constraints_lexmin(skewingCst, prog); */
+            sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
             if(sol){
                 /* Set the Appropriate coeffs in the transformation matrix */

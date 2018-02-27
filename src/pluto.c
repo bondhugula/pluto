@@ -317,7 +317,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
-    /* We do not need to permute in cases where skewing is disabled */
+    /* We do not need to permute in case of pluto-lp-dfp */
     if (!options->dfp){
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
@@ -376,18 +376,18 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
         if(!options->dfp){
-        j = npar + 1;
-        for (i=0; i<nstmts; i++)    {
-            for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
-                k1 = k;
-                k2 = j + (stmts[i]->dim_orig - 1 - (k-j));
-                tmp = sol[k1];
-                sol[k1] = sol[k2];
-                sol[k2] = tmp;
+            j = npar + 1;
+            for (i=0; i<nstmts; i++)    {
+                for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+                    k1 = k;
+                    k2 = j + (stmts[i]->dim_orig - 1 - (k-j));
+                    tmp = sol[k1];
+                    sol[k1] = sol[k2];
+                    sol[k2] = tmp;
+                }
+                j += stmts[i]->dim_orig+1;
             }
-            j += stmts[i]->dim_orig+1;
         }
-}
 
         fsol = (int64 *) malloc((cst->ncols-1)*sizeof(int64));
 
