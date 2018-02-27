@@ -525,7 +525,9 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *pro
 void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog);
 PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog);
 
+#ifdef GLPK
 Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour);
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
 void introduce_skew(PlutoProg *prog);
+#endif
 #endif

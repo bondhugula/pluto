@@ -378,6 +378,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
 #endif
 
+    if(options->dfp && !options->glpk) {
+        printf ("[pluto]: ERROR: DFP framework currently supported with GLPK solver only. Configure Pluto with --enable-glpk \n");
+        pluto_options_free(options);
+        usage_message();
+        return 1;
+    }
 
     /* Extract polyhedral representation */
     PlutoProg *prog = NULL; 

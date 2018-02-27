@@ -1705,7 +1705,7 @@ static void swap_hyperplanes(int64 *h1, int64 *h2, int ncols)
  */ 
 int pluto_auto_transform(PlutoProg *prog)
 {
-    int i, j, s, nsols, conc_start_found, depth, nVertices;
+    int i, j, s, nsols, conc_start_found, depth;
     /* The maximum number of linearly independent solutions needed across all
      * statements */
     int num_ind_sols_req;
@@ -1716,8 +1716,10 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
 
+#ifdef GLPK
     Graph* fcg;
-    int *colour;
+    int *colour, nVertices;
+#endif
 
     Stmt **stmts = prog->stmts;
     int nstmts = prog->nstmts;
@@ -1808,6 +1810,7 @@ int pluto_auto_transform(PlutoProg *prog)
     conc_start_found = 0;
 
     if (options->dfp) {
+#ifdef GLPK
         if(options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
@@ -1869,7 +1872,7 @@ int pluto_auto_transform(PlutoProg *prog)
         free(colour);
         free(prog->total_coloured_stmts);
         free(prog->scaled_dims);
-
+#endif
     } else {
 
         do{
@@ -1986,11 +1989,13 @@ int pluto_auto_transform(PlutoProg *prog)
 
  /* Deallocate the fusion conflict graph */
     if (options->dfp){
+#ifdef GLPK
         ddg = prog->ddg;
         for(i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);
         }
         graph_free(prog->fcg);
+#endif
     }
     if (options->lbtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););

@@ -36,6 +36,7 @@
 #include <isl/set.h>
 #include "candl/candl.h"
 
+#ifdef GLPK
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 
 static double rtclock()
@@ -1346,3 +1347,4 @@ void introduce_skew(PlutoProg *prog)
     }
     return;
 }
+#endif
