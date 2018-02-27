@@ -1217,6 +1217,7 @@ double *get_lp_solution_from_glpk_problem(glp_prob *lp)
         IF_DEBUG(printf("c%d = %f, ", i, x););
         sol[i] = x;
     }
+    IF_DEBUG(printf("\n"););
     return sol;
 }
 
@@ -1234,6 +1235,7 @@ int64 *get_ilp_solution_from_glpk_problem(glp_prob *lp)
         IF_DEBUG(printf("c%d = %lld, ", i, (int64) round(x)););
         sol[i] = (int64) round(x);
     }
+    IF_DEBUG(printf("\n"););
     return sol;
 }
 
