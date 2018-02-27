@@ -58,6 +58,8 @@ Graph *graph_alloc(int nVertices)
     /* Not computed yet */
     g->num_sccs = -1;
 
+    /* Not computed yet */
+    g->num_ccs = -1;
     return g;
 }
 
@@ -97,6 +99,34 @@ Graph *graph_transpose(Graph *g)
     return gT;
 }
 
+/* Returns an undirected graph corresponding to the input directed graph */
+/* This is used to find the connected components in the graph */
+Graph* get_undirected_graph(const Graph *g)
+{
+    int i,j;
+    Graph *gU;
+    gU=graph_alloc(g->nVertices);
+    for (i=0;i<g->nVertices;i++){
+        for (j=0;j<=i;j++){
+            gU->adj->val[i][j]=(g->adj->val[i][j]==0)?g->adj->val[j][i]:g->adj->val[i][j];
+            gU->adj->val[j][i]=gU->adj->val[i][j];
+        }
+    }
+    return gU;
+}
+
+/* Floyd-Warshall algorithm to find the transitive closure of a graph */
+void transitive_closure (Graph *g)
+{
+    int i,j,k;
+    for (i=0; i<g->nVertices; i++){
+        for (j=0; j<g->nVertices; j++){
+            for (k=0;k<g->nVertices;k++){
+                g->adj->val[i][j] = ((g->adj->val[i][j]) || (g->adj->val[i][k] && g->adj->val[k][j]));
+            }
+        }
+    }
+}
 
 /* Depth first search from a given vertex */
 void dfs_vertex(Graph *g, Vertex *v, int *time)
@@ -111,6 +141,7 @@ void dfs_vertex(Graph *g, Vertex *v, int *time)
     for (j=0; j< g->nVertices; j++) {
         if (g->adj->val[v->id][j])   {
             // Vertex *w = ddg_get_vertex_by_id(g, j);
+            g->vertices[j].cc_id = v->cc_id;
             if (g->vertices[j].vn == 0) {
                 dfs_vertex(g, &g->vertices[j], time);
             }
@@ -204,6 +235,52 @@ void dfs_for_scc(Graph *g)
     free(vCopy);
 }
 
+bool is_adjecent(Graph *g, int i, int j){
+    /* PlutoMatrix *adj; */
+    /* adj = g->adj; */
+    if(g->adj->val[i][j] != 0|| g->adj->val[j][i] != 0){
+        return true;
+    }
+    return false;
+}
+
+void compute_scc_vertices(Graph *ddg){
+    int i,j,k;
+    int n_sccs;
+    int *vertices;
+
+    n_sccs = ddg->num_sccs;
+    for(i=0; i<n_sccs; i++){
+        vertices = (int*)malloc((ddg->sccs[i].size)*sizeof(int));
+        k = 0;
+        for(j=0;j<ddg->nVertices; j++){
+            if((ddg->vertices[j].scc_id) == i){
+                vertices[k] = ddg->vertices[j].id;
+                k++;
+            }
+        }
+        ddg->sccs[i].vertices = vertices;
+    }
+}
+
+void print_scc_vertices(int j, Graph *g){
+    int i;
+    for (i=0;i<g->sccs[j].size; i++){
+        printf("S%d, ",g->sccs[j].vertices[i]);
+    }
+    printf("\n");
+}
+
+void free_scc_vertices(Graph *ddg){
+    int i;
+    int *vertices;
+    for(i=0;i<ddg->num_sccs;i++){
+        vertices = ddg->sccs[i].vertices;
+        if(vertices!=NULL){
+            free(vertices);
+        }
+    }
+}
 void graph_free(Graph *g)
 {
     pluto_matrix_free(g->adj);
