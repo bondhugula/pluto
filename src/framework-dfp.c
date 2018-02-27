@@ -284,7 +284,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             /* conflictcst->val[row_offset+0][src_offset+i] = 0; */
         }
     }
-    /* conflictcst->nrows = row_offset+2; */
+    conflictcst->nrows = row_offset+CST_WIDTH-1;
     /* conflictcst->ncols = CST_WIDTH; */
     /* conflictcst->val[row_offset][CST_WIDTH-1] = 0; */
     /* conflictcst->val[row_offset+1][CST_WIDTH-1] = 0; */
@@ -532,7 +532,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         (*conflicts)->val[nrows+i][i] = 1;
     }
     
-    pluto_constraints_cplex_print(stdout, *conflicts);
+    /* pluto_constraints_cplex_print(stdout, *conflicts); */
 
     /* Add premutation preventing intra statement dependence edges in the FCG.
      * These are self loops on vertices of the FCG. */ 
