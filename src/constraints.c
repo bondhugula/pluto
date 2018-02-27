@@ -1512,6 +1512,7 @@ double* pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst, PlutoMatr
         return NULL;
     } else {
         sol = get_lp_solution_from_glpk_problem(lp);
+        glp_delete_prob(lp);
         return sol;
     }
 
