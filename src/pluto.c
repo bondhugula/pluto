@@ -1698,7 +1698,6 @@ int pluto_auto_transform(PlutoProg *prog)
     int num_ind_sols_found;
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
-    double t_start;
 
     Graph* fcg;
     int *colour;
@@ -1832,8 +1831,8 @@ int pluto_auto_transform(PlutoProg *prog)
         fcg->num_coloured_vertices = 0;
         fcg->to_be_rebuilt = false;
 
-        printf("[pluto] Fusion Conflict graph\n");
-        pluto_matrix_print(stdout, fcg->adj);
+        IF_DEBUG(printf("[pluto] Fusion Conflict graph\n"););
+        IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
 
         prog->total_coloured_stmts = (int*) malloc(nvar*sizeof(int));
         prog->scaled_dims = (int*) malloc(nvar*sizeof(int));
@@ -1854,9 +1853,7 @@ int pluto_auto_transform(PlutoProg *prog)
             pluto_transformations_pretty_print(prog);
         }
 
-        /* t_start = rtclock (); */
         introduce_skew(prog);
-        /* prog->skew_time = rtclock()-t_start; */
 
         free(colour);
         free(prog->total_coloured_stmts);
