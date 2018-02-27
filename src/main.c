@@ -639,18 +639,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
         if (options-> dfp){
-            printf("[pluto] \t\ttotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time);
-            printf("[pluto] \t\ttotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time);
-            printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time);
-            printf("[pluto] \t\tTotal Scaling time: %0.6lfs\n", prog->fcg_dims_scale_time);
-            printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time);
+            /* printf("[pluto] \t\ttotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time); */
+            /* printf("[pluto] \t\ttotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time); */
+            /* printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time); */
+            printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time+prog->fcg_colour_time+prog->fcg_colour_time);
+            printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n", prog->fcg_dims_scale_time);
+            /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
+            printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n",prog->skew_time);
         }
         printf("[pluto] \t\ttotal LP/MIP/ILP time: %0.6lfs\n", prog->mipTime);
         printf("[pluto] \t\tauto rational to integer scaling time: %0.6lfs\n", prog->ilpTime);
         printf("[pluto] \tconstraint solving time: %0.6lfs\n", prog->cst_solve_time);
         printf("[pluto] \tconstraint construction (non-trivial and linear independence) time: %0.6lfs\n", prog->cst_const_time);
-        printf("[pluto] \tconstraint writing time: %0.6lfs\n", prog->cst_write_time);
-        printf("[pluto] Post Processing Skewing time: %0.6lfs\n",prog->skew_time);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);

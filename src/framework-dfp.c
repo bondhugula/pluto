@@ -486,7 +486,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     Stmt **stmts;
     Graph *ddg;
     Graph *fcg;
-    double t_start, t_start2;
+    double t_start;
     PlutoConstraints *boundcst, **conflicts;
     PlutoMatrix *obj;
 
@@ -503,7 +503,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     boundcst = get_coeff_bounding_constraints(prog);
 
-    t_start2 = rtclock();
+    /* t_start2 = rtclock(); */
 
     conflicts = (PlutoConstraints**)malloc(sizeof(PlutoConstraints*));
 
@@ -538,11 +538,11 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
      * These are self loops on vertices of the FCG. */ 
     add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
 
-    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2););
-    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls););
+    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2);); */
+    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls);); */
 
     /* Add inter statement fusion and permute preventing edges.  */
-    t_start2 = rtclock();
+    /* t_start2 = rtclock(); */
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
@@ -557,7 +557,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         }
         (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 1;
     }
-    IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2););
+    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2);); */
 
     pluto_matrix_free(obj);
 
@@ -851,8 +851,8 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
     is_distributed = false;
     prev_scc = -1;
 
-
     for (i=0; i<nsccs; i++) {
+        t_start = rtclock();
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
         /* If colouring fails in the fist SCC */
         if(!colour_scc(i,colour,c,0, -1, prog)) {
@@ -1075,7 +1075,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     int nvar, npar;
     int nstmts;
     double t_start;
-    PlutoConstraints *basecst,*coeffcst,*boundcst;
+    PlutoConstraints *basecst,*coeffcst;
     int64 *sol;
 
     Stmt **stmts;
@@ -1086,13 +1086,12 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     nstmts = prog->nstmts;
 
 
-    t_start = rtclock();
     basecst = get_permutability_constraints(prog);
     assert (basecst->ncols == CST_WIDTH);
 
-    boundcst = get_coeff_bounding_constraints(prog);
-    pluto_constraints_add(basecst,boundcst);
-    pluto_constraints_free(boundcst);
+    /* boundcst = get_coeff_bounding_constraints(prog); */
+    /* pluto_constraints_add(basecst,boundcst); */
+    /* pluto_constraints_free(boundcst); */
 
 
     coeffcst = pluto_constraints_alloc(basecst->nrows + (nstmts*nvar), basecst->ncols);
@@ -1400,9 +1399,7 @@ void introduce_skew(PlutoProg *prog)
     /* pluto_dep_satisfaction_reset(prog); */
     tstart = rtclock();
     pluto_compute_dep_directions(prog);
-    printf("Dep direction computation time %0.6lf\n", rtclock()-tstart);
 
-    tstart = rtclock();
     /* pluto_transformations_pretty_print(prog); */
     /* pluto_compute_dep_satisfaction(prog); */
     /* printf("Dep satisfaction computation time %0.6lf\n", rtclock()-tstart); */
@@ -1450,7 +1447,6 @@ void introduce_skew(PlutoProg *prog)
     dep_satisfaction_update(prog,level);
     for (i =0; i<num_sccs; i++) {
         IF_DEBUG(printf("-------Looking for skews in SCC %d -----------------\n", i););
-        tstart = rtclock();
 
         /* dep_satisfaction_update(prog,level); */
         /* if (!constant_deps_in_scc(i, level, const_dep_check_cst, prog)) { */
@@ -1575,6 +1571,7 @@ void introduce_skew(PlutoProg *prog)
     /* printf("All SCC's tested for skew\n"); */
     prog->ddg = orig_ddg;
     graph_free(newDDG);
+    prog->skew_time += rtclock()-tstart;
     if (!options->silent) {
         printf("[Pluto]: Post processing skewing complete\n");
     }
