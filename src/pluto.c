@@ -249,22 +249,18 @@ PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoP
     PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols-1);
     pluto_matrix_set(obj, 0);
 
-    /* u
-     * */
+    /* u */
     for (j=0; j<npar; j++) {
         obj->val[0][j] = 5*5*nvar*prog->nstmts;
     }
-    /* w
-     * */
+    /* w */
     obj->val[0][npar] = 5*nvar*prog->nstmts;
 
     for (i=0, j=npar+1; i<prog->nstmts; i++) {
         for (k=j; k<j+prog->stmts[i]->dim_orig; k++) {
             obj->val[0][k] = (nvar+2)*(prog->stmts[i]->dim_orig-(k-j));
         }
-        /* constant
-         * shift
-         * */
+        /* constant shift */
         obj->val[0][k] = 1;
         j += prog->stmts[i]->dim_orig + 1;
     }
@@ -1820,12 +1816,6 @@ int pluto_auto_transform(PlutoProg *prog)
         /* Yet to start colouring hence the current_colour can be either 0 or 1 */
         prog->fcg = build_fusion_conflict_graph(prog,colour, nVertices, 0);
 
-        /* if (!options->silent) { */
-        /*     printf("[Pluto] Constraint construction time in FCG construction: %0.6lfs\n", prog->fcg_cst_alloc_time); */
-        /*     printf("[Pluto] Constraint Writing time in building FCG: %0.6lfs\n", prog->cst_write_time); */
-        /*     printf("[Pluto] Constraint Solving time in building FCG (Includes constraint writing time + minor modifications to constraints ): %0.6lfs\n", prog->cst_solve_time); */
-        /*     printf("[Pluto] Time taken for initial construction of FCG: %0.6lfs\n",prog->fcg_const_time); */
-        /* } */
 
         fcg = prog->fcg;
         fcg->num_coloured_vertices = 0;
