@@ -55,113 +55,9 @@ static double rtclock()
 /* double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, PlutoProg *prog, int src_dim, int target_dim, int fcg_src, int fcg_dest) */
 double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, PlutoMatrix *obj)
 {
-    /* int i, j, nstmts, nvar, npar, stmt_offset; */
-    /* PlutoMatrix *obj; */
-    /* Stmt **stmts; */
-    /* glp_prob *lp; */
     double* sol;
-    /* Create the data dependence graph */
-    /* prog->ddg = ddg_create(prog); */
-    /* ddg_compute_scc(prog); */
-    /* ddg_compute_cc(prog); */
-
-    /* nstmts = prog->nstmts; */
-    /* nvar = prog->nvar; */
-    /* npar = prog->npar; */
-    /* stmts = prog->stmts; */
-
-
-    /* obj = construct_cplex_objective(cst,prog); */
     sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
     return sol;
-
-    /* lp = create_glpk_problem_from_pluto_constraints(cst); */
-
-    /* for (j=0; j<obj->ncols; j++) { */
-    /*     glp_set_obj_coef(lp, j+1, obj->val[0][j]); */
-    /* } */
-    /* pluto_matrix_free(obj); */
-
-    /* Set the lower bounds of all variables to zero in the LP problem. 
-     * The eqality constraints for loop and constant part are set in the constraint matrix. */
-    /* for (i=0; i<glp_get_num_cols(lp); i++) { */
-    /*     glp_set_col_bnds(lp, i+1, GLP_LO, 0.0,0.0); */
-    /*     if (options->ilp) { */
-    /*         glp_set_col_kind(lp,i+1, GLP_IV); */
-    /*     } */
-    /* } */
-
-/* Debug code. To be cleaned up after testing */
-    /* for (i=0; i<nstmts; i++) { */
-    /*     stmt_offset = npar+1+(nvar+1)*i; */
-    /*     for (j=0; j<stmts[i]->dim_orig; j++){ */
-    /*         if(((stmt_offset+j)!=src_dim) && ((stmt_offset+j)!=target_dim)){ */
-    /*             glp_set_col_bnds(lp, stmt_offset+j+1, GLP_FX, 0.0,0.0); */
-    /*         } */
-    /*         else */
-    /*             glp_set_col_bnds(lp, stmt_offset+j+1, GLP_FR, 0.0, 0.0); */
-    /*         if (options->ilp) { */
-    /*             glp_set_col_kind(lp,stmt_offset+j+1, GLP_IV); */
-    /*         } */
-    /*     } */
-    /*     #<{(| Set bound for the constant |)}># */
-    /*     glp_set_col_bnds(lp,stmt_offset+nvar+1, GLP_FR, 0.0,0.0); */
-    /*     if (options->ilp) { */
-    /*         glp_set_col_kind(lp,stmt_offset+nvar+1, GLP_IV); */
-    /*     } */
-    /* } */
-
-    /* if (options->debug) { */
-    /*     glp_write_lp(lp,NULL,"pairwise-debug.lp"); */
-    /* } */
-    /*  */
-    /* if (!options->debug && !options->moredebug) { */
-    /*     glp_term_out(GLP_OFF); */
-    /* } */
-    /*  */
-    /*  */
-    /* glp_smcp parm; */
-    /* glp_init_smcp(&parm); */
-    /* parm.presolve = GLP_ON; */
-    /*  */
-    /* parm.msg_lev = GLP_MSG_OFF; */
-    /* IF_DEBUG(parm.msg_lev = GLP_MSG_ON;); */
-    /* IF_MORE_DEBUG(parm.msg_lev = GLP_MSG_ALL;); */
-    /*  */
-    /* glp_scale_prob(lp, GLP_SF_AUTO); */
-    /* glp_adv_basis(lp, 0); */
-    /* glp_simplex(lp, &parm); */
-
-    /* int lp_status = glp_get_status(lp); */
-
-    /* The cost matrix isnt currently used anywhere. It was used for experimental purposes */
-    /* if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) { */
-    /*     glp_delete_prob(lp); */
-    /*     return NULL; */
-    /* } else { */
-    /*     glp_iocp iocp; */
-    /*     glp_init_iocp(&iocp); */
-        /* The default is 1e-5; one may need to reduce it even further
-         * depending on how large a coefficient we might see */
-    /*     iocp.tol_int = 1e-7; */
-    /*     IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int)); */
-    /*  */
-    /*  */
-    /*     iocp.msg_lev = GLP_MSG_OFF; */
-    /*     IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;); */
-    /*     IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;); */
-    /*  */
-    /*     glp_intopt(lp, &iocp); */
-    /*  */
-    /*     double* sol; */
-    /*     sol = (double*) malloc((cst->ncols-1)*sizeof(double)); */
-    /*     for(i=0; i<glp_get_num_cols(lp); i++){ */
-    /*         sol[i] = glp_mip_col_val(lp, i+1); */
-    /*     } */
-    /*  */
-    /*     glp_delete_prob(lp); */
-    /*     return sol; */
-    /* } */
 }
 
 
@@ -252,11 +148,6 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
                     /* Check if fusing ith dimesion of the source with ith dimension
                      * of the target is valid */
 
-                    /* conflictcst->val[row_offset + 1][dest_offset+j] = 1; */
-
-                    /* printf("[pluto]: Fusion conflict constraints:\n"); */
-                    /* pluto_constraints_cplex_print(stdout,conflictcst); */
-                    /* Solve these constraints using GLPK */
                     prog->num_lp_calls ++;
                     tstart = rtclock();
                     sol = pluto_fusion_constraints_feasibility_solve_glpk(conflictcst, obj);
@@ -281,13 +172,9 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             /* Unset the lowerbound for the coefficient of c_i. The same constraint matrix is reused for all coeffs. */
             conflictcst->val[row_offset + src_offset+i][CST_WIDTH-1] = 0;
             conflictcst->is_eq[row_offset + src_offset+i] = 1;
-            /* conflictcst->val[row_offset+0][src_offset+i] = 0; */
         }
     }
     conflictcst->nrows = row_offset+CST_WIDTH-1;
-    /* conflictcst->ncols = CST_WIDTH; */
-    /* conflictcst->val[row_offset][CST_WIDTH-1] = 0; */
-    /* conflictcst->val[row_offset+1][CST_WIDTH-1] = 0; */
     return;
 }
 
@@ -402,7 +289,6 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
                     /* reset the coeff bound of this dimension */
                     coeff_bounds->is_eq[nrows+stmt_offset+j] = 1;
                     coeff_bounds->val[nrows+stmt_offset+j][CST_WIDTH-1] = 0;
-                    /* coeff_bounds->val[0][stmt_offset+j] = 0; */
                 }
             }
             tstart = rtclock();
@@ -532,8 +418,6 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         (*conflicts)->val[nrows+i][i] = 1;
     }
     
-    /* pluto_constraints_cplex_print(stdout, *conflicts); */
-
     /* Add premutation preventing intra statement dependence edges in the FCG.
      * These are self loops on vertices of the FCG. */ 
     add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
@@ -542,7 +426,6 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls);); */
 
     /* Add inter statement fusion and permute preventing edges.  */
-    /* t_start2 = rtclock(); */
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
@@ -669,21 +552,6 @@ int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, in
             min = i;
             break;
         }
-        /* if(!is_discarded(fcg_stmt_offset + i, list, num)){ */
-        /*     if(pv == -1){ */
-        /*         return i; */
-        /*     } */
-        /*    #<{(| Set the first value of min_cost |)}># */
-        /*     if(min_cost < 0){ */
-        /*         min_cost = prog->costMatrix->val[fcg_stmt_offset+i][pv]; */
-        /*         min = i; */
-        /*     } */
-        /*  */
-        /*     if(prog->costMatrix->val[fcg_stmt_offset+i][pv]< min_cost){ */
-        /*         min = i; */
-        /*         min_cost = prog->costMatrix->val[fcg_stmt_offset+i][pv]; */
-        /*     } */
-        /* }  */
     }
     return min;
 }
@@ -1075,7 +943,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     int nvar, npar;
     int nstmts;
     double t_start;
-    PlutoConstraints *basecst,*coeffcst;
+    PlutoConstraints *basecst,*coeffcst, *boundcst;
     int64 *sol;
 
     Stmt **stmts;
@@ -1089,10 +957,9 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     basecst = get_permutability_constraints(prog);
     assert (basecst->ncols == CST_WIDTH);
 
-    /* boundcst = get_coeff_bounding_constraints(prog); */
-    /* pluto_constraints_add(basecst,boundcst); */
-    /* pluto_constraints_free(boundcst); */
-
+    boundcst = get_coeff_bounding_constraints(prog);
+    pluto_constraints_add(basecst,boundcst);
+    pluto_constraints_free(boundcst);
 
     coeffcst = pluto_constraints_alloc(basecst->nrows + (nstmts*nvar), basecst->ncols);
     coeffcst->nrows = basecst->nrows;
@@ -1129,32 +996,6 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         /* Solve the constraints to find the hyperplane at this level */
         t_start = rtclock();
 
-        /* if (options->glpk) { */
-        /*     double **val = NULL; */
-        /*     int **index = NULL; */
-        /*     int num_ccs, nrows; */
-        /*     num_ccs = 0; */
-        /*  */
-        /*     PlutoMatrix *obj = construct_cplex_objective(coeffcst, prog); */
-        /*  */
-        /*     if (!options->ilp) { */
-        /*         nrows = coeffcst->ncols-1-npar-1; */
-        /*         populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog); */
-        /*         num_ccs = prog->ddg->num_ccs; */
-        /*     } */
-        /*  */
-        /*     sol = pluto_prog_constraints_lexmin_glpk(coeffcst, obj, val, index, npar, num_ccs); */
-        /*     if (!options->ilp) { */
-        /*         for (j=0; j<nrows; j++) { */
-        /*             free(val[j]); */
-        /*             free(index[j]); */
-        /*         } */
-        /*         free(val); */
-        /*         free(index); */
-        /*     } */
-        /* } else { */
-        /*     sol = pluto_constraints_lexmin(coeffcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
-        /* } */
         sol = pluto_prog_constraints_lexmin(coeffcst, prog);
 
         if (sol != NULL) {
@@ -1214,7 +1055,6 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         pluto_constraints_free(coeffcst);
         return 0;
     }
-    /* } */
 }
 
 /* Routines that introduce loop skewing after loop permutations, loop skewing
@@ -1229,7 +1069,6 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
     hProps = prog->hProps;
     has_negative_comp = false;
     loop_dims = 0;
-    /* printf("[get_negative_comp]: Level :%d \n",level); */
     for (i=0; i<prog->num_hyperplanes; i++){
         if(hProps[i].type == H_SCALAR && i < level){
             continue;
@@ -1240,17 +1079,14 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
         }
         if(hProps[i].type == H_SCALAR && i >= level){
             continue;
-            /* return has_negative_comp; */
         }
         if (dep->dirvec[i] == DEP_MINUS || dep->dirvec[i] == DEP_STAR ) {
-            /* printf("dep %d has a negative component in level %d \n", dep->id,i); */
             dims_with_neg_components[loop_dims] = 1;
             has_negative_comp = true;
             break;
         }
         loop_dims++;
     }
-    /* printf("Negative component for Dep %d : %d\n", dep->id, has_negative_comp); */
     return has_negative_comp;
 }
 
@@ -1315,13 +1151,6 @@ bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_dep
                 else if(hProps[j].type == H_LOOP) {
                     loop_dims++;
                 }
-                /* if(hProps[j].type == H_SCALAR){ */
-                /*     continue; */
-                /* } */
-                /* if(dep->dirvec[j] == DEP_MINUS || dep->dirvec[j] == DEP_STAR) */
-                /*     break; */
-                /* if(dep->dirvec[j] == DEP_PLUS ) */
-                /*     innermost_sat_dim = loop_dims; */
             }
             sat_dim[loop_dims] = 1;
         }
@@ -1344,23 +1173,18 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int s
     
     for (i=0; i<nstmts; i++) {
         for(j=0; j<stmts[i]->dim_orig; j++){
-            /* printf("Scc_ids: %d %d\n",stmts[i]->scc_id, scc_id); */
             if (src_dims[j] && stmts[i]->scc_id == scc_id) {
-                /* printf("Coeff %d of Statemtnt %d >=1\n", j, i); */
                 pluto_constraints_add_lb(skewCst, npar+1+ i*(nvar+1)+j, 1);
             }
             else {
-                /* printf("Coeff %d of Statemtnt %d  = %lld\n", j, i, stmts[i]->trans->val[level][j]); */
                 pluto_constraints_add_equality(skewCst);
                 skewCst->val[skewCst->nrows-1][npar+1+i*(nvar+1)+j]= 1;
                 /* Set the value of the current coeff to the one that you have already found */
                 skewCst->val[skewCst->nrows-1][CST_WIDTH-1] = -stmts[i]->trans->val[level][j];
             }
         }
-        /* printf("Adding Coeff bound for the constant of statement %d \n", i); */
         pluto_constraints_add_lb(skewCst, npar+1+i*(nvar+1)+nvar, 0); 
     }
-    /* prog->cst_const_time += rtclock() - tstart; */
     return skewCst;
 }
 
@@ -1400,13 +1224,8 @@ void introduce_skew(PlutoProg *prog)
     tstart = rtclock();
     pluto_compute_dep_directions(prog);
 
-    /* pluto_transformations_pretty_print(prog); */
-    /* pluto_compute_dep_satisfaction(prog); */
-    /* printf("Dep satisfaction computation time %0.6lf\n", rtclock()-tstart); */
-    /* pluto_print_dep_directions(prog); */
     pluto_dep_satisfaction_reset(prog);
 
-    /* tstart = rtclock(); */
     Graph *newDDG = ddg_create (prog);
     orig_ddg = prog->ddg;
     prog->ddg = newDDG;
@@ -1435,10 +1254,7 @@ void introduce_skew(PlutoProg *prog)
     assert(level == initial_cuts);
     ddg_compute_scc(prog);
     num_sccs = newDDG->num_sccs;
-    /* prog->cst_const_time += rtclock() -tstart; */
-    /* printf("Pre processing before skewing %0.6lf\n", rtclock()-tstart ); */
 
-    /* printf("Num SCCs: %d\n", num_sccs); */
     const_dep_check_cst = pluto_constraints_alloc(ndeps*nvar+1, CST_WIDTH);
     skewingCst = pluto_constraints_alloc(basecst->nrows+nstmts*(nvar+1), basecst->ncols);
     skewingCst->nrows = 0;
@@ -1457,21 +1273,13 @@ void introduce_skew(PlutoProg *prog)
         IF_DEBUG(printf("-------Analyzing for skews in SCC %d ----------------\n", i););
         skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
         src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
-        /* prog->cst_const_time += rtclock() - tstart; */
-        /* printf("Src Dims\n"); */
-        /* for(j = 0; j<nvar; j++) { */
-        /*     printf("%d %d\n", j, src_dims[j]); */
-        /* } */
         level++;
+
         for (; level <prog->num_hyperplanes; level++) {
             if (hProps[level].type != H_LOOP) {
                 continue;
             }
 
-            /* printf("Skew dims\n"); */
-            /* for( j=0; j<nvar; j++) { */
-            /*     printf("%d %d \n", j, skew_dims[j]); */
-            /* } */
             int skew_dim = 0;
             for(j=initial_cuts; j<prog->num_hyperplanes; j++) {
                 if(prog->hProps[j].type == H_LOOP && skew_dims[skew_dim] == 1) {
@@ -1485,47 +1293,11 @@ void introduce_skew(PlutoProg *prog)
 
             /* Skewing has to be done at level j+1 */
             if (j==prog->num_hyperplanes) {
-                /* printf("[Pluto]: No skews required for SCC %d \n", i); */
-                /* prog->ddg = orig_ddg; */
-                /* graph_free(newDDG); */
                 break;
             }
-            /* printf("Skewing at level :%d\n", level); */
 
             skewingCst->nrows = basecst->nrows;
             get_skewing_constraints(src_dims, skew_dims, i, prog, level, skewingCst);
-            /* pluto_constraints_cplex_print(stdout,skewingCst); */
-
-            /* Solve Skewing Constraints */
-            //tstart = rtclock();
-
-            /* if (options->glpk) { */
-            /*     double **val = NULL; */
-            /*     int **index = NULL; */
-            /*     int num_ccs, nrows; */
-            /*     num_ccs = 0; */
-            /*  */
-            /*     PlutoMatrix *obj = construct_cplex_objective(skewingCst, prog); */
-            /*  */
-            /*     if (!options->ilp) { */
-            /*         nrows = skewingCst->ncols-1-npar-1; */
-            /*         populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog); */
-            /*         num_ccs = prog->ddg->num_ccs; */
-            /*     } */
-            /*  */
-            /*     sol = pluto_prog_constraints_lexmin_glpk(skewingCst, obj, val, index, npar, num_ccs); */
-            /*     if (!options->ilp) { */
-            /*         for (j=0; j<nrows; j++) { */
-            /*             free(val[j]); */
-            /*             free(index[j]); */
-            /*         } */
-            /*         free(val); */
-            /*         free(index); */
-            /*     } */
-            /* } else { */
-            /*     sol = pluto_constraints_lexmin(skewingCst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
-            /* } */
-            /* sol = solve_scaling_constraints_glpk(coeffcst,colour,select,prog);  */
 
             sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
@@ -1543,12 +1315,12 @@ void introduce_skew(PlutoProg *prog)
                     stmts[j]->trans->val[level][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
 
                 }
-                //printf("Trransformation Matrix After skewing \n");
-                //pluto_transformations_pretty_print(prog);
+
                 dep_satisfaction_update(prog, level);
                 pluto_compute_dep_directions(prog);
-                /* pluto_print_dep_directions(prog); */
+
                 free(skew_dims);
+
                 if(level < prog->num_hyperplanes-1) {
                     skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level+1);
                     free(src_dims);
@@ -1556,8 +1328,7 @@ void introduce_skew(PlutoProg *prog)
                 }
             }
             else {
-                /* printf("No Solution found \n"); */
-                /* The loop nest is not tilable */
+                /* The loop nest is not tileable */
                 free(skew_dims);
                 break;
             }
@@ -1577,4 +1348,3 @@ void introduce_skew(PlutoProg *prog)
     }
     return;
 }
-
