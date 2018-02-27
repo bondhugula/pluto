@@ -3503,7 +3503,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
     // IF_DEBUG2(printf("New access function is \n"));
     // IF_DEBUG2(pluto_matrix_print(stdout, newacc));
 
-    assert(newacc->ncols = stmt->trans->nrows+npar+1);
+    assert(newacc->ncols == stmt->trans->nrows+npar+1);
 
     pluto_matrix_free(remap);
     free(remap_divs);
