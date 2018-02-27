@@ -1188,7 +1188,6 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int s
     return skewCst;
 }
 
-
 /* Introduce Skewing Transformations if necessary: Called only when using the FCG based appraoch */
 void introduce_skew(PlutoProg *prog)
 {
@@ -1243,7 +1242,6 @@ void introduce_skew(PlutoProg *prog)
         dep_satisfaction_update(prog, level);
     }
 
-    /* printf("Initial cuts: %d \n", initial_cuts); */
     /* Needed to handle the case when there are no loops  */
     if(initial_cuts == prog->num_hyperplanes) {
         return;
