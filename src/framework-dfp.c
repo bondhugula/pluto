@@ -586,6 +586,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     int j, v, fcg_offset, stmt_id, nvar;
     Graph *ddg,*fcg;
     Scc *sccs;
+    int molecule_id;
 
     nvar = prog->nvar;
     ddg = prog->ddg;
@@ -628,7 +629,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
                     if((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
                         IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
                         if(options->fuse == NO_FUSE) { 
-                            cut_all_sccs(prog,ddg);
+                            cut_all_molecules(prog,ddg);
                         } else {
                             cut_between_sccs(prog,ddg,j,scc_id);
                             /* cut_smart(prog,ddg); */
@@ -637,7 +638,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
                                 if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
                                     IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
                                     /* cut_between_sccs(prog, ddg, scc_id, j); */
-                                    cut_all_sccs(prog, ddg);
+                                    cut_all_molecules(prog, ddg);
                                     /* cut_smart(prog,ddg); */
                                     break;
                                 }
@@ -648,7 +649,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
                         IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
 
                         if (options->fuse == NO_FUSE) {
-                            cut_all_sccs(prog,ddg);
+                            cut_all_molecules(prog,ddg);
                         }
                         else {
                             cut_between_sccs(prog, ddg, scc_id, j);
@@ -664,7 +665,8 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     }
 
     stmt_id = sccs[scc_id].vertices[stmt_pos];
-    fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+    molecule_id = which_loop(prog, stmt_id);
+    fcg_offset = ddg->vertices[loops[molecule_id]].fcg_stmt_offset;
 
     while(num_discarded!=nvar){
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
@@ -758,7 +760,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
 
                 if (options->fuse == NO_FUSE) {
-                    cut_all_sccs(prog, ddg);
+                    cut_all_molecules(prog, ddg);
                 }
                 prog->fcg_colour_time += rtclock() - t_start;
                 /* Current colour that is being used to colour the fcg is c */
@@ -784,7 +786,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                         IF_DEBUG(printf("[colour_fcg_scc_based]:Total Number of SCCs %d\n",nsccs););
 
                         if (options->fuse == NO_FUSE) {
-                            cut_all_sccs(prog,ddg);
+                            cut_all_molecules(prog,ddg);
                             /* TODO: Update this call testing is done */
                             update_fcg_between_sccs(fcg, 0, 0, prog);
                         } else {
@@ -816,7 +818,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
                 IF_DEBUG(printf("[Pluto] Colour_fcg_dim_based: Updating FCG\n"););
                 if (options->fuse == NO_FUSE) {
-                    cut_all_sccs(prog,ddg);
+                    cut_all_molecules(prog,ddg);
 
                     update_fcg_between_sccs(fcg, 0, 0, prog);
                 } else {
@@ -939,7 +941,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
     /* All dimensions have been coloured but still there are some deps that 
      * need to be satisfied at the innermost level by distribution.  */
     if (i == max_colours+1 && !deps_satisfaction_check(prog)) {
-        cut_all_sccs(prog, prog->ddg);
+        cut_all_molecules(prog, prog->ddg);
     }
 
     IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
