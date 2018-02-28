@@ -427,14 +427,14 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in case of pluto-lp-dfp */
-    if (!options->dfp){
-    j = npar + 1;
-    for (i=0; i<nloops; i++)    {
-        for (k=j; k<j+(stmts[prog->loops[i]]->dim_orig)/2; k++) {
-            pluto_constraints_interchange_cols(newcst, k, j + (stmts[prog->loops[i]]->dim_orig - 1 - (k-j)));
+    if (!options->dfp) {
+        j = npar + 1;
+        for (i=0; i<nloops; i++) {
+            for (k=j; k<j+(stmts[prog->loops[i]]->dim_orig)/2; k++) {
+                pluto_constraints_interchange_cols(newcst, k, j + (stmts[prog->loops[i]]->dim_orig - 1 - (k-j)));
+            }
+            j += stmts[prog->loops[i]]->dim_orig+1;
         }
-        j += stmts[prog->loops[i]]->dim_orig+1;
-    }
 
     }
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
@@ -2136,11 +2136,14 @@ if (options->dfp) {
         if (!options->silent) {
             printf("[Pluto] Building fusion conflict graph\n");
         }
-
         nVertices = 0;
-        for (i=0; i<nstmts; i++) {
-            ddg->vertices[i].fcg_stmt_offset = nVertices;
-            nVertices += stmts[i]->dim_orig;
+        for (i=0; i<prog->nloops; i++) {
+            for (j=0; j<nstmts; j++) {
+                if (which_loop(prog,j) == i) {
+                    ddg->vertices[j].fcg_stmt_offset = nVertices;
+                }
+            }
+            nVertices += stmts[prog->loops[i]]->dim_orig;
         }
 
         colour = (int*) malloc(nVertices*sizeof(int));

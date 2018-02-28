@@ -72,6 +72,8 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     Stmt **stmts;
     PlutoConstraints *conflictcst;
 
+    int nloops, *loops;
+
     ddg = prog->ddg;
     Dep **deps, *dep;
     ndeps = prog->ndeps;
@@ -81,6 +83,8 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    loops = prog->loops;
+    nloops = prog->nloops;
 
 
 
@@ -96,15 +100,18 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     /* conflictcst->val[row_offset +1][CST_WIDTH-1] = -1; */
 
     tstart = rtclock();
+    src_molecule = which_loop(prog, v1);
+    dest_molecule = which_loop(prog, v2);
     for (i=0; i<ndeps; i++){
         dep = deps[i];
-        /*if (options->varliberalize && dep->skipdep) {
+        if (dep->skipdep) {
           continue;
-          }*/
+          }
         if(dep_is_satisfied(dep)){
             continue;
         }
-        if ((dep->src == v1 && dep->dest == v2)||(dep->src==v2 && dep->dest ==v1)){
+        if ((which_loop(prog,dep->src) == src_molecule && which_loop(dep->dest) == dest_molecule)
+                ||(which_loop(dep->src) == dest_molecule && which_loop(dep->dest) == src_molecule)){
             if(dep->cst == NULL){
                 compute_pairwise_permutability(dep,prog);
             }
@@ -112,23 +119,23 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             pluto_constraints_add(conflictcst, dep->cst);
         }
     }
-    if(stmts[v1]->intra_stmt_dep_cst != NULL){
-        pluto_constraints_add(conflictcst,stmts[v1]->intra_stmt_dep_cst);
+    if(stmts[loops[src_molecule]]->intra_stmt_dep_cst != NULL){
+        pluto_constraints_add(conflictcst,stmts[loops[src_molecule]]->intra_stmt_dep_cst);
     }
-    if(stmts[v2]->intra_stmt_dep_cst != NULL){
-        pluto_constraints_add(conflictcst,stmts[v2]->intra_stmt_dep_cst);
+    if(stmts[loops[dest_molecule]]->intra_stmt_dep_cst != NULL){
+        pluto_constraints_add(conflictcst,stmts[loops[dest_molecule]]->intra_stmt_dep_cst);
     }
 
 
-    src_offset = npar+1+(nvar+1)*v1;
-    dest_offset = npar+1+(nvar+1)*v2;
+    src_offset = npar+1+(nvar+1)*src_molecule;
+    dest_offset = npar+1+(nvar+1)*dest_molecule;
 
-    fcg_offset1 = ddg->vertices[v1].fcg_stmt_offset;
-    fcg_offset2 = ddg->vertices[v2].fcg_stmt_offset;
+    fcg_offset1 = ddg->vertices[loops[src_molecule]].fcg_stmt_offset;
+    fcg_offset2 = ddg->vertices[loops[dest_molecule]].fcg_stmt_offset;
 
     /* Solve Pluto LP by setting corresponding coeffs to 0 without any objective.
      * This is the check for fusability of two dimensions */
-    for(i=0; i<stmts[v1]->dim_orig; i++){
+    for(i=0; i<stmts[loops[src_molecule]]->dim_orig; i++){
         /* note that the vertex should not be coloured. Even if the vertex has a 
          * self edge, it must be considered during construction of the FCG. This
          * is because,even after satisfying the permute preventing dep, it might
@@ -139,7 +146,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             conflictcst->val[row_offset + src_offset+i][CST_WIDTH-1] = -1;
             conflictcst->is_eq[row_offset + src_offset+i] = 0;
 
-            for (j=0; j<stmts[v2]->dim_orig; j++) {
+            for (j=0; j<stmts[loops[dest_molecule]]->dim_orig; j++) {
                 if (colour[fcg_offset2 + j] == 0 || colour[fcg_offset1 + i] == current_colour) {
 
                     /* Set the lower bound of i^th dimension of v1 to 1 */
@@ -188,19 +195,25 @@ void compute_intra_stmt_deps(PlutoProg *prog)
     Dep *dep;
     Stmt **stmts;
     Stmt *stmt;
+    int nloops, src_molecule, dest_molecule, *loops;
 
     deps = prog->deps;
     ndeps = prog->ndeps;
     stmts = prog->stmts;
+
+    nloops = prog->nloops;
+    loops = prog->loops;
+
+
     for (i=0; i<ndeps; i++) {
         dep = deps[i];
         if (options->rar ==0 && IS_RAR(dep->type)) {
             continue;
         }
 
-        /* if (options->varliberalize && dep->skipdep) {
+        if (dep->skipdep) {
             continue;
-        } */
+        }
 
         if (dep_is_satisfied(dep)) {
             continue;
@@ -208,8 +221,10 @@ void compute_intra_stmt_deps(PlutoProg *prog)
 
         src_stmt = dep->src;
         dest_stmt = dep->dest;
-        if (src_stmt == dest_stmt) {
-            stmt = stmts[src_stmt];
+        src_molecule = which_loop(prog, dep->src);
+        dest_molecule = which_loop(prog, dep->dest);
+        if (src_molecule == dest_molecule) {
+            stmt = stmts[loops[src_stmt]];
             IF_DEBUG(printf("Computing Intra statement deps for statement: %d Dep: %d\n",src_stmt,dep->id););
             if (dep->cst==NULL) {
                 compute_pairwise_permutability(dep,prog);
@@ -252,8 +267,8 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
     compute_intra_stmt_deps(prog);
 
     fcg_stmt_offset = 0;
-    for (i=0; i<nstmts; i++) {
-        if (stmts[i]->intra_stmt_dep_cst!=NULL) {
+    for (i=0; i<nloops; i++) {
+        if (stmts[loops[i]]->intra_stmt_dep_cst!=NULL) {
             /* Constraints to check permutability are added in the first row */
             double tstart = rtclock();
             coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
@@ -261,7 +276,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
             coeff_bounds->nrows = 0;
             coeff_bounds->ncols = CST_WIDTH;
             /* Add the intra statement dependence constraints and bounding constraints */
-            intra_stmt_dep_cst = stmts[i]->intra_stmt_dep_cst;
+            intra_stmt_dep_cst = stmts[loops[i]]->intra_stmt_dep_cst;
 
             pluto_constraints_add(coeff_bounds,boundcst);
 
@@ -296,7 +311,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
             pluto_constraints_free(coeff_bounds);
             prog->fcg_cst_alloc_time += rtclock() - tstart;
         }
-        fcg_stmt_offset += stmts[i]->dim_orig;
+        fcg_stmt_offset += stmts[loops[i]]->dim_orig;
     }
 }
 
@@ -430,16 +445,18 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
-        (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 0;
+        (*conflicts)->is_eq[nrows + npar+1+which_loop(prog, i)*(nvar+1)+nvar] = 0;
         for (j=i+1; j<nstmts; j++) {
-            if (is_adjecent(ddg,i,j)) {
+                        /* These statements must be in different O-molecules adjecent to each other */
+
+            if (is_adjecent(ddg,i,j) && which_loop(prog,i) != which_loop(prog,j)) {
                 /* Set the lower bound of the constant shift to be 1. */
-                (*conflicts)->is_eq[nrows + npar+1+j*(nvar+1)+nvar] = 0;
+                (*conflicts)->is_eq[nrows + npar+1+which_loop(prog,j)*(nvar+1)+nvar] = 0;
                 fcg_add_pairwise_edges(fcg,i,j,prog, colour, boundcst, current_colour, conflicts, obj);
-                (*conflicts)->is_eq[nrows + npar+1+j*(nvar+1)+nvar] = 1;
+                (*conflicts)->is_eq[nrows + npar+1+which_loop(prog,j)*(nvar+1)+nvar] = 1;
             }
         }
-        (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 1;
+        (*conflicts)->is_eq[nrows + npar+1+ which_loop(prog,i)*(nvar+1)+nvar] = 1;
     }
     /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2);); */
 
@@ -447,22 +464,22 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     /* Add egdes between different dimensions of the same statement */
     stmt_offset=0;
-    for (i=0; i<nstmts;i++) {
-        for (j=stmt_offset; j<stmt_offset+stmts[i]->dim_orig; j++) {
+    for (i=0; i<nloops;i++) {
+        for (j=stmt_offset; j<stmt_offset+stmts[loops[i]]->dim_orig; j++) {
             fcg->vertices[j].fcg_stmt_offset = i;
-            for (k=j+1; k<stmt_offset+stmts[i]->dim_orig;k++) {
+            for (k=j+1; k<stmt_offset+stmts[loops[i]]->dim_orig;k++) {
                 fcg->adj->val[j][k] = 1;
                 fcg->adj->val[k][j] = 1;
             }
         }
-        stmt_offset += stmts[i]->dim_orig;
+        stmt_offset += stmts[loops[i]]->dim_orig;
 
 
         /* Remove the intra statement dependence constraints. Else the permutability constraints 
          * might be incorrect for rebuilding the fusion conflict graph.  */
 
-        pluto_constraints_free(stmts[i]->intra_stmt_dep_cst);
-        stmts[i]->intra_stmt_dep_cst = NULL;
+        pluto_constraints_free(stmts[loops[i]]->intra_stmt_dep_cst);
+        stmts[loops[i]]->intra_stmt_dep_cst = NULL;
     }
 
     pluto_constraints_free(boundcst);
