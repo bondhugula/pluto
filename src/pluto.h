@@ -492,6 +492,7 @@ Graph *ddg_create(PlutoProg *prog);
 int    ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
 int    cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 int    cut_all_sccs(PlutoProg *prog, Graph *ddg);
+int cut_all_molecules(PlutoProg *prog, Graph *ddg);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 

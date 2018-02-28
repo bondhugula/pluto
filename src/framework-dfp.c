@@ -72,7 +72,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     Stmt **stmts;
     PlutoConstraints *conflictcst;
 
-    int nloops, *loops;
+    int nloops, *loops, src_molecule, dest_molecule;
 
     ddg = prog->ddg;
     Dep **deps, *dep;
@@ -110,8 +110,8 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
         if(dep_is_satisfied(dep)){
             continue;
         }
-        if ((which_loop(prog,dep->src) == src_molecule && which_loop(dep->dest) == dest_molecule)
-                ||(which_loop(dep->src) == dest_molecule && which_loop(dep->dest) == src_molecule)){
+        if ((which_loop(prog, dep->src) == src_molecule && which_loop(prog, dep->dest) == dest_molecule)
+                ||(which_loop(prog, dep->src) == dest_molecule && which_loop(prog, dep->dest) == src_molecule)){
             if(dep->cst == NULL){
                 compute_pairwise_permutability(dep,prog);
             }
@@ -253,11 +253,14 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
     double *sol;
     Stmt **stmts;
     PlutoConstraints *intra_stmt_dep_cst, *coeff_bounds;
+    int nloops, *loops;
 
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
 
+    nloops = prog->nloops;
+    loops = prog->loops;
     stmts = prog->stmts;
 
     nrows = boundcst->nrows-CST_WIDTH+1;
@@ -392,10 +395,14 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     PlutoConstraints *boundcst, **conflicts;
     PlutoMatrix *obj;
 
+    int nloops, *loops;
+
     nvar = prog->nvar;
     npar = prog->npar;
     nstmts = prog->nstmts;
     stmts = prog->stmts;
+    nloops = prog->nloops;
+    loops = prog->loops;
 
     ddg = prog->ddg;
 
@@ -586,12 +593,13 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     int j, v, fcg_offset, stmt_id, nvar;
     Graph *ddg,*fcg;
     Scc *sccs;
-    int molecule_id;
+    int molecule_id, *loops;
 
     nvar = prog->nvar;
     ddg = prog->ddg;
     fcg = prog->fcg;
     sccs = ddg->sccs;
+    loops = prog->loops;
 
     int list[nvar];
     int num_discarded = 0;
