@@ -166,6 +166,9 @@ struct statement{
     int pseudo_scc_id;
     int* orig_scc_id;
 
+    /* ID of the CC in the DDG this statement belongs to */
+    int cc_id;
+
     int first_tile_dim;
     int last_tile_dim;
 
@@ -173,6 +176,10 @@ struct statement{
 
     /* Compute statement associated with distmem copy/sigma stmt */
     const struct statement *parent_compute_stmt;
+
+    /* Intra statement depndence constraints.  Used to construct the fusion conflict graph */
+    PlutoConstraints* intra_stmt_dep_cst;
+
 };
 typedef struct statement Stmt;
 
@@ -222,6 +229,9 @@ struct dependence{
 
     /* Has this dependence been satisfied? */
     bool satisfied;
+
+    /* Does this dependence need to be skipped? Set to true during variable liberalization */
+    bool skipdep;
 
     /* Level at which this dependence is completely satisfied (when doing
      * conservative computation) or level *by* which the dependence is
@@ -327,6 +337,9 @@ struct plutoProg{
     /* Data dependence graph of the program */
     Graph *ddg;
 
+    /* Fusion conflict graph of the program */
+    Graph *fcg;
+
     /* Options for Pluto */
     PlutoOptions *options;
 
@@ -352,6 +365,21 @@ struct plutoProg{
     int evicted_hyp_pos;
 
     osl_scop_p scop;
+
+    int num_stmts_to_be_coloured;
+    // Boolean Array indicating whether a dimension is scaled
+    int *scaled_dims;
+
+    /* Total number of statements coloured per dimension in the FCG */
+    int* total_coloured_stmts;
+
+    /* Total number of coloured dimensions that have been coloured for all statements */
+    int coloured_dims;
+
+    /* Used to store constraint solving times */
+    double mipTime,ilpTime, cst_solve_time,cst_const_time,cst_write_time, scaling_cst_sol_time, skew_time;
+    double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time, fcg_cst_alloc_time;
+    long int num_lp_calls;
 };
 typedef struct plutoProg PlutoProg;
 
@@ -419,7 +447,9 @@ void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
+void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
+PlutoConstraints *get_scc_permutability_constraints(int , PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
@@ -457,6 +487,7 @@ int pluto_omp_parallelize(PlutoProg *prog);
 
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
+void   ddg_compute_cc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
 int    ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
 int    cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
@@ -469,6 +500,7 @@ void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
 int dep_satisfaction_update(PlutoProg *prog, int level);
+int deps_satisfaction_check(PlutoProg *prog);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
@@ -524,6 +556,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
+
 int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 void normalize_domains(PlutoProg *prog);
 int is_on_loop(PlutoProg* prog, PlutoConstraints* dpolytope, int j);
@@ -532,4 +565,12 @@ int dep_satisfaction_update(PlutoProg *prog, int level);
 int get_loop_type(Stmt *stmt, int level);
 
 
+void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog);
+PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog);
+
+#ifdef GLPK
+Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour);
+void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
+void introduce_skew(PlutoProg *prog);
+#endif
 #endif

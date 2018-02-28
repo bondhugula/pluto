@@ -2609,6 +2609,7 @@ PlutoProg *pluto_prog_alloc()
     prog->transdeps = NULL;
     prog->ntransdeps = 0;
     prog->ddg = NULL;
+    prog->fcg = NULL;
     prog->hProps = NULL;
     prog->num_hyperplanes = 0;
 
@@ -2755,6 +2756,12 @@ PlutoOptions *pluto_options_alloc()
     options->pipsolve = 0;
     options->islsolve = 1;
     options->glpk = 0;
+
+    options->lp = 0;
+    options->dfp = 0;
+    options->ilp = 0;
+
+    options->lpcolour = 0;
 
     options->readscop = 0;
 
@@ -3108,6 +3115,9 @@ void pluto_add_stmt(PlutoProg *prog,
 
     Stmt *stmt = pluto_create_stmt(domain->ncols-prog->npar-1, domain, trans, iterators, text, type);
     stmt->id = nstmts;
+
+    /* Initialize intra statement deps to Null. Will be updated when fcg is built */
+    stmt->intra_stmt_dep_cst = NULL;
 
     prog->nvar = PLMAX(prog->nvar, stmt->dim);
 
@@ -3522,7 +3532,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt,
     // IF_DEBUG2(printf("New access function is \n"));
     // IF_DEBUG2(pluto_matrix_print(stdout, newacc));
 
-    assert(newacc->ncols = stmt->trans->nrows+npar+1);
+    assert(newacc->ncols == stmt->trans->nrows+npar+1);
 
     pluto_matrix_free(remap);
     free(remap_divs);

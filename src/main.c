@@ -66,6 +66,11 @@ void usage_message(void)
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
     fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+    fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
+    fprintf(stdout, "       --dfp                     Use Pluto-lp-dfp instead of pluto-ilp [disabled by default]\n");
+    fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
+    fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
+    fprintf(stdout, "\n");
 #endif
     fprintf(stdout, "\n");
     fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
@@ -207,6 +212,10 @@ int main(int argc, char *argv[])
         {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
         {"glpk", no_argument, &options->glpk, 1},
+        {"lp", no_argument, &options->lp, 1},
+        {"dfp", no_argument, &options->dfp, 1},
+        {"ilp", no_argument, &options->ilp, 1},
+        {"lpcolor", no_argument, &options->lpcolour, 1},
 #endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
@@ -353,12 +362,33 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
 #ifdef GLPK
+    if (options->lp && !options->glpk) {
+        printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
+        options->glpk = 1;
+    }
+
+    /* By default Pluto-dfp uses lp. */
+    if (options->dfp && !options->ilp) {
+        options->lp = 1;
+    }
+        
+    if (options->dfp && !options->glpk) {
+        printf("[pluto]: Dfp framework is currently supported only with GLPK solver. Using GLPK for constraint solving \n");
+        options->glpk = 1;
+    } 
     if (options->glpk) {
         /* Turn off islsolve */
         options->islsolve = 0;
     }
+
 #endif
 
+    if(options->dfp && !options->glpk) {
+        printf ("[pluto]: ERROR: DFP framework currently supported with GLPK solver only. Configure Pluto with --enable-glpk \n");
+        pluto_options_free(options);
+        usage_message();
+        return 1;
+    }
 
     /* Extract polyhedral representation */
     PlutoProg *prog = NULL; 
@@ -797,6 +827,7 @@ bug("Dep being considered for skipping : %d",i);
          * necessary */
         int nbands;
         Band **bands;
+        pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
         bool retval = pluto_create_tile_schedule(prog, bands, nbands);
         pluto_bands_free(bands, nbands);
@@ -929,6 +960,16 @@ bug("Dep being considered for skipping : %d",i);
     if (options->time && !options->silent) {
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+        if (options-> dfp){
+            /* printf("[pluto] \t\ttotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time); */
+            /* printf("[pluto] \t\ttotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time); */
+            /* printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time); */
+            printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time+prog->fcg_colour_time+prog->fcg_colour_time);
+            printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n", prog->fcg_dims_scale_time);
+            /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
+            printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n",prog->skew_time);
+        }
+        printf("[pluto] \t\ttotal constraint solving time (LP/MIP/ILP) time: %0.6lfs\n", prog->mipTime);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
