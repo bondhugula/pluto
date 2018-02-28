@@ -1289,11 +1289,14 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
  * solutions of pluto-lp. These matrices are used to construct constraints for scaling MIP */
 void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog)
 {
-    int i, j, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
+    int i, j, num_ccs, num_rows, stmt_offset, nloops, cc_id;
     Stmt **stmts;
+    int *loops;
 
-    nstmts = prog->nstmts;
+    nloops = prog->nloops;
     stmts = prog->stmts;
+
+    loops = prog->loops;
 
     ddg_compute_cc(prog);
     num_ccs = prog->ddg->num_ccs;
@@ -1307,9 +1310,9 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val
 
     num_rows = 0;
     stmt_offset = 0;
-    for (i=0; i<nstmts; i++) {
-        cc_id = stmts[i]->cc_id;
-        for (j=0; j<stmts[i]->dim_orig+1; j++) {
+    for (i=0; i<nloops; i++) {
+        cc_id = stmts[loops[i]]->cc_id;
+        for (j=0; j<stmts[loops[i]]->dim_orig+1; j++) {
             (*index)[num_rows][0] = 0;
             (*val)[num_rows][0] = 0.0f;
 
@@ -1320,7 +1323,7 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val
             (*val)[num_rows][2] = -1.0;
             num_rows ++;
         }
-        stmt_offset += stmts[i]->dim_orig+1;
+        stmt_offset += stmts[loops[i]]->dim_orig+1;
     }
 
     /* This is a safety check.  Can be removed after testing the implementation */
