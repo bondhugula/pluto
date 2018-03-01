@@ -1192,27 +1192,30 @@ bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_dep
 
 PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int scc_id, PlutoProg* prog, int level, PlutoConstraints *skewCst)
 {
-    int i, j, nvar, npar, nstmts;
+    int i, j, nvar, npar;
     Stmt **stmts;
     /* PlutoConstraints *skewCst, *boundcst; */
+    int *loops, nloops;
 
     nvar = prog->nvar;
     npar = prog->npar;
-    nstmts = prog->nstmts;
     stmts = prog->stmts;
+
+    nloops = prog->nloops;
+    loops = prog->loops;
 
     assert (skewCst->ncols == CST_WIDTH);
     
-    for (i=0; i<nstmts; i++) {
-        for(j=0; j<stmts[i]->dim_orig; j++){
-            if (src_dims[j] && stmts[i]->scc_id == scc_id) {
+    for (i=0; i<nloops; i++) {
+        for(j=0; j<stmts[loops[i]]->dim_orig; j++){
+            if (src_dims[j] && stmts[loops[i]]->scc_id == scc_id) {
                 pluto_constraints_add_lb(skewCst, npar+1+ i*(nvar+1)+j, 1);
             }
             else {
                 pluto_constraints_add_equality(skewCst);
                 skewCst->val[skewCst->nrows-1][npar+1+i*(nvar+1)+j]= 1;
                 /* Set the value of the current coeff to the one that you have already found */
-                skewCst->val[skewCst->nrows-1][CST_WIDTH-1] = -stmts[i]->trans->val[level][j];
+                skewCst->val[skewCst->nrows-1][CST_WIDTH-1] = -stmts[loops[i]]->trans->val[level][j];
             }
         }
         pluto_constraints_add_lb(skewCst, npar+1+i*(nvar+1)+nvar, 0); 
@@ -1335,14 +1338,14 @@ void introduce_skew(PlutoProg *prog)
                 /* Set the Appropriate coeffs in the transformation matrix */
                 for (j=0; j<nstmts; j++) {
                     for (k = 0; k<nvar; k++){
-                        stmts[j]->trans->val[level][k] = sol[npar+1+j*(nvar+1)+k];
+                        stmts[j]->trans->val[level][k] = sol[npar+1+(which_loop(prog,j))*(nvar+1)+k];
                     }
                     /* No parametric Shifts */
                     for (k=nvar; k<nvar+npar; k++)    {
                         stmts[j]->trans->val[level][k] = 0;
                     }
                     /* The constant Shift */
-                    stmts[j]->trans->val[level][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
+                    stmts[j]->trans->val[level][nvar+npar] = sol[npar+1+which_loop(prog,j)*(nvar+1)+nvar];
 
                 }
 
