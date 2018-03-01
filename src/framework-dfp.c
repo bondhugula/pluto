@@ -501,17 +501,19 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 /* Prints colour of each vertex of the FCG */
 void pluto_print_colours(int *colour,PlutoProg *prog)
 {
-    int nstmts,i,j,stmt_offset;
+    int i,j,stmt_offset;
     Stmt **stmts;
+    int *loops, nloops;
 
-    nstmts = prog->nstmts;
+    nloops = prog->nloops;
+    loops = prog->loops;
     stmts = prog->stmts;
 
     stmt_offset = 0;
 
 
-    for (i=0; i<nstmts;i++){
-        for (j=0;j<stmts[i]->dim_orig;j++){
+    for (i=0; i<nloops; i++){
+        for (j=0; j<stmts[loops[i]]->dim_orig; j++){
             printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,colour[stmt_offset+j]);
         }
         stmt_offset+=j;
@@ -1145,9 +1147,9 @@ bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
             continue;
         if (!(stmts[dep->src]->scc_id == scc_id) || !(stmts[dep->dest]->scc_id ==scc_id))
             continue;
-        /* if (options->varliberalize && dep->skipdep) { */
-        /*     continue; */
-        /* } */
+        if (dep->skipdep) {
+            continue;
+        }
       
         if (dep_is_satisfied(dep)) {
             if(get_negative_components(dep,dims_with_neg_components, prog, level)){
