@@ -968,6 +968,9 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     double t_start;
     PlutoConstraints *basecst,*coeffcst, *boundcst;
     int64 *sol;
+    int nloops, *loops, ndeps;
+    Dep **deps;
+    Graph *ddg;
 
     Stmt **stmts;
 
@@ -975,6 +978,12 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     npar = prog->npar;
     stmts = prog->stmts;
     nstmts = prog->nstmts;
+    nloops = prog->nloops;
+    loops = prog->loops;
+    ndeps = prog->ndeps;
+    deps = prog->deps;
+    ddg = prog->ddg;
+
 
 
     basecst = get_permutability_constraints(prog);
@@ -1003,9 +1012,9 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set the rest to 0
          * These redundant cols are then removed. */
 
-        for (j=0; j<nstmts; j++){
+        for (j=0; j<nloops; j++){
             for (k=0; k<nvar; k++){
-                if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select){
+                if (stmts[loops[j]]->is_orig_loop[k] && colour[stmt_offset+k]==select){
                     pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
                 }
                 else {
@@ -1013,7 +1022,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
                     coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
                 }
             }
-            stmt_offset += stmts[j]->dim_orig;
+            stmt_offset += stmts[loops[j]]->dim_orig;
         }
 
         /* Solve the constraints to find the hyperplane at this level */
@@ -1026,20 +1035,20 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
             /* num_sols_found++; */
 
             /* if (options->varliberalize) { */
-            /*     for (j=0; j<ndeps; j++) { */
-            /*         #<{(| Check if it has to be c or c+1 |)}># */
-            /*         if(deps[j]->temp_across && c < deps[j]->fuse_depth  */
-            /*                 && pluto_domain_equality(stmts[deps[j]->src],stmts[deps[j]->dest])) { */
-            /*             for(k=0;k<nvar;k++) { */
-            /*                 if(sol[npar+1+(deps[j]->src)*(nvar+1)+k] != sol[npar+1+(deps[j]->dest)*(nvar+1)+k]) */
-            /*                     break; */
-            /*             } */
-            /*             if(k!=nvar || (sol[npar+1+(deps[j]->src)*(nvar+1)+nvar]!=sol[npar+1+(deps[j]->dest)*(nvar+1)+nvar])) { */
-            /*                 printf("Cutting between SCCs to prevent illegal transformation with var-lib"); */
-            /*                 cut_between_sccs(prog,ddg,stmts[deps[j]->src]->scc_id, stmts[deps[j]->dest]->scc_id); */
-            /*             } */
-            /*         } */
-            /*     } */
+                for (j=0; j<ndeps; j++) {
+                    /* Check if it has to be c or c+1 */
+                    if(deps[j]->temp_across && c < deps[j]->fuse_depth 
+                            && pluto_domain_equality(stmts[deps[j]->src],stmts[deps[j]->dest])) {
+                        for(k=0;k<nvar;k++) {
+                            if(sol[npar+1+(which_loop(prog, deps[j]->src))*(nvar+1)+k] != sol[npar+1+(which_loop(prog, deps[j]->dest))*(nvar+1)+k])
+                                break;
+                        }
+                        if(k!=nvar || (sol[npar+1+ (which_loop(prog, deps[j]->src))*(nvar+1)+nvar]!=sol[npar+1+(which_loop(prog, deps[j]->dest))*(nvar+1)+nvar])) {
+                            printf("Cutting between SCCs to prevent illegal transformation with var-lib");
+                            cut_between_sccs(prog,ddg,stmts[deps[j]->src]->scc_id, stmts[deps[j]->dest]->scc_id);
+                        }
+                    }
+                }
             /* } */
             pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
 
@@ -1047,14 +1056,14 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
                 Stmt *stmt = stmts[j];
                 pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
                 for (k=0; k<nvar; k++)    {
-                    stmt->trans->val[stmt->trans->nrows-1][k] = sol[npar+1+j*(nvar+1)+k];
+                    stmt->trans->val[stmt->trans->nrows-1][k] = sol[npar+1+which_loop(prog,j)*(nvar+1)+k];
                 }
                 /* No parameteric shifts */
                 for (k=nvar; k<nvar+npar; k++)    {
                     stmt->trans->val[stmt->trans->nrows-1][k] = 0;
                 }
                 /* Constant loop shift */
-                stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
+                stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+which_loop(prog,j)*(nvar+1)+nvar];
 
                 stmt->hyp_types[stmt->trans->nrows-1] =  
                     pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?

@@ -2033,6 +2033,7 @@ int pluto_auto_transform(PlutoProg *prog)
     ddg_compute_scc(prog);
     for (i=0; i<prog->ddg->num_sccs; i++){
         prog->ddg->sccs[i].vertices = NULL;
+        prog->ddg->sccs[i].sol = NULL;
     }
 
     Graph *ddg = prog->ddg;
@@ -2109,7 +2110,6 @@ int pluto_auto_transform(PlutoProg *prog)
     /* For diamond tiling */
     conc_start_found = 0;
 
-/* <<<<<<< HEAD */
 	/* This is only recommended if aggressive fusion is desired */
     for(i=0;i<prog->ndeps;i++) {
         if(src_acc_dim(prog, prog->deps[i]->src_acc->mat) < prog->stmts[prog->deps[i]->src]->dim_orig && lord[prog->stmts[prog->deps[i]->src]->scc_id][0]!=lord[prog->stmts[prog->deps[i]->dest]->scc_id][0])

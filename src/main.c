@@ -516,8 +516,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             prog->stmts[i]->orig_scc_id[j]=prog->stmts[i]->scc_id;
     }
 
-    for(j=0;j<prog->ndeps;j++)
+    for (j=0; j<prog->ndeps; j++) {
         prog->deps[j]->satisfied = false;
+        prog->deps[j]->skipdep = 0;
+    }
     ddg_update(prog->ddg,prog);
     ddg_compute_scc(prog);
 

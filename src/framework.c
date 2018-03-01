@@ -320,6 +320,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         fscanf(skipfp, "%d", &num);
         while (!feof(skipfp)) {
             skipdeps_[num] = 1;
+            deps[num]->skipdep = 1;
             IF_DEBUG(printf("\tskipping dep %d\n", num));
             fscanf(skipfp, "%d", &num);
         }
