@@ -66,13 +66,13 @@ double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, P
 void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *colour, PlutoConstraints *boundcst, int current_colour, PlutoConstraints **conflicts, PlutoMatrix *obj)
 {
     Graph *ddg;
-    int i,j,ndeps,nstmts,nvar,npar, src_offset,dest_offset,fcg_offset1,fcg_offset2;
+    int i,j,ndeps, nvar, npar, src_offset,dest_offset,fcg_offset1,fcg_offset2;
     double *sol;
     int row_offset;
     Stmt **stmts;
     PlutoConstraints *conflictcst;
 
-    int nloops, *loops, src_molecule, dest_molecule;
+    int *loops, src_molecule, dest_molecule;
 
     ddg = prog->ddg;
     Dep **deps, *dep;
@@ -80,11 +80,9 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     deps = prog->deps;
 
     stmts = prog->stmts;
-    nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
     loops = prog->loops;
-    nloops = prog->nloops;
 
 
 
@@ -190,18 +188,17 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 /* Computes intra statement dependence constraints for every unstisfied dependence */
 void compute_intra_stmt_deps(PlutoProg *prog)
 {
-    int ndeps, src_stmt,dest_stmt,i;
+    int ndeps, src_stmt,i;
     Dep **deps;
     Dep *dep;
     Stmt **stmts;
     Stmt *stmt;
-    int nloops, src_molecule, dest_molecule, *loops;
+    int src_molecule, dest_molecule, *loops;
 
     deps = prog->deps;
     ndeps = prog->ndeps;
     stmts = prog->stmts;
 
-    nloops = prog->nloops;
     loops = prog->loops;
 
 
@@ -220,7 +217,6 @@ void compute_intra_stmt_deps(PlutoProg *prog)
         }
 
         src_stmt = dep->src;
-        dest_stmt = dep->dest;
         src_molecule = which_loop(prog, dep->src);
         dest_molecule = which_loop(prog, dep->dest);
         if (src_molecule == dest_molecule) {
@@ -248,14 +244,13 @@ void compute_intra_stmt_deps(PlutoProg *prog)
  * represented by the inter statement edges */
 void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj)
 {
-    int nstmts,nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
+    int nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
     int nrows;
     double *sol;
     Stmt **stmts;
     PlutoConstraints *intra_stmt_dep_cst, *coeff_bounds;
     int nloops, *loops;
 
-    nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
 
@@ -610,8 +605,8 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         return true;
     }
 
-    if(prog->coloured_dims >= sccs[scc_id].max_dim) {
-        if(prog->coloured_dims > sccs[scc_id].max_dim){
+    if (prog->coloured_dims >= sccs[scc_id].max_dim) {
+        if (prog->coloured_dims > sccs[scc_id].max_dim) {
             return true;
         }
         IF_DEBUG(printf("[colour SCC]: All Dimensions of statment %d in SCC %d have been coloured\n", sccs[scc_id].vertices[stmt_pos], scc_id););
