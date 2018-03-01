@@ -2033,7 +2033,6 @@ int pluto_auto_transform(PlutoProg *prog)
     ddg_compute_scc(prog);
     for (i=0; i<prog->ddg->num_sccs; i++){
         prog->ddg->sccs[i].vertices = NULL;
-        prog->ddg->sccs[i].sol = NULL;
     }
 
     Graph *ddg = prog->ddg;
@@ -2663,6 +2662,8 @@ void ddg_compute_scc(PlutoProg *prog)
     for (i=0; i<g->num_sccs; i++)  {
         g->sccs[i].max_dim = get_max_orig_dim_in_scc(prog, i);
         g->sccs[i].size = get_scc_size (prog, i);
+        g->sccs[i].sol = NULL;
+        g->sccs[i].is_parallel = 0;
 //        bug("%d %d %d",g->sccs[i].id,g->sccs[i].max_dim,g->sccs[i].size);
     }
 
