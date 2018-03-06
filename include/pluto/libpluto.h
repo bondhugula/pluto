@@ -157,6 +157,9 @@ struct plutoOptions{
     /* Use glpk as ilp solver. */
     int glpk;
 
+    /* Use gurobi as ilp solver. */
+    int gurobi;
+
     /* Use lp instead of ILP. */
     int lp;
 

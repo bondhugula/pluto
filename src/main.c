@@ -68,6 +68,7 @@ void usage_message(void)
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
     fprintf(stdout, "\n");
+    fprintf(stdout, "       --gurobi                  Use Gurobi as ILP solver\n");
 #endif
     fprintf(stdout, "\n");
     fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
@@ -211,6 +212,7 @@ int main(int argc, char *argv[])
         {"dfp", no_argument, &options->dfp, 1},
         {"ilp", no_argument, &options->ilp, 1},
         {"lpcolor", no_argument, &options->lpcolour, 1},
+        {"gurobi", no_argument, &options->gurobi, 1},
 #endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
@@ -357,6 +359,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
 #ifdef GLPK
+    if (options->gurobi) {
+        options->islsolve = 0;
+    }
     if (options->lp && !options->glpk) {
         printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
