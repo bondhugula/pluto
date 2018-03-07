@@ -113,21 +113,15 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     
     GRBenv *env = NULL;
     GRBmodel *lp = NULL;
+
      IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin_gurobi (%d variables, %d constraints)\n",
                                  cst->ncols-1, cst->nrows););
      GRBloadenv(&env, NULL);
+     GRBsetintparam(env, GRB_INT_PAR_OUTPUTFLAG, 0);
 
      grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
 
      vtype = (char*)malloc(sizeof(char)*num_vars);
-
-     /* Create gurobi model. Add objective during creation itself */
-     GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, NULL, NULL, NULL, NULL);
-
-     /* Set objective direction to minimization */
-     GRBsetdblattr(lp, GRB_INT_ATTR_MODELSENSE, GRB_MINIMIZE);
-
-     set_gurobi_constraints_from_pluto_constraints(lp, cst);
 
      /* Set integer constraints on all variables of the ILP */
      if (!options->lp) {
@@ -135,6 +129,15 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
              vtype[i] = GRB_INTEGER;
          }
      }
+
+     /* Create gurobi model. Add objective during creation itself */
+     GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, NULL, NULL, vtype, NULL);
+
+     /* Set objective direction to minimization */
+     GRBsetdblattr(lp, GRB_INT_ATTR_MODELSENSE, GRB_MINIMIZE);
+
+     set_gurobi_constraints_from_pluto_constraints(lp, cst);
+
 
      if (options->debug) {
          GRBwrite(lp, "pluto.lp");
@@ -146,7 +149,7 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
 
      GRBgetintattr(lp, GRB_INT_ATTR_STATUS, &optim_status);
 
-     if (optim_status == GRB_INF_OR_UNBD) {
+     if (optim_status == GRB_INFEASIBLE) {
          GRBfreemodel(lp);
          GRBfreeenv(env);
          return NULL;

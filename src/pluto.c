@@ -348,7 +348,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         prog->mipTime += rtclock()-t_start;
     }
 #ifdef GLPK
-    else if (options->glpk || options->lp || options->dfp) {
+    else if (options->glpk || options->lp || options->dfp || options->gurobi) {
          
         double **val = NULL;
         int **index = NULL;
@@ -368,7 +368,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
         } 
         else if (options->gurobi) {
-            sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, par, num_ccs);
+            sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, npar, num_ccs);
         }
         prog->mipTime += rtclock()-t_start;
 
