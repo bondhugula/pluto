@@ -155,6 +155,13 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
          return NULL;
      }
 
+     if (optim_status == GRB_UNBOUNDED) {
+         GRBfreemodel(lp);
+         GRBfreemodel(env);
+         printf("[Pluto]: Unbounded model. This appears to be a problem in Pluto's ILP/LP construction. Aborting\n");
+         exit(1);
+     }
+
      GRBgetdblattr(lp, GRB_DBL_ATTR_OBJVAL, &objval);
      IF_DEBUG(printf("Objective value: %0.6f\n",objval););
      
