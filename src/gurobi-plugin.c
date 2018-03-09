@@ -218,9 +218,6 @@ GRBmodel *get_scaling_lp_gurobi(double *fpsol, int num_sols, double **val, int *
 
     num_sols_to_be_scaled = num_sols-npar-1;
 
-    printf("Num sols to be scaled %d\n", num_sols_to_be_scaled);
-    printf("num_ccs: %d \n", num_ccs);
-
     vtype = (char*)malloc(num_sols_to_be_scaled + num_ccs);
     for (i=0; i<num_ccs; i++) {
         vtype[i] = GRB_CONTINUOUS;
@@ -336,7 +333,6 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
         num_sols = num_vars;
         GRBfreemodel(lp);
         /* GRBfreeenv(env); */
-        printf("LP solutions found with gurobi\n");
 
         /* GRBloadenv(&env, NULL); */
         lp = get_scaling_lp_gurobi(fpsol, num_sols, val, index, npar, num_ccs, env);
@@ -344,11 +340,9 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
         if (options->debug) {
             GRBwrite(lp, "pluto-scaling-mip.lp");
         }
-        printf("Scaling MIP constructed for gurobi \n");
 
         scale_sols = pluto_mip_scale_solutions_gurobi(lp);
 
-        printf("Scaling MIP solved gurobi \n");
         max_scale_factor = get_max_scale_factor(scale_sols, num_ccs);
 
         sol =(int64*)malloc(sizeof(int64)*num_sols);
