@@ -402,6 +402,8 @@ double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints* cst, PlutoMa
     /* Create gurobi model. Add objective and variable types during creation of the object itself */
     GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, NULL, NULL, vtype, NULL);
 
+    set_gurobi_constraints_from_pluto_constraints(lp, cst);
+
     if (options->debug) {
         GRBwrite(lp, "pluto-pairwise-constraints-gurobi.lp");
     }
