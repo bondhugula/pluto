@@ -1440,7 +1440,7 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
         lp = get_scaling_lp_glpk(fpsol, num_sols, val, index, npar, num_ccs);
 
         scale_sols = pluto_mip_scale_solutions_glpk(lp);
-        int64 *sol = malloc(sizeof(int64)*(num_sols));
+        int64 *sol = (int64*)malloc(sizeof(int64)*(num_sols));
 
         /* Ideally u and w have to be set to be computed on a per CC basis. Since it is not 
          * used further down the tool chain, it is set to the maximum scaling factor.*/

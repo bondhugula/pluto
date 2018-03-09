@@ -362,7 +362,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->gurobi) {
         options->islsolve = 0;
     }
-    if (options->lp && !options->glpk) {
+    if (options->lp && !(options->glpk || options->gurobi)) {
         printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
     }
