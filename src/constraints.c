@@ -1203,6 +1203,24 @@ void set_glpk_constraints_from_pluto_constraints(glp_prob *lp, const PlutoConstr
 
 /* Retrives ilp solution from the input glpk problem. 
  * Assumes that the optimal solution exists and has been found*/
+double *get_lp_solution_from_glpk_problem(glp_prob *lp)
+{
+    int i, ncols;
+    double* sol;
+
+    ncols = glp_get_num_cols(lp);
+    sol = (double*) malloc (sizeof(double)*ncols);
+    for (i=0; i<glp_get_num_cols(lp); i++) {
+        double x = glp_mip_col_val(lp, i+1);
+        IF_DEBUG(printf("c%d = %f, ", i, x););
+        sol[i] = x;
+    }
+    IF_DEBUG(printf("\n"););
+    return sol;
+}
+
+/* Retrives ilp solution from the input glpk problem. 
+ * Assumes that the optimal solution exists and has been found*/
 int64 *get_ilp_solution_from_glpk_problem(glp_prob *lp)
 {
     int i, ncols;
@@ -1215,12 +1233,15 @@ int64 *get_ilp_solution_from_glpk_problem(glp_prob *lp)
         IF_DEBUG(printf("c%d = %lld, ", i, (int64) round(x)););
         sol[i] = (int64) round(x);
     }
+    IF_DEBUG(printf("\n"););
     return sol;
 }
 
 /* Set glpk problem parameters. 
  * Checks feasibility of the LP problem using simplex */
-void set_glpk_problem_params(glp_prob *lp) {
+void set_glpk_problem_params(glp_prob *lp) 
+{
+
     if (!options->debug && !options->moredebug) {
         glp_term_out(GLP_OFF);
     }
@@ -1256,16 +1277,15 @@ void find_optimal_solution_glpk(glp_prob *lp, double tol)
     glp_intopt(lp, &iocp);
 }
 
-int64 *pluto_constraints_solve_glpk(glp_prob *lp)
+/* Returns 0 if a solution was found else returns 1 */
+int pluto_constraints_solve_glpk(glp_prob *lp)
 {
-    int64 *sol;
-
     set_glpk_problem_params(lp);
     int lp_status = glp_get_status(lp);
 
     if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) {
         glp_delete_prob(lp);
-        return NULL;
+        return 1;
     }
 
 
@@ -1275,22 +1295,107 @@ int64 *pluto_constraints_solve_glpk(glp_prob *lp)
 
     if (ilp_status == GLP_INFEAS || ilp_status == GLP_UNDEF) {
         glp_delete_prob(lp);
-        return NULL;
+        return 1;
     }
 
     double z = glp_mip_obj_val(lp);
     IF_DEBUG(printf("z = %lf\n", z););
-    sol = get_ilp_solution_from_glpk_problem(lp);
-    glp_delete_prob(lp);
-    return sol;
+
+    return 0;
 }
 
-/* Construct ILP in cplex format */
-int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-        PlutoMatrix *obj)
+double *pluto_mip_scale_solutions_glpk(glp_prob *ilp)
 {
-    int i, j;
+    double *scale_sols;
+
+    set_glpk_problem_params(ilp);
+
+    int lp_status = glp_get_status(ilp);
+
+    if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) {
+        glp_delete_prob(ilp);
+        return NULL;
+    }
+    
+    find_optimal_solution_glpk(ilp, 1e-2);
+
+    int ilp_status = glp_mip_status(ilp);
+
+    if (ilp_status == GLP_NOFEAS) {
+        glp_delete_prob(ilp);
+        return NULL;
+    }
+
+    double z = glp_mip_obj_val(ilp);
+    IF_DEBUG(printf("z = %lf\n", z););
+
+    scale_sols = get_lp_solution_from_glpk_problem(ilp);
+    return scale_sols;
+}
+
+glp_prob* get_scaling_lp_glpk(double* fpsol, int num_sols, double **val, int **index, int npar, int num_ccs)
+{
+    int i, num_rows, num_sols_to_be_scaled, col_num;
+    glp_prob *lp;
+
+
+    /* first npar+1 elements in the LP solution (corresponding to u and w) need not be scaled.
+     * The first num_ccs coeffs correspond to the scaling factors. 
+     * The remaining num_elements_to_be_scaled need to be scaled up if 
+     * they are higher than the INT_TOL limit set. */
+    num_sols_to_be_scaled = num_sols-npar-1;
+
+    IF_DEBUG(printf("[Pluto]: Number of connected components: %d\n",num_ccs););
+    IF_DEBUG(printf("[Pluto]: Number of solutions to be scaled: %d\n",num_sols_to_be_scaled););
+
+    lp = glp_create_prob();
+    glp_set_obj_dir(lp, GLP_MIN);
+    glp_add_cols(lp, num_ccs+num_sols_to_be_scaled);
+
+    num_rows = 0;
+
+    for (i=npar+1; i<num_sols; i++) {
+           col_num = i - (npar+1) + num_ccs + 1;
+        if (fabs(fpsol[i]) > 1e-7) {
+                glp_add_rows(lp, 1);
+                num_rows ++;
+                val[i-npar-1][1] = fpsol[i];
+                glp_set_row_bnds(lp, num_rows, GLP_FX, 0.0, 0.0);
+                glp_set_col_bnds(lp, col_num, GLP_LO, 1.0, 0.0);
+                glp_set_col_kind(lp, col_num, GLP_IV);
+                glp_set_mat_row (lp,num_rows, 2, index[i-npar-1], val[i-npar-1]);
+        } else {
+                glp_set_col_bnds(lp, col_num, GLP_FX, 0.0, 0.0);
+        }
+    }
+
+    /* The lower bound of the scaling factor for each CC has to be one */
+    for (i=0; i<num_ccs; i++) {
+        glp_set_col_bnds (lp, i+1, GLP_LO, 1.0, 0.0);
+        glp_set_obj_coef (lp, i+1, 1.0);
+    }
+    if (options->debug) {
+        glp_write_lp (lp, NULL, "pluto-scaling-mip.lp");
+    }
+    return lp;
+}
+
+void set_glpk_objective_from_pluto_matrix(glp_prob *lp, PlutoMatrix* obj)
+{
+    int j;
+    for (j=0; j<obj->ncols; j++) {
+        glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
+    }
+}
+
+/* Construct ILP in cplex format. The last four parameters are used for
+ * scaling solutions to integers */
+int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+        PlutoMatrix *obj, double **val, int** index, int npar, int num_ccs)
+{
+    int i, j, is_unsat, num_sols;
     int64 *sol;
+    double *fpsol, *scale_sols;
 
 
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin_glpk (%d variables, %d constraints)\n",
@@ -1304,22 +1409,108 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
 
     set_glpk_constraints_from_pluto_constraints(lp, cst);
 
-    for (j=0; j<obj->ncols; j++) {
-        glp_set_obj_coef(lp, j+1, (double)obj->val[0][j]);
-    }
+    set_glpk_objective_from_pluto_matrix (lp, obj);
 
     for (i=0; i<cst->ncols-1; i++) {
         glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
     }
-    for (i=0; i<cst->ncols-1; i++) {
-        glp_set_col_kind(lp, i+1, GLP_IV);
+
+    if (!options->lp) {
+        for (i=0; i<cst->ncols-1; i++) {
+            glp_set_col_kind(lp, i+1, GLP_IV);
+        }
     }
     IF_DEBUG(glp_write_lp(lp, NULL, "pluto-debug-glpk.lp"););
 
 
-    sol = pluto_constraints_solve_glpk(lp);
+    is_unsat = pluto_constraints_solve_glpk(lp);
 
-    return sol;
+    if (is_unsat) {
+        return NULL;
+    }
+
+    if (options->lp || options->dfp) {
+
+        fpsol = get_lp_solution_from_glpk_problem(lp);
+        num_sols = glp_get_num_cols (lp);
+        glp_delete_prob(lp);
+
+        lp = get_scaling_lp_glpk(fpsol, num_sols, val, index, npar, num_ccs);
+
+        scale_sols = pluto_mip_scale_solutions_glpk(lp);
+        int64 *sol = malloc(sizeof(int64)*(num_sols));
+
+        /* Ideally u and w have to be set to be computed on a per CC basis. Since it is not 
+         * used further down the tool chain, it is set to the maximum scaling factor.*/
+        int64 max_scale_factor = (int64)round(glp_mip_col_val(lp,1));
+        IF_MORE_DEBUG(printf("Scaling Factor for CC 1:%lld\n",max_scale_factor););
+        for (j=0; j<num_ccs; j++) {
+            IF_MORE_DEBUG(printf("Scaling Factor for CC %d:%lld\n",j+1,(int64)round(glp_mip_col_val(lp,j+1))););
+            if (scale_sols[j] > max_scale_factor){
+                max_scale_factor = (int64)round(scale_sols[j]);
+            }
+        }
+
+        for(j=0; j<npar+1; j++){
+            sol[j] = max_scale_factor;
+        }
+
+        int col_iter = num_ccs;
+        for (j=npar+1; j<cst->ncols-1; j++) {
+            double x = scale_sols[col_iter++];
+            IF_DEBUG(printf("c%d = %lld, ", j, (int64) round(x)););
+            sol[j]=(int64)round(x);
+        }
+        IF_DEBUG(printf("\n"););
+
+        glp_delete_prob(lp);
+        free(fpsol);
+        free(scale_sols);
+        return sol;
+    } else {
+        sol = get_ilp_solution_from_glpk_problem(lp);
+        glp_delete_prob(lp);
+        return sol;
+    }
+}
+
+double* pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst, PlutoMatrix *obj)
+{
+    glp_prob *lp;
+    double *sol;
+    int i, is_unsat;
+
+    lp = glp_create_prob();
+
+    glp_set_obj_dir(lp, GLP_MIN);
+
+
+    set_glpk_constraints_from_pluto_constraints(lp, cst);
+
+    set_glpk_objective_from_pluto_matrix (lp, obj);
+
+    for (i=0; i<cst->ncols-1; i++) {
+        glp_set_col_bnds(lp, i+1, GLP_LO, 0.0, 0.0);
+    }
+
+    if (options->ilp) {
+        for (i=0; i<cst->ncols-1; i++) {
+            glp_set_col_kind(lp, i+1, GLP_IV);
+        }
+    }
+    IF_DEBUG(glp_write_lp(lp, NULL, "pluto-pairwise-constraints-glpk.lp"););
+
+
+    is_unsat = pluto_constraints_solve_glpk(lp);
+
+    if (is_unsat) {
+        return NULL;
+    } else {
+        sol = get_lp_solution_from_glpk_problem(lp);
+        glp_delete_prob(lp);
+        return sol;
+    }
+
 }
 
 #endif

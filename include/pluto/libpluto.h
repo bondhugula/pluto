@@ -179,6 +179,18 @@ struct plutoOptions{
     /* Use glpk as ilp solver. */
     int glpk;
 
+    /* Use lp instead of ILP. */
+    int lp;
+
+    /* Use pluto-(i)lp-dfp framework instead of pluto-ilp */
+    int dfp;
+
+    /* Use ILP with pluto-dfp instead of LP. */
+    int ilp;
+
+    /* Use LP solutions to colour SCCs */
+    int lpcolour;
+
     /* Index set splitting */
     int iss;
 
