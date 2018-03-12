@@ -1,3 +1,4 @@
+#ifdef GUROBI
 #include "constraints.h"
 #include "pluto.h"
 #include <math.h>
@@ -420,3 +421,4 @@ double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints* cst, PlutoMa
     }
 
 }
+#endif
