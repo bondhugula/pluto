@@ -354,6 +354,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int **index = NULL;
         int num_ccs, nrows;
         num_ccs = 0;
+        nrows = 0;
 
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
 
