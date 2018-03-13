@@ -63,11 +63,15 @@ void usage_message(void)
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
     fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+#endif
+#if defined GLPK || defined GUROBI
     fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
     fprintf(stdout, "       --dfp                     Use Pluto-lp-dfp instead of pluto-ilp [disabled by default]\n");
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
+#endif
     fprintf(stdout, "\n");
+#ifdef GUROBI
     fprintf(stdout, "       --gurobi                  Use Gurobi as ILP solver\n");
 #endif
     fprintf(stdout, "\n");

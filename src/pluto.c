@@ -347,7 +347,6 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
     }
-#ifdef GLPK
     else if (options->glpk || options->lp || options->dfp || options->gurobi) {
          
         double **val = NULL;
@@ -366,10 +365,14 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 
         t_start = rtclock(); 
         if (options->glpk) {
+#ifdef GLPK
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
+#endif
         } 
         else if (options->gurobi) {
+#ifdef GUROBI
             sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, npar, num_ccs);
+#endif
         }
         prog->mipTime += rtclock()-t_start;
 
@@ -383,7 +386,6 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             free(index);
         }
     }
-#endif
     else {
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);

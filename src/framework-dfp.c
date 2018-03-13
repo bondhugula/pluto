@@ -36,7 +36,7 @@
 #include <isl/set.h>
 #include "candl/candl.h"
 
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 
 static double rtclock()
@@ -57,9 +57,13 @@ double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoM
 {
     double* sol;
     if (options->gurobi) {
+#ifdef GUROBI
         sol = pluto_fcg_constraints_lexmin_gurobi(cst, obj);
+#endif
     } else {
+#ifdef GLPK
         sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
+#endif
     }
 
     return sol;
