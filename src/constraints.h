@@ -201,7 +201,11 @@ int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints* cst);
 #ifdef GLPK
 int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst, PlutoMatrix *obj, double **val, int** index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints* cst, PlutoMatrix *obj);
+#endif
+
+#ifdef GUROBI
 int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst, PlutoMatrix *obj, double **val, int** index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints* cst, PlutoMatrix *obj);
 #endif
+
 #endif
