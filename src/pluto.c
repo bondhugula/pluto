@@ -1724,7 +1724,7 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
 
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
     Graph* fcg;
     int *colour, nVertices;
 #endif
@@ -1818,7 +1818,7 @@ int pluto_auto_transform(PlutoProg *prog)
     conc_start_found = 0;
 
     if (options->dfp) {
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
         if(options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
@@ -1997,7 +1997,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
  /* Deallocate the fusion conflict graph */
     if (options->dfp){
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
         ddg = prog->ddg;
         for(i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);

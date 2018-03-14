@@ -212,11 +212,15 @@ int main(int argc, char *argv[])
         {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
         {"glpk", no_argument, &options->glpk, 1},
+#endif
+#ifdef GUROBI
+        {"gurobi", no_argument, &options->gurobi, 1},
+#endif
+#if defined GLPK || defined GUROBI
         {"lp", no_argument, &options->lp, 1},
         {"dfp", no_argument, &options->dfp, 1},
         {"ilp", no_argument, &options->ilp, 1},
         {"lpcolor", no_argument, &options->lpcolour, 1},
-        {"gurobi", no_argument, &options->gurobi, 1},
 #endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
