@@ -55,7 +55,8 @@ static double rtclock()
  * If feasible then return the solution else returns NULL */
 double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj)
 {
-    double* sol;
+    double* sol, tstart;
+    tstart = rtclock();
     if (options->gurobi) {
 #ifdef GUROBI
         sol = pluto_fcg_constraints_lexmin_gurobi(cst, obj);
@@ -65,6 +66,7 @@ double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoM
         sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
 #endif
     }
+    prog->mipTime += rtclock()-tstart;
 
     return sol;
 }
@@ -158,9 +160,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
                      * of the target is valid */
 
                     prog->num_lp_calls ++;
-                    tstart = rtclock();
                     sol = pluto_fusion_constraints_feasibility_solve(conflictcst, obj);
-                    prog->cst_solve_time += rtclock() - tstart;
 
                     /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
                     if(sol == NULL)
@@ -1047,10 +1047,10 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
                     H_SCALAR: H_LOOP;
 
             }
+            prog->scaling_cst_sol_time += rtclock()-t_start;
             free(sol);
             IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
             pluto_constraints_free(coeffcst);
-            prog->scaling_cst_sol_time += rtclock()-t_start;
             return 1;
         } else {
             printf("[pluto] No Hyperplane found\n");
