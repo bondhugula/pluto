@@ -61,7 +61,7 @@ double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoM
 #ifdef GUROBI
         sol = pluto_fcg_constraints_lexmin_gurobi(cst, obj);
 #endif
-    } else {
+    }else{
 #ifdef GLPK
         sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
 #endif

@@ -148,16 +148,16 @@ struct plutoOptions{
     /* Read input from a .scop file */
     int readscop;
 
-    /* Use PIP as ilp solver. */
+    /* Use PIP as the ILP solver. */
     int pipsolve;
 
-    /* Use isl as ilp solver. */
+    /* Use isl as the ILP solver. */
     int islsolve;
 
-    /* Use glpk as ilp solver. */
+    /* Use glpk as the ILP solver. */
     int glpk;
 
-    /* Use gurobi as ilp solver. */
+    /* Use gurobi as the ILP solver. */
     int gurobi;
 
     /* Use lp instead of ILP. */

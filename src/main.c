@@ -62,7 +62,7 @@ void usage_message(void)
     fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
-    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver (default in case of pluto-lp and pluto-dfp)\n");
 #endif
 #if defined GLPK || defined GUROBI
     fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
@@ -366,10 +366,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
-#ifdef GLPK
     if (options->gurobi) {
         options->islsolve = 0;
     }
+#ifdef GLPK
     if (options->lp && !(options->glpk || options->gurobi)) {
         printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
@@ -392,8 +392,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
 #endif
 
-    if(options->dfp && !(options->glpk || options->gurobi)) {
-        printf ("[pluto]: ERROR: DFP framework currently supported with GLPK solver only. Configure Pluto with --enable-glpk \n");
+    if (options->dfp && !(options->glpk || options->gurobi)) {
+        printf ("[pluto]: ERROR: DFP framework is currently supported with GLPK or GUROBI solvers only. Run ./configure --help to for more information on using different solvers with Pluto.\n");
         pluto_options_free(options);
         usage_message();
         return 1;

@@ -1,3 +1,26 @@
+/*
+ * PLUTO: An automatic parallelizer and locality optimizer
+ *
+ * Author: Aravind Acharya
+ *  
+ * This file is part of Pluto.
+ *
+ * Pluto is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * A copy of the GNU General Public Licence can be found in the file
+ * `LICENSE' in the top-level directory of this distribution. 
+ *
+ */
+
+#include <stdio.h>
 #ifdef GUROBI
 #include "constraints.h"
 #include "pluto.h"
@@ -5,6 +28,14 @@
 #include <assert.h>
 #include <gurobi_c.h>
 
+/* The file provides an interface to solve Pluto's constraints with Gurobi as 
+ * the (I)LP solver. The file contains routines that creates a (I)LP problem
+ * from Pluto's constraint matrix. The objective for the optimization problem 
+ * is given as a PlutoMatrix. The constraints are solved a non-null solution 
+ * is returned if a solution exists. The choice of solving ILP/LP can be 
+ * given as a command line option to polycc.  */
+
+/* Prints the error message corresponding to the error value passed */
 inline void check_error_gurobi(GRBmodel *lp, int error)
 {
     if(error) {
@@ -16,6 +47,9 @@ inline void check_error_gurobi(GRBmodel *lp, int error)
     }
 }
 
+/* Creates a double array for gurobi objective from the objective matrix.
+ * The input PlutoMatrix should have a single row and the column elements 
+ * correspond to the coefficients of the variables in the objective function. */
 double* get_gurobi_objective_from_pluto_matrix(PlutoMatrix *obj)
 {
     int j;
@@ -69,7 +103,7 @@ void set_gurobi_constraints_from_pluto_constraints (GRBmodel *lp, const PlutoCon
     free(value);
 }
 
-/* Retrives ilp solution from the input glpk problem. 
+/* Retrives ilp solution from the input gurobi problem. 
  * Assumes that the optimal solution exists and has been found*/
 int64* get_ilp_solution_from_gurobi_problem(GRBmodel *lp)
 {
@@ -91,6 +125,8 @@ int64* get_ilp_solution_from_gurobi_problem(GRBmodel *lp)
     return sol;
 }
 
+/* Retrives lp solution from the input gurobi problem. 
+ * Assumes that the optimal solution exists and has been found*/
 double* get_lp_solution_from_gurobi_problem(GRBmodel *lp)
 {
     int num_cols, error, i;
@@ -118,10 +154,12 @@ inline void find_optimal_solution_gurobi(GRBmodel *lp, double tol)
      GRBsetdblparam(GRBgetenv(lp), "IntFeasTol", tol);
 
      GRBoptimize(lp);
-
 }
 
-
+/* Solve the gurobi problem lp. If optimal solution is found, then it returns 0.
+ * The caller can retrive the funtion from the gurobi model object lp. If the 
+ * problem is infeasible then the routine returns 1. If the problem is 
+ * unbounded, program terminates with the corresponding error message. */
 int pluto_constraints_solve_gurobi(GRBmodel *lp, double tol)
 {
     int optim_status;
@@ -258,6 +296,10 @@ GRBmodel *get_scaling_lp_gurobi(double *fpsol, int num_sols, double **val, int *
     return lp;
 }
 
+/* The rational solutions of pluto-lp are scaled on a per connected component basis. 
+ * The following routine returns the maximum scaling factor among the scaling 
+ * factors of each connected component; the largest among the first num_ccs 
+ * elements of the array sol*/
 int64 get_max_scale_factor(double *sol, int num_ccs)
 {
     int i, max;
@@ -374,7 +416,8 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
 
 }
 
-
+/* The routine is called during the construction of FCG in pluto-lp-dfp. 
+ * It returns a rational solution if the optimal solution exists else it returns NULL. */
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints* cst, PlutoMatrix* obj) 
 {
     double *grb_obj, *sol;
@@ -419,6 +462,5 @@ double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints* cst, PlutoMa
         sol = get_lp_solution_from_gurobi_problem(lp);
         return sol;
     }
-
 }
 #endif

@@ -385,8 +385,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             free(val);
             free(index);
         }
-    }
-    else {
+    }else{
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
