@@ -1,21 +1,29 @@
-[submodule "isl"]
-       path = isl
-       url = git://repo.or.cz/isl.git
+[submodule "isl"] 
+        path = isl
+        url = git://repo.or.cz/isl.git
+        ignore = untracked
+[submodule "polylib"]
+        path = polylib
+        url = git://repo.or.cz/polylib.git
+        ignore = untracked
 [submodule "cloog-isl"]
 	path = cloog-isl
-	url = git://repo.or.cz/cloog.git
+	url = https://github.com/cristianrcv/cloog.git # https://github.com/periscop/cloog.git
+        ignore = untracked
 [submodule "piplib"]
 	path = piplib
-	url = https://github.com/periscop/piplib.git
-[submodule "polylib"]
-	path = polylib
-	url = git://repo.or.cz/polylib.git
+	url = https://github.com/cristianrcv/piplib.git # https://github.com/periscop/piplib.git
+        ignore = untracked
 [submodule "candl"]
 	path = candl
-	url = https://github.com/periscop/candl.git
+	url = https://github.com/cristianrcv/candl.git # https://github.com/periscop/candl.git
+        ignore = untracked
 [submodule "clan"]
 	path = clan
-	url = https://github.com/periscop/clan.git
+	url = https://github.com/cristianrcv/clan.git # https://github.com/periscop/clan.git
+        ignore = untracked
 [submodule "openscop"]
 	path = openscop
-	url = https://github.com/periscop/openscop.git
+	url = https://github.com/cristianrcv/openscop.git # https://github.com/periscop/openscop.git
+        ignore = untracked
+
