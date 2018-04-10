@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # Top-level script that runs all components of the end-to-end
 # system
@@ -12,117 +12,168 @@
 # Available under GNU GPL version 3 or (at your option) any later version
 # 
 
-pluto=@SOURCE_DIR@/src/pluto
-plann=@SOURCE_DIR@/plann
-plorc=@SOURCE_DIR@/plorc
+  # 
+  # GLOBAL VARIABLES
+  #
+  pluto=@prefix@/bin/pluto
+  plorc=@prefix@/bin/plorc
+  inscop=@prefix@/bin/inscop
+  # Enable debug with DEBUG=1
+  DEBUG=0
 
-# Some additional setup here to ensure that variables are visible outside of the run function
-SOURCEFILE=""
-OUTFILE=""
-dirname=""
-PLUTOOUT=""
 
-# check for command-line options
-for arg in $*; do
-    if [ $arg == "--parallel" ]; then
-        PARALLEL=1
-    elif [ $arg == "--parallelize" ]; then
-        PARALLEL=1
-    elif [ $arg == "--unroll" ]; then
-        UNROLL=1
-    elif [ $arg == "--debug" ]; then
-        DEBUG=1
-    elif [ $arg == "--moredebug" ]; then
-        DEBUG=1
-    elif [ $arg == "-i" ]; then
-        INDENT=1
-    elif [ $arg == "--indent" ]; then
-        INDENT=1
-    elif [ $arg == "--silent" ]; then
-        SILENT=1
+  #
+  # HELPER FUNCTIONS
+  #
+
+  # Displays usage
+  usage() {
+    local exitValue=$1
+    
+    # Show options from PLUTO binary
+    $pluto
+
+    exit "$exitValue"
+  }
+  
+  # Displays version  
+  show_version() {
+    # Show version from PLUTO binary
+    $pluto -v
+  }
+
+  # Capture some command-line options
+  parse_arguments() {
+    while [[ $# -gt 1 ]]; do
+      flag="$1"
+      # Treat the argument
+      case "$flag" in
+        -h|--help)
+          # Display help
+          usage 0
+          ;;
+        -v|--version)
+          # Display version
+          show_version
+          exit 0
+          ;;
+        -u|--unroll)
+          # Enable unroll
+          UNROLL=1
+          ;;
+        -d|--debug|--moredebug)
+          # Enable debug
+          DEBUG=1
+          ;;
+        -i|--indent)
+          # Enable indent
+          INDENT=1
+          ;;
+        *)
+          # Flag didn't match any patern, pass it
+          :
+          ;;
+      esac
+      shift
+    done
+  }
+
+  # Runs PLUTO, inserts unroll annotations, and idents code if requested
+  run() {
+    if [ "$DEBUG" -eq 1 ]; then
+      echo "[pluto] Begin iteration"
     fi
-done
 
-# some special processing for linearized accesses
-#if [ "$SOURCEFILE" != "" ]; then
-#grep __SPECIAL $SOURCEFILE > .nonlinearized
-#grep __SPECIAL $SOURCEFILE | sed -e "s/.*__SPECIAL//" > .linearized
-#fi
+    # Run PLUTO
+    if [ "$DEBUG" -eq 1 ]; then
+      echo "[pluto] Invoking binary: $pluto $*"
+    fi
+    # shellcheck disable=SC2048,SC2086
+    $pluto $*
+    
+    SOURCEFILE=$(cat .srcfilename)
+    OUTFILE=$(cat .outfilename)
+    CLOOGFILE="$OUTFILE".pluto.cloog
+    PLUTOOUT=$OUTFILE
+    
+    # Generate and insert unrolling annotations, run ancc on it
+    if [ "$UNROLL" == 1 ]; then
+        if [ "$DEBUG" -eq 1 ]; then
+          echo "[pluto] Running unrolling"
+        fi
+        $plorc "$PLUTOOUT" @SOURCE_DIR@/orio-0.1.0
+    fi
+    
+    # Put the original skeleton around the transformed code
+    if [ "$DEBUG" -eq 1 ]; then
+      echo "[pluto] Running inscop"
+    fi
+    $inscop "$SOURCEFILE" "$CLOOGFILE" "$OUTFILE" "$OUTFILE"
+ 
+    # Ident if requested 
+    if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
+        if [ "$DEBUG" -eq 1 ]; then
+          echo "[pluto] Identing output file"
+        fi
+        indent -kr -br -ce -l125 "$OUTFILE"
+    fi
 
-run()
-{
-$pluto $* || exit 1
+    if [ "$DEBUG" -eq 1 ]; then
+      echo "[pluto] End iteration"
+    fi
+  }
 
-SOURCEFILE=`cat .srcfilename`
-OUTFILE=`cat .outfilename`
-
-dirname=`dirname  $SOURCEFILE`
-basename=`basename $SOURCEFILE`
-prefix=`basename $SOURCEFILE .c`
-
-CLOOGFILE=`basename $OUTFILE`.pluto.cloog
-PLUTOOUT=$OUTFILE
-
-# generate and insert unrolling annotations, run ancc on it,
-if [ "$UNROLL" == 1 ]; then
-    $plorc $PLUTOOUT @SOURCE_DIR@/orio-0.1.0
-fi
-
-#if [ "$UNROLL" == 1 ]; then
-    #$plann $PLUTOOUT @SOURCE_DIR@/annotations
-#fi
+  # Clean execution files
+  cleanup() {
+    if [ "$DEBUG" -eq 1 ]; then
+      echo "[pluto] Cleaning temporary files"
+    fi
+    # An attempt to move the original file back in place in the event of an exception
+    if [ -f "$TEMPFILE" ]; then
+      mv "$TEMPFILE" "$SOURCEFILE"
+    fi
+    if [ "$DEBUG" != 1 ]; then
+      rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized \
+        "$CLOOGFILE" .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
+        ./*.sysloog .appendfilename
+    fi
+  }
 
 
-# put the original skeleton around the transformed code
-@SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
+  # 
+  # MAIN
+  #
+ 
+  # Check for command-line options
+  parse_arguments "$@"
 
+  # Add a cleanup trap
+  trap cleanup SIGINT exit
 
-if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
-    indent -kr -br -ce -l125 $OUTFILE
-fi
-}
+  # Run PLUTO
+  run "$@"
 
+  # Run until there are no more pragmas to process
+  WORK=1
+  TEMPFILE=""
+  while [ $WORK -eq 1 ]; do
+    if grep -q "#pragma scop" "$PLUTOOUT"; then
+      # Move the original file into a temporary location
+      TEMPFILE="$SOURCEFILE""_temp"
+      mv "$SOURCEFILE" "$TEMPFILE"
+      
+      # Move the file that still has scope in it into place of 
+      # the original source file, so $* will pick the correct file
+      mv "$PLUTOOUT" "$SOURCEFILE"
+      
+      # Run pluto again
+      run "$@"
+      
+      # Move the original back in place
+      mv "$TEMPFILE" "$SOURCEFILE"
+    else
+      # No more scops
+      WORK=0
+    fi
+  done
 
-run "$*"
-WORK=1
-TEMPFILE=""
-while [ $WORK -eq 1 ]
-do
-	if grep -q "#pragma scop" "$PLUTOOUT"
-		then
-		# Move the original file into a temporary location
-		TEMPFILE="$SOURCEFILE""_temp"
-		mv $SOURCEFILE $TEMPFILE
-
-		# Move the file that still has scope in it into
-		# place of the original source file, so $* will pick the
-		# correct file
-		mv $PLUTOOUT $SOURCEFILE
-
-		# Run pluto again
-		run "$*"
-
-		# Move the original back in place
-		mv $TEMPFILE $SOURCEFILE
-	else
-		# No more scops
-		WORK=0
-	fi
-done
-
-cleanup()
-{
-	# An attempt to move the original file back in place
-	# in the event of an exception
-	if [ -f "$TEMPFILE" ]
-	then
-		mv $TEMPFILE $SOURCEFILE
-	fi
-if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized\
-    $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
-    *.sysloog .appendfilename
-fi
-}
-
-trap cleanup SIGINT exit
