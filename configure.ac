@@ -20,7 +20,7 @@ AC_INIT(pluto, 0.11.4, [uday@csa.iisc.ernet.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE()
+AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
