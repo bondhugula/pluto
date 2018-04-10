@@ -474,6 +474,8 @@ void pluto_populate_scop (osl_scop_p scop, PlutoProg *prog,
 
     int npar = prog->npar;
 
+    /* No need to fill language since it is not modified by PLUTO */
+
     osl_statement_p stm = scop->statement;
     /* Fill domains (may have been changed for tiling purposes). */
     for (i=0; i<nstmts; i++)    {
@@ -1513,6 +1515,7 @@ void pluto_prog_print(FILE *fp, PlutoProg *prog)
 {
     int i;
 
+    fprintf(fp, "language = %d\n", prog->language);
     fprintf(fp, "nvar = %d, npar = %d\n", prog->nvar, prog->npar);
     fprintf(fp, "Parameters: ");
 
@@ -2451,6 +2454,15 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options)
 
     PlutoProg *prog = pluto_prog_alloc();
 
+    /* Language */
+    if (!strcmp(scop->language, "f")) {
+        prog->language = CLOOG_LANGUAGE_FORTRAN;
+    } else if (!strcmp(scop->language, "p")) {
+        prog->language = CLOOG_LANGUAGE_PYTHON;
+    } else {
+        prog->language = CLOOG_LANGUAGE_C;
+    }
+
     /* Program parameters */
     npar = scop->context->nb_parameters;
 
@@ -2591,6 +2603,7 @@ PlutoProg *pluto_prog_alloc()
 {
     PlutoProg *prog = (PlutoProg *) malloc(sizeof(PlutoProg));
 
+    prog->language = CLOOG_LANGUAGE_C;
     prog->nstmts = 0;
     prog->stmts = NULL;
     prog->npar = 0;

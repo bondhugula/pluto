@@ -80,8 +80,19 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
     IF_DEBUG(printf("[pluto] generating Cloog file...\n"));
     fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n", PLUTO_VERSION);
-    fprintf(fp, "# language: C\n");
-    fprintf(fp, "c\n\n");
+
+    /* Language */
+    if (prog->language == CLOOG_LANGUAGE_FORTRAN) {
+        fprintf(fp, "# language: FORTRAN\n");
+        fprintf(fp, "f\n\n");
+    } else if (prog->language == CLOOG_LANGUAGE_PYTHON) {
+        fprintf(fp, "# language: PYTHON\n");
+        fprintf(fp, "p\n\n");
+    } else {
+        // C
+        fprintf(fp, "# language: C\n");
+        fprintf(fp, "c\n\n");
+    }
 
     /* Context: setting conditions on parameters */
     PlutoConstraints *ctx = pluto_constraints_dup(prog->context);
@@ -134,10 +145,11 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     }
 }
 
-static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
+static void gen_stmt_macro(const Stmt *stmt, const PlutoProg *prog, FILE *outfp)
 {
     int j;
 
+    // Check dimensions
     for (j=0; j<stmt->dim; j++) {
         if (stmt->iterators[j] == NULL) {
             printf("Iterator name not set for S%d; required \
@@ -145,25 +157,41 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp)
             assert(0);
         }
     }
-    fprintf(outfp, "#define S%d", stmt->id+1);
+
+    // Define header
+    if (prog->language == CLOOG_LANGUAGE_PYTHON) {
+      fprintf(outfp, "def S%d", stmt->id+1);
+    } else {
+      // Fortran or C
+      fprintf(outfp, "#define S%d", stmt->id+1);
+    }
+
+    // Define parameters
     fprintf(outfp, "(");
     for (j=0; j<stmt->dim; j++)  {
         if (j!=0)   fprintf(outfp, ",");
         fprintf(outfp, "%s", stmt->iterators[j]);
     }
-    fprintf(outfp, ")\t");
 
-    /* Generate pragmas for Bee/Cl@k */
-    if (options->bee)   {
-        fprintf(outfp, " __bee_schedule");
-        for (j=0; j<stmt->trans->nrows; j++)    {
-            fprintf(outfp, "[");
-            pluto_affine_function_print(outfp, stmt->trans->val[j], 
-                    stmt->dim, stmt->iterators);
-            fprintf(outfp, "]");
+    // Define parameters closure
+    if (prog->language == CLOOG_LANGUAGE_PYTHON) {
+        fprintf(outfp, "):\n\t");
+    } else {
+        fprintf(outfp, ")\t");
+        /* Generate pragmas for Bee/Cl@k */
+        if (options->bee)   {
+            fprintf(outfp, " __bee_schedule");
+            for (j=0; j<stmt->trans->nrows; j++)    {
+                fprintf(outfp, "[");
+                pluto_affine_function_print(outfp, stmt->trans->val[j], 
+                        stmt->dim, stmt->iterators);
+                fprintf(outfp, "]");
+            }
+            fprintf(outfp, " _NL_DELIMIT_ ");
         }
-        fprintf(outfp, " _NL_DELIMIT_ ");
     }
+
+    // Define expression
     fprintf(outfp, "%s\n", stmt->text);
 }
 
@@ -178,28 +206,32 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
 
     /* Generate statement macros */
     for (i=0; i<nstmts; i++)    {
-        gen_stmt_macro(stmts[i], outfp);
+        gen_stmt_macro(stmts[i], prog, outfp);
     }
     fprintf(outfp, "\n");
 
     /* Scattering iterators. */
-    if (prog->num_hyperplanes >= 1)    {
-        fprintf(outfp, "\t\tint ");
-        for (i=0; i<prog->num_hyperplanes; i++)  {
-            if (i!=0) fprintf(outfp, ", ");
-            fprintf(outfp, "t%d", i+1);
-            if (prog->hProps[i].unroll)   {
-                fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+    if (prog->language != CLOOG_LANGUAGE_PYTHON) {
+        if (prog->num_hyperplanes >= 1)    {
+            fprintf(outfp, "\t\tint ");
+            for (i=0; i<prog->num_hyperplanes; i++)  {
+                if (i!=0) fprintf(outfp, ", ");
+                fprintf(outfp, "t%d", i+1);
+                if (prog->hProps[i].unroll)   {
+                    fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
+                }
             }
+            fprintf(outfp, ";\n\n");
         }
-        fprintf(outfp, ";\n\n");
     }
 
-    if (options->parallel)   {
+    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON)  {
         fprintf(outfp, "\tint lb, ub, lbp, ubp, lb2, ub2;\n");
     }
     /* For vectorizable loop bound replacement */
-    fprintf(outfp, "\tregister int lbv, ubv;\n\n");
+    if (prog->language != CLOOG_LANGUAGE_PYTHON) {
+        fprintf(outfp, "\tregister int lbv, ubv;\n\n");
+    }
 
     return 0;
 }
@@ -286,7 +318,13 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
 
     cloogOptions->name = "PLUTO-produced CLooG file";
 
-    fprintf(outfp, "/* Start of CLooG code */\n");
+    if (prog->language == CLOOG_LANGUAGE_FORTRAN)
+        fprintf(outfp, "! Start of CLooG code\n");
+    else if (prog->language == CLOOG_LANGUAGE_PYTHON)
+        fprintf(outfp, "# Start of CLooG code\n");
+    else 
+        fprintf(outfp, "/* Start of CLooG code */\n");
+
     /* Get the code from CLooG */
     IF_DEBUG(printf("[pluto] cloog_input_read\n"));
     input = cloog_input_read(cloogfp, cloogOptions) ;
@@ -301,7 +339,12 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     clast_pprint(outfp, root, 0, cloogOptions);
     cloog_clast_free(root);
 
-    fprintf(outfp, "/* End of CLooG code */\n");
+    if (prog->language == CLOOG_LANGUAGE_FORTRAN)
+        fprintf(outfp, "! End of CLooG code\n");
+    else if (prog->language == CLOOG_LANGUAGE_PYTHON)
+        fprintf(outfp, "# End of CLooG code\n");
+    else 
+        fprintf(outfp, "/* End of CLooG code */\n");
 
     cloog_options_free(cloogOptions);
     cloog_state_free(state);
@@ -314,12 +357,12 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
  * pragmas later */
 int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 { 
-    if (options->parallel)  {
+    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON)  {
         fprintf(outfp, "#include <omp.h>\n\n");
     }
     generate_declarations(prog, outfp);
 
-    if (options->multipar) {
+    if (options->multipar && prog->language != CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "\tomp_set_nested(1);\n");
         fprintf(outfp, "\tomp_set_num_threads(2);\n");
     }
