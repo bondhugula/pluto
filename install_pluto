@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+  # Retrieve script parameteres
+  if [ $# -ne 1 ]; then
+    echo "ERROR: Incorrect number of parameters"
+    echo "Usage: $0 <targetDir>"
+    exit 1
+  fi
+  targetDir=$1
+
+  # Launch autogen.sh
+  ./autogen.sh
+
+  # Configure
+  ./configure --prefix="$targetDir"
+  
+  # Compile
+  make
+  
+  # Install
+  make install
+
+  # Exit normal
+  exit 0
