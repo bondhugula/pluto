@@ -1,130 +1,130 @@
 #!/bin/bash
 
-  # 
-  # SCRIPT CONSTANTS
-  #
+# 
+# SCRIPT CONSTANTS
+#
 
-  # Enable debug with DEBUG=1
-  DEBUG=0
+# Enable debug with DEBUG=1
+DEBUG=0
 
 
-  #
-  # HELPER FUNCTIONS
-  #
+#
+# HELPER FUNCTIONS
+#
   
-  # Shows usage
-  usage() {
-    echo "Usage: $0 <source_file> <cloog_file> <transformed_kernel> <output_file>"
-    echo "  The transformed_kernel and output_file can be the same"
-    echo " "
-  }
+# Shows usage
+usage() {
+  echo "Usage: $0 <source_file> <cloog_file> <transformed_kernel> <output_file>"
+  echo "  The transformed_kernel and output_file can be the same"
+  echo " "
+}
 
-  # Cleans intermediate files
-  clean() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Cleaning intermediate files"
-    fi
-    rm -f .head .tail __tmp .includes .body.c
-  }
+# Cleans intermediate files
+clean() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Cleaning intermediate files"
+  fi
+  rm -f .head .tail __tmp .includes .body.c
+}
 
-  # Common pre-process actions
-  pre_process() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Running pre-process actions"
-    fi
+# Common pre-process actions
+pre_process() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Running pre-process actions"
+  fi
     
-    # Number of lines in the source file
-    local maxLines
-    maxLines=$(wc -l "$sourceFile" | awk '{ print $1 }')
+  # Number of lines in the source file
+  local maxLines
+  maxLines=$(wc -l "$sourceFile" | awk '{ print $1 }')
     
-    # Get the FIRST scop and return all the lines above it
-    # Because we are returning the text preceding the first scop, it's ok to ignore that pragma
-    # which is what the grep -v call does
-    grep -B "$maxLines" -m 1 "#pragma[[:space:]]\+scop" "$sourceFile" | grep -v "#pragma[[:space:]]\+scop" > .head
+  # Get the FIRST scop and return all the lines above it
+  # Because we are returning the text preceding the first scop, it's ok to ignore that pragma
+  # which is what the grep -v call does
+  grep -B "$maxLines" -m 1 "#pragma[[:space:]]\+scop" "$sourceFile" | grep -v "#pragma[[:space:]]\+scop" > .head
 
-    # Get the FIRST endscop and return all the lines below it
-    # We want to get all the text below the first endscop, but do not want that first endscop line to be returned
-    # which is accomplished with the awk call at the end.
-    sed -n '/\#pragma[[:space:]]endscop/,$p' "$sourceFile" | awk '{ if (NR > 1) print }' > .tail
-    
-    cat .head > __tmp
+  # Get the FIRST endscop and return all the lines below it
+  # We want to get all the text below the first endscop, but do not want that first endscop line to be returned
+  # which is accomplished with the awk call at the end.
+  sed -n '/\#pragma[[:space:]]endscop/,$p' "$sourceFile" | awk '{ if (NR > 1) print }' > .tail
+  
+  cat .head > __tmp
 
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Finished pre-process actions"
-    fi
-  }
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Finished pre-process actions"
+  fi
+}
 
-  # Process Fortran files
-  process_fortran() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Running for Fortran"
-    fi
+# Process Fortran files
+process_fortran() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Running for Fortran"
+  fi
 
-    echo "[ERROR] Fortran language is not supported yet"
-    exit 1
-  }
+  echo "[ERROR] Fortran language is not supported yet"
+  exit 1
+}
 
-  # Process Python files
-  process_python() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Running for Python"
-    fi
+# Process Python files
+process_python() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Running for Python"
+  fi
 
-    # Put all the imports in a file
-    grep "^import" "$transformedKernel" > .includes
+  # Put all the imports in a file
+  grep "^import" "$transformedKernel" > .includes
 
-    # Put everything that isn't an import into another file
-    grep -v "^#import" "$transformedKernel" > .body.c
+  # Put everything that isn't an import into another file
+  grep -v "^#import" "$transformedKernel" > .body.c
 
-    # Put those imports we got above into another file
-    cat .includes > .head
+  # Put those imports we got above into another file
+  cat .includes > .head
 
-    # Check if we've already inserted the extra imports and defines
-    if ! grep -q "#define ceild(n,d)" __tmp; then
-      cat >> .head << EOT
+  # Check if we've already inserted the extra imports and defines
+  if ! grep -q "#define ceild(n,d)" __tmp; then
+    cat >> .head << EOT
 import math
 EOT
-    fi
+  fi
 
-    # Add the rest of the file
-    cat .body.c >> __tmp
-    cat .tail >> __tmp
-    
-    # Check of the math header is already inserted to the file
-    # If not, it inserts it.
-    if grep -q "import math" __tmp; then
-      # Remove the existing math import
-      sed -ie '\/import math/d'  __tmp
-    fi
+  # Add the rest of the file
+  cat .body.c >> __tmp
+  cat .tail >> __tmp
+   
+  # Check of the math header is already inserted to the file
+  # If not, it inserts it.
+  if grep -q "import math" __tmp; then
+    # Remove the existing math import
+    sed -ie '\/import math/d'  __tmp
+  fi
 
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Finished Python specific actions"
-    fi
-  }
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Finished Python specific actions"
+  fi
+}
 
-  # Process C files
-  process_c() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Running for C"
-    fi
+# Process C files
+process_c() {
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Running for C"
+  fi
 
-    # The gcc preprocessor inserts some useless comments like "# 1 "<built-in>"
-    # preprocessor doesn't like pragma's in #defines and so it was not put in from pluto
-    # when '--bee' was used - instead we will add it here
+  # The gcc preprocessor inserts some useless comments like "# 1 "<built-in>"
+  # preprocessor doesn't like pragma's in #defines and so it was not put in from pluto
+  # when '--bee' was used - instead we will add it here
+  
+  # Put all the include statements in a  file
+  grep "^#include" "$transformedKernel" > .includes
+  
+  # Put everything that isn't an include into another file
+  grep -v "^#include" "$transformedKernel" > .body.c
     
-    # Put all the include statements in a  file
-    grep "^#include" "$transformedKernel" > .includes
+  # Put those includes we got above into another file
+  cat .includes > .head
     
-    # Put everything that isn't an include into another file
-    grep -v "^#include" "$transformedKernel" > .body.c
-    
-    # Put those includes we got above into another file
-    cat .includes > .head
-    
-    # Check if we've already inserted the extra includes and defines
-    # If we haven't, put them in the head
-    if ! grep -q "#define ceild(n,d)" __tmp; then
-      cat >> .head << EOT
+  # Check if we've already inserted the extra includes and defines
+  # If we haven't, put them in the head
+  if ! grep -q "#define ceild(n,d)" __tmp; then
+    cat >> .head << EOT
     #include <math.h>
     #define ceild(n,d)  ceil(((double)(n))/((double)(d)))
     #define floord(n,d) floor(((double)(n))/((double)(d)))
@@ -132,88 +132,87 @@ EOT
     #define min(x,y)    ((x) < (y)? (x) : (y))
     
 EOT
-    fi
-    
-    # GCC
-    gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
-    sed -e 's/_NL_DELIMIT_/\n/' >> __tmp
-    
-    # Add the rest of the file
-    cat .tail >> __tmp
-    
-    # Checks to see if the openmp header has already been inserted into the file
-    # If not, it inserts it.
-    if grep -q "#include <omp.h>" __tmp; then
-      # Remove the existing omp.h include
-      sed -ie '\/\<omp\.h\>/d'  __tmp
-    fi
-
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Finished C specific actions"
-    fi
-  }
-
-  # Common post-process actions
-  post_process() {
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Running post-process actions"
-    fi
-
-    # Add content to output file 
-    cat .head __tmp > "$outputFile"
-
-    if [ "$DEBUG" -eq 1 ]; then
-      echo "[inscop] Finished post-process actions"
-    fi
-  }
-
-
-  #
-  # MAIN
-  #
-  
-  # Retrieve parameters
-  if [ $# -ne 4 ]; then
-    usage
-    exit 1
   fi
-
-  sourceFile=$1
-  cloogFile=$2
-  transformedKernel=$3
-  outputFile=$4
+  
+  # GCC
+  gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
+  sed -e 's/_NL_DELIMIT_/\n/' >> __tmp
+   
+  # Add the rest of the file
+  cat .tail >> __tmp
+    
+  # Checks to see if the openmp header has already been inserted into the file
+  # If not, it inserts it.
+  if grep -q "#include <omp.h>" __tmp; then
+    # Remove the existing omp.h include
+    sed -ie '\/\<omp\.h\>/d'  __tmp
+  fi
 
   if [ "$DEBUG" -eq 1 ]; then
-    echo "[inscop] Running inscop"
-    echo "   - Source File:        $sourceFile"
-    echo "   - CLooG File:         $cloogFile"
-    echo "   - Transformed Kernel: $transformedKernel"
-    echo "   - Output File:        $outputFile"
+    echo "[inscop] Finished C specific actions"
   fi
+}
 
-  # Infer CLooG language
-  lang=$(grep -A 1 "language" "$cloogFile" | tail -n 1)
-
-  # Add clean trap
-  trap clean EXIT
-
-  # Launches the common pre-process
-  pre_process
-
-  # Launch process depending on language
-  if [ "$lang" = "f" ]; then
-    process_fortran
-  elif [ "$lang" = "p" ]; then
-    process_python
-  else
-    # C
-    process_c
-  fi
-
-  # Launch the common post-process
-  post_process
-  
+# Common post-process actions
+post_process() {
   if [ "$DEBUG" -eq 1 ]; then
-    echo "[inscop] DONE"
+    echo "[inscop] Running post-process actions"
   fi
 
+  # Add content to output file 
+  cat .head __tmp > "$outputFile"
+
+  if [ "$DEBUG" -eq 1 ]; then
+    echo "[inscop] Finished post-process actions"
+  fi
+}
+
+
+#
+# MAIN
+#
+  
+# Retrieve parameters
+if [ $# -ne 4 ]; then
+  usage
+  exit 1
+fi
+
+sourceFile=$1
+cloogFile=$2
+transformedKernel=$3
+outputFile=$4
+
+if [ "$DEBUG" -eq 1 ]; then
+  echo "[inscop] Running inscop"
+  echo "   - Source File:        $sourceFile"
+  echo "   - CLooG File:         $cloogFile"
+  echo "   - Transformed Kernel: $transformedKernel"
+  echo "   - Output File:        $outputFile"
+fi
+
+# Infer CLooG language
+lang=$(grep -A 1 "language" "$cloogFile" | tail -n 1)
+
+# Add clean trap
+trap clean EXIT
+
+# Launches the common pre-process
+pre_process
+
+# Launch process depending on language
+if [ "$lang" = "f" ]; then
+  process_fortran
+elif [ "$lang" = "p" ]; then
+  process_python
+else
+  # C
+  process_c
+fi
+
+# Launch the common post-process
+post_process
+ 
+if [ "$DEBUG" -eq 1 ]; then
+  echo "[inscop] DONE"
+fi
