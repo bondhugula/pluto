@@ -44,7 +44,7 @@ static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog)
     int i, first_point_loop;
 
     if (stmt->type != ORIG) {
-        for (i=0; i<prog->num_hyperplanes; i++)   {
+        for (i=0; i<prog->num_hyperplanes; i++) {
             if (!pluto_is_hyperplane_scalar(stmt, i)) {
                 return i;
             }
@@ -53,7 +53,7 @@ static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog)
         return 0;
     }
 
-    for (i=stmt->last_tile_dim+1; i<stmt->trans->nrows; i++)   {
+    for (i=stmt->last_tile_dim+1; i<stmt->trans->nrows; i++) {
         if (stmt->hyp_types[i] == H_LOOP)  break;
     }
 
@@ -85,10 +85,10 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     if (prog->language == CLOOG_LANGUAGE_FORTRAN) {
         fprintf(fp, "# language: FORTRAN\n");
         fprintf(fp, "f\n\n");
-    } else if (prog->language == CLOOG_LANGUAGE_PYTHON) {
+    }else if (prog->language == CLOOG_LANGUAGE_PYTHON) {
         fprintf(fp, "# language: PYTHON\n");
         fprintf(fp, "p\n\n");
-    } else {
+    }else{
         // C
         fprintf(fp, "# language: C\n");
         fprintf(fp, "c\n\n");
@@ -102,7 +102,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
 
     /* Setting parameter names */
     fprintf(fp, "\n1\n");
-    for (i=0; i<npar; i++)  {
+    for (i=0; i<npar; i++) {
         fprintf(fp, "%s ", prog->params[i]);
     }
     fprintf(fp, "\n\n");
@@ -111,7 +111,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog)
     fprintf(fp, "%d\n\n", nstmts);
 
     /* Print statement domains */
-    for (i=0; i<nstmts; i++)    {
+    for (i=0; i<nstmts; i++) {
         fprintf(fp, "# S%d (%s)\n", stmts[i]->id+1, stmts[i]->text);
         pluto_constraints_print_polylib(fp, stmts[i]->domain);
         fprintf(fp, "0 0 0\n\n");
@@ -161,14 +161,14 @@ static void gen_stmt_macro(const Stmt *stmt, const PlutoProg *prog, FILE *outfp)
     // Define header
     if (prog->language == CLOOG_LANGUAGE_PYTHON) {
       fprintf(outfp, "def S%d", stmt->id+1);
-    } else {
+    }else{
       // Fortran or C
       fprintf(outfp, "#define S%d", stmt->id+1);
     }
 
     // Define parameters
     fprintf(outfp, "(");
-    for (j=0; j<stmt->dim; j++)  {
+    for (j=0; j<stmt->dim; j++) {
         if (j!=0)   fprintf(outfp, ",");
         fprintf(outfp, "%s", stmt->iterators[j]);
     }
@@ -176,10 +176,10 @@ static void gen_stmt_macro(const Stmt *stmt, const PlutoProg *prog, FILE *outfp)
     // Define parameters closure
     if (prog->language == CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "):\n\t");
-    } else {
+    }else{
         fprintf(outfp, ")\t");
         /* Generate pragmas for Bee/Cl@k */
-        if (options->bee)   {
+        if (options->bee) {
             fprintf(outfp, " __bee_schedule");
             for (j=0; j<stmt->trans->nrows; j++)    {
                 fprintf(outfp, "[");
@@ -205,7 +205,7 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
     int nstmts = prog->nstmts;
 
     /* Generate statement macros */
-    for (i=0; i<nstmts; i++)    {
+    for (i=0; i<nstmts; i++) {
         gen_stmt_macro(stmts[i], prog, outfp);
     }
     fprintf(outfp, "\n");
@@ -214,10 +214,10 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
     if (prog->language != CLOOG_LANGUAGE_PYTHON) {
         if (prog->num_hyperplanes >= 1)    {
             fprintf(outfp, "\t\tint ");
-            for (i=0; i<prog->num_hyperplanes; i++)  {
+            for (i=0; i<prog->num_hyperplanes; i++) {
                 if (i!=0) fprintf(outfp, ", ");
                 fprintf(outfp, "t%d", i+1);
-                if (prog->hProps[i].unroll)   {
+                if (prog->hProps[i].unroll) {
                     fprintf(outfp, ", t%dt, newlb_t%d, newub_t%d", i+1, i+1, i+1);
                 }
             }
@@ -225,7 +225,7 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp)
         }
     }
 
-    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON)  {
+    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "\tint lb, ub, lbp, ubp, lb2, ub2;\n");
     }
     /* For vectorizable loop bound replacement */
@@ -285,7 +285,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
         if (cloogf >= 1 && cloogl >= 1) {
             cloogOptions->f = cloogf;
             cloogOptions->l = cloogl;
-        }else if (options->tile)   {
+        }else if (options->tile) {
             for (i=0; i<nstmts; i++) {
                 cloogOptions->fs[i] = get_first_point_loop(stmts[i], prog)+1;
                 cloogOptions->ls[i] = prog->num_hyperplanes;
@@ -299,7 +299,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
         }
     }
 
-    if (!options->silent)   {
+    if (!options->silent) {
         if (nstmts >= 1 && cloogOptions->fs[0] >= 1) {
             printf("[pluto] using statement-wise -fs/-ls options: ");
             for (i=0; i<nstmts; i++) {
@@ -313,17 +313,19 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
         }
     }
 
-    if (options->cloogsh)
+    if (options->cloogsh) {
         cloogOptions->sh = 1;
+    }
 
     cloogOptions->name = "PLUTO-produced CLooG file";
 
-    if (prog->language == CLOOG_LANGUAGE_FORTRAN)
+    if (prog->language == CLOOG_LANGUAGE_FORTRAN) {
         fprintf(outfp, "! Start of CLooG code\n");
-    else if (prog->language == CLOOG_LANGUAGE_PYTHON)
+    }else if (prog->language == CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "# Start of CLooG code\n");
-    else 
+    }else{
         fprintf(outfp, "/* Start of CLooG code */\n");
+    }
 
     /* Get the code from CLooG */
     IF_DEBUG(printf("[pluto] cloog_input_read\n"));
@@ -339,12 +341,13 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     clast_pprint(outfp, root, 0, cloogOptions);
     cloog_clast_free(root);
 
-    if (prog->language == CLOOG_LANGUAGE_FORTRAN)
+    if (prog->language == CLOOG_LANGUAGE_FORTRAN) {
         fprintf(outfp, "! End of CLooG code\n");
-    else if (prog->language == CLOOG_LANGUAGE_PYTHON)
+    }else if (prog->language == CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "# End of CLooG code\n");
-    else 
+    }else{
         fprintf(outfp, "/* End of CLooG code */\n");
+    }
 
     cloog_options_free(cloogOptions);
     cloog_state_free(state);
@@ -357,7 +360,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
  * pragmas later */
 int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog)
 { 
-    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON)  {
+    if (options->parallel && prog->language != CLOOG_LANGUAGE_PYTHON) {
         fprintf(outfp, "#include <omp.h>\n\n");
     }
     generate_declarations(prog, outfp);
@@ -402,11 +405,11 @@ int pluto_omp_parallelize(PlutoProg *prog)
      * the multipar option is set */
     int num_parallel_loops = 0;
     for (loop=0; loop<prog->num_hyperplanes; loop++) {
-        if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR)   {
+        if (hProps[loop].dep_prop == PARALLEL && hProps[loop].type != H_SCALAR) {
             // Remember our loops are 1-indexed (t1, t2, ...)
             fprintf(outfp, "t%d #pragma omp parallel for shared(", loop+1);
 
-            for (i=0; i<loop; i++)  {
+            for (i=0; i<loop; i++) {
                 fprintf(outfp, "t%d,", i+1);
             }
 
@@ -438,7 +441,7 @@ int pluto_omp_parallelize(PlutoProg *prog)
 
             num_parallel_loops++;
 
-            if (!options->multipar || num_parallel_loops == 2)   {
+            if (!options->multipar || num_parallel_loops == 2) {
                 break;
             }
         }
