@@ -2,12 +2,12 @@
 # getversion.h will be automatically generated from this
 # Output of getversion.h goes into src/version.h
 
-  githead=@SOURCE_DIR@/.git/HEAD
-  version=@PACKAGE_VERSION@
+githead=@SOURCE_DIR@/.git/HEAD
+version=@PACKAGE_VERSION@
 
-  if [ -f $githead ]; then
-    git describe --tags --always
-  else
-    echo "$version"
-  fi
+if [ -f $githead ]; then
+  git describe --tags --always
+else
+  echo "$version"
+fi
 
