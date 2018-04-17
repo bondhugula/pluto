@@ -521,8 +521,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         if (retval)   {
             printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
             printf("use --tile for better parallelization \n");
-            IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
-            IF_DEBUG(pluto_transformations_pretty_print(prog););
+            fprintf(stdout, "[pluto] After skewing:\n");
+            pluto_transformations_pretty_print(prog);
             /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
     }
