@@ -2729,6 +2729,7 @@ PlutoOptions *pluto_options_alloc()
     options->pipsolve = 0;
     options->islsolve = 1;
     options->glpk = 0;
+    options->gurobi = 0;
 
     options->lp = 0;
     options->dfp = 0;
