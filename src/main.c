@@ -93,6 +93,7 @@ void usage_message(void)
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
     fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --typedfuse               Typed fusion. Fuses SCCs only when there is no loss of parallelism\n");
     fprintf(stdout, "\n   Index Set Splitting        \n");
     fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
@@ -173,6 +174,7 @@ int main(int argc, char *argv[])
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
+        {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
@@ -397,6 +399,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_options_free(options);
         usage_message();
         return 1;
+    }
+
+    if (options->fuse == TYPED_FUSE && !options->dfp) {
+        printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. Turning off Typed fuse\n");
+        options->fuse = SMART_FUSE;
     }
 
     /* Extract polyhedral representation */

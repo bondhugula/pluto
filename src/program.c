@@ -2658,6 +2658,12 @@ void pluto_prog_free(PlutoProg *prog)
 
     pluto_constraints_free(prog->globcst);
 
+    /* Free data names */
+    for (i=0; i<prog->num_data; i++) {
+        free(prog->data_names[i]);
+    }
+    free(prog->data_names);
+
     free(prog);
 }
 

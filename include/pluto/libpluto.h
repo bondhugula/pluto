@@ -195,6 +195,8 @@ typedef struct plutoOptions PlutoOptions;
 #define MAXIMAL_FUSE 1
 /* Something in between the above two */
 #define SMART_FUSE 2
+/* Fuses SCCs only if fusion does not result in loss of parallelism */
+#define TYPED_FUSE 3
 
 
 PlutoOptions *pluto_options_alloc();

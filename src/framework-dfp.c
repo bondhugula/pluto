@@ -38,6 +38,7 @@
 
 #if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
+double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj);
 
 static double rtclock()
 {
@@ -48,6 +49,177 @@ static double rtclock()
     if (stat != 0) printf("Error return from gettimeofday: %d",stat);
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
+
+/* Constructs linear independence constraints for each statement in SCC scc_id. */
+PlutoConstraints* dfp_get_scc_ortho_constraints (int *colour, int scc_id, PlutoProg *prog)
+{
+    int nvar, npar, nstmts,i, j, q, stmt_offset;
+    Stmt **stmts;
+    PlutoConstraints *indcst;
+    bool has_dim_to_be_coloured;
+    has_dim_to_be_coloured = false;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    indcst = NULL;
+
+    stmts = prog->stmts;
+    q = 0;
+
+    stmt_offset = npar+1;
+
+    for (i=0; i<nstmts; i++) {
+        if (stmts[i]->scc_id == scc_id) {
+            for (j=0; j<stmts[i]->dim_orig; j++) {
+                if (colour[q] == 0) {
+                    if (indcst == NULL) {
+                        indcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
+                        indcst->nrows = 0;
+                        indcst->ncols = CST_WIDTH;
+                    }
+                    indcst->val[indcst->nrows][stmt_offset+i*(nvar+1)+j] = 1;
+                    has_dim_to_be_coloured = true;
+                }
+                q++;
+            }
+            if (has_dim_to_be_coloured == true) {
+                indcst->val[indcst->nrows][CST_WIDTH-1] = -1;
+                indcst->nrows ++;
+            }
+        } else {
+            q+= stmts[i]->dim_orig;
+        }
+        has_dim_to_be_coloured = false;
+
+    }
+    return indcst;
+}
+
+static inline bool is_lp_solution_parallel(double *sol, int npar)
+{
+    int i;
+    double tmp;
+    tmp = 0.0f;
+    for (i = 0; i<npar+1; i++) {
+        tmp += sol[i];
+    }
+    if (tmp == 0.0f)
+        return true;
+    else 
+        return false;
+}
+
+/* TODO: This routine can actually be combined with lexmin of Pluto-lp-dfp */
+/* double* get_hyperplane_for_scc(const PlutoConstraints *cst, PlutoProg *prog) */
+/* { */
+/*     int i; */
+/*     glp_prob *lp; */
+/*     PlutoMatrix *obj; */
+/*     double *sol; */
+/*  */
+/*  */
+/*     lp = create_glpk_problem_from_pluto_constraints (cst); */
+/*  */
+/*     obj = construct_cplex_objective(cst, prog);  */
+/*     for (i=0; i<obj->ncols; i++) { */
+/*         glp_set_obj_coef(lp, i+1, (double)obj->val[0][i]); */
+/*     } */
+/*     pluto_matrix_free(obj); */
+/*     for (i=0; i<cst->ncols-1; i++) { */
+/*         glp_set_col_bnds(lp, i+1, GLP_FR, 0.0, 0.0); */
+/*     } */
+/*     if (solve_glpk_problem(lp)) { */
+/*         sol = get_lp_solution_from_glpk_problem(lp); */
+/*         return sol; */
+/*         #<{(| if (is_lp_solution_parallel(sol, prog->npar)) { |)}># */
+/*         #<{(|     return sol; |)}># */
+/*         #<{(| } |)}># */
+/*     } */
+/*     return NULL; */
+/* } */
+
+void mark_parallel_sccs(int *colour, PlutoProg* prog) 
+{
+    int i, num_sccs;
+    PlutoConstraints* indcst, *boundcst, *permutecst;
+    PlutoMatrix *obj;
+    double *sol;
+
+    num_sccs = prog->ddg->num_sccs;
+
+
+    boundcst = get_coeff_bounding_constraints(prog);
+    obj = construct_cplex_objective(boundcst, prog); 
+
+    for (i=0; i<num_sccs; i++) {
+        IF_DEBUG(printf("[pluto] Checking parallelism for SCC %d\n", i););
+        sol = NULL;
+        permutecst = get_scc_permutability_constraints(i, prog);
+        indcst = dfp_get_scc_ortho_constraints(colour, i, prog);
+
+        /* If there are no deps or if there are no linear independence constraints  then the scc is parallel*/
+        if (indcst != NULL) {
+            pluto_constraints_add(indcst, boundcst);
+            if (permutecst != NULL) {
+                pluto_constraints_add(indcst, permutecst);
+            }
+            sol = pluto_fusion_constraints_feasibility_solve(indcst, obj); 
+
+            /* If sol is null, test again with a precise satisfaction check */
+            if (sol == NULL) {
+                pluto_compute_dep_satisfaction_precise(prog); 
+                pluto_transformations_pretty_print(prog);
+                ddg_update(prog->ddg, prog);
+                ddg_compute_scc(prog);
+                assert(num_sccs = prog->ddg->num_sccs);
+                free(permutecst);
+                free(indcst);
+                permutecst = get_scc_permutability_constraints(i, prog);
+                indcst = dfp_get_scc_ortho_constraints(colour, i, prog);
+                pluto_constraints_add(indcst, boundcst);
+                if (permutecst != NULL) {
+                    pluto_constraints_add(indcst, permutecst);
+                }
+                sol = pluto_fusion_constraints_feasibility_solve(indcst, obj); 
+            }
+            /* There must exist a hyperplane for a scc that weakly satisfies all depenences in that SCC*/
+            assert (sol != NULL);
+            if (is_lp_solution_parallel(sol, prog->npar)) {
+                prog->ddg->sccs[i].is_parallel = 1;
+            } else {
+                prog->ddg->sccs[i].is_parallel = 0;
+            }
+            pluto_constraints_free(indcst);
+        } else {
+            /* The case where there are no more dimensions to be found for the SCC */
+            prog->ddg->sccs[i].is_parallel = 1;
+        }
+        prog->ddg->sccs[i].sol = sol;
+        if (permutecst != NULL) {
+            pluto_constraints_free(permutecst);
+        }
+    }
+    pluto_matrix_free(obj);
+    pluto_constraints_free(boundcst);
+}
+
+void print_parallel_sccs(Graph *ddg)
+{
+    int i, num_par_sccs;
+    num_par_sccs = 0;
+    printf("Ids Parallel SCCs:");
+    for (i=0; i<ddg->num_sccs; i++) {
+        if (ddg->sccs[i].is_parallel) {
+            printf (" %d",i );
+            num_par_sccs++;
+        }
+    }
+    printf("\n");
+    printf("Total SCCs:%d\n", ddg->num_sccs);
+    printf("Total Parallel SCCs:%d\n", num_par_sccs);
+}
+
 
 /*********************************** FCG construction routines *****************************************/
 
@@ -70,13 +242,15 @@ double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoM
 }
 
 
+
 /* Adds edges in FCG corresponding to the satements represented by the nodes v1 and v2 in DDG*/
 void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *colour, PlutoConstraints *boundcst, int current_colour, PlutoConstraints **conflicts, PlutoMatrix *obj)
 {
     Graph *ddg;
     int i,j,ndeps,nstmts,nvar,npar, src_offset,dest_offset,fcg_offset1,fcg_offset2;
     double *sol;
-    int row_offset;
+    int row_offset, src_scc_id, dest_scc_id;
+    bool check_parallel;
     Stmt **stmts;
     PlutoConstraints *conflictcst;
 
@@ -90,7 +264,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     nvar = prog->nvar;
     npar = prog->npar;
 
-
+    check_parallel = false;
 
     double tstart = rtclock();
     assert (*conflicts != NULL);
@@ -119,11 +293,13 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             pluto_constraints_add(conflictcst, dep->cst);
         }
     }
-    if(stmts[v1]->intra_stmt_dep_cst != NULL){
-        pluto_constraints_add(conflictcst,stmts[v1]->intra_stmt_dep_cst);
+
+    if (stmts[v1]->intra_stmt_dep_cst != NULL) {
+        pluto_constraints_add(conflictcst, stmts[v1]->intra_stmt_dep_cst);
     }
-    if(stmts[v2]->intra_stmt_dep_cst != NULL){
-        pluto_constraints_add(conflictcst,stmts[v2]->intra_stmt_dep_cst);
+
+    if (stmts[v2]->intra_stmt_dep_cst != NULL) {
+        pluto_constraints_add(conflictcst, stmts[v2]->intra_stmt_dep_cst);
     }
 
 
@@ -132,6 +308,17 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 
     fcg_offset1 = ddg->vertices[v1].fcg_stmt_offset;
     fcg_offset2 = ddg->vertices[v2].fcg_stmt_offset;
+    
+    src_scc_id = ddg->vertices[v1].scc_id;
+    dest_scc_id = ddg->vertices[v2].scc_id;
+
+    if (options->fuse == TYPED_FUSE && (src_scc_id != dest_scc_id) &&
+            (ddg->sccs[src_scc_id].is_parallel || ddg->sccs[dest_scc_id].is_parallel)) {
+        check_parallel = true;
+    } else {
+        check_parallel = false;
+    }
+
 
     /* Solve Pluto LP by setting corresponding coeffs to 0 without any objective.
      * This is the check for fusability of two dimensions */
@@ -168,6 +355,13 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
                         IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",fcg_offset1+i,fcg_offset2+j););
                         fcg->adj->val[fcg_offset1+i][fcg_offset2+j] = 1;
                     } else {
+                        if (check_parallel) {
+                            if (!is_lp_solution_parallel(sol,npar)) {
+                                printf("Adding Parallelism preventing edge:%d to %d in fcg \n", fcg_offset1+i, fcg_offset2+j);
+                                fcg->adj->val[fcg_offset1+i][fcg_offset2+j] = 1;
+
+                            }
+                        }
                         free(sol);
                     }
                     /* Unset the lowerbound for the coefficient of c_i. The same constraint matrix is reused for all coeffs. */
@@ -428,10 +622,15 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
      * These are self loops on vertices of the FCG. */ 
     add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
 
-    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2);); */
-    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: Number of LP calls to check dimension permutability: %ld\n",prog->num_lp_calls);); */
-
     /* Add inter statement fusion and permute preventing edges.  */
+
+    /* if (options->lpcolour) { */
+    /*     #<{(| The lp solutions are found and the parallel sccs are marked.  */
+    /*      * However marking is only used in parallel case of typed fuse only |)}># */
+    /*     mark_parallel_sccs(colour, prog); */
+    /*     IF_DEBUG(print_parallel_sccs(prog->ddg);); */
+    /*  */
+    /* } */
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
@@ -474,6 +673,8 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     pluto_constraints_free(*conflicts);
     free(conflicts);
     prog->fcg_const_time += rtclock() - t_start;
+
+    IF_DEBUG(pluto_matrix_print(stdout, fcg->adj));
 
     IF_DEBUG(printf("[Pluto] Build FCG: Total number of LP calls in building the FCG: %ld\n",prog->num_lp_calls););
     return fcg;
@@ -604,7 +805,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
             printf("SCC %d has size %d\n", scc_id,sccs[scc_id].size);
             int i;
             for(i=0;i<sccs[scc_id].size; i++){
-                printf("S%d,,",sccs[scc_id].vertices[i]);
+                printf("S%d,",sccs[scc_id].vertices[i]);
             }
             printf("\n");
         }
@@ -689,7 +890,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         if (is_valid_colour(v,c,fcg,colour)) {
             colour[v] = c;
             /* If this is a valid colour, then try colouring the next vertex in the SCC */
-            if(colour_scc(scc_id,colour,c,stmt_pos+1, v, prog)){
+            if (colour_scc(scc_id, colour, c, stmt_pos+1, v, prog)) {
                 IF_DEBUG(printf("[Colour SCC]Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
                 return true;
             } else { 
@@ -750,7 +951,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 }
                 prog->fcg_colour_time += rtclock() - t_start;
                 /* Current colour that is being used to colour the fcg is c */
-                printf("FCG to be rebuilt due to a permute preventing dep: Colouring with colour %d\n",c);
+                IF_DEBUG(printf("FCG to be rebuilt due to a permute preventing dep: Colouring with colour %d\n",c););
                 prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
 
                 t_start = rtclock();
@@ -855,12 +1056,6 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
         prev_scc = i;
         prog->fcg_colour_time += rtclock() - t_start;
     }
-    for (i=0; i<nsccs; i++) {
-        if (prog->ddg->sccs[i].sol != NULL) {
-            free(prog->ddg->sccs[i].sol);
-            prog->ddg->sccs[i].sol = NULL;
-        }
-    }
 
     return is_distributed;
 }
@@ -876,6 +1071,9 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
     stmts = prog->stmts;
 
     for (i=1; i<=max_colours; i++) {
+        if (options->lpcolour) {
+            mark_parallel_sccs(colour, prog);
+        }
         colour_fcg_scc_based(i, colour, prog);
 
         t_start = rtclock();
@@ -910,6 +1108,15 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         /* Recompute the SCC's in the updated DDG */
         ddg = prog->ddg;
         IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
+
+        if (options->lpcolour) {
+            for (j=0; j<ddg->num_sccs; j++) {
+                if (ddg->sccs[j].sol != NULL) {
+                    free(ddg->sccs[j].sol);
+                    ddg->sccs[j].sol = NULL;
+                }
+            }
+        }
         free_scc_vertices(ddg);
 
         /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
@@ -1319,6 +1526,7 @@ void introduce_skew(PlutoProg *prog)
                     stmts[j]->trans->val[level][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
 
                 }
+                free(sol);
 
                 dep_satisfaction_update(prog, level);
                 pluto_compute_dep_directions(prog);
