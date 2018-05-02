@@ -39,6 +39,7 @@
 #if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj);
+bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog);
 
 static double rtclock()
 {
@@ -109,35 +110,6 @@ static inline bool is_lp_solution_parallel(double *sol, int npar)
     else 
         return false;
 }
-
-/* TODO: This routine can actually be combined with lexmin of Pluto-lp-dfp */
-/* double* get_hyperplane_for_scc(const PlutoConstraints *cst, PlutoProg *prog) */
-/* { */
-/*     int i; */
-/*     glp_prob *lp; */
-/*     PlutoMatrix *obj; */
-/*     double *sol; */
-/*  */
-/*  */
-/*     lp = create_glpk_problem_from_pluto_constraints (cst); */
-/*  */
-/*     obj = construct_cplex_objective(cst, prog);  */
-/*     for (i=0; i<obj->ncols; i++) { */
-/*         glp_set_obj_coef(lp, i+1, (double)obj->val[0][i]); */
-/*     } */
-/*     pluto_matrix_free(obj); */
-/*     for (i=0; i<cst->ncols-1; i++) { */
-/*         glp_set_col_bnds(lp, i+1, GLP_FR, 0.0, 0.0); */
-/*     } */
-/*     if (solve_glpk_problem(lp)) { */
-/*         sol = get_lp_solution_from_glpk_problem(lp); */
-/*         return sol; */
-/*         #<{(| if (is_lp_solution_parallel(sol, prog->npar)) { |)}># */
-/*         #<{(|     return sol; |)}># */
-/*         #<{(| } |)}># */
-/*     } */
-/*     return NULL; */
-/* } */
 
 void mark_parallel_sccs(int *colour, PlutoProg* prog) 
 {
@@ -762,7 +734,88 @@ int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, in
     }
     return min;
 }
+int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
+{
+    int i, j, stmt1, stmt2, npar, nvar, stmt_offset;
+    int *parallel_dims;
+    Stmt **stmts;
+    Graph* ddg;
+    ddg = prog->ddg;
 
+    nvar = prog->nvar;
+    stmts = prog->stmts;
+    npar = prog->npar;
+
+    stmt1 = -1;
+    parallel_dims = NULL;
+
+    for (i=0; i<(scc1.size && stmt1 == -1); i++) {
+        for (j=0; j<scc2.size; j++) {
+            if (is_adjecent(ddg, scc1.vertices[i], scc2.vertices[j])) {
+                stmt1 = scc1.vertices[i];
+                stmt2 = scc2.vertices[j];
+                break;
+            }
+        }
+    }
+    stmt_offset = npar+1;
+    for (i=0; i<nvar ; i++) {
+        if(stmts[stmt1]->is_orig_loop[i] && stmts[stmt2]->is_orig_loop[i]) {
+            if((scc1.sol[stmt_offset+stmt1*(nvar+1)+i] > 0.0f) 
+                    && (scc2.sol[stmt_offset+stmt2*(nvar+1)+i] > 0.0f)) {
+                if(parallel_dims == NULL) {
+                    parallel_dims = (int*) malloc (sizeof(int)*nvar);
+                    bzero(parallel_dims, nvar*sizeof(int));
+                }
+                parallel_dims[i] = 1;
+            }
+        }
+    }
+    return parallel_dims;
+}
+
+
+bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, PlutoProg *prog, int c)
+{
+    int i;
+    Graph *ddg;
+
+    /* Parallel dims of the current SCC */
+    int *parallel_dims;
+
+    ddg = prog->ddg;
+
+    assert (prog->ddg->sccs[scc_id].is_parallel == 1);
+
+    /* Looks for SCCs that are connected that have a common dimension */
+    for (i=scc_id+1; i< prog->ddg->num_sccs; i++) {
+        if (ddg_sccs_direct_connected (ddg, prog, scc_id, i) &&
+                ddg->sccs[i].is_parallel) {
+            parallel_dims = get_common_parallel_dims_for_sccs(ddg->sccs[scc_id], ddg->sccs[i], prog);
+        }
+        if (parallel_dims!=NULL) {
+            break;
+        }
+    }
+
+    if (parallel_dims == NULL) {
+        colour_scc(scc_id, colour,c,0, -1, prog);
+    }
+    else {
+        for (i=0; i<prog->nvar; i++) {
+            /* if (parallel_colour_scc_dimension(scc_id, colour, c, prog)) */
+                break;
+        }
+    }
+
+    /* parallel_dims = (int*) malloc (sizeof(int)*nvar); */
+
+
+    /* for (i=0; i<ddg->sccs[i].size; i++) { */
+    /*    if ddg->vertices */
+    /* } */
+
+}
 
 
 /* Colours the input SCC recursively.  The statement pos refers to the position 
