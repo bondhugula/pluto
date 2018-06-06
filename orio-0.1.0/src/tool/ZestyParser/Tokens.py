@@ -183,7 +183,7 @@ class AbstractToken (object):
         n = self.__class__.__new__(self.__class__)
         n.__dict__.update(self.__dict__)
         n._poke()
-        n.desc = copy.copy(self.desc)
+        n.desc = self.desc
         return n
     
     def __setattr__(self, name, value):
