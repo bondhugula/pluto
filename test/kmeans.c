@@ -1,19 +1,18 @@
 #include <stdint.h>
 #include <float.h>
 
-void k_classify_local (float    * pointv, 
-                       uint32_t   pointc, 
+void k_classify_local (float    * pointv,
+                       uint32_t   pointc,
                        uint32_t   point_lda,
-			           float    * clusterv, 
-                       float    * clusterv2, 
-                       uint32_t * counterv, 
+                       float    * clusterv,
+                       float    * clusterv2,
+                       uint32_t * counterv,
                        uint32_t  clusterc,
-			           uint32_t   dims)
-{
+                       uint32_t   dims) {
     uint32_t p, k, d, kmin;
-	float dist_min, dist, tmp;
+    float dist_min, dist, tmp;
 
-	// A conservative (accesses) version
+    // A conservative (accesses) version
 
 #pragma scop
     for(p=0; p<pointc; ++p) {
@@ -23,11 +22,11 @@ void k_classify_local (float    * pointv,
             dist = 0.0;
             for(d=0; d<dims; ++d) {
                 tmp = clusterv[0] -
-                    pointv[0];
+                      pointv[0];
                 dist += tmp * tmp;
             }
-			dist_min = (dist < dist_min)? dist: dist_min;
-			kmin = (dist < dist_min)? k: kmin;
+            dist_min = (dist < dist_min)? dist: dist_min;
+            kmin = (dist < dist_min)? k: kmin;
         }
         counterv[kmin]++;
         for(d=0; d<dims; ++d) {

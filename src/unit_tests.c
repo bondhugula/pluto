@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  * unit_tests.c
  *
@@ -31,8 +31,7 @@
 #include "program.h"
 
 
-void test_rank()
-{
+void test_rank() {
     while (!feof(stdin)) {
         PlutoMatrix *mat = pluto_matrix_input(stdin);
         printf("Rank of matrix is %d\n", pluto_matrix_get_rank(mat));

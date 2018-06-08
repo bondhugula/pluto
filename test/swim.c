@@ -9,8 +9,7 @@
 
 double t_start, t_end;
 
-main ()
-{
+main () {
     int t, i, j;
 
 #pragma scop
@@ -26,9 +25,9 @@ main ()
                 CU[i+1][j] = 0.5*(P[i+1][j]+P[i][j])*U[i+1][j];
                 CV[i][j+1] = 0.5*(P[i][j+1]+P[i][j])*V[i][j+1];
                 Z[i+1][j+1] = (FSDX*(V[i+1][j+1]-V[i][j+1])-FSDY*(U[i+1][j+1]
-                            -U[i+1][j]))/(P[i][j]+P[i+1][j]+P[i+1][j+1]+P[i][j+1]);
+                               -U[i+1][j]))/(P[i][j]+P[i+1][j]+P[i+1][j+1]+P[i][j+1]);
                 H[i][j] = P[i][j]+0.25*(U[i+1][j]*U[i+1][j]+U[i][j]*U[i][j]
-                        +V[i][j+1]*V[i][j+1]+V[i][j]*V[i][j]);
+                                        +V[i][j+1]*V[i][j+1]+V[i][j]*V[i][j]);
             }
         }
 
@@ -59,13 +58,13 @@ main ()
         for (i=0; i<M; i++) {
             for (j=0; j<N; j++) {
                 UNEW[i+1][j] = UOLD[i+1][j]+
-                    TDTS8*(Z[i+1][j+1]+Z[i+1][j])*(CV[i+1][j+1]+CV[i][j+1]+CV[i][j]
-                            +CV[i+1][j])-TDTSDX*(H[i+1][j]-H[i][j]);
+                               TDTS8*(Z[i+1][j+1]+Z[i+1][j])*(CV[i+1][j+1]+CV[i][j+1]+CV[i][j]
+                                       +CV[i+1][j])-TDTSDX*(H[i+1][j]-H[i][j]);
                 VNEW[i][j+1] = VOLD[i][j+1]-TDTS8*(Z[i+1][j+1]+Z[i][j+1])
-                    *(CU[i+1][j+1]+CU[i][j+1]+CU[i][j]+CU[i+1][j])
-                    -TDTSDY*(H[i][j+1]-H[i][j]);
+                               *(CU[i+1][j+1]+CU[i][j+1]+CU[i][j]+CU[i+1][j])
+                               -TDTSDY*(H[i][j+1]-H[i][j]);
                 PNEW[i][j] = POLD[i][j]-TDTSDX*(CU[i+1][j]-CU[i][j])
-                    -TDTSDY*(CV[i][j+1]-CV[i][j]);
+                             -TDTSDY*(CV[i][j+1]-CV[i][j]);
             }
         }
 
@@ -73,13 +72,13 @@ main ()
             UNEW[0][j] = UNEW[M][j];
             VNEW[M][j+1] = VNEW[0][j+1];
             PNEW[M][j] = PNEW[0][j];
-        } 
+        }
 
         for (i=0; i<M; i++) {
             UNEW[i+1][N] = UNEW[i+1][0];
             VNEW[i][0] = VNEW[i][N];
             PNEW[i][N] = PNEW[i][0];
-        } 
+        }
 
         UNEW[0][N] = UNEW[M][0];
         VNEW[M][0] = VNEW[0][N];
@@ -93,7 +92,7 @@ main ()
                 U[i][j] = UNEW[i][j];
                 V[i][j] = VNEW[i][j];
                 P[i][j] = PNEW[i][j];
-            } 
+            }
         }
 
         for (j=0; j<N; j++) {

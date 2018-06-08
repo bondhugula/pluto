@@ -18,8 +18,7 @@ double a[N][N];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -30,8 +29,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -43,8 +41,7 @@ void print_array()
     fprintf(stderr, "\n");
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -53,8 +50,7 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-int main()
-{
+int main() {
     int i, j, k, t;
 
     double t_start, t_end;
@@ -62,7 +58,7 @@ int main()
     init_array() ;
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -71,9 +67,9 @@ int main()
     for (t=0; t<=T-1; t++)  {
         for (i=1; i<=N-2; i++)  {
             for (j=1; j<=N-2; j++)  {
-                a[i][j] = (a[i-1][j-1] + a[i-1][j] + a[i-1][j+1] 
-                        + a[i][j-1] + a[i][j] + a[i][j+1]
-                        + a[i+1][j-1] + a[i+1][j] + a[i+1][j+1])/9.0;
+                a[i][j] = (a[i-1][j-1] + a[i-1][j] + a[i-1][j+1]
+                           + a[i][j-1] + a[i][j] + a[i][j+1]
+                           + a[i+1][j-1] + a[i+1][j] + a[i+1][j+1])/9.0;
             }
         }
     }
@@ -83,7 +79,7 @@ int main()
     IF_TIME(printf("%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

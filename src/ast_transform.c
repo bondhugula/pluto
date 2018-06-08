@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdlib.h>
@@ -31,8 +31,7 @@
 /*
  * Clast-based parallel loop marking */
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
-        CloogOptions *cloogOptions)
-{
+                         CloogOptions *cloogOptions) {
     int i, j, nloops, nstmts, nploops;
     struct clast_for **loops;
     int *stmts;
@@ -74,7 +73,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
              * trans matrix */
             printf("Warning: parallel poly loop not found in AST\n");
             continue;
-        }else{
+        } else {
             for (j=0; j<nloops; j++) {
                 loops[j]->parallel = CLAST_PARALLEL_NOT;
                 char *private_vars = malloc(512);
@@ -83,7 +82,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                     IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
                     loops[j]->parallel = CLAST_PARALLEL_OMP;
                     int depth = ploops[i]->depth+1;
-                    for (depth++;depth<=max_depth;depth++) {
+                    for (depth++; depth<=max_depth; depth++) {
                         sprintf(private_vars+strlen(private_vars), ",t%d", depth);
                     }
                 }
@@ -103,8 +102,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 /*
  * Clast-based vector loop marking */
 void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
-        CloogOptions *cloogOptions)
-{
+                       CloogOptions *cloogOptions) {
     int i, j, nloops, nstmts, nploops;
     struct clast_for **loops;
     int *stmts;

@@ -14,8 +14,7 @@ double C1[N][N];
 double C2[N][N];
 double C3[N][N];
 double C4[N][N];
-void init_array()
-{
+void init_array() {
     int i,j,k,l;
 
     for (i=0; i<N; i++) {
@@ -29,13 +28,11 @@ void init_array()
     }
 }
 
-void init()
-{
+void init() {
     init_array();
 }
 
-void print_array()
-{
+void print_array() {
     int i, j, k, l;
 
     for (i=0; i<N; i++) {
@@ -52,15 +49,13 @@ void print_array()
 }
 
 
-void print_results()
-{
+void print_results() {
     print_array();
 
 }
 
 
-int main()
-{
+int main() {
     int a, q, r, s, p, b, c, d;
 
     init_array();

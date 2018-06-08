@@ -12,16 +12,15 @@
 
 #include "util.h"
 
-int main()
-{
-	int i, j, k;
+int main() {
+    int i, j, k;
     register double s;
     double t_start, t_end;
 
-	init_array();
+    init_array();
 
 #ifdef PERFCTR
-	PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -41,7 +40,7 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

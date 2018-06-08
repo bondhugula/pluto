@@ -15,8 +15,7 @@ static double a[NMAX][NMAX], b[NMAX][NMAX];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i = 0; i < NMAX; i++) {
@@ -27,8 +26,7 @@ void init_array()
     }
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -46,13 +44,13 @@ double rtclock()
 #endif
 
 void strsm(long N) {
-	int i,j,k;
+    int i,j,k;
 
 #pragma scop
-	for (i=0; i<N; i++) {
-		for (j=0; j<N; j++) {
-			for (k=i+1; k<N; k++) {
-				if (k == i+1) b[j][i] /= a[i][i];
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
+            for (k=i+1; k<N; k++) {
+                if (k == i+1) b[j][i] /= a[i][i];
                 b[j][k] -= a[i][k] * b[j][i];
             }
         }
@@ -61,8 +59,7 @@ void strsm(long N) {
 }
 
 
-int main()
-{
+int main() {
     double t_start, t_end;
     long N=NMAX;
     int i,j;

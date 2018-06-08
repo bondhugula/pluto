@@ -1,5 +1,5 @@
 
-/*@ begin Loop( 
+/*@ begin Loop(
  transform RegTile(loops=['i','j','k'], ufactors=[2,2,2])
  for (i=0; i<=M-1; i++)
  {
@@ -11,7 +11,7 @@
      }
    }
  }
-) @*/ 
+) @*/
 
 /*@ end @*/
 

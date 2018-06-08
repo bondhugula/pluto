@@ -8,8 +8,7 @@
 
 #include "util.h"
 
-int main()
-{
+int main() {
     int i, j, k, l, t;
 
     double t_start, t_end;

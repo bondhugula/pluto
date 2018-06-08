@@ -1,17 +1,17 @@
 
-/*@ begin PerfTuning (        
+/*@ begin PerfTuning (
   def build
   {
     arg command = 'icc';
     arg options = '-fast -openmp -I/usr/local/icc/include -lm';
   }
-   
-  def performance_counter         
+
+  def performance_counter
   {
     arg method = 'basic timer';
     arg repetitions = 2;
   }
-  
+
   def performance_params
   {
     param T1_I[] = [1,32,64,128,246];
@@ -43,7 +43,7 @@
 
     constraint reg_capacity = (2*U_I*U_J + 2*U_I + 2*U_J <= 130);
 
-    constraint copy_limitA = ((not ACOPY_A) or (ACOPY_A and 
+    constraint copy_limitA = ((not ACOPY_A) or (ACOPY_A and
                               (T1_I if T1_I>1 else T2_I)*(T1_J if T1_J>1 else T2_J) <= 512*512));
   }
 
@@ -54,9 +54,9 @@
 #    arg time_limit = 5;
     arg total_runs = 2;
   }
-  
+
   let SIZE = 10000;
-  
+
   def input_params
   {
     param MSIZE = SIZE;
@@ -68,7 +68,7 @@
     decl double y_2[M] = random;
     decl double x1[M] = 0;
     decl double x2[N] = 0;
-  }            
+  }
 ) @*/
 
 int i, j;
@@ -87,19 +87,19 @@ int iii, jjj;
   )
 
 for (i=0;i<=N-1;i++)
-  for (j=0;j<=N-1;j++) 
-  { 
-    x1[i]=x1[i]+a[i][j]*y_1[j]; 
-    x2[j]=x2[j]+a[i][j]*y_2[i]; 
-  } 
+  for (j=0;j<=N-1;j++)
+  {
+    x1[i]=x1[i]+a[i][j]*y_1[j];
+    x2[j]=x2[j]+a[i][j]*y_2[i];
+  }
 
 ) @*/
 
-for (i=0;i<=N-1;i++)
-  for (j=0;j<=N-1;j++) { 
-    x1[i]=x1[i]+a[i][j]*y_1[j]; 
-    x2[j]=x2[j]+a[i][j]*y_2[i]; 
-  } 
+for (i=0; i<=N-1; i++)
+    for (j=0; j<=N-1; j++) {
+        x1[i]=x1[i]+a[i][j]*y_1[j];
+        x2[j]=x2[j]+a[i][j]*y_2[i];
+    }
 
 /*@ end @*/
 /*@ end @*/

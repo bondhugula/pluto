@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdlib.h>
@@ -28,8 +28,7 @@
 #include "ddg.h"
 
 /* Allocate a graph */
-Graph *graph_alloc(int nVertices)
-{
+Graph *graph_alloc(int nVertices) {
     Graph *g;
     int i, j;
 
@@ -65,8 +64,7 @@ Graph *graph_alloc(int nVertices)
 
 
 /* Print the strongly-connected components */
-void graph_print_sccs(Graph *g)
-{
+void graph_print_sccs(Graph *g) {
     int i;
 
     /* SCCs should have been computed */
@@ -74,15 +72,14 @@ void graph_print_sccs(Graph *g)
 
     for (i=0; i<g->num_sccs; i++)  {
         IF_DEBUG(printf("\tSCC %d: size: %d: max stmt dim: %d\n",
-                g->sccs[i].id, g->sccs[i].size, g->sccs[i].max_dim));
+                        g->sccs[i].id, g->sccs[i].size, g->sccs[i].max_dim));
     }
 }
 
 
 /* Return transpose of a graph G
  * G^T has an edge b/w u and v  iff G has an edge b/w v and u */
-Graph *graph_transpose(Graph *g)
-{
+Graph *graph_transpose(Graph *g) {
     int i, j;
     Graph *gT;
 
@@ -101,13 +98,12 @@ Graph *graph_transpose(Graph *g)
 
 /* Returns an undirected graph corresponding to the input directed graph */
 /* This is used to find the connected components in the graph */
-Graph* get_undirected_graph(const Graph *g)
-{
+Graph* get_undirected_graph(const Graph *g) {
     int i,j;
     Graph *gU;
     gU=graph_alloc(g->nVertices);
-    for (i=0;i<g->nVertices;i++){
-        for (j=0;j<=i;j++){
+    for (i=0; i<g->nVertices; i++) {
+        for (j=0; j<=i; j++) {
             gU->adj->val[i][j]=(g->adj->val[i][j]==0)?g->adj->val[j][i]:g->adj->val[i][j];
             gU->adj->val[j][i]=gU->adj->val[i][j];
         }
@@ -116,12 +112,11 @@ Graph* get_undirected_graph(const Graph *g)
 }
 
 /* Floyd-Warshall algorithm to find the transitive closure of a graph */
-void transitive_closure (Graph *g)
-{
+void transitive_closure (Graph *g) {
     int i,j,k;
-    for (i=0; i<g->nVertices; i++){
-        for (j=0; j<g->nVertices; j++){
-            for (k=0;k<g->nVertices;k++){
+    for (i=0; i<g->nVertices; i++) {
+        for (j=0; j<g->nVertices; j++) {
+            for (k=0; k<g->nVertices; k++) {
                 g->adj->val[i][j] = ((g->adj->val[i][j]) || (g->adj->val[i][k] && g->adj->val[k][j]));
             }
         }
@@ -129,8 +124,7 @@ void transitive_closure (Graph *g)
 }
 
 /* Depth first search from a given vertex */
-void dfs_vertex(Graph *g, Vertex *v, int *time)
-{
+void dfs_vertex(Graph *g, Vertex *v, int *time) {
     int j;
 
     *time = *time + 1;
@@ -154,15 +148,14 @@ void dfs_vertex(Graph *g, Vertex *v, int *time)
 
 
 /* Depth first search */
-void dfs(Graph *g)
-{
+void dfs(Graph *g) {
     int i;
     int time = 0;
-    
+
     for (i=0; i<g->nVertices; i++)  {
         g->vertices[i].vn = 0;
     }
-    
+
     for (i=0; i<g->nVertices; i++)  {
         if (g->vertices[i].vn == 0)  {
             // printf("DFS vertex: %d\n", i);
@@ -173,8 +166,7 @@ void dfs(Graph *g)
 
 
 /* Comparison function for sorting graph vertices by their finish time */
-static int compar (const void *e1, const void *e2)
-{
+static int compar (const void *e1, const void *e2) {
     Vertex *v1, *v2;
 
     v1 = (Vertex *) e1;
@@ -182,9 +174,9 @@ static int compar (const void *e1, const void *e2)
 
     if (v1->fn < v2->fn)    {
         return -1;
-    }else if (v1->fn == v2->fn) {
+    } else if (v1->fn == v2->fn) {
         return 0;
-    }else return 1;
+    } else return 1;
 }
 
 /*
@@ -194,14 +186,13 @@ static int compar (const void *e1, const void *e2)
  * SCC related information is stored
  *
  **/
-void dfs_for_scc(Graph *g)
-{
+void dfs_for_scc(Graph *g) {
     int i, j;
     int time = 0;
 
     Vertex *vCopy = (Vertex *) malloc(g->nVertices*sizeof(Vertex));
     memcpy(vCopy, g->vertices, g->nVertices*sizeof(Vertex));
-    
+
     for (i=0; i<g->nVertices; i++)  {
         g->vertices[i].vn = 0;
         g->vertices[i].scc_id = -1;
@@ -235,26 +226,26 @@ void dfs_for_scc(Graph *g)
     free(vCopy);
 }
 
-bool is_adjecent(Graph *g, int i, int j){
+bool is_adjecent(Graph *g, int i, int j) {
     /* PlutoMatrix *adj; */
     /* adj = g->adj; */
-    if(g->adj->val[i][j] != 0|| g->adj->val[j][i] != 0){
+    if(g->adj->val[i][j] != 0|| g->adj->val[j][i] != 0) {
         return true;
     }
     return false;
 }
 
-void compute_scc_vertices(Graph *ddg){
+void compute_scc_vertices(Graph *ddg) {
     int i,j,k;
     int n_sccs;
     int *vertices;
 
     n_sccs = ddg->num_sccs;
-    for(i=0; i<n_sccs; i++){
+    for(i=0; i<n_sccs; i++) {
         vertices = (int*)malloc((ddg->sccs[i].size)*sizeof(int));
         k = 0;
-        for(j=0;j<ddg->nVertices; j++){
-            if((ddg->vertices[j].scc_id) == i){
+        for(j=0; j<ddg->nVertices; j++) {
+            if((ddg->vertices[j].scc_id) == i) {
                 vertices[k] = ddg->vertices[j].id;
                 k++;
             }
@@ -263,26 +254,25 @@ void compute_scc_vertices(Graph *ddg){
     }
 }
 
-void print_scc_vertices(int j, Graph *g){
+void print_scc_vertices(int j, Graph *g) {
     int i;
-    for (i=0;i<g->sccs[j].size; i++){
+    for (i=0; i<g->sccs[j].size; i++) {
         printf("S%d, ",g->sccs[j].vertices[i]);
     }
     printf("\n");
 }
 
-void free_scc_vertices(Graph *ddg){
+void free_scc_vertices(Graph *ddg) {
     int i;
     int *vertices;
-    for(i=0;i<ddg->num_sccs;i++){
+    for(i=0; i<ddg->num_sccs; i++) {
         vertices = ddg->sccs[i].vertices;
-        if(vertices!=NULL){
+        if(vertices!=NULL) {
             free(vertices);
         }
     }
 }
-void graph_free(Graph *g)
-{
+void graph_free(Graph *g) {
     pluto_matrix_free(g->adj);
     free(g->vertices);
     free(g->sccs);

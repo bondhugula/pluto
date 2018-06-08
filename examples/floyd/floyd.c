@@ -12,8 +12,7 @@
 #endif
 
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -29,8 +28,7 @@ double t_start, t_end;
 double pathDistanceMatrix[NUM_NODES][NUM_NODES];
 #pragma enddeclarations
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     srand(123);
@@ -46,12 +44,11 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
     for(i= 0; i < NUM_NODES; i++) {
         for(j= 0; j < NUM_NODES; j++) {
-            fprintf(stderr, "%lf ", pathDistanceMatrix[i][j]); 
+            fprintf(stderr, "%lf ", pathDistanceMatrix[i][j]);
         }
         fprintf(stderr, "\n");
     }
@@ -59,8 +56,7 @@ void print_array()
 
 
 
-int main()
-{
+int main() {
     int i, j, k, x, y;
     unsigned int distanceYtoX, distanceYtoK, distanceKtoX;
     /*
@@ -73,18 +69,15 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
 
 #pragma scop
-    for(k=0; k < NUM_NODES; k++)
-    {
-        for(y=0; y < NUM_NODES; y++)
-        {
-            for(x=0; x < NUM_NODES; x++)
-            {
+    for(k=0; k < NUM_NODES; k++) {
+        for(y=0; y < NUM_NODES; y++) {
+            for(x=0; x < NUM_NODES; x++) {
                 pathDistanceMatrix[y][x] = ((pathDistanceMatrix[y][k] + pathDistanceMatrix[k][x]) < pathDistanceMatrix[y][x]) ? (pathDistanceMatrix[y][k] + pathDistanceMatrix[k][x]):pathDistanceMatrix[y][x];
             }
         }
@@ -95,7 +88,7 @@ int main()
     IF_TIME(fprintf(stdout, "time = %0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
     if (fopen(".test", "r")) {

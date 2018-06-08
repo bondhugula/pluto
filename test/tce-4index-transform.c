@@ -8,8 +8,7 @@
 
 #include "util.h"
 
-int main()
-{
+int main() {
     int a, q, r, s, p, b, c, d;
 
     init_array();

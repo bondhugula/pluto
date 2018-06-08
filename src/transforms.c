@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include "program.h"
@@ -27,8 +27,7 @@
 #include "assert.h"
 
 /* Sink statement (domain); depth: 0-indexed */
-void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog)
-{
+void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
     assert(stmt->dim == stmt->domain->ncols-prog->npar-1);
 
     char iter[5];
@@ -42,8 +41,7 @@ void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog)
 
 /* Stripmine 'dim'th time dimension of stmt by stripmine factor; use
  * 'supernode' as the name of the supernode in the domain */
-void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg *prog)
-{
+void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg *prog) {
     pluto_stmt_add_dim(stmt, 0, dim, supernode, H_TILE_SPACE_LOOP, prog);
 
     PlutoConstraints *domain = stmt->domain;
@@ -68,8 +66,7 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode, PlutoProg
 
 /* Interchange loops for a stmt */
 void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2,
-        PlutoProg *prog)
-{
+                                 PlutoProg *prog) {
     int j, tmp;
 
     for (j=0; j<stmt->trans->ncols; j++)   {
@@ -80,8 +77,7 @@ void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2,
 }
 
 
-void pluto_interchange(PlutoProg *prog, int level1, int level2)
-{
+void pluto_interchange(PlutoProg *prog, int level1, int level2) {
     int k;
     HyperplaneProperties hTmp;
 
@@ -92,14 +88,13 @@ void pluto_interchange(PlutoProg *prog, int level1, int level2)
         pluto_stmt_loop_interchange(stmts[k], level1, level2, prog);
     }
 
-    hTmp = prog->hProps[level1]; 
+    hTmp = prog->hProps[level1];
     prog->hProps[level1] = prog->hProps[level2];
     prog->hProps[level2] = hTmp;
 }
 
 
-void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog)
-{
+void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog) {
     int i, npar;
 
     npar = stmt->domain->ncols - stmt->dim - 1;
@@ -112,8 +107,8 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog)
 
     pluto_matrix_add_row(stmt->trans, pos);
 
-    stmt->hyp_types = realloc(stmt->hyp_types, 
-            sizeof(int)*stmt->trans->nrows);
+    stmt->hyp_types = realloc(stmt->hyp_types,
+                              sizeof(int)*stmt->trans->nrows);
     for (i=stmt->trans->nrows-2; i>=pos; i--) {
         stmt->hyp_types[i+1] = stmt->hyp_types[i];
     }
@@ -122,9 +117,8 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog)
 
 
 /* Make loop the innermost loop; all loops below move up by one */
-void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog)
-{
-    int i, d, last_depth; 
+void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog) {
+    int i, d, last_depth;
 
     last_depth = prog->num_hyperplanes-1;
     for (i=0; i<loop->nstmts; i++) {

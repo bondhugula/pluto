@@ -14,8 +14,7 @@
 #endif
 
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -31,8 +30,7 @@ double b[N];
 
 double t_start, t_end;
 
-int main()
-{
+int main() {
     int t, i, j;
 
     init_array();

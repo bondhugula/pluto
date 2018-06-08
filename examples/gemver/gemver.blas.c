@@ -5,8 +5,7 @@
 #include "decls.h"
 #include "util.h"
 
-main()
-{
+main() {
     double t_start, t_end;
     int i, j;
     int M=N;
@@ -17,9 +16,9 @@ main()
     a = (double *) malloc(sizeof(double)*M*M);
     b = (double *) malloc(sizeof(double)*M*M);
 
-    for( i=0; i<M; i++){
-        for( j=0; j<N; j++){
-            a[i*M+j]= A[i][j]; 
+    for( i=0; i<M; i++) {
+        for( j=0; j<N; j++) {
+            a[i*M+j]= A[i][j];
         }
     }
 

@@ -5,10 +5,10 @@ for (i=0; i<n; i++) {
 }
 
 for (i=1; i<m; i++) {
-    for(j=0;j<n; j++) {
+    for(j=0; j<n; j++) {
         vec[i,j] = (vec[i-1,2*j] + vec[i-1,2*j+1]);
     }
-    for(j=0;j<n; j++)   {
+    for(j=0; j<n; j++)   {
         vec[i,j+n] = (vec[i-1,2*j] - vec[i-1,2*j+1]);
     }
 }

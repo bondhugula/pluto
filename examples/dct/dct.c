@@ -17,8 +17,7 @@ double sum2[M][M];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<M; i++) {
@@ -30,8 +29,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<M; i++) {
@@ -43,8 +41,7 @@ void print_array()
     }
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -54,17 +51,16 @@ double rtclock()
 }
 double t_start, t_end;
 
-int main()
-{
-	int i, j, k, l, m, n, o, t;
+int main() {
+    int i, j, k, l, m, n, o, t;
 
-	init_array();
+    init_array();
 
 #ifdef PERFCTR
-	PERF_INIT; 
+    PERF_INIT;
 #endif
 
-	IF_TIME(t_start = rtclock());
+    IF_TIME(t_start = rtclock());
 
 
 #pragma scop
@@ -88,7 +84,7 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

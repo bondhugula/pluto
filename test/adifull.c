@@ -14,8 +14,7 @@
 
 #include "util.h"
 
-int main()
-{
+int main() {
     int i, j, k, l, m, n, t;
 
     int i1, i2;
@@ -25,7 +24,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -42,7 +41,7 @@ int main()
         }
 
         for (i1=0; i1<N; i1++) {
-                X[i1][N-1] = X[i1][N-1] / B[i1][N-1];
+            X[i1][N-1] = X[i1][N-1] / B[i1][N-1];
         }
 
         for (i1=0; i1<N; i1++) {
@@ -59,7 +58,7 @@ int main()
         }
 
         for (i2=0; i2<N; i2++) {
-                X[N-1][i2] = X[N-1][i2] / B[N-1][i2];
+            X[N-1][i2] = X[N-1][i2] / B[N-1][i2];
         }
 
         for (i1 = 0; i1 <= N-2; i1++) {
@@ -74,7 +73,7 @@ int main()
     IF_TIME(printf("%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

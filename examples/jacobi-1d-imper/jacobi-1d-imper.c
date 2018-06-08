@@ -14,8 +14,7 @@ double b[N];
 
 double t_start, t_end;
 
-void init_array()
-{
+void init_array() {
     int j;
 
     for (j=0; j<N; j++) {
@@ -24,8 +23,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int j;
 
     for (j=0; j<N; j++) {
@@ -36,8 +34,7 @@ void print_array()
 }
 
 
-int main()
-{
+int main() {
     int t, i, j;
 
     init_array();

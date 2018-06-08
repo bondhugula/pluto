@@ -26,8 +26,7 @@ double C[M][N+13];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -40,8 +39,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -53,8 +51,7 @@ void print_array()
     }
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -64,8 +61,7 @@ double rtclock()
 }
 double t_start, t_end;
 
-int main()
-{
+int main() {
     int i, j, k;
     register double s;
 
@@ -73,7 +69,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -81,7 +77,7 @@ int main()
 #pragma scop
     /* pluto start (M,N,K) */
     for(i=0; i<M; i++)
-        for(j=0; j<N; j++)  
+        for(j=0; j<N; j++)
             for(k=0; k<K; k++)
                 C[i][j] = C[i][j] + A[i][k] * B[k][j];
     /* pluto end */
@@ -91,7 +87,7 @@ int main()
     IF_TIME(printf("%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

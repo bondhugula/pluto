@@ -32,10 +32,10 @@ void adi(long T, long N) {
     } // end of t loop
 }
 
-int main()
-{
+int main() {
     long T, N;
-    T = TMAX; N=NMAX;
+    T = TMAX;
+    N=NMAX;
     adi(T,N);
 
     return 0;
