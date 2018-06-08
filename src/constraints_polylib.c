@@ -16,8 +16,7 @@
 
 #include "polylib/polylib64.h"
 
-Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat)
-{
+Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat) {
     int r, c;
     Matrix *polymat;
 
@@ -33,8 +32,7 @@ Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat)
 }
 
 
-PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat)
-{
+PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat) {
     PlutoMatrix *mat;
     int r, c;
 
@@ -52,8 +50,7 @@ PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat)
 
 
 /* Converts to a polylib polyhedron */
-Polyhedron *pluto_constraints_to_polylib(const PlutoConstraints *cst)
-{
+Polyhedron *pluto_constraints_to_polylib(const PlutoConstraints *cst) {
     Polyhedron *pol;
     PlutoMatrix *mat;
     Matrix *polymat;
@@ -74,15 +71,14 @@ Polyhedron *pluto_constraints_to_polylib(const PlutoConstraints *cst)
     return pol;
 }
 
-PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol)
-{
+PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol) {
     PlutoConstraints *cst;
 
     // printf("Poly\n");
     // Polyhedron_Print(stdout, "%4d", pol);
     Matrix *polymat = Polyhedron2Constraints(pol);
-     //printf("constraints\n");
-     //Matrix_Print(stdout, "%4d", polymat);
+    //printf("constraints\n");
+    //Matrix_Print(stdout, "%4d", polymat);
 
     cst = polylib_matrix_to_pluto_constraints(polymat);
     Matrix_Free(polymat);
@@ -99,8 +95,7 @@ PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol)
  * Image: if cst is a list of constraints, just its first element's image
  * is taken.
  */
-PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func)
-{
+PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const PlutoMatrix *func) {
     // IF_DEBUG(printf("pluto const image: domain\n"););
     // IF_DEBUG(pluto_constraints_print(stdout, cst););
     // IF_DEBUG(printf("pluto const image: func\n"););
@@ -128,9 +123,8 @@ PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst, const Plu
     return imagecst;
 }
 
-PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1, 
-        const PlutoConstraints *cst2)
-{
+PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
+        const PlutoConstraints *cst2) {
     Polyhedron *pol1 = pluto_constraints_to_polylib(cst1);
     Polyhedron *pol2 = pluto_constraints_to_polylib(cst2);
     Polyhedron *pol3 = DomainUnion(pol1, pol2, 50);
@@ -144,9 +138,8 @@ PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
     return ucst;
 }
 
-PlutoConstraints *pluto_constraints_difference(const PlutoConstraints *cst1, 
-        const PlutoConstraints *cst2)
-{
+PlutoConstraints *pluto_constraints_difference(const PlutoConstraints *cst1,
+        const PlutoConstraints *cst2) {
     assert(cst1->ncols == cst2->ncols);
 
     Polyhedron *pol1 = pluto_constraints_to_polylib(cst1);
@@ -163,9 +156,8 @@ PlutoConstraints *pluto_constraints_difference(const PlutoConstraints *cst1,
 }
 
 
-PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1, 
-        const PlutoConstraints *cst2)
-{
+PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1,
+        const PlutoConstraints *cst2) {
     Polyhedron *pol1 = pluto_constraints_to_polylib(cst1);
     Polyhedron *pol2 = pluto_constraints_to_polylib(cst2);
 
@@ -182,9 +174,8 @@ PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1,
 
 
 /* In-place intersection: first argument is modified */
-PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1, 
-        const PlutoConstraints *cst2)
-{
+PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
+        const PlutoConstraints *cst2) {
     PlutoConstraints *icst = pluto_constraints_intersection(cst1, cst2);
     pluto_constraints_copy(cst1, icst);
     pluto_constraints_free(icst);
@@ -196,8 +187,7 @@ PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
 
 
 /* Converts polylib matrix to pluto constraints */
-PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat)
-{
+PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat) {
     int i, j;
     PlutoConstraints *cst;
 
@@ -214,8 +204,7 @@ PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat)
     return cst;
 }
 
-PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat)
-{
+PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat) {
     assert(mat->nrows == mat->ncols);
 
     PlutoMatrix *inv;
@@ -226,7 +215,7 @@ PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat)
     Matrix *pmat = pluto_matrix_to_polylib(mat);
 
     Matrix_Inverse(pmat, pinv);
-    
+
     inv = polylib_matrix_to_pluto(pinv);
 
     Matrix_Free(pmat);
@@ -236,9 +225,8 @@ PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat)
 }
 
 /* In-place difference: Like difference, but first argument is modified */
-PlutoConstraints *pluto_constraints_subtract(PlutoConstraints *cst1, 
-        const PlutoConstraints *cst2)
-{
+PlutoConstraints *pluto_constraints_subtract(PlutoConstraints *cst1,
+        const PlutoConstraints *cst2) {
     PlutoConstraints *dcst = pluto_constraints_difference(cst1,cst2);
     pluto_constraints_copy(cst1,dcst);
     pluto_constraints_free(dcst);

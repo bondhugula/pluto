@@ -20,8 +20,7 @@ double b[N][N];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -32,8 +31,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -45,8 +43,7 @@ void print_array()
     fprintf(stderr, "\n");
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -56,8 +53,7 @@ double rtclock()
 }
 #define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
 
-int main()
-{
+int main() {
     int t, i, j;
     double t_start, t_end;
 

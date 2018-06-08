@@ -11,14 +11,13 @@ double f[N][N+13];
 
 double t_start, t_end;
 
-int main()
-{
+int main() {
     int i, j, k, t;
 
     init_array() ;
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());

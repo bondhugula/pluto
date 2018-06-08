@@ -8,8 +8,9 @@ import code_frag, parser
 #----------------------------------------------
 
 # source language
-C_CPP = 1
-FORTRAN = 2
+C_CPP = 0
+FORTRAN = 1
+PYTHON = 2
 
 #----------------------------------------------
 
@@ -165,8 +166,8 @@ def main(argv, lang):
     __parseCommandLineParameters(argv)
 
     # check for unsupported source languages
-    if lang == FORTRAN:
-        print 'error: Fortran is not yet supported'
+    if lang == FORTRAN or lang == PYTHON:
+        print 'error: Fortran and Python are not yet supported'
         sys.exit(1)
     
     # read source code

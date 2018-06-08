@@ -1,15 +1,14 @@
 #include <stdint.h>
 #include <float.h>
 
-void k_classify_local (float    * pointv, 
-                       uint32_t   pointc, 
+void k_classify_local (float    * pointv,
+                       uint32_t   pointc,
                        uint32_t   point_lda,
-                       float    * clusterv, 
-                       float    * clusterv2, 
-                       uint32_t * counterv, 
+                       float    * clusterv,
+                       float    * clusterv2,
+                       uint32_t * counterv,
                        uint32_t  clusterc,
-                       uint32_t   dims)
-{
+                       uint32_t   dims) {
     uint32_t p, k, d, kmin, dist_min, tmp, dist;
 
 #define clusterv(d,k) {clusterv[d*clusterc + k]}
@@ -27,8 +26,8 @@ void k_classify_local (float    * pointv,
                 tmp = clusterv[d][k] - pointv(d,p);
                 dist[k] += tmp* tmp;
             }
-			dist_min[k] = (dist[k] < dist_min)? dist[k]: dist_min;
-			kmin[k] = (dist[k] < dist_min)? k: kmin;
+            dist_min[k] = (dist[k] < dist_min)? dist[k]: dist_min;
+            kmin[k] = (dist[k] < dist_min)? k: kmin;
         }
         counterv[0] = counterv[0] + 1;
         for(d=0; d<dims; ++d) {

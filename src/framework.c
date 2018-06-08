@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2012 Uday Bondhugula
  *
  * This file is part of Pluto.
@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdio.h>
@@ -54,8 +54,7 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
  */
 
 /* Builds validity and bounding function constraints for a dependence */
-static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
-{
+static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     PlutoConstraints *cst, *tiling_valid_cst, *bounding_func_cst;
     int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
     int src_offset, dest_offset;
@@ -93,7 +92,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         /* Translation coefficients */
         phi->val[2*nvar+npar][(nvar+1)+nvar] = 1;
         phi->val[2*nvar+npar][nvar] = -1;
-    }else{
+    } else {
         phi = pluto_matrix_alloc(2*nvar+npar+1, (nvar+1)+1);
         pluto_matrix_set(phi, 0);
 
@@ -113,7 +112,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
 
     /* Apply Farkas lemma for tiling validity constraints */
     tiling_valid_cst = farkas_lemma_affine(dpoly, phi);
-    
+
     pluto_matrix_free(phi);
 
     if (src_stmt != dest_stmt) {
@@ -138,7 +137,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
         phi->val[2*nvar+npar][npar+1+(nvar+1)+nvar] = -1;
         /* for w */
         phi->val[2*nvar+npar][npar] = 1;
-    }else{
+    } else {
         phi = pluto_matrix_alloc(2*nvar+npar+1, npar+1+(nvar+1)+1);
         pluto_matrix_set(phi, 0);
 
@@ -168,7 +167,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     pluto_constraints_free(dpoly);
 
     /* Aggregate permutability and bounding function constraints together in
-     * global format; note that tiling_valid_cst and bounding_func_cst are 
+     * global format; note that tiling_valid_cst and bounding_func_cst are
      * local to a  dependence/statements pertaining to it) */
 
     /* Everything initialized to zero during allocation */
@@ -193,7 +192,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
             /* constant part */
             if (src_stmt == dest_stmt) {
                 cst->val[cst->nrows-1][cst->ncols-1] = tiling_valid_cst->val[k][nvar+1];
-            }else{
+            } else {
                 cst->val[cst->nrows-1][cst->ncols-1] = tiling_valid_cst->val[k][2*nvar+2];
             }
         }
@@ -223,7 +222,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
             /* constant part */
             if (src_stmt == dest_stmt) {
                 bcst_g->val[bcst_g->nrows-1][bcst_g->ncols-1] = bounding_func_cst->val[k][npar+1+nvar+1];
-            }else{
+            } else {
                 bcst_g->val[bcst_g->nrows-1][bcst_g->ncols-1] = bounding_func_cst->val[k][npar+1+2*nvar+2];
             }
         }
@@ -255,17 +254,15 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     pluto_constraints_free(bounding_func_cst);
 }
 
-/* Computes permutability constraints for a dependence. 
+/* Computes permutability constraints for a dependence.
  * An interfacing routine to expose compute_permutability_constraints_dep
  */
-void compute_pairwise_permutability(Dep *dep,PlutoProg *prog)
-{
+void compute_pairwise_permutability(Dep *dep,PlutoProg *prog) {
     compute_permutability_constraints_dep(dep,prog);
 }
 
 /* Computes permutatbility constraints for all the dependences within the input SCC */
-PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog)
-{
+PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog) {
     int i, ndeps, src, dest;
     Dep *dep;
     PlutoConstraints* scc_dep_cst;
@@ -294,8 +291,7 @@ PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog
 }
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
-PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
-{
+PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
     int i, inc, nstmts, nvar, npar, ndeps, total_cst_rows;
     PlutoConstraints *globcst;
     Dep **deps;
@@ -337,7 +333,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
             compute_permutability_constraints_dep(dep, prog);
 
             IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n",
-                        i+1, dep->cst->nrows));
+                             i+1, dep->cst->nrows));
             total_cst_rows += dep->cst->nrows;
             // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
             // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
@@ -359,7 +355,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
 
         if (skipdeps[i]) continue;
 
-		/* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
+        /* print_polylib_visual_sets("BB_cst", dep->bounding_cst); */
 
         if (options->rar == 0 && IS_RAR(dep->type)) continue;
 
@@ -368,7 +364,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
          * are found at a depth
          */
         if (dep_is_satisfied(dep)) {
-			continue;
+            continue;
         }
 
         /* Subsequent calls can just use the old ones */
@@ -376,7 +372,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
         /* print_polylib_visual_sets("global", dep->cst); */
 
         IF_DEBUG(fprintf(stdout, "\tAfter dep %d; num_constraints: %d\n", i+1,
-                    globcst->nrows));
+                         globcst->nrows));
         /* This is for optimization as opposed to for correctness. We will
          * simplify constraints only if it crosses the threshold: at the time
          * it crosses the threshold or at 1000 increments thereon. Simplifying
@@ -385,13 +381,13 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
          * because it leads to a large globcst and a number of constraits in
          * it are redundant */
         if (globcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc) &&
-                globcst->nrows - dep->cst->nrows < 
+                globcst->nrows - dep->cst->nrows <
                 CONSTRAINTS_SIMPLIFY_THRESHOLD + (3000*inc)) {
             pluto_constraints_simplify(globcst);
             inc++;
             IF_DEBUG(fprintf(stdout,
-                        "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
-                        globcst->nrows));
+                             "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
+                             globcst->nrows));
         }
     }
 
@@ -401,15 +397,14 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
     if (skipfp) fclose(skipfp);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
-                globcst->nrows, globcst->ncols - 1));
+                     globcst->nrows, globcst->ncols - 1));
     // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
     return globcst;
 }
 
 /* Builds 1-dimensional schedule constraints (sequential schedule) for a dependence */
-PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *prog)
-{
+PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *prog) {
     PlutoConstraints *cst, *sched_valid_cst;
     int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
     int src_offset, dest_offset;
@@ -449,7 +444,7 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
         phi->val[2*nvar+npar][nvar] = -1;
         /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
         phi->val[2*nvar+npar][2*(nvar+1)] = -1;
-    }else{
+    } else {
         phi = pluto_matrix_alloc(2*nvar+npar+1, (nvar+1)+1);
         pluto_matrix_set(phi, 0);
 
@@ -473,7 +468,7 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
     /* Apply Farkas lemma */
     sched_valid_cst = farkas_lemma_affine(dpoly, phi);
     // pluto_constraints_pretty_print(stdout, sched_valid_cst);
-    
+
     pluto_matrix_free(phi);
     pluto_constraints_free(dpoly);
 
@@ -501,7 +496,7 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
             /* constant part */
             if (src_stmt == dest_stmt) {
                 cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][nvar+1];
-            }else{
+            } else {
                 cst->val[cst->nrows-1][cst->ncols-1] = sched_valid_cst->val[k][2*nvar+2];
             }
         }
@@ -528,12 +523,11 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep, PlutoProg *pr
 }
 
 
-/* 
+/*
  * 1-d affine schedule for a set of statements
  */
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stmts,
-       int nstmts)
-{
+        int nstmts) {
     int i, inc, nvar, npar, ndeps;
     PlutoConstraints *fcst, *fcst_d;
     Dep **deps;
@@ -561,7 +555,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
         fcst_d = get_feautrier_schedule_constraints_dep(dep, prog);
 
         IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n",
-                    i+1, fcst_d->nrows));
+                         i+1, fcst_d->nrows));
         IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
         IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, fcst_d));
 
@@ -569,12 +563,12 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
         pluto_constraints_free(fcst_d);
 
         if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc) &&
-                fcst->nrows - fcst_d->nrows < 
+                fcst->nrows - fcst_d->nrows <
                 CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
             pluto_constraints_simplify(fcst);
             IF_DEBUG(fprintf(stdout,
-                        "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
-                        fcst->nrows));
+                             "\tAfter dep %d; num_constraints_simplified: %d\n", i+1,
+                             fcst->nrows));
             if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000*inc)) {
                 inc++;
             }
@@ -583,7 +577,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
     pluto_constraints_simplify(fcst);
 
     IF_DEBUG(fprintf(stdout, "\tAfter all dependences: num constraints: %d, num variables: %d\n",
-                fcst->nrows, fcst->ncols - 1));
+                     fcst->nrows, fcst->ncols - 1));
     IF_DEBUG2(pluto_constraints_pretty_print(stdout, fcst));
 
     return fcst;
@@ -617,8 +611,7 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **stm
  * value is NULL
  */
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-        const PlutoConstraints *currcst, int *orthonum)
-{
+        const PlutoConstraints *currcst, int *orthonum) {
     int i, j, k, p, q, nvar, npar, nstmts;
     PlutoConstraints **orthcst;
     HyperplaneProperties *hProps;
@@ -663,7 +656,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     h = isl_mat_alloc(ctx, q, p);
 
-    p=0; 
+    p=0;
     q=0;
     for (i=0; i<nvar; i++) {
         if (stmt->is_orig_loop[i])    {
@@ -685,7 +678,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
     isl_mat_free(h);
 
-    orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *)); 
+    orthcst = (PlutoConstraints **) malloc((nvar+1)*sizeof(PlutoConstraints *));
 
     for (i=0; i<nvar+1; i++)  {
         orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
@@ -717,7 +710,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         }
     }
     // printf("Ortho matrix\n");
-    // pluto_matrix_print(stdout, ortho); 
+    // pluto_matrix_print(stdout, ortho);
 
     /* Fast linear independence check */
     if (options->flic)  isl_currcst = NULL;
@@ -744,7 +737,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
         if (!options->flic) {
             orthcst_i = isl_basic_set_intersect(orthcst_i,
-                    isl_basic_set_copy(isl_currcst));
+                                                isl_basic_set_copy(isl_currcst));
             if (isl_basic_set_fast_is_empty(orthcst_i)
                     || isl_basic_set_is_empty(orthcst_i)) {
                 pluto_constraints_negate_row(orthcst[p], 0);
@@ -770,7 +763,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     *orthonum = p;
 
     IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n",
-                stmt->id+1, *orthonum-1));
+                     stmt->id+1, *orthonum-1));
     for (i=0; i<*orthonum; i++) {
         // print_polylib_visual_sets("li", orthcst[i]);
         IF_DEBUG2(pluto_constraints_compact_print(stdout, orthcst[i]));
@@ -790,14 +783,13 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
 /* PlutoConstraints to avoid trivial solutions (all zeros)
  *
- * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked, 
+ * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked,
  * a hyperplane, if found, will be a loop hyperplane.
- *                 = LAZY: at least one of the hyperplanes for non-full statements 
- *  should be a loop hyperplane as opposed to all 
+ *                 = LAZY: at least one of the hyperplanes for non-full statements
+ *  should be a loop hyperplane as opposed to all
  */
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
-        bool hyp_search_mode)
-{
+        bool hyp_search_mode) {
     PlutoConstraints *nzcst;
     int i, j, stmt_offset, nvar, npar, nstmts;
 
@@ -825,7 +817,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
             nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
             nzcst->nrows++;
         }
-    }else{
+    } else {
         assert(hyp_search_mode == LAZY);
         for (i=0; i<nstmts; i++) {
             /* Don't add the constraint if enough solutions have been found */
@@ -851,8 +843,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 /**
  * Bounds for Pluto ILP variables
  */
-PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
-{
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
     int i, npar, nstmts, nvar;
     PlutoConstraints *cst;
 
@@ -877,7 +868,7 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
             IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
             pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
         }
-    }else{
+    } else {
         /* Add upper bounds for transformation coefficients */
         int ub = pluto_prog_get_largest_const_in_domains(prog);
 
@@ -903,8 +894,7 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
  * (works whether the dep is const or non-const, inter-stmt or
  * self edge
  */
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
-{
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level) {
     PlutoConstraints *cst;
     int j, src_dim, dest_dim, npar;
     bool is_empty;
@@ -922,8 +912,8 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
     assert(level < src_stmt->trans->nrows);
     assert(level < dest_stmt->trans->nrows);
 
-    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows), 
-            src_dim+dest_dim+npar+1);
+    cst = pluto_constraints_alloc(2*(1+dep->dpolytope->nrows),
+                                  src_dim+dest_dim+npar+1);
 
     /*
      * constraint format
@@ -939,7 +929,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
         cst->val[0][j] = -dest_stmt->trans->val[level][j-src_dim];
     }
     for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar+1; j++)    {
-        cst->val[0][j] = 
+        cst->val[0][j] =
             src_stmt->trans->val[level][j-dest_dim] - dest_stmt->trans->val[level][j-src_dim];
     }
 
@@ -965,8 +955,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
  *
  * Retval: true if at least one dependence instance was satisfied
  */
-static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int level)
-{
+static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int level) {
     PlutoConstraints *cst;
     int j, src, dest, src_dim, dest_dim, retval;
 
@@ -986,7 +975,7 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
     cst = pluto_constraints_alloc(1+dep->dpolytope->nrows, src_dim+dest_dim+npar+1);
 
     /*
-     * constraint format 
+     * constraint format
      * \phi(dest) - \phi (src) <= 0
      */
 
@@ -998,11 +987,11 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
         cst->val[0][j] = -stmts[dest]->trans->val[level][j-src_dim];
     }
     for (j=src_dim+dest_dim; j<src_dim+dest_dim+npar; j++)    {
-        cst->val[0][j] = 
+        cst->val[0][j] =
             stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
     }
     j=src_dim+dest_dim+npar;
-    cst->val[0][j] = 
+    cst->val[0][j] =
         stmts[src]->trans->val[level][j-dest_dim] - stmts[dest]->trans->val[level][j-src_dim];
 
     cst->nrows = 1;
@@ -1018,13 +1007,12 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
 
 
 
-/* 
- * A precise dep satisfaction computation 
+/*
+ * A precise dep satisfaction computation
  *
  * Returns: number of dependences satisfied
  */
-int pluto_compute_dep_satisfaction_precise(PlutoProg *prog)
-{
+int pluto_compute_dep_satisfaction_precise(PlutoProg *prog) {
     int i, num_satisfied;
 
     IF_DEBUG(printf("[pluto] computing_dep_satisfaction_precise\n"););
@@ -1069,20 +1057,19 @@ int pluto_compute_dep_satisfaction_precise(PlutoProg *prog)
             /* Dep has not been satisfied fully */
         }
         level++;
-        for (;level<prog->num_hyperplanes; level++) {
+        for (; level<prog->num_hyperplanes; level++) {
             dep->satvec[level] = 0;
         }
     }
     // pluto_print_dep_directions(prog);
-    IF_DEBUG(printf("\t %d (out of %d) dep(s) satisfied\n", 
-                num_satisfied, prog->ndeps););
+    IF_DEBUG(printf("\t %d (out of %d) dep(s) satisfied\n",
+                    num_satisfied, prog->ndeps););
     return num_satisfied;
 }
 
 
 /* Retval: true if some iterations are satisfied */
-static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, int level)
-{
+static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, int level) {
     PlutoConstraints *cst;
     int j, src, dest, src_dim, dest_dim, retval;
 
@@ -1136,8 +1123,7 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, i
 
 /* Direction vector component at level 'level'
  */
-DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
-{
+DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level) {
     PlutoConstraints *cst;
     int j, src, dest;
 
@@ -1157,7 +1143,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     assert(level < stmts[dest]->trans->nrows);
 
     cst = pluto_constraints_alloc(2 * (2 + dep->dpolytope->nrows),
-            (src_dim + dest_dim) + npar + 1);
+                                  (src_dim + dest_dim) + npar + 1);
 
     /*
      * Check for zero
@@ -1175,7 +1161,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     }
     for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
         cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] +
-            stmts[dest]->trans->val[level][j - src_dim];
+                         stmts[dest]->trans->val[level][j - src_dim];
     }
     cst->val[0][src_dim + dest_dim + npar] =
         -stmts[src]->trans->val[level][src_dim + npar] +
@@ -1194,11 +1180,11 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
             cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
         }
         for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
-            cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
-                - stmts[dest]->trans->val[level][j - src_dim];
+            cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim]
+                             - stmts[dest]->trans->val[level][j - src_dim];
         }
         cst->val[0][src_dim + dest_dim + npar] =
-            stmts[src]->trans->val[level][src_dim + npar] 
+            stmts[src]->trans->val[level][src_dim + npar]
             - stmts[dest]->trans->val[level][dest_dim + npar] - 1;
         cst->nrows = 1;
 
@@ -1227,8 +1213,8 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
         cst->val[0][j] = -stmts[dest]->trans->val[level][j - src_dim];
     }
     for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
-        cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim] 
-            - stmts[dest]->trans->val[level][j - src_dim];
+        cst->val[0][j] = stmts[src]->trans->val[level][j - dest_dim]
+                         - stmts[dest]->trans->val[level][j - src_dim];
     }
     cst->val[0][src_dim + dest_dim + npar] =
         stmts[src]->trans->val[level][src_dim + npar] -
@@ -1260,8 +1246,8 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
         cst->val[0][j] = stmts[dest]->trans->val[level][j - src_dim];
     }
     for (j = src_dim + dest_dim; j < src_dim + dest_dim + npar; j++) {
-        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim] 
-            + stmts[dest]->trans->val[level][j - src_dim];
+        cst->val[0][j] = -stmts[src]->trans->val[level][j - dest_dim]
+                         + stmts[dest]->trans->val[level][j - src_dim];
     }
     cst->val[0][src_dim + dest_dim + npar] =
         -stmts[src]->trans->val[level][src_dim + npar] +
@@ -1281,10 +1267,9 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level)
     return DEP_STAR;
 }
 
-/* The routine is used to populate the csr matrices for scaling rational 
+/* The routine is used to populate the csr matrices for scaling rational
  * solutions of pluto-lp. These matrices are used to construct constraints for scaling MIP */
-void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog)
-{
+void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog) {
     int i, j, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
     Stmt **stmts;
 
@@ -1309,7 +1294,7 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val
             (*index)[num_rows][0] = 0;
             (*val)[num_rows][0] = 0.0f;
 
-            (*index)[num_rows][1] = cc_id+1; 
+            (*index)[num_rows][1] = cc_id+1;
             /* val[num_row][i] will be set once the mip solution is found */
 
             (*index)[num_rows][2] = num_ccs+stmt_offset+j+1;

@@ -18,8 +18,7 @@ double w[N];
 double y[N];
 double z[N];
 
-void init_arrays()
-{
+void init_arrays() {
     int i, j;
     for (i=0; i<N; i++) {
         u1[i] = i;
@@ -36,53 +35,50 @@ void init_arrays()
     }
 }
 
-double rtclock()
-{
-  struct timezone tzp;
-  struct timeval tp;
-  int stat;
-  gettimeofday (&tp, &tzp);
-  return (tp.tv_sec + tp.tv_usec*1.0e-6);
+double rtclock() {
+    struct timezone tzp;
+    struct timeval tp;
+    int stat;
+    gettimeofday (&tp, &tzp);
+    return (tp.tv_sec + tp.tv_usec*1.0e-6);
 }
 
-int main()
-{
-  init_arrays();
+int main() {
+    init_arrays();
 
-  double annot_t_start=0, annot_t_end=0, annot_t_total=0;
-  int annot_i;
+    double annot_t_start=0, annot_t_end=0, annot_t_total=0;
+    int annot_i;
 
-  for (annot_i=0; annot_i<REPS; annot_i++)
-  {
-    annot_t_start = rtclock();
+    for (annot_i=0; annot_i<REPS; annot_i++) {
+        annot_t_start = rtclock();
 
-    int i,j;
-     
-for (i=0; i<=N-1; i++)
-  for (j=0; j<=N-1; j++)
-    B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j];
+        int i,j;
 
-for (i=0; i<=N-1; i++)
-  for (j=0; j<=N-1; j++)
-    x[i] = x[i] + beta* B[j][i]*y[j];
+        for (i=0; i<=N-1; i++)
+            for (j=0; j<=N-1; j++)
+                B[i][j] = A[i][j] + u1[i]*v1[j] + u2[i]*v2[j];
+
+        for (i=0; i<=N-1; i++)
+            for (j=0; j<=N-1; j++)
+                x[i] = x[i] + beta* B[j][i]*y[j];
 
 
-for (i=0; i<=N-1; i++)
-  x[i] = x[i] + z[i];
+        for (i=0; i<=N-1; i++)
+            x[i] = x[i] + z[i];
 
-for (i=0; i<=N-1; i++)
-  for (j=0; j<=N-1; j++)
-    w[i] = w[i] + alpha* B[i][j]*x[j];
+        for (i=0; i<=N-1; i++)
+            for (j=0; j<=N-1; j++)
+                w[i] = w[i] + alpha* B[i][j]*x[j];
 
-    annot_t_end = rtclock();
-    annot_t_total += annot_t_end - annot_t_start;
-  }
-  
-  annot_t_total = annot_t_total / REPS;
-  printf("%f\n", annot_t_total);
+        annot_t_end = rtclock();
+        annot_t_total += annot_t_end - annot_t_start;
+    }
 
-  return ((int) w[0]); 
+    annot_t_total = annot_t_total / REPS;
+    printf("%f\n", annot_t_total);
+
+    return ((int) w[0]);
 
 }
-                                    
+
 

@@ -8,8 +8,7 @@
 
 double t_start, t_end;
 
-main()
-{
+main() {
     int t, p, q, r, s;
     double *_C4, *_sum, *_A;
     int LDA, LDB, LDC;
@@ -25,12 +24,12 @@ main()
     _C4 = (double *) malloc(sizeof(double)*N*N);
     _sum = (double *) malloc(sizeof(double)*N*N*N);
 
-    for( i=0; i<N; i++){
-        for( j=0; j<N; j++){
-            for( k=0; k<N; k++){
+    for( i=0; i<N; i++) {
+        for( j=0; j<N; j++) {
+            for( k=0; k<N; k++) {
                 _A[i*N*N+j*N+k]= A[i][j][k];
             }
-            _C4[i*N+j]= C4[i][j]; 
+            _C4[i*N+j]= C4[i][j];
         }
     }
 
@@ -40,25 +39,25 @@ main()
     for (t=0; t<1000; t++)  {
 #endif
 
-    /* pluto start (N) */
-    for( r = 0; r < N; r++)  {
-        for( q = 0; q< N; q++)  {
-            for( p = 0; p< N; p++)  {
-                _sum[N*N*r + N*q + p] = 0.0;
+        /* pluto start (N) */
+        for( r = 0; r < N; r++)  {
+            for( q = 0; q< N; q++)  {
+                for( p = 0; p< N; p++)  {
+                    _sum[N*N*r + N*q + p] = 0.0;
+                }
             }
         }
-    }
 
-    dgemm('T','T',N*N,N,N,1,_A,LDA,_C4,LDB,1,_sum,LDC);
+        dgemm('T','T',N*N,N,N,1,_A,LDA,_C4,LDB,1,_sum,LDC);
 
-    for( r = 0; r<N; r++)  {
-        for( q = 0; q<N; q++)  {
-            for( p = 0; p< N; p++)  {
-                A[p][r][q] = _sum[N*N*r+N*q+p];
+        for( r = 0; r<N; r++)  {
+            for( q = 0; q<N; q++)  {
+                for( p = 0; p< N; p++)  {
+                    A[p][r][q] = _sum[N*N*r+N*q+p];
+                }
             }
         }
-    }
-    /* pluto end */
+        /* pluto end */
 
 #ifndef TEST
     }

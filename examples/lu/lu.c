@@ -25,8 +25,7 @@ double a[N][N];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j, k;
 
     for (i=0; i<N; i++) {
@@ -39,8 +38,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -53,8 +51,7 @@ void print_array()
     fprintf(stderr, "\n");
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -63,14 +60,13 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-int main()
-{
-	int i, j, k;
+int main() {
+    int i, j, k;
     double t_start, t_end;
 
-	init_array() ;
+    init_array() ;
 
-	IF_TIME(t_start = rtclock());
+    IF_TIME(t_start = rtclock());
 
 #pragma scop
     for (k=0; k<N; k++) {
@@ -85,8 +81,8 @@ int main()
     }
 #pragma endscop
 
-	IF_TIME(t_end = rtclock());
-	IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(t_end = rtclock());
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
     if (fopen(".test", "r")) {
 #ifdef MPI

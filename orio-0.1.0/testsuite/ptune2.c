@@ -1,5 +1,5 @@
 
-/*@ begin PerfTuning ( 
+/*@ begin PerfTuning (
  def build {
    arg command = 'icc';
    arg options = '-fast';
@@ -30,7 +30,7 @@
  }
 
 # def performance_test_code {
-#   arg skeleton_code_file = 'ptune2_skeleton_code.c'; 
+#   arg skeleton_code_file = 'ptune2_skeleton_code.c';
 # }
 
 ) @*/
@@ -45,7 +45,7 @@ transform RegTile(loops=['i'], ufactors=[UI])
 ) @*/
 
 for (i=0; i<=N-1; i++)
-  y[i] = y[i] + alpha*x[i];
+    y[i] = y[i] + alpha*x[i];
 
 /*@ end @*/
 /*@ end @*/

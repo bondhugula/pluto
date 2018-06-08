@@ -14,8 +14,7 @@
 
 #include "util.h"
 
-int main()
-{
+int main() {
     int i, j, k, l, m, n, t;
 
     int i1, i2;
@@ -25,7 +24,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -53,7 +52,7 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
     if (fopen(".test", "r")) {

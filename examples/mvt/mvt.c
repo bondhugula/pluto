@@ -13,8 +13,7 @@ double a[N][N], y_1[N+17], y_2[N+19], x1[N+23], z0[N+29], x2[N+31];
 #define IF_TIME(foo)
 #endif
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -23,8 +22,7 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -38,8 +36,7 @@ void init_array()
     }
 }
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -54,8 +51,7 @@ void print_array()
     fprintf(stderr, "\n");
 }
 
-int main()
-{
+int main() {
     int i, j, k, l, t;
 
     double t_start, t_end;

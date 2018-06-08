@@ -8,8 +8,7 @@
 
 double t_start, t_end;
 
-main()
-{
+main() {
     int t, p, q, r, s;
     double *_C4, *_sum, *_A;
     int LDA, LDB, LDC;
@@ -25,12 +24,12 @@ main()
     _C4 = (double *) malloc(sizeof(double)*N*N);
     _sum = (double *) malloc(sizeof(double)*N*N*N);
 
-    for( i=0; i<N; i++){
-        for( j=0; j<N; j++){
-            for( k=0; k<N; k++){
+    for( i=0; i<N; i++) {
+        for( j=0; j<N; j++) {
+            for( k=0; k<N; k++) {
                 _A[i*N*N+j*N+k]= A[i][j][k];
             }
-            _C4[j*N+i]= C4[i][j]; 
+            _C4[j*N+i]= C4[i][j];
         }
     }
 
@@ -47,7 +46,7 @@ main()
                 }
 
                 cblas_dgemv(CblasRowMajor,CblasNoTrans,
-                        N,N,1,_C4,N,&_A[N*N*r+N*q],1,1,&_sum[N*N*r+N*q],1);
+                            N,N,1,_C4,N,&_A[N*N*r+N*q],1,1,&_sum[N*N*r+N*q],1);
 
                 for( p = 0; p< N; p++)  {
                     _A[N*N*r+N*q+p] = _sum[N*N*r+N*q+p];

@@ -5,8 +5,7 @@
 
 double t_start, t_end;
 
-main()
-{
+main() {
     int t, p, q, r, s;
 
     init_array();

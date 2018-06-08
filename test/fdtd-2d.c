@@ -27,8 +27,7 @@ double hz[nx][ny];
 #define IF_TIME(foo)
 #endif
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -37,8 +36,7 @@ double rtclock()
     return(Tp.tv_sec + Tp.tv_usec*1.0e-6);
 }
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<nx+1; i++)  {
@@ -65,8 +63,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<nx; i++) {
@@ -82,17 +79,16 @@ double t_start, t_end;
 
 #define __PLACE_TO_INSERT_FORWARD_DECLARATIONS
 
-int main()
-{
-	int t, i, j, k, l, m, n;
+int main() {
+    int t, i, j, k, l, m, n;
 
-	init_array() ;
+    init_array() ;
 
 #ifdef PERFCTR
     PERF_INIT;
 #endif
 
-	IF_TIME(t_start = rtclock());
+    IF_TIME(t_start = rtclock());
 
 #pragma scop
     for(t=0; t<tmax; t++)  {

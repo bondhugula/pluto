@@ -26,8 +26,7 @@ double z[N];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -45,8 +44,7 @@ void init_array()
     }
 }
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -57,8 +55,7 @@ void print_array()
 }
 
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -70,8 +67,7 @@ double rtclock()
 #define beta 1
 #define alpha 1
 
-main()
-{
+main() {
     double t_start, t_end;
     int i, j;
 

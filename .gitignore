@@ -1,20 +1,74 @@
-# Ignore objects and archives.
-*.[oa]
-*.lo
-# vim swap files
-*.swp
-# python byte compiled files in orio
-*.pyc
-test_plutolib
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
 
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+*.[oa]
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# VIM swap files
+*.swp
+
+# Python byte compiled files in orio
+*.pyc
+
+# Test files
+test_plutolib
 test/*.cloog
 test/*.pluto.c
 test/*.opt.c
 test/*.par.c
 test/*.tiled.c
+
+# Pluto binary
 src/pluto
-src/Makefile
-src/Makefile.in
+
+# Generated files
+Makefile
+Makefile.in
 .libs
 .deps
 autom4te.cache
@@ -22,83 +76,6 @@ tags
 .body.c
 .linearized
 .nonlinearized
-candl-0.4.0/Makefile
-candl-0.4.0/Makefile.in
-candl-0.4.0/config.log
-candl-0.4.0/config.status
-candl-0.4.0/configure
-candl-0.4.0/doc/Doxyfile
-candl-0.4.0/doc/Makefile
-candl-0.4.0/doc/Makefile.in
-candl-0.4.0/include/Makefile
-candl-0.4.0/include/Makefile.in
-candl-0.4.0/include/candl/candl.h
-candl-0.4.0/libtool
-candl-0.4.0/source/Makefile
-candl-0.4.0/source/Makefile.in
-candl-0.4.0/tests/Makefile
-candl-0.4.0/tests/Makefile.in
-clan-0.6.0/Makefile
-clan-0.6.0/Makefile.in
-clan-0.6.0/config.log
-clan-0.6.0/config.status
-clan-0.6.0/configure
-clan-0.6.0/doc/Doxyfile
-clan-0.6.0/doc/Makefile
-clan-0.6.0/doc/Makefile.in
-clan-0.6.0/include/Makefile
-clan-0.6.0/include/Makefile.in
-clan-0.6.0/include/clan/clan.h
-clan-0.6.0/libtool
-clan-0.6.0/scoplib/scoplib-0.2.0/Makefile
-clan-0.6.0/scoplib/scoplib-0.2.0/Makefile.in
-clan-0.6.0/scoplib/scoplib-0.2.0/config.log
-clan-0.6.0/scoplib/scoplib-0.2.0/config.status
-clan-0.6.0/scoplib/scoplib-0.2.0/configure
-clan-0.6.0/scoplib/scoplib-0.2.0/doc/Doxyfile
-clan-0.6.0/scoplib/scoplib-0.2.0/doc/Makefile
-clan-0.6.0/scoplib/scoplib-0.2.0/doc/Makefile.in
-clan-0.6.0/scoplib/scoplib-0.2.0/include/Makefile
-clan-0.6.0/scoplib/scoplib-0.2.0/include/Makefile.in
-clan-0.6.0/scoplib/scoplib-0.2.0/include/scoplib/scop.h
-clan-0.6.0/scoplib/scoplib-0.2.0/libtool
-clan-0.6.0/scoplib/scoplib-0.2.0/source/Makefile
-clan-0.6.0/scoplib/scoplib-0.2.0/source/Makefile.in
-clan-0.6.0/source/Makefile
-clan-0.6.0/source/Makefile.in
-clan-0.6.0/tests/Makefile
-clan-0.6.0/tests/Makefile.in
-candl-0.4.0/autoconf/install-sh
-candl-0.4.0/autoconf/libtool.m4
-candl-0.4.0/autoconf/ltoptions.m4
-candl-0.4.0/autoconf/ltsugar.m4
-candl-0.4.0/autoconf/ltversion.m4
-candl-0.4.0/autoconf/lt~obsolete.m4
-candl-0.4.0/autoconf/missing
-candl-0.4.0/autoconf/texinfo.tex
-candl-0.4.0/aclocal.m4
-candl-0.4.0/autoconf/config.guess
-candl-0.4.0/autoconf/config.sub
-candl-0.4.0/autoconf/ltmain.sh
-candl-0.4.0/source/candl
-candl-0.4.0/source/libcandl.la
-clan-0.6.0/aclocal.m4
-clan-0.6.0/autoconf/ltoptions.m4
-clan-0.6.0/autoconf/ltsugar.m4
-clan-0.6.0/autoconf/ltversion.m4
-clan-0.6.0/autoconf/lt~obsolete.m4
-clan-0.6.0/autoconf/missing
-clan-0.6.0/autoconf/ylwrap
-clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/ltmain.sh
-clan-0.6.0/scoplib/scoplib-0.2.0/source/libscoplib.la
-clan-0.6.0/scoplib/scoplib-0.2.0/doc/clan.pdf
-clan-0.6.0/source/clan
-clan-0.6.0/source/libclan.la
-clan-0.6.0/scoplib/scoplib-0.2.0/aclocal.m4
-clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.guess
-clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/config.sub
-clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/libtool.m4
-clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/texinfo.tex
 depcomp
 install-sh
 aclocal.m4
@@ -112,11 +89,10 @@ config.log
 config.status
 configure
 stamp-h1
-Makefile
-Makefile.in
 parsetab.py
 polycc.sh
 polycc
 libtool
 getversion.sh
 missing
+

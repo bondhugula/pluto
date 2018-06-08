@@ -17,8 +17,7 @@ double a[NMAX][NMAX], c[NMAX][NMAX];
 #endif
 
 #ifdef TIME
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -29,49 +28,48 @@ double rtclock()
 #endif
 
 
-int main()
-{
-  double t_start, t_end;
+int main() {
+    double t_start, t_end;
 
-  int i,j, k;
+    int i,j, k;
 
-  for (i = 0; i < NMAX; i++) {
-    for (j = 0; j < NMAX; j++) {
-      c[i][j] = 0.0;
-      a[i][j] = i*j*3.2345 / NMAX;
+    for (i = 0; i < NMAX; i++) {
+        for (j = 0; j < NMAX; j++) {
+            c[i][j] = 0.0;
+            a[i][j] = i*j*3.2345 / NMAX;
+        }
     }
-  }
 
-  IF_TIME(t_start = rtclock());
+    IF_TIME(t_start = rtclock());
 
 #pragma scop
-  for (i=0; i<NMAX; i++) {
-    for (j=0; j<NMAX; j++) {
-      for (k=j; k<NMAX; k++) {
-        c[j][k] += a[i][j] * a[i][k];
-      }
+    for (i=0; i<NMAX; i++) {
+        for (j=0; j<NMAX; j++) {
+            for (k=j; k<NMAX; k++) {
+                c[j][k] += a[i][j] * a[i][k];
+            }
+        }
     }
-  }
 #pragma endscop
 
 
-  IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(t_end = rtclock());
+    IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
 
-  if (fopen(".test", "r"))  {
+    if (fopen(".test", "r"))  {
 #ifdef MPI
-      if (my_rank == 0) {
+        if (my_rank == 0) {
 #endif
-    for (i = 0; i < NMAX; i++) {
-      for (j = 0; j < NMAX; j++) {
-        fprintf(stderr, "%lf ", c[i][j]);
-      }
+            for (i = 0; i < NMAX; i++) {
+                for (j = 0; j < NMAX; j++) {
+                    fprintf(stderr, "%lf ", c[i][j]);
+                }
+            }
+        }
+#ifdef MPI
     }
-  }
-#ifdef MPI
-      }
 #endif
 
-  return 0;
+    return 0;
 
 }

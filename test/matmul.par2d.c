@@ -33,8 +33,7 @@ double C[M][N+13];
 #define IF_TIME(foo)
 #endif
 
-void init_array()
-{
+void init_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -47,8 +46,7 @@ void init_array()
 }
 
 
-void print_array()
-{
+void print_array() {
     int i, j;
 
     for (i=0; i<N; i++) {
@@ -60,8 +58,7 @@ void print_array()
     }
 }
 
-double rtclock()
-{
+double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -71,8 +68,7 @@ double rtclock()
 }
 double t_start, t_end;
 
-int main()
-{
+int main() {
     int i, j, k;
     register double s;
 
@@ -80,7 +76,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -90,47 +86,48 @@ int main()
 
 
 
-  int t1, t2, t3, t4, t5, t6;
+    int t1, t2, t3, t4, t5, t6;
 
- register int lb, ub, lb1, ub1, lb2, ub2;
- register int lbv, ubv;
+    register int lb, ub, lb1, ub1, lb2, ub2;
+    register int lbv, ubv;
 
- omp_set_nested(1);
- omp_set_num_threads(2);
-/* Generated from PLUTO-produced CLooG file by CLooG v0.14.1 64 bits in 0.01s. */
-if ((M >= 1) && (N >= 1) && (K >= 1)) {
- lb1=0;
- ub1=floord(M-1,32);
-#pragma omp parallel for shared(lb1,ub1) private(lb2,ub2,t1,t2,t3,t4,t5,t6)
- for (t1=lb1; t1<=ub1; t1++) {
- lb2=0;
- ub2=floord(N-1,32);
-#pragma omp parallel for shared(t1,lb1,ub1,lb2,ub2) private(t2,t3,t4,t5,t6)
- for (t2=lb2; t2<=ub2; t2++) {
-      for (t3=0;t3<=floord(K-1,32);t3++) {
-        for (t4=max(0,32*t1);t4<=min(M-1,32*t1+31);t4++) {
-          for (t5=max(0,32*t3);t5<=min(K-1,32*t3+31);t5++) {
-{
- lbv=max(0,32*t2); ubv=min(N-1,32*t2+31);
+    omp_set_nested(1);
+    omp_set_num_threads(2);
+    /* Generated from PLUTO-produced CLooG file by CLooG v0.14.1 64 bits in 0.01s. */
+    if ((M >= 1) && (N >= 1) && (K >= 1)) {
+        lb1=0;
+        ub1=floord(M-1,32);
+        #pragma omp parallel for shared(lb1,ub1) private(lb2,ub2,t1,t2,t3,t4,t5,t6)
+        for (t1=lb1; t1<=ub1; t1++) {
+            lb2=0;
+            ub2=floord(N-1,32);
+            #pragma omp parallel for shared(t1,lb1,ub1,lb2,ub2) private(t2,t3,t4,t5,t6)
+            for (t2=lb2; t2<=ub2; t2++) {
+                for (t3=0; t3<=floord(K-1,32); t3++) {
+                    for (t4=max(0,32*t1); t4<=min(M-1,32*t1+31); t4++) {
+                        for (t5=max(0,32*t3); t5<=min(K-1,32*t3+31); t5++) {
+                            {
+                                lbv=max(0,32*t2);
+                                ubv=min(N-1,32*t2+31);
 #pragma ivdep
 #pragma vector always
- for (t6=lbv; t6<=ubv; t6++) {
-              C[t4][t6]=C[t4][t6]+A[t4][t5]*B[t5][t6]; ;
+                                for (t6=lbv; t6<=ubv; t6++) {
+                                    C[t4][t6]=C[t4][t6]+A[t4][t5]*B[t5][t6]; ;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-}
-          }
         }
-      }
     }
-  }
-}
-/* End of CLooG code */
+    /* End of CLooG code */
 
     IF_TIME(t_end = rtclock());
     IF_TIME(printf("%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

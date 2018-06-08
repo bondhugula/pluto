@@ -26,7 +26,7 @@ dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`
 
 
-bin_SCRIPTS = polycc vloog ploog plorc plutune getversion.sh
+bin_SCRIPTS = polycc vloog ploog plorc plutune inscop getversion.sh
 CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 
@@ -35,8 +35,7 @@ pkginclude_HEADERS = include/pluto/libpluto.h
 
 polycc: polycc.sh
 	rm -f polycc
-	echo "#! " $(BASH) > polycc
-	cat $(srcdir)/polycc.sh >> polycc
+	cp $(srcdir)/polycc.sh polycc
 	chmod ugo+x polycc
 
 .PHONY: bin binit

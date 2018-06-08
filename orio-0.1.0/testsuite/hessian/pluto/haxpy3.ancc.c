@@ -1,23 +1,23 @@
 
-/*@ begin PerfTuning (        
+/*@ begin PerfTuning (
   def build
   {
     arg command = 'icc';
     arg options = '-fast -openmp -I/usr/local/icc/include -lm';
   }
 
-  def performance_counter         
+  def performance_counter
   {
     arg method = 'basic timer';
     arg repetitions = 4;
   }
-  
+
   let RANGE = 5000;
   let BSIZE = 512*32;
 
   def performance_params
   {
-    param R = RANGE; 
+    param R = RANGE;
 
     param T_I[] = [1,256];
     param T_J[] = [1,256];
@@ -43,13 +43,13 @@
 
     constraint reg_capacity = (4*U_I*U_J + 3*U_I + 3*U_J <= 128);
 
-    constraint copy_limitY = ((not ACOPY_Y) or (ACOPY_Y and 
+    constraint copy_limitY = ((not ACOPY_Y) or (ACOPY_Y and
                               (T_I if T_I>1 else R)*(T_J if T_J>1 else R) <= BSIZE));
-    constraint copy_limitX0 = ((not ACOPY_X0) or (ACOPY_X0 and 
+    constraint copy_limitX0 = ((not ACOPY_X0) or (ACOPY_X0 and
                                (T_I if T_I>1 else R)*(T_J if T_J>1 else R) <= BSIZE));
-    constraint copy_limitX1 = ((not ACOPY_X1) or (ACOPY_X1 and 
+    constraint copy_limitX1 = ((not ACOPY_X1) or (ACOPY_X1 and
                                (T_I if T_I>1 else R)*(T_J if T_J>1 else R) <= BSIZE));
-    constraint copy_limitX2 = ((not ACOPY_X2) or (ACOPY_X2 and 
+    constraint copy_limitX2 = ((not ACOPY_X2) or (ACOPY_X2 and
                                (T_I if T_I>1 else R)*(T_J if T_J>1 else R) <= BSIZE));
     constraint copy_limit = (not ACOPY_Y or not ACOPY_X0 or not ACOPY_X1 or not ACOPY_X2);
   }
@@ -60,7 +60,7 @@
     arg time_limit = 5;
     arg total_runs = 2;
   }
-  
+
   def input_params
   {
     param SIZE = RANGE;
@@ -81,7 +81,7 @@
     decl double b11 = 1210.313;
     decl double b12 = 9.373;
     decl double b22 = 1992.31221;
-  }            
+  }
 ) @*/
 
 int i,j,ii,jj,iii,jjj;
@@ -101,13 +101,13 @@ int i,j,ii,jj,iii,jjj;
   )
 
 for (i=0; i<=N-1; i++)
-  for (j=0; j<=N-1; j++) 
+  for (j=0; j<=N-1; j++)
     {
       Y[i][j]=a0*X0[i][j] + a1*X1[i][j] + a2*X2[i][j]
 	+ 2.0*b00*u0[i]*u0[j]
 	+ 2.0*b11*u1[i]*u1[j]
 	+ 2.0*b22*u2[i]*u2[j]
-	+ b01*u0[i]*u1[j] + b01*u1[i]*u0[j] 
+	+ b01*u0[i]*u1[j] + b01*u1[i]*u0[j]
 	+ b02*u0[i]*u2[j] + b02*u2[i]*u0[j]
 	+ b12*u1[i]*u2[j] + b12*u2[i]*u1[j];
     }
@@ -115,15 +115,14 @@ for (i=0; i<=N-1; i++)
 ) @*/
 
 for (i=0; i<=N-1; i++)
-  for (j=0; j<=N-1; j++) 
-    {
-      Y[i][j]=a0*X0[i][j] + a1*X1[i][j] + a2*X2[i][j]
-	+ 2.0*b00*u0[i]*u0[j]
-	+ 2.0*b11*u1[i]*u1[j]
-	+ 2.0*b22*u2[i]*u2[j]
-	+ b01*(u0[i]*u1[j] + u1[i]*u0[j])
-	+ b02*(u0[i]*u2[j] + u2[i]*u0[j])
-	+ b12*(u1[i]*u2[j] + u2[i]*u1[j]);
+    for (j=0; j<=N-1; j++) {
+        Y[i][j]=a0*X0[i][j] + a1*X1[i][j] + a2*X2[i][j]
+                + 2.0*b00*u0[i]*u0[j]
+                + 2.0*b11*u1[i]*u1[j]
+                + 2.0*b22*u2[i]*u2[j]
+                + b01*(u0[i]*u1[j] + u1[i]*u0[j])
+                + b02*(u0[i]*u2[j] + u2[i]*u0[j])
+                + b12*(u1[i]*u2[j] + u2[i]*u1[j]);
     }
 
 /*@ end @*/

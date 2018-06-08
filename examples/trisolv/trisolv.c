@@ -6,14 +6,13 @@
 #include "decls.h"
 #include "util.h"
 
-void trisolv(long N) 
-{
+void trisolv(long N) {
     long i,j,k;
 
 #pragma scop
-    for (i=0;i<=N-1;i++) {
-        for (j=0;j<=N-1;j++) {
-            for (k=0;k<=j-1;k++) {
+    for (i=0; i<=N-1; i++) {
+        for (j=0; j<=N-1; j++) {
+            for (k=0; k<=j-1; k++) {
                 B[j][i]=B[j][i]-L[j][k]*B[k][i];  //S1 ;
 
             }
@@ -24,8 +23,7 @@ void trisolv(long N)
 }
 
 
-int main()
-{
+int main() {
     long N=NMAX;
     int i,j;
     double t_start, t_end;

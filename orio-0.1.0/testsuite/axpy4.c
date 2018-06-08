@@ -27,13 +27,13 @@
 
 int i;
 
-/*@ begin Loop ( 
-    transform Unroll(ufactor=UF) 
+/*@ begin Loop (
+    transform Unroll(ufactor=UF)
     for (i=0; i<=N-1; i++)
       y[i] = y[i] + a1*x1[i] + a2*x2[i] + a3*x3[i] + a4*x4[i];
 ) @*/
 for (i=0; i<=N-1; i++)
-  y[i] = y[i] + a1*x1[i] + a2*x2[i] + a3*x3[i] + a4*x4[i];
+    y[i] = y[i] + a1*x1[i] + a2*x2[i] + a3*x3[i] + a4*x4[i];
 /*@ end @*/
 
 /*@ end @*/

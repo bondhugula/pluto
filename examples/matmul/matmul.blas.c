@@ -17,8 +17,7 @@
 
 double t_start, t_end;
 
-int main()
-{
+int main() {
     int i, j, k;
     register double s;
     int LDA, LDB, LDC;
@@ -34,16 +33,16 @@ int main()
     b = (double *) malloc(sizeof(double)*M*M);
     c = (double *) malloc(sizeof(double)*M*M);
 
-    for( i=0; i<M; i++){
-        for( j=0; j<N; j++){
-            a[i*M+j]= A[i][j]; 
-            b[i*M+j]= B[i][j]; 
-            c[i*M+j]= C[i][j]; 
+    for( i=0; i<M; i++) {
+        for( j=0; j<N; j++) {
+            a[i*M+j]= A[i][j];
+            b[i*M+j]= B[i][j];
+            c[i*M+j]= C[i][j];
         }
     }
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -54,12 +53,12 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST
-    for( i=0; i<M; i++){
-        for( j=0; j<N; j++){
+    for( i=0; i<M; i++) {
+        for( j=0; j<N; j++) {
             C[i][j] = c[i*M+j];
         }
     }

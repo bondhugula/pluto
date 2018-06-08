@@ -272,6 +272,9 @@ struct hyperplane_properties{
 typedef struct hyperplane_properties HyperplaneProperties;
 
 struct plutoProg{
+    /* Language following CLOOG_LANGUAGE structure */
+    int language;
+
     /* Array of statements */
     Stmt **stmts;
     int nstmts;

@@ -1,7 +1,7 @@
 /*
  * PLUTO: An automatic parallelizer and locality optimizer
  * Author: Aravind Acharya
- *  
+ *
  * This file is part of Pluto.
  *
  * Pluto is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  * GNU General Public License for more details.
  *
  * A copy of the GNU General Public Licence can be found in the file
- * `LICENSE' in the top-level directory of this distribution. 
+ * `LICENSE' in the top-level directory of this distribution.
  *
  */
 #include <stdio.h>
@@ -39,8 +39,7 @@
 #if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 
-static double rtclock()
-{
+static double rtclock() {
     struct timezone Tzp;
     struct timeval Tp;
     int stat;
@@ -53,15 +52,14 @@ static double rtclock()
 
 /* Checks for feasibility of constraints.
  * If feasible then return the solution else returns NULL */
-double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj)
-{
+double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj) {
     double* sol;
     sol = NULL;
     if (options->gurobi) {
 #ifdef GUROBI
         sol = pluto_fcg_constraints_lexmin_gurobi(cst, obj);
 #endif
-    }else{
+    } else {
 #ifdef GLPK
         sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
 #endif
@@ -71,8 +69,7 @@ double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoM
 
 
 /* Adds edges in FCG corresponding to the satements represented by the nodes v1 and v2 in DDG*/
-void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *colour, PlutoConstraints *boundcst, int current_colour, PlutoConstraints **conflicts, PlutoMatrix *obj)
-{
+void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *colour, PlutoConstraints *boundcst, int current_colour, PlutoConstraints **conflicts, PlutoMatrix *obj) {
     Graph *ddg;
     int i,j,ndeps,nstmts,nvar,npar, src_offset,dest_offset,fcg_offset1,fcg_offset2;
     double *sol;
@@ -108,21 +105,21 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
         /*if (options->varliberalize && dep->skipdep) {
           continue;
           }*/
-        if(dep_is_satisfied(dep)){
+        if(dep_is_satisfied(dep)) {
             continue;
         }
-        if ((dep->src == v1 && dep->dest == v2)||(dep->src==v2 && dep->dest ==v1)){
-            if(dep->cst == NULL){
+        if ((dep->src == v1 && dep->dest == v2)||(dep->src==v2 && dep->dest ==v1)) {
+            if(dep->cst == NULL) {
                 compute_pairwise_permutability(dep,prog);
             }
             IF_DEBUG(printf("Adding Constraints for dependence %d\n",i););
             pluto_constraints_add(conflictcst, dep->cst);
         }
     }
-    if(stmts[v1]->intra_stmt_dep_cst != NULL){
+    if(stmts[v1]->intra_stmt_dep_cst != NULL) {
         pluto_constraints_add(conflictcst,stmts[v1]->intra_stmt_dep_cst);
     }
-    if(stmts[v2]->intra_stmt_dep_cst != NULL){
+    if(stmts[v2]->intra_stmt_dep_cst != NULL) {
         pluto_constraints_add(conflictcst,stmts[v2]->intra_stmt_dep_cst);
     }
 
@@ -135,8 +132,8 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 
     /* Solve Pluto LP by setting corresponding coeffs to 0 without any objective.
      * This is the check for fusability of two dimensions */
-    for(i=0; i<stmts[v1]->dim_orig; i++){
-        /* note that the vertex should not be coloured. Even if the vertex has a 
+    for(i=0; i<stmts[v1]->dim_orig; i++) {
+        /* note that the vertex should not be coloured. Even if the vertex has a
          * self edge, it must be considered during construction of the FCG. This
          * is because,even after satisfying the permute preventing dep, it might
          * still prevent fusion. */
@@ -162,8 +159,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
                     prog->mipTime += rtclock()-tstart;
 
                     /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
-                    if(sol == NULL)
-                    {
+                    if(sol == NULL) {
                         IF_DEBUG(printf("Unable to fuse Dimesnion %d of statement %d with dimension %d of statement %d \n",i,v1,j,v2););
                         IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",fcg_offset1+i,fcg_offset2+j););
                         fcg->adj->val[fcg_offset1+i][fcg_offset2+j] = 1;
@@ -188,8 +184,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 
 
 /* Computes intra statement dependence constraints for every unstisfied dependence */
-void compute_intra_stmt_deps(PlutoProg *prog)
-{
+void compute_intra_stmt_deps(PlutoProg *prog) {
     int ndeps, src_stmt,dest_stmt,i;
     Dep **deps;
     Dep *dep;
@@ -238,8 +233,7 @@ void compute_intra_stmt_deps(PlutoProg *prog)
  * are added as self loops on FCG vertices.  These vertices can not be coloured.
  * Inter statement permute preventing deps do not cause a problem as they will be
  * represented by the inter statement edges */
-void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj)
-{
+void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj) {
     int nstmts,nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
     int nrows;
     double *sol, tstart;
@@ -305,11 +299,10 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
     }
 }
 
-/* Removes all the edges in the FCG from a dimension of a statement that is in an 
- * SCC whose ID is less than or equal to scc1 to the dimension of a statement 
+/* Removes all the edges in the FCG from a dimension of a statement that is in an
+ * SCC whose ID is less than or equal to scc1 to the dimension of a statement
  * present in a SCC greater than or equal to scc2. */
-void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
-{
+void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog) {
     int nstmts, i, j, k, l, stmt_offset1, stmt_offset2;
     int nvar, npar;
     Graph *ddg;
@@ -368,12 +361,11 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
 }
 
 
-/* Build the fusion conflict graph for a given program.  The current colour is 
- * used to rebuild FCG for the current level.  This is need in case we are 
+/* Build the fusion conflict graph for a given program.  The current colour is
+ * used to rebuild FCG for the current level.  This is need in case we are
  * separating out construction of FCG for permute preventing dependence and
  * fusion preventing dependences */
-Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour)
-{
+Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour) {
     int i,j,k,stmt_offset,nstmts, nvar,npar, nrows;
     Stmt **stmts;
     Graph *ddg;
@@ -403,7 +395,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     *conflicts = pluto_constraints_alloc(CST_WIDTH-1 + boundcst->nrows,CST_WIDTH);
     (*conflicts)->ncols = CST_WIDTH;
 
-    
+
     obj = construct_cplex_objective(*conflicts, prog);
 
     pluto_constraints_add(*conflicts, boundcst);
@@ -423,9 +415,9 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         (*conflicts)->is_eq[nrows+i] = 1;
         (*conflicts)->val[nrows+i][i] = 1;
     }
-    
+
     /* Add premutation preventing intra statement dependence edges in the FCG.
-     * These are self loops on vertices of the FCG. */ 
+     * These are self loops on vertices of the FCG. */
     add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
 
     /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add permute preventing edges: %0.6lfs\n",rtclock()-t_start2);); */
@@ -452,10 +444,10 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     /* Add egdes between different dimensions of the same statement */
     stmt_offset=0;
-    for (i=0; i<nstmts;i++) {
+    for (i=0; i<nstmts; i++) {
         for (j=stmt_offset; j<stmt_offset+stmts[i]->dim_orig; j++) {
             fcg->vertices[j].fcg_stmt_offset = i;
-            for (k=j+1; k<stmt_offset+stmts[i]->dim_orig;k++) {
+            for (k=j+1; k<stmt_offset+stmts[i]->dim_orig; k++) {
                 fcg->adj->val[j][k] = 1;
                 fcg->adj->val[k][j] = 1;
             }
@@ -463,7 +455,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         stmt_offset += stmts[i]->dim_orig;
 
 
-        /* Remove the intra statement dependence constraints. Else the permutability constraints 
+        /* Remove the intra statement dependence constraints. Else the permutability constraints
          * might be incorrect for rebuilding the fusion conflict graph.  */
 
         pluto_constraints_free(stmts[i]->intra_stmt_dep_cst);
@@ -485,8 +477,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 /******************  FCG Colouring Routines **********************************/
 
 /* Prints colour of each vertex of the FCG */
-void pluto_print_colours(int *colour,PlutoProg *prog)
-{
+void pluto_print_colours(int *colour,PlutoProg *prog) {
     int nstmts,i,j,stmt_offset;
     Stmt **stmts;
 
@@ -496,8 +487,8 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
     stmt_offset = 0;
 
 
-    for (i=0; i<nstmts;i++){
-        for (j=0;j<stmts[i]->dim_orig;j++){
+    for (i=0; i<nstmts; i++) {
+        for (j=0; j<stmts[i]->dim_orig; j++) {
             printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,colour[stmt_offset+j]);
         }
         stmt_offset+=j;
@@ -506,22 +497,20 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
 
 /* Check if it is valid to give colour c to a vertex v in the fcg.
  * Colour is the array containing the colours assigned to each vertex */
-bool is_valid_colour(int v, int c, Graph *fcg, int * colour)
-{
+bool is_valid_colour(int v, int c, Graph *fcg, int * colour) {
     int i, fcg_nVertices;
     fcg_nVertices = fcg->nVertices;
-    for (i=0;i< fcg_nVertices;i++){
-        if((fcg->adj->val[i][v]==1||fcg->adj->val[v][i]==1) && colour[i]==c){
+    for (i=0; i< fcg_nVertices; i++) {
+        if((fcg->adj->val[i][v]==1||fcg->adj->val[v][i]==1) && colour[i]==c) {
             return false;
         }
     }
     return true;
 }
 
-bool is_discarded(int v, int list[], int num)
-{
+bool is_discarded(int v, int list[], int num) {
     int i;
-    for (i=0; i<num; i++){
+    for (i=0; i<num; i++) {
         if(list[i]==v)
             return true;
     }
@@ -530,7 +519,7 @@ bool is_discarded(int v, int list[], int num)
 
 
 /* Routine that returns the next vertex to be coloured. Currently returns the next vertex in the ordered list. */
-int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, int pv, PlutoProg *prog){
+int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, int pv, PlutoProg *prog) {
     int i, min, npar, nvar, stmt_offset;
     Stmt **stmts;
     int scc_id;
@@ -564,13 +553,12 @@ int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, in
 
 
 
-/* Colours the input SCC recursively.  The statement pos refers to the position 
- * of the statement in the list of vertices in the scc and pv refers to the 
- * previous vertex.  Returns true if the colouring is successful; 
+/* Colours the input SCC recursively.  The statement pos refers to the position
+ * of the statement in the list of vertices in the scc and pv refers to the
+ * previous vertex.  Returns true if the colouring is successful;
  * else returns false.  */
 
-bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog)
-{
+bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog) {
     int j, v, fcg_offset, stmt_id, nvar;
     Graph *ddg,*fcg;
     Scc *sccs;
@@ -585,37 +573,37 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     /* memset(list, -1, nvar); */
 
     /* ToDo: Check if this condition can really happen.  */
-    if(stmt_pos >= sccs[scc_id].size){
+    if(stmt_pos >= sccs[scc_id].size) {
         return true;
     }
 
     if(prog->coloured_dims >= sccs[scc_id].max_dim) {
-        if(prog->coloured_dims > sccs[scc_id].max_dim){
+        if(prog->coloured_dims > sccs[scc_id].max_dim) {
             return true;
         }
         IF_DEBUG(printf("[colour SCC]: All Dimensions of statment %d in SCC %d have been coloured\n", sccs[scc_id].vertices[stmt_pos], scc_id););
         /* cut if the scc's are not already distributed and you can not colour further. */
-        /* for each SCC which is greater than the current scc, if there is a dep edge 
-         * between these scc's then cut between these scc's. The cut has to respect 
+        /* for each SCC which is greater than the current scc, if there is a dep edge
+         * between these scc's then cut between these scc's. The cut has to respect
          * the existing dependence */
 
         /* This is just for experimental purposes. The following if code can be removed if the assert never fails */
-        if(sccs[scc_id].size !=1 ){
+        if(sccs[scc_id].size !=1 ) {
             printf("SCC %d has size %d\n", scc_id,sccs[scc_id].size);
             int i;
-            for(i=0;i<sccs[scc_id].size; i++){
+            for(i=0; i<sccs[scc_id].size; i++) {
                 printf("S%d,,",sccs[scc_id].vertices[i]);
             }
             printf("\n");
         }
         assert (sccs[scc_id].size ==1);
 
-        if(sccs[scc_id].size == 1){
-            for(j=0;j<ddg->num_sccs; j++){
-                if(scc_id!=j){
+        if(sccs[scc_id].size == 1) {
+            for(j=0; j<ddg->num_sccs; j++) {
+                if(scc_id!=j) {
                     if((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
                         IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
-                        if(options->fuse == NO_FUSE) { 
+                        if(options->fuse == NO_FUSE) {
                             cut_all_sccs(prog,ddg);
                         } else {
                             cut_between_sccs(prog,ddg,j,scc_id);
@@ -637,8 +625,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
 
                         if (options->fuse == NO_FUSE) {
                             cut_all_sccs(prog,ddg);
-                        }
-                        else {
+                        } else {
                             cut_between_sccs(prog, ddg, scc_id, j);
                         }
                         /* cut_smart(prog,ddg); */
@@ -654,24 +641,24 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     stmt_id = sccs[scc_id].vertices[stmt_pos];
     fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
 
-    while(num_discarded!=nvar){
+    while(num_discarded!=nvar) {
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
         IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
 
         v = fcg_offset+j;
 
-        /* If the dimension is already coloured with a different colour. 
-         * Else it tries to check if the existing colour is fine. This is done 
-         * as opposed to undoing the existing colour and then redoing it in 
+        /* If the dimension is already coloured with a different colour.
+         * Else it tries to check if the existing colour is fine. This is done
+         * as opposed to undoing the existing colour and then redoing it in
          * the next step once FCG is rebuilt */
-        if(colour[v]>0 && colour[v]!=c){
+        if(colour[v]>0 && colour[v]!=c) {
             IF_DEBUG(printf("[Colour SCC]Dimension %d of statement %d already coloured with colour %d\n",j,stmt_id,colour[v]););
             list[num_discarded] = v;
             num_discarded++;
             continue;
         }
 
-        /* Can not colour a vertex with a self edge. 
+        /* Can not colour a vertex with a self edge.
          * This dimension is not permutable */
         if (fcg->adj->val[v][v] != 0) {
             list[num_discarded] = v;
@@ -689,10 +676,10 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         if (is_valid_colour(v,c,fcg,colour)) {
             colour[v] = c;
             /* If this is a valid colour, then try colouring the next vertex in the SCC */
-            if(colour_scc(scc_id,colour,c,stmt_pos+1, v, prog)){
+            if(colour_scc(scc_id,colour,c,stmt_pos+1, v, prog)) {
                 IF_DEBUG(printf("[Colour SCC]Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
                 return true;
-            } else { 
+            } else {
                 list[num_discarded] = v;
                 num_discarded++;
                 IF_DEBUG(printf("[Colour SCC] Unable to Colour dimension %d of statement %d with colour %d\n",j,stmt_id,c););
@@ -711,8 +698,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
 
 
 /* Colours all scc's with a colour c.  Returns true if the SCC's had to be distributed.  Else returns false */
-bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
-{
+bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
     int i,j,nsccs,prev_scc;
     bool is_distributed;
     Graph *ddg,*fcg;
@@ -733,13 +719,13 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
             IF_DEBUG(printf("Unable to colour SCC %d\n",i););
 
             fcg = prog->fcg;
-            /* In case of first scc, no inter scc deps can be satisfied. A permute 
-             * preventing dependence has prevented colouring. 
+            /* In case of first scc, no inter scc deps can be satisfied. A permute
+             * preventing dependence has prevented colouring.
              * Update the DDG whenever an inter SCC is satisfied dependence is
-             * satisfied.  Note that dependencies that are satisfied by previous dimensions 
-             * are updated in the DDG.  However, updating the FCG is delayed in order to 
-             * account for permute preventing dependences.  Whenever the colouring fails, 
-             * one has to update FCG with respect to the dependences that have already been 
+             * satisfied.  Note that dependencies that are satisfied by previous dimensions
+             * are updated in the DDG.  However, updating the FCG is delayed in order to
+             * account for permute preventing dependences.  Whenever the colouring fails,
+             * one has to update FCG with respect to the dependences that have already been
              * satisfied along with the dependences those satisfied by the cut*/
             if (fcg->to_be_rebuilt == true || i == 0) {
                 IF_DEBUG(printf("FCG Before Reconstruction\n"););
@@ -764,8 +750,8 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 /* Needed only if it is not the first SCC */
                 if (i!=0) {
                     is_distributed = colour_scc(i, colour, c, 0, -1, prog);
-                    if (!is_distributed){
-                        /* Colouring was prevented by a fusion preventing dependence. 
+                    if (!is_distributed) {
+                        /* Colouring was prevented by a fusion preventing dependence.
                          * Therefore cut DDG then update FCG and then colour */
                         IF_DEBUG(printf("FCG Before Updating\n"););
                         IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
@@ -796,7 +782,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                         is_distributed = colour_scc(i,colour,c,0, -1, prog);
                     }
                 } else {
-                    /* If the colouring of first SCC had failed previously */ 
+                    /* If the colouring of first SCC had failed previously */
                     is_distributed = colour_scc(i, colour, c, 0,  -1, prog);
                 }
             } else {
@@ -865,8 +851,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
     return is_distributed;
 }
 
-void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
-{
+void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     int i,j,num_coloured_dims,max_colours;
     Stmt **stmts;
     Graph *ddg;
@@ -883,7 +868,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         num_coloured_dims = scale_shift_permutations(prog, colour, i-1);
 
         prog->fcg_dims_scale_time += rtclock() - t_start;
-        if (num_coloured_dims == 0){
+        if (num_coloured_dims == 0) {
             printf ("[Pluto]: Num hyperplanes found: %d\n", prog->num_hyperplanes);
             printf("[Pluto]: This appears to be a bug in Pluto FCG based auto-transformation.\n");
             printf("[Pluto]: Transformation found so far\n");
@@ -912,7 +897,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
         free_scc_vertices(ddg);
 
-        /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
+        /* You can update the DDG but do not update the FCG.  Doing otherwise will remove
          * edges wich prevents permutation which is unsound */
         ddg_update(ddg, prog);
         IF_DEBUG(printf("DDG after colouring with colour %d\n",i););
@@ -924,7 +909,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
         IF_DEBUG2(pluto_print_dep_directions(prog););
     }
-    /* All dimensions have been coloured but still there are some deps that 
+    /* All dimensions have been coloured but still there are some deps that
      * need to be satisfied at the innermost level by distribution.  */
     if (i == max_colours+1 && !deps_satisfaction_check(prog)) {
         cut_all_sccs(prog, prog->ddg);
@@ -943,8 +928,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 /* Once the permutation is found, it finds the scling and shifting factors for the permtation
  * Scales the dimensions in the with colour c+1. Returns 1 if scaling
  * was successful. Else returns 0. */
-int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
-{
+int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
     int j, k, stmt_offset, select;
     int nvar, npar;
     int nstmts;
@@ -986,12 +970,11 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set the rest to 0
          * These redundant cols are then removed. */
 
-        for (j=0; j<nstmts; j++){
-            for (k=0; k<nvar; k++){
-                if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select){
+        for (j=0; j<nstmts; j++) {
+            for (k=0; k<nvar; k++) {
+                if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select) {
                     pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
-                }
-                else {
+                } else {
                     pluto_constraints_add_equality(coeffcst);
                     coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
                 }
@@ -1039,7 +1022,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
                 /* Constant loop shift */
                 stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
 
-                stmt->hyp_types[stmt->trans->nrows-1] =  
+                stmt->hyp_types[stmt->trans->nrows-1] =
                     pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
                     H_SCALAR: H_LOOP;
 
@@ -1065,8 +1048,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
 
 /* Routines that introduce loop skewing after loop permutations, loop skewing
  * and loop shifting transfomations have been found. */
-bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg *prog, int level)
-{
+bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg *prog, int level) {
     int i;
     bool has_negative_comp;
     HyperplaneProperties *hProps;
@@ -1075,15 +1057,15 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
     hProps = prog->hProps;
     has_negative_comp = false;
     loop_dims = 0;
-    for (i=0; i<prog->num_hyperplanes; i++){
-        if(hProps[i].type == H_SCALAR && i < level){
+    for (i=0; i<prog->num_hyperplanes; i++) {
+        if(hProps[i].type == H_SCALAR && i < level) {
             continue;
         }
-        if(hProps[i].type == H_LOOP && i < level){
+        if(hProps[i].type == H_LOOP && i < level) {
             loop_dims++;
             continue;
         }
-        if(hProps[i].type == H_SCALAR && i >= level){
+        if(hProps[i].type == H_SCALAR && i >= level) {
             continue;
         }
         if (dep->dirvec[i] == DEP_MINUS || dep->dirvec[i] == DEP_STAR ) {
@@ -1097,13 +1079,12 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
 }
 
 
-bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps, int level)
-{
+bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps, int level) {
     int i, ndeps, nvar;
     Stmt **stmts;
     Dep *dep;
     bool* dims_with_neg_components;
-    
+
     nvar = prog->nvar;
     ndeps = prog->ndeps;
     stmts = prog->stmts;
@@ -1122,9 +1103,9 @@ bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
         /* if (options->varliberalize && dep->skipdep) { */
         /*     continue; */
         /* } */
-      
+
         if (dep_is_satisfied(dep)) {
-            if(get_negative_components(dep,dims_with_neg_components, prog, level)){
+            if(get_negative_components(dep,dims_with_neg_components, prog, level)) {
                 tile_preventing_deps[i] = 1;
             }
         }
@@ -1133,8 +1114,7 @@ bool* dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
 }
 
 
-bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps)
-{
+bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps) {
     int i, j, ndeps, loop_dims;
     Dep *dep;
     bool* sat_dim;
@@ -1153,8 +1133,7 @@ bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_dep
             for(j=0; j<prog->num_hyperplanes; j++) {
                 if (j == dep->satisfaction_level) {
                     break;
-                }
-                else if(hProps[j].type == H_LOOP) {
+                } else if(hProps[j].type == H_LOOP) {
                     loop_dims++;
                 }
             }
@@ -1164,8 +1143,7 @@ bool* innermost_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_dep
     return sat_dim;
 }
 
-PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int scc_id, PlutoProg* prog, int level, PlutoConstraints *skewCst)
-{
+PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int scc_id, PlutoProg* prog, int level, PlutoConstraints *skewCst) {
     int i, j, nvar, npar, nstmts;
     Stmt **stmts;
     /* PlutoConstraints *skewCst, *boundcst; */
@@ -1176,27 +1154,25 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims, int s
     stmts = prog->stmts;
 
     assert (skewCst->ncols == CST_WIDTH);
-    
+
     for (i=0; i<nstmts; i++) {
-        for(j=0; j<stmts[i]->dim_orig; j++){
+        for(j=0; j<stmts[i]->dim_orig; j++) {
             if (src_dims[j] && stmts[i]->scc_id == scc_id) {
                 pluto_constraints_add_lb(skewCst, npar+1+ i*(nvar+1)+j, 1);
-            }
-            else {
+            } else {
                 pluto_constraints_add_equality(skewCst);
                 skewCst->val[skewCst->nrows-1][npar+1+i*(nvar+1)+j]= 1;
                 /* Set the value of the current coeff to the one that you have already found */
                 skewCst->val[skewCst->nrows-1][CST_WIDTH-1] = -stmts[i]->trans->val[level][j];
             }
         }
-        pluto_constraints_add_lb(skewCst, npar+1+i*(nvar+1)+nvar, 0); 
+        pluto_constraints_add_lb(skewCst, npar+1+i*(nvar+1)+nvar, 0);
     }
     return skewCst;
 }
 
 /* Introduce Skewing Transformations if necessary: Called only when using the FCG based appraoch */
-void introduce_skew(PlutoProg *prog)
-{
+void introduce_skew(PlutoProg *prog) {
     int i, j, k, num_sccs, nvar, npar, nstmts, level,ndeps;
     int initial_cuts;
     Graph *orig_ddg;
@@ -1241,10 +1217,10 @@ void introduce_skew(PlutoProg *prog)
 
     initial_cuts = 0;
     for (level = 0; level< prog->num_hyperplanes; level++) {
-        if(hProps[level].type == H_LOOP){
+        if(hProps[level].type == H_LOOP) {
             break;
         }
-        initial_cuts ++; 
+        initial_cuts ++;
         dep_satisfaction_update(prog, level);
     }
 
@@ -1289,8 +1265,7 @@ void introduce_skew(PlutoProg *prog)
                 if(prog->hProps[j].type == H_LOOP && skew_dims[skew_dim] == 1) {
                     level = j;
                     break;
-                }
-                else if (prog->hProps[j].type == H_LOOP){
+                } else if (prog->hProps[j].type == H_LOOP) {
                     skew_dim++;
                 }
             }
@@ -1305,10 +1280,10 @@ void introduce_skew(PlutoProg *prog)
 
             sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
-            if(sol){
+            if(sol) {
                 /* Set the Appropriate coeffs in the transformation matrix */
                 for (j=0; j<nstmts; j++) {
-                    for (k = 0; k<nvar; k++){
+                    for (k = 0; k<nvar; k++) {
                         stmts[j]->trans->val[level][k] = sol[npar+1+j*(nvar+1)+k];
                     }
                     /* No parametric Shifts */
@@ -1330,8 +1305,7 @@ void introduce_skew(PlutoProg *prog)
                     free(src_dims);
                     src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
                 }
-            }
-            else {
+            } else {
                 /* The loop nest is not tileable */
                 free(skew_dims);
                 break;
