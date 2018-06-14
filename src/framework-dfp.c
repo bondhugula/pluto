@@ -103,7 +103,7 @@ static inline bool is_lp_solution_parallel(double *sol, int npar)
     double tmp;
     tmp = 0.0f;
     for (i = 0; i<npar+1; i++) {
-        tmp += sol[i];
+        tmp += sol[i],i;
     }
     if (tmp == 0.0f)
         return true;
@@ -159,6 +159,7 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
             assert (sol != NULL);
             if (is_lp_solution_parallel(sol, prog->npar)) {
                 prog->ddg->sccs[i].is_parallel = 1;
+                printf("SCC %d is parallel \n",i);
             } else {
                 prog->ddg->sccs[i].is_parallel = 0;
             }
@@ -596,13 +597,13 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     /* Add inter statement fusion and permute preventing edges.  */
 
-    /* if (options->lpcolour) { */
-    /*     #<{(| The lp solutions are found and the parallel sccs are marked.  */
-    /*      * However marking is only used in parallel case of typed fuse only |)}># */
-    /*     mark_parallel_sccs(colour, prog); */
-    /*     IF_DEBUG(print_parallel_sccs(prog->ddg);); */
-    /*  */
-    /* } */
+    if (options->fuse == TYPED_FUSE) {
+        /* The lp solutions are found and the parallel sccs are marked. 
+         * However marking is only used in parallel case of typed fuse only */
+        mark_parallel_sccs(colour, prog);
+        IF_DEBUG(print_parallel_sccs(prog->ddg););
+
+    }
 
     for (i=0; i<nstmts-1; i++) {
         /* The lower bound for  constant shift of i^th statement is 0 */
@@ -777,20 +778,23 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
 
 bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, PlutoProg *prog, int c)
 {
-    int i;
+    int i, nvar;
     Graph *ddg;
 
     /* Parallel dims of the current SCC */
     int *parallel_dims;
 
+    nvar = prog->nvar;
     ddg = prog->ddg;
 
     assert (prog->ddg->sccs[scc_id].is_parallel == 1);
+    parallel_dims = NULL;
 
     /* Looks for SCCs that are connected that have a common dimension */
     for (i=scc_id+1; i< prog->ddg->num_sccs; i++) {
         if (ddg_sccs_direct_connected (ddg, prog, scc_id, i) &&
                 ddg->sccs[i].is_parallel) {
+/* Todo: Add greedy heuristic here that looks for dimensions that have maximum dimensions that can be fused. */
             parallel_dims = get_common_parallel_dims_for_sccs(ddg->sccs[scc_id], ddg->sccs[i], prog);
         }
         if (parallel_dims!=NULL) {
@@ -798,6 +802,14 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
         }
     }
 
+    if (parallel_dims != NULL) {
+        printf("Parallel dims\n");
+        for (i=0; i<nvar; i++) {
+            printf("%d,", parallel_dims[i]);
+        }
+        printf("\n");
+    }
+    exit(0);
     if (parallel_dims == NULL) {
         colour_scc(scc_id, colour,c,0, -1, prog);
     }
@@ -968,7 +980,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
 bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 {
     int i,j,nsccs,prev_scc;
-    bool is_distributed;
+    bool is_distributed, is_successful;
     Graph *ddg,*fcg;
     double t_start;
 
@@ -982,8 +994,14 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
     for (i=0; i<nsccs; i++) {
         t_start = rtclock();
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
+        if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) {
+            printf("Parallelism Preserving colouring for SCC %d \n", i);
+            is_successful = colour_scc_from_lp_solution_with_parallelism(i, colour, prog, c);
+        } else {
+            is_successful = colour_scc(i, colour, c, 0, -1, prog);
+        }
         /* If colouring fails in the fist SCC */
-        if(!colour_scc(i,colour,c,0, -1, prog)) {
+        if(!is_successful) {
             IF_DEBUG(printf("Unable to colour SCC %d\n",i););
 
             fcg = prog->fcg;
