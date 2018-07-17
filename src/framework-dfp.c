@@ -117,6 +117,7 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
     PlutoConstraints* indcst, *boundcst, *permutecst;
     PlutoMatrix *obj;
     double *sol;
+    int j;
 
     num_sccs = prog->ddg->num_sccs;
 
@@ -169,6 +170,14 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
             prog->ddg->sccs[i].is_parallel = 1;
         }
         prog->ddg->sccs[i].sol = sol;
+        /* if (sol != NULL) { */
+        /*     printf("[Mark Parallel SCCS]: Parallel sol for scc %d \n", i); */
+        /*     for (j=0; j<prog->npar+1+(prog->nstmts)*(prog->nvar+1); j++) { */
+        /*         printf ("%f, ",sol[j]); */
+        /*     } */
+        /*     printf("\n"); */
+        /*  */
+        /* } */
         if (permutecst != NULL) {
             pluto_constraints_free(permutecst);
         }
@@ -735,6 +744,8 @@ int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num, in
     }
     return min;
 }
+
+/* Fix: Modify this routine to handle single SCC case */
 int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
 {
     int i, j, stmt1, stmt2, npar, nvar, stmt_offset;
@@ -759,6 +770,16 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
             }
         }
     }
+    printf ("Parallel sol for scc %d\n", scc1.id);
+    for(i=0;i<nvar;i++) {
+        printf ("c_%d: %d ", i, npar+1+stmt1*(nvar+1)+i);
+    }
+    printf("\n");
+    printf ("Parallel sol for scc %d\n", scc2.id);
+    for(i=0;i<nvar;i++) {
+        printf ("c_%d: %d ", i, npar+1+stmt2*(nvar+1)+i);
+    }
+    printf("\n");
     stmt_offset = npar+1;
     for (i=0; i<nvar ; i++) {
         if(stmts[stmt1]->is_orig_loop[i] && stmts[stmt2]->is_orig_loop[i]) {
@@ -773,6 +794,17 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
         }
     }
     return parallel_dims;
+}
+
+bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
+{
+    int i;
+    for (i=scc1+1; i<scc2; i++) {
+        if (ddg_sccs_direct_connected(ddg, prog, scc2, i)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 
@@ -793,7 +825,7 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
     /* Looks for SCCs that are connected that have a common dimension */
     for (i=scc_id+1; i< prog->ddg->num_sccs; i++) {
         if (ddg_sccs_direct_connected (ddg, prog, scc_id, i) &&
-                ddg->sccs[i].is_parallel) {
+                ddg->sccs[i].is_parallel && is_convex_scc(scc_id,i, ddg, prog)) {
 /* Todo: Add greedy heuristic here that looks for dimensions that have maximum dimensions that can be fused. */
             parallel_dims = get_common_parallel_dims_for_sccs(ddg->sccs[scc_id], ddg->sccs[i], prog);
         }
@@ -809,7 +841,7 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
         }
         printf("\n");
     }
-    exit(0);
+    /* exit(0); */
     if (parallel_dims == NULL) {
         colour_scc(scc_id, colour,c,0, -1, prog);
     }
@@ -849,6 +881,9 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     int list[nvar];
     int num_discarded = 0;
     /* memset(list, -1, nvar); */
+
+
+    printf("Colouring SCC %d\n", scc_id);
 
     /* ToDo: Check if this condition can really happen.  */
     if(stmt_pos >= sccs[scc_id].size){
