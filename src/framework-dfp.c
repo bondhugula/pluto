@@ -103,7 +103,7 @@ static inline bool is_lp_solution_parallel(double *sol, int npar)
     double tmp;
     tmp = 0.0f;
     for (i = 0; i<npar+1; i++) {
-        tmp += sol[i],i;
+        tmp += sol[i];
     }
     if (tmp == 0.0f)
         return true;
@@ -145,7 +145,7 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
                 pluto_transformations_pretty_print(prog);
                 ddg_update(prog->ddg, prog);
                 ddg_compute_scc(prog);
-                assert(num_sccs = prog->ddg->num_sccs);
+                assert(num_sccs == prog->ddg->num_sccs);
                 free(permutecst);
                 free(indcst);
                 permutecst = get_scc_permutability_constraints(i, prog);
@@ -800,7 +800,8 @@ bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
 {
     int i;
     for (i=scc1+1; i<scc2; i++) {
-        if (ddg_sccs_direct_connected(ddg, prog, scc2, i)) {
+        if (ddg_sccs_direct_connected(ddg, prog, i,scc2)) {
+            printf("SCCs %d %d are not convex. %d is a predecessor of %d\n ", scc1,scc2,i,scc2);
             return false;
         }
     }
@@ -812,6 +813,7 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
 {
     int i, nvar;
     Graph *ddg;
+    bool is_successful;
 
     /* Parallel dims of the current SCC */
     int *parallel_dims;
@@ -843,7 +845,9 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
     }
     /* exit(0); */
     if (parallel_dims == NULL) {
-        colour_scc(scc_id, colour,c,0, -1, prog);
+        printf("No parallel dims in scc %d\n", scc_id);
+        is_successful = colour_scc(scc_id, colour,c,0, -1, prog);
+        return is_successful;
     }
     else {
         for (i=0; i<prog->nvar; i++) {
