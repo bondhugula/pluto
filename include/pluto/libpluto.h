@@ -172,6 +172,9 @@ struct plutoOptions{
     /* Use LP solutions to colour SCCs */
     int lpcolour;
 
+    /* Cluster the statements of the SCC. Currently supported with DFP based approach only */
+    int scc_cluster;
+
     /* Index set splitting */
     int iss;
 

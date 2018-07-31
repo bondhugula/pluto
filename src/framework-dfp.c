@@ -117,7 +117,6 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
     PlutoConstraints* indcst, *boundcst, *permutecst;
     PlutoMatrix *obj;
     double *sol;
-    int j;
 
     num_sccs = prog->ddg->num_sccs;
 
@@ -811,7 +810,7 @@ bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
 
 bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, PlutoProg *prog, int c)
 {
-    int i, nvar;
+    int i, nvar,j ;
     Graph *ddg;
     bool is_successful;
 
@@ -848,13 +847,17 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
         printf("No parallel dims in scc %d\n", scc_id);
         is_successful = colour_scc(scc_id, colour,c,0, -1, prog);
         return is_successful;
-    }
-    else {
-        for (i=0; i<prog->nvar; i++) {
+    } else {
+        for (j=0; j<prog->nvar; j++) {
+            if (parallel_dims[i]==1) {
+
+            }
             /* if (parallel_colour_scc_dimension(scc_id, colour, c, prog)) */
                 break;
         }
     }
+/* TODO: Fix this return statement after incorporating clustering heuristics */
+   return false;
 
     /* parallel_dims = (int*) malloc (sizeof(int)*nvar); */
 
@@ -959,7 +962,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     stmt_id = sccs[scc_id].vertices[stmt_pos];
     fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
 
-    while(num_discarded!=nvar){
+    while (num_discarded!=nvar) {
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
         IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
 
@@ -969,7 +972,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
          * Else it tries to check if the existing colour is fine. This is done 
          * as opposed to undoing the existing colour and then redoing it in 
          * the next step once FCG is rebuilt */
-        if(colour[v]>0 && colour[v]!=c){
+        if (colour[v]>0 && colour[v]!=c) {
             IF_DEBUG(printf("[Colour SCC]Dimension %d of statement %d already coloured with colour %d\n",j,stmt_id,colour[v]););
             list[num_discarded] = v;
             num_discarded++;

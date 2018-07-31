@@ -2742,6 +2742,8 @@ PlutoOptions *pluto_options_alloc()
     options->ilp = 0;
 
     options->lpcolour = 0;
+    options->scc_cluster = 0;
+   
 
     options->readscop = 0;
 

@@ -69,6 +69,7 @@ void usage_message(void)
     fprintf(stdout, "       --dfp                     Use Pluto-lp-dfp instead of pluto-ilp [disabled by default]\n");
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
+    fprintf(stdout, "       --clusterscc              Cluster the statemtns of an SCC. This is supported only availabe with decoupled approach [disabled by default]\n");
 #endif
     fprintf(stdout, "\n");
 #ifdef GUROBI
@@ -223,6 +224,7 @@ int main(int argc, char *argv[])
         {"dfp", no_argument, &options->dfp, 1},
         {"ilp", no_argument, &options->ilp, 1},
         {"lpcolor", no_argument, &options->lpcolour, 1},
+        {"clusterscc", no_argument, &options->scc_cluster, 1},
 #endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
@@ -382,11 +384,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lp = 1;
     }
         
-    if (options->dfp && !(options->glpk || options->gurobi)) {
+    if (options->dfp && (options->glpk || options->gurobi)) {
         printf("[pluto]: Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
         printf("[pluto]: Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
         options->glpk = 1;
-    } 
+    }
     if (options->glpk) {
         /* Turn off islsolve */
         options->islsolve = 0;
@@ -399,6 +401,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_options_free(options);
         usage_message();
         return 1;
+    }
+    if (options->scc_cluster && !options->dfp) {
+        printf("[pluto]: Warning: SCC clustering heuristics available with dfp option (FCG based approach) only. Disabling clustering \n");
     }
 
     if (options->fuse == TYPED_FUSE && !options->dfp) {
