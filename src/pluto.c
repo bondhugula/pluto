@@ -1832,9 +1832,13 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         nVertices = 0;
-        for (i=0; i<nstmts; i++) {
-            ddg->vertices[i].fcg_stmt_offset = nVertices;
-            nVertices += stmts[i]->dim_orig;
+        if (options->scc_cluster) {
+            nVertices = ddg->num_sccs;
+        } else {
+            for (i=0; i<nstmts; i++) {
+                ddg->vertices[i].fcg_stmt_offset = nVertices;
+                nVertices += stmts[i]->dim_orig;
+            }
         }
 
         colour = (int*) malloc(nVertices*sizeof(int));
