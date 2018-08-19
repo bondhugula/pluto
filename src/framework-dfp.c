@@ -315,7 +315,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
             conflictcst->is_eq[row_offset + src_offset+i] = 0;
 
             for (j=0; j<stmts[v2]->dim_orig; j++) {
-                if (colour[fcg_offset2 + j] == 0 || colour[fcg_offset1 + i] == current_colour) {
+                if (colour[fcg_offset2 + j] == 0 || colour[fcg_offset2 + j] == current_colour) {
 
                     /* Set the lower bound of i^th dimension of v1 to 1 */
                     conflictcst->val[row_offset + dest_offset+j][CST_WIDTH-1] = -1;
