@@ -409,10 +409,60 @@ void compute_intra_stmt_deps(PlutoProg *prog)
 
 }
 
+/* Computes dependence constraints for all dependence constaints in the SCC */
+PlutoConstraints* compute_intra_scc_dep_cst(int scc_id, PlutoProg *prog)
+{
+    int ndeps, src_stmt,dest_stmt,i;
+    Dep **deps;
+    Dep *dep;
+    Stmt **stmts;
+    PlutoConstraints *intra_scc_dep_cst = NULL;
+
+    
+    deps = prog->deps;
+    ndeps = prog->ndeps;
+    stmts = prog->stmts;
+
+    for (i=0; i<ndeps; i++) {
+        dep = deps[i];
+        if (options->rar ==0 && IS_RAR(dep->type)) {
+            continue;
+        }
+
+        /* if (options->varliberalize && dep->skipdep) {
+            continue;
+        } */
+
+        if (dep_is_satisfied(dep)) {
+            continue;
+        }
+
+        src_stmt = dep->src;
+        dest_stmt = dep->dest;
+        if (stmts[src_stmt]->scc_id == scc_id && stmts[dest_stmt]->scc_id == scc_id) {
+            /* stmt = stmts[src_stmt]; */
+            IF_DEBUG(printf("Computing Intra statement deps for statement: %d Dep: %d\n",src_stmt,dep->id););
+            if (dep->cst==NULL) {
+                compute_pairwise_permutability(dep,prog);
+            }
+            if (intra_scc_dep_cst == NULL) {
+                intra_scc_dep_cst = pluto_constraints_alloc((dep->cst->nrows)*ndeps,dep->cst->ncols);
+                intra_scc_dep_cst->nrows = 0;
+                intra_scc_dep_cst->ncols = dep->cst->ncols;
+            } 
+            pluto_constraints_add(intra_scc_dep_cst, dep->cst);
+        }
+    }
+
+    return intra_scc_dep_cst;
+}
+
 /* Adds permute preventing edges for intra statement dependences.  These edges
- * are added as self loops on FCG vertices.  These vertices can not be coloured.
+ * are added as self loops on FCG vertices. These vertices can not be coloured 
+ * until the self loops are by reconstruction of the FCG.
  * Inter statement permute preventing deps do not cause a problem as they will be
- * represented by the inter statement edges */
+ * represented by the inter statement edges. Assumes that there are no loop shifts*/
+
 void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj)
 {
     int nstmts,nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
@@ -453,6 +503,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
             for (j=0; j<stmts[i]->dim_orig; j++) {
                 if (colour[fcg_stmt_offset + j]==0 || colour[fcg_stmt_offset+j] == current_colour) {
                     IF_DEBUG(printf("[Permute_preventing_edges]: Checking permutability of dimension %d of statement %d \n",j,i););
+                    /* Not an equality constraint. Set the lower bound to 1. */
                     coeff_bounds->is_eq[nrows+stmt_offset+j] = 0;
                     coeff_bounds->val[nrows+stmt_offset+j][CST_WIDTH-1] = -1;
                     /* coeff_bounds->val[0][stmt_offset+j] = 1; */
@@ -477,6 +528,96 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
             pluto_constraints_free(coeff_bounds);
         }
         fcg_stmt_offset += stmts[i]->dim_orig;
+    }
+}
+
+/* Same semantics as the above routine; however adds edges in the fcg with scc based clustering heuristic */
+void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, PlutoConstraints* boundcst, int current_colour, PlutoMatrix *obj)
+{
+    int nstmts,nvar,npar,i,j,k, stmt_offset,fcg_scc_offset;
+    int nrows, stmt_id;
+    double *sol, tstart;
+    Stmt **stmts;
+    Scc *sccs;
+    
+
+    int num_sccs;
+    PlutoConstraints *intra_scc_dep_cst, *coeff_bounds;
+
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    stmts = prog->stmts;
+    num_sccs=prog->ddg->num_sccs;
+    sccs = prog->ddg->sccs;
+
+    nrows = boundcst->nrows-CST_WIDTH+1;
+
+
+    /* Compute the intra statment dependence constraints */
+    /* compute_intra_stmt_deps(prog); */
+
+    /* fcg_stmt_offset = 0; */
+    for (i=0; i<num_sccs; i++) {
+        intra_scc_dep_cst = compute_intra_scc_dep_cst(i, prog);
+        if (intra_scc_dep_cst!=NULL) {
+            /* Constraints to check permutability are added in the beginning */
+            coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
+            coeff_bounds->nrows = 0;
+            coeff_bounds->ncols = CST_WIDTH;
+            /* Add the intra statement dependence constraints and bounding constraints */
+            /* intra_stmt_dep_cst = stmts[i]->intra_stmt_dep_cst; */
+
+            pluto_constraints_add(intra_scc_dep_cst, boundcst);
+
+            pluto_constraints_add(coeff_bounds,intra_scc_dep_cst);
+
+            /* stmt_offset = (npar+1)+ i*(nvar+1); */
+
+            fcg_scc_offset = 0;
+            for (j=0; j<sccs[i].max_dim; j++) {
+/* Todo: Update this check for the clustered routine once the colour array is fixed */
+                /* if (colour[fcg_stmt_offset + j]==0 || colour[fcg_stmt_offset+j] == current_colour) { */
+                    IF_DEBUG(printf("[Permute_preventing_edges]: Checking permutability of dimension %d of Scc %d \n",j,i););
+                    /* Set the lower bounds of the jth coefficient for all the statments in scc i to 1. */
+                    for (k=0; k<sccs[i].size; k++) {
+                        stmt_id = sccs[i].vertices[k];
+                        if(j<=stmts[stmt_id]->dim_orig) {
+                            stmt_offset = npar+1+stmt_id*(nvar+1)+j;
+                            coeff_bounds->is_eq[nrows+stmt_offset] = 0;
+                            coeff_bounds->val[nrows+stmt_offset][CST_WIDTH-1] = -1;
+                        }
+                    }
+
+                    prog->num_lp_calls++;
+
+                    tstart = rtclock();
+                    sol = pluto_fusion_constraints_feasibility_solve(coeff_bounds,obj);
+                    prog->mipTime += rtclock()-tstart;
+                    /* If the constraints are infeasible then add a self edge in the FCG */
+
+                    if (sol == NULL) {
+                        IF_DEBUG(printf("Dimension %d of Statment %d is not permutable\n",j,i););
+                        fcg->adj->val[fcg_scc_offset+j][fcg_scc_offset+j] = 1;
+                    } else {
+                        free(sol);
+                    }
+                    /* reset the coeff bound of this dimension for all statements in the SCC*/
+                    for (k=0; k<sccs[i].size; k++) {
+                        stmt_id = sccs[i].vertices[k];
+                        if(j<=stmts[stmt_id]->dim_orig) {
+                            stmt_offset = npar+1+stmt_id*(nvar+1)+j;
+                            coeff_bounds->is_eq[nrows+stmt_offset] = 1;
+                            coeff_bounds->val[nrows+stmt_offset][CST_WIDTH-1] = 0;
+                        }
+                    }
+                /* } */
+            }
+            pluto_constraints_free(coeff_bounds);
+        }
+        free(intra_scc_dep_cst);
+        fcg_scc_offset += sccs[i].max_dim;
     }
 }
 
@@ -592,8 +733,9 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         (*conflicts)-> val[nrows+i][i] = 1;
     }
 
-    /* In the last CST_WIDTH-npar+1 number of rows, correspond to equality constraints.
-     * These are changed during dimension wise computation of edges of the FCG*/
+    /* The last CST_WIDTH-(npar+1) number of rows, correspond to equality constraints.
+     * These are changed during dimension wise computation of edges of the FCG. The 
+     * equality constraints are used to set the transformation coeffs to zero*/
     for (i=npar+1; i<CST_WIDTH-1; i++) {
         (*conflicts)->is_eq[nrows+i] = 1;
         (*conflicts)->val[nrows+i][i] = 1;
@@ -601,7 +743,11 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     
     /* Add premutation preventing intra statement dependence edges in the FCG.
      * These are self loops on vertices of the FCG. */ 
-    add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
+    if(options->scc_cluster) {
+        fcg_scc_cluster_add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
+    } else {
+        add_permute_preventing_edges(fcg, colour, prog, *conflicts, current_colour, obj);
+    }
 
     /* Add inter statement fusion and permute preventing edges.  */
 
