@@ -40,6 +40,10 @@ struct scc{
      * This can be scaled to integeral hyperplane */
     double* sol;
 
+    /* Points to the first vertex in the FCG corresponding to this scc, 
+     * when used with SCC based clustering heuristic */
+    int fcg_scc_offset;
+
 };
 typedef struct scc Scc;
 
