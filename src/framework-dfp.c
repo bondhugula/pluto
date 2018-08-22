@@ -793,17 +793,19 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
 
 void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
 {
-    int i, j, num_sccs;
+    int i, j, num_sccs, dim1, dim2;
     Graph *ddg;
     Scc *sccs;
-    int scc_fcg_offset;
+    int scc1_fcg_offset, scc2_fcg_offset;
     ddg = prog->ddg;
     sccs = ddg->sccs;
+    num_sccs = ddg->num_sccs;
+    assert (scc1 != scc2);
 
     if(options->fuse == NO_FUSE) {
         for (i=0; i<num_sccs; i++) {
             scc1_fcg_offset = sccs[i].fcg_scc_offset;
-            for (dim1 = 0; dim1<=sccs[i].max_dim) {
+            for (dim1 = 0; dim1<=sccs[i].max_dim ; dim1++) {
                 for (j=0; j<num_sccs; j++) {
                     scc2_fcg_offset = sccs[j].fcg_scc_offset;
                     for (dim2=0; dim2<=sccs[j].max_dim; dim2++) {
@@ -815,9 +817,21 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoPr
                 }
             }
         }
-    }
-    else {
-        /* Todo: Update fcg only between scc1 and scc2 */
+    } else {
+        /* Update fcg only between scc1 and scc2 */
+        for (i=0; i<scc2; i++) {
+            scc1_fcg_offset = sccs[i].fcg_scc_offset;
+            for (dim1 =0; dim1<sccs[i].max_dim; dim1++) {
+                for (j=scc2; j<num_sccs; j++) {
+                    scc2_fcg_offset = sccs[j].fcg_scc_offset;
+                    for (dim2 =0; dim2<sccs[j].max_dim; dim2++) {
+                        fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 0;
+                        fcg->adj->val[scc2_fcg_offset+dim2][scc1_fcg_offset+dim1] = 0;
+                    }
+                }
+            }
+        }
+
     }
 }
 
