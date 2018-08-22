@@ -1833,7 +1833,10 @@ int pluto_auto_transform(PlutoProg *prog)
 
         nVertices = 0;
         if (options->scc_cluster) {
-            nVertices = ddg->num_sccs;
+            for (i=0; i<ddg->num_sccs; i++) {
+                ddg->sccs[i].fcg_scc_offset = nVertices;
+                nVertices += ddg->sccs[i].max_dim;
+            }
         } else {
             for (i=0; i<nstmts; i++) {
                 ddg->vertices[i].fcg_stmt_offset = nVertices;

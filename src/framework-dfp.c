@@ -791,6 +791,36 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
     }
 }
 
+void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
+{
+    int i, j, num_sccs;
+    Graph *ddg;
+    Scc *sccs;
+    int scc_fcg_offset;
+    ddg = prog->ddg;
+    sccs = ddg->sccs;
+
+    if(options->fuse == NO_FUSE) {
+        for (i=0; i<num_sccs; i++) {
+            scc1_fcg_offset = sccs[i].fcg_scc_offset;
+            for (dim1 = 0; dim1<=sccs[i].max_dim) {
+                for (j=0; j<num_sccs; j++) {
+                    scc2_fcg_offset = sccs[j].fcg_scc_offset;
+                    for (dim2=0; dim2<=sccs[j].max_dim; dim2++) {
+                        /* No fusion. Hence all sccs are cut. Therefore remove in inter scc edges in FCG */
+                        if(i!=j) {
+                            fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    else {
+        /* Todo: Update fcg only between scc1 and scc2 */
+    }
+}
+
 /* Removes all the edges in the FCG from a dimension of a statement that is in an 
  * SCC whose ID is less than or equal to scc1 to the dimension of a statement 
  * present in a SCC greater than or equal to scc2. */
@@ -813,6 +843,10 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
 
     if (nstmts == 1) {
         return;
+    }
+
+    if(options->scc_cluster) {
+        update_scc_cluster_fcg_between_sccs(fcg, scc1, scc2, prog);
     }
     /* Assumes that the DDG has already been cut. */
     if (options->fuse == NO_FUSE) {
