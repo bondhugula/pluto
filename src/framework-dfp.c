@@ -859,8 +859,10 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
         return;
     }
 
+    
     if(options->scc_cluster) {
         update_scc_cluster_fcg_between_sccs(fcg, scc1, scc2, prog);
+        return;
     }
     /* Assumes that the DDG has already been cut. */
     if (options->fuse == NO_FUSE) {
@@ -901,6 +903,26 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
     prog->fcg_update_time += rtclock() - tstart;
 }
 
+void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog)
+{
+    Graph *ddg;
+    int i, j, k ,num_sccs, scc_offset;
+
+    ddg = prog->ddg;
+    num_sccs = ddg->num_sccs;
+    scc_offset = 0;
+
+    for (i=0; i<num_sccs; i++) {
+        for (j=0;j<ddg->sccs[i].max_dim; j++) {
+            for (k =j+1; k<ddg->sccs[i].max_dim; k++) {
+                fcg->adj->val[scc_offset+j][scc_offset+k] = 1;
+                fcg->adj->val[scc_offset+k][scc_offset+j] = 1;
+            }
+        }
+        scc_offset += ddg->sccs[i].max_dim;
+    }
+    return;
+}
 
 /* Build the fusion conflict graph for a given program.  The current colour is 
  * used to rebuild FCG for the current level.  This is need in case we are 
@@ -999,24 +1021,28 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     pluto_matrix_free(obj);
 
-    /* Add egdes between different dimensions of the same statement */
-    stmt_offset=0;
-    for (i=0; i<nstmts;i++) {
-        for (j=stmt_offset; j<stmt_offset+stmts[i]->dim_orig; j++) {
-            fcg->vertices[j].fcg_stmt_offset = i;
-            for (k=j+1; k<stmt_offset+stmts[i]->dim_orig;k++) {
-                fcg->adj->val[j][k] = 1;
-                fcg->adj->val[k][j] = 1;
+    if (options->scc_cluster) {
+        fcg_add_intra_scc_edges(fcg,prog);
+    } else {
+        /* Add egdes between different dimensions of the same statement */
+        stmt_offset=0;
+        for (i=0; i<nstmts;i++) {
+            for (j=stmt_offset; j<stmt_offset+stmts[i]->dim_orig; j++) {
+                fcg->vertices[j].fcg_stmt_offset = i;
+                for (k=j+1; k<stmt_offset+stmts[i]->dim_orig;k++) {
+                    fcg->adj->val[j][k] = 1;
+                    fcg->adj->val[k][j] = 1;
+                }
             }
+            stmt_offset += stmts[i]->dim_orig;
+
+
+            /* Remove the intra statement dependence constraints. Else the permutability constraints 
+             * might be incorrect for rebuilding the fusion conflict graph.  */
+
+            pluto_constraints_free(stmts[i]->intra_stmt_dep_cst);
+            stmts[i]->intra_stmt_dep_cst = NULL;
         }
-        stmt_offset += stmts[i]->dim_orig;
-
-
-        /* Remove the intra statement dependence constraints. Else the permutability constraints 
-         * might be incorrect for rebuilding the fusion conflict graph.  */
-
-        pluto_constraints_free(stmts[i]->intra_stmt_dep_cst);
-        stmts[i]->intra_stmt_dep_cst = NULL;
     }
 
     pluto_constraints_free(boundcst);
