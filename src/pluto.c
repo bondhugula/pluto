@@ -771,7 +771,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
 
     /* Don't free basecst */
     basecst = get_permutability_constraints(prog);
-    pluto_constraints_cplex_print(stdout,basecst);
     boundcst = get_coeff_bounding_constraints(prog);
     pluto_constraints_add(basecst, boundcst);
     pluto_constraints_free(boundcst);

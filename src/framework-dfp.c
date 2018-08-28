@@ -685,7 +685,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
                     /* If the constraints are infeasible then add a self edge in the FCG */
 
                     if (sol == NULL) {
-                        IF_DEBUG(printf("Dimension %d of Statment %d is not permutable\n",j,i););
+                        IF_DEBUG(printf("Dimension %d of statement %d is not permutable\n",j,i););
                         fcg->adj->val[fcg_stmt_offset+j][fcg_stmt_offset+j] = 1;
                     } else {
                         free(sol);
@@ -731,6 +731,9 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
     /* fcg_stmt_offset = 0; */
     for (i=0; i<num_sccs; i++) {
         intra_scc_dep_cst = compute_intra_scc_dep_cst(i, prog);
+        /* pluto_constraints_cplex_print(stdout, intra_scc_dep_cst); */
+        /* printf("Bound constraints \n"); */
+        /* pluto_constraints_cplex_print(stdout,boundcst); */
         if (intra_scc_dep_cst!=NULL) {
             /* Constraints to check permutability are added in the beginning */
             coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
@@ -739,9 +742,12 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
             /* Add the intra statement dependence constraints and bounding constraints */
             /* intra_stmt_dep_cst = stmts[i]->intra_stmt_dep_cst; */
 
-            pluto_constraints_add(intra_scc_dep_cst, boundcst);
+            /* Bound constraints have to be added first as these are modified while checking for permutability */
+            pluto_constraints_add(coeff_bounds, boundcst);
 
             pluto_constraints_add(coeff_bounds,intra_scc_dep_cst);
+            /* printf("Coeff Boumnds\n"); */
+            /* pluto_constraints_cplex_print(stdout,coeff_bounds); */
 
             /* stmt_offset = (npar+1)+ i*(nvar+1); */
 
@@ -760,6 +766,8 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                         }
                     }
 
+            /* printf("Coeff Boumnds\n"); */
+            /* pluto_constraints_cplex_print(stdout,coeff_bounds); */
                     prog->num_lp_calls++;
 
                     tstart = rtclock();
@@ -768,9 +776,10 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                     /* If the constraints are infeasible then add a self edge in the FCG */
 
                     if (sol == NULL) {
-                        IF_DEBUG(printf("Dimension %d of Statment %d is not permutable\n",j,i););
+                        IF_DEBUG(printf("Dimension %d of scc %d is not permutable\n",j,i););
                         fcg->adj->val[fcg_scc_offset+j][fcg_scc_offset+j] = 1;
                     } else {
+                        IF_DEBUG(printf("Dimension %d of scc %d is permutable\n",j,i););
                         free(sol);
                     }
                     /* reset the coeff bound of this dimension for all statements in the SCC*/
