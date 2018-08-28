@@ -1082,6 +1082,15 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
     stmt_offset = 0;
 
 
+    if (options->scc_cluster) {
+        for (i=0; i<prog->ddg->num_sccs;i++){
+            for (j=0;j<prog->ddg->sccs[i].max_dim;j++){
+                printf("Colour of dimension %d of Scc %d: %d\n",j,i,colour[stmt_offset+j]);
+            }
+            stmt_offset+=j;
+        }
+        return;
+    }
     for (i=0; i<nstmts;i++){
         for (j=0;j<stmts[i]->dim_orig;j++){
             printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,colour[stmt_offset+j]);
@@ -1364,7 +1373,11 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     }
 
     stmt_id = sccs[scc_id].vertices[stmt_pos];
-    fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+    if (options->scc_cluster) {
+        fcg_offset = ddg->sccs[scc_id].fcg_scc_offset;
+    } else {
+        fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+    }
 
     while (num_discarded!=nvar) {
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
@@ -1669,8 +1682,8 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
  * was successful. Else returns 0. */
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
 {
-    int j, k, stmt_offset, select;
-    int nvar, npar;
+    int i, num_sccs,j, k, stmt_offset, select;
+    int nvar, npar, stmt_id;
     int nstmts;
     double t_start;
     PlutoConstraints *basecst,*coeffcst, *boundcst;
@@ -1682,6 +1695,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     npar = prog->npar;
     stmts = prog->stmts;
     nstmts = prog->nstmts;
+    num_sccs = prog->ddg->num_sccs;
 
 
     basecst = get_permutability_constraints(prog);
@@ -1710,17 +1724,33 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set the rest to 0
          * These redundant cols are then removed. */
 
-        for (j=0; j<nstmts; j++){
-            for (k=0; k<nvar; k++){
-                if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select){
-                    pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
+        if (options->scc_cluster) {
+            for (j=0;j<num_sccs; j++) {
+                for (k=0; k<prog->ddg->sccs[j].max_dim; k++) {
+                    for (i=0;i<prog->ddg->sccs[j].size; i++) {
+                        stmt_id = prog->ddg->sccs[j].vertices[i];
+                        if (colour[stmt_offset+k]==select && stmts[stmt_id]->is_orig_loop[k]) {
+                            pluto_constraints_add_lb(coeffcst,npar+1+stmt_id*(nvar+1)+k,1);
+                        } else {
+                            pluto_constraints_add_equality(coeffcst);
+                            coeffcst->val[coeffcst->nrows-1][npar+1+j*(stmt_id+1)+k] = 1;
+                        }
+                    }
                 }
-                else {
-                    pluto_constraints_add_equality(coeffcst);
-                    coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
-                }
+                stmt_offset += k;
             }
-            stmt_offset += stmts[j]->dim_orig;
+        } else {
+            for (j=0; j<nstmts; j++) {
+                for (k=0; k<nvar; k++) {
+                    if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==select) {
+                        pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
+                    } else {
+                        pluto_constraints_add_equality(coeffcst);
+                        coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
+                    }
+                }
+                stmt_offset += stmts[j]->dim_orig;
+            }
         }
 
         /* Solve the constraints to find the hyperplane at this level */
