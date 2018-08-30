@@ -1433,14 +1433,106 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     return false;
 }
 
+/* Returns colours corresponding vertices of the original FCG 
+ * from the colours of vertices of scc clustered FCG */
+int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
+{
+    int i, j, scc_offset;
+    int nvar, nstmts;
+    int *stmt_colour;
+    Scc *sccs;
+    Stmt **stmts;
 
+    nvar = prog->nvar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+    sccs = prog->ddg->sccs;
+
+    stmt_colour = (int*) malloc (nstmts*(nvar)*sizeof(int));
+    for (i=0; i<nstmts; i++) {
+        scc_offset = sccs[i].fcg_scc_offset;
+        for (j=0; j<stmts[i]->dim_orig; j++) {
+            stmt_colour[i*(nvar)+j] = colour[scc_offset+j];
+        }
+    }
+    return stmt_colour;
+}
+
+int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int nvertices)
+{
+    int i, j, scc_offset, stmt_id;
+    int nvar, num_sccs;
+    int *scc_colour;
+    Scc *sccs;
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    stmts = prog->stmts;
+    num_sccs = prog->ddg->num_sccs;
+    sccs = prog->ddg->sccs;
+
+    scc_colour = (int*) malloc (nvertices*sizeof(int));
+
+    scc_offset = 0;
+
+    for (i=0; i<num_sccs; i++) {
+        for (j=0; j<sccs[i].size; j++) {
+            stmt_id = sccs[i].vertices[j];
+            if (sccs[i].max_dim == stmts[j]->dim)
+                break;
+        }
+
+        for (j=0; j<sccs[i].max_dim; j++) {
+            scc_colour[scc_offset+j] = stmt_colour[stmt_id*(nvar)+j];
+        }
+        sccs[i].fcg_scc_offset = scc_offset;
+        scc_offset += sccs[i].max_dim;
+    }
+    return scc_colour;
+}
+
+
+int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
+{
+    int *stmt_colour, nvertices, i, num_sccs;
+    int *scc_colour;
+    Graph *ddg;
+
+    ddg = prog->ddg;
+
+
+    stmt_colour = get_vertex_colour_from_scc_colour(prog, colour);
+    free_scc_vertices(ddg);
+
+    /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
+     * edges wich prevents permutation which is unsound */
+    ddg_update(ddg, prog);
+    IF_DEBUG(printf("DDG after colouring with colour %d\n",c););
+    IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+    ddg_compute_scc(prog);
+    compute_scc_vertices(ddg);
+    num_sccs = prog->ddg->num_sccs;
+
+    nvertices = 0;
+
+    for (i=0;i<num_sccs; i++) {
+        nvertices += prog->ddg->sccs[i].max_dim;
+    }
+
+    scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, nvertices);
+    free(stmt_colour);
+    prog->fcg = build_fusion_conflict_graph(prog, colour, ddg->num_sccs, c);
+    free (colour);
+    return scc_colour;
+
+}
 
 /* Colours all scc's with a colour c.  Returns true if the SCC's had to be distributed.  Else returns false */
 bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 {
     int i,j,nsccs,prev_scc;
     bool is_distributed, is_successful;
-    Graph *ddg,*fcg;
+    Graph *ddg, *fcg;
     double t_start;
 
     ddg = prog->ddg;
@@ -1482,7 +1574,11 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 prog->fcg_colour_time += rtclock() - t_start;
                 /* Current colour that is being used to colour the fcg is c */
                 IF_DEBUG(printf("FCG to be rebuilt due to a permute preventing dep: Colouring with colour %d\n",c););
-                prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
+                if (options->scc_cluster) {
+                    colour = rebuild_scc_cluster_fcg (prog, colour,c);
+                } else {
+                    prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
+                }
 
                 t_start = rtclock();
                 prog->fcg->num_coloured_vertices = fcg->num_coloured_vertices;
@@ -1647,15 +1743,19 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
                 }
             }
         }
-        free_scc_vertices(ddg);
 
-        /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
-         * edges wich prevents permutation which is unsound */
-        ddg_update(ddg, prog);
-        IF_DEBUG(printf("DDG after colouring with colour %d\n",i););
-        IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
-        ddg_compute_scc(prog);
-        compute_scc_vertices(ddg);
+        /* Do not update ddg or sccs if sccs are clustered. It will be updated when FCG is rebuilt */
+        if(!options->scc_cluster) {
+            free_scc_vertices(ddg);
+
+            /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
+             * edges wich prevents permutation which is unsound */
+            ddg_update(ddg, prog);
+            IF_DEBUG(printf("DDG after colouring with colour %d\n",i););
+            IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+            ddg_compute_scc(prog);
+            compute_scc_vertices(ddg);
+        }
         IF_DEBUG2(pluto_transformations_pretty_print(prog););
         IF_DEBUG2(pluto_compute_dep_directions(prog););
         IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
