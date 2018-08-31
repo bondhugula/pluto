@@ -1870,11 +1870,8 @@ int pluto_auto_transform(PlutoProg *prog)
             prog->scaled_dims[i] = 0;
         }
 
-        /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
+        /* This routine frees colour internally */
         find_permutable_dimensions_scc_based(colour, prog);
-
-        IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
-        IF_DEBUG(pluto_print_colours(colour,prog););
 
         if(!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
@@ -1883,7 +1880,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
         introduce_skew(prog);
 
-        free(colour);
+        /* free(colour); */
         free(prog->total_coloured_stmts);
         free(prog->scaled_dims);
 #endif

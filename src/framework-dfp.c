@@ -374,6 +374,8 @@ PlutoConstraints* get_inter_scc_dep_constraints (int scc1, int scc2, PlutoProg* 
     ndeps = prog->ndeps;
     stmts = prog->stmts;
 
+    inter_scc_dep_cst = NULL;
+
     for (i=0;i<ndeps; i++) {
         dep = deps[i];
         if (options->rar ==0 && IS_RAR(dep->type)) {
@@ -435,7 +437,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
         for (scc2=scc1+1; scc2<num_sccs; scc2++) {
             scc2_fcg_offset = sccs[scc2].fcg_scc_offset;
             if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2)) {
-                inter_scc_constraints = get_inter_scc_dep_constraints (i, j, prog);
+                inter_scc_constraints = get_inter_scc_dep_constraints (scc1, scc2, prog);
 
 
                 /* Conflict constraints are added at the end of inter_scc_constraints. 
@@ -1437,7 +1439,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
  * from the colours of vertices of scc clustered FCG */
 int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
 {
-    int i, j, scc_offset;
+    int i, j, scc_offset, scc_id;
     int nvar, nstmts;
     int *stmt_colour;
     Scc *sccs;
@@ -1450,7 +1452,8 @@ int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
 
     stmt_colour = (int*) malloc (nstmts*(nvar)*sizeof(int));
     for (i=0; i<nstmts; i++) {
-        scc_offset = sccs[i].fcg_scc_offset;
+        scc_id = stmts[i]->scc_id;
+        scc_offset = sccs[scc_id].fcg_scc_offset;
         for (j=0; j<stmts[i]->dim_orig; j++) {
             stmt_colour[i*(nvar)+j] = colour[scc_offset+j];
         }
@@ -1520,15 +1523,15 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     }
 
     scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, nvertices);
-    free(stmt_colour);
-    prog->fcg = build_fusion_conflict_graph(prog, colour, ddg->num_sccs, c);
+    prog->fcg = build_fusion_conflict_graph(prog, colour, nvertices, c);
     free (colour);
+    free(stmt_colour);
     return scc_colour;
 
 }
 
-/* Colours all scc's with a colour c.  Returns true if the SCC's had to be distributed.  Else returns false */
-bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
+/* Colours all scc's with a colour c. Returns the current colouring of the fcg. */
+int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 {
     int i,j,nsccs,prev_scc;
     bool is_distributed, is_successful;
@@ -1576,6 +1579,8 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 IF_DEBUG(printf("FCG to be rebuilt due to a permute preventing dep: Colouring with colour %d\n",c););
                 if (options->scc_cluster) {
                     colour = rebuild_scc_cluster_fcg (prog, colour,c);
+                    /* rebuliding the cluster_fcg will update ddg, hence number of sccs can increase */
+                    nsccs = prog->ddg->num_sccs;
                 } else {
                     prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
                 }
@@ -1683,7 +1688,7 @@ bool colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
         prog->fcg_colour_time += rtclock() - t_start;
     }
 
-    return is_distributed;
+    return colour;
 }
 
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
@@ -1700,7 +1705,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         if (options->lpcolour) {
             mark_parallel_sccs(colour, prog);
         }
-        colour_fcg_scc_based(i, colour, prog);
+        colour = colour_fcg_scc_based(i, colour, prog);
 
         t_start = rtclock();
 
@@ -1769,6 +1774,8 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
     IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
     IF_DEBUG(pluto_print_colours(colour,prog););
+
+    free(colour);
 
 
     return;
