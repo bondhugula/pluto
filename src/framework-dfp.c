@@ -1305,7 +1305,6 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     /* memset(list, -1, nvar); */
 
 
-    printf("Colouring SCC %d\n", scc_id);
 
     /* ToDo: Check if this condition can really happen.  */
     if(stmt_pos >= sccs[scc_id].size){
@@ -1383,7 +1382,11 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
 
     while (num_discarded!=nvar) {
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
-        IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+        if (options->scc_cluster) {
+            IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of scc %d with colour %d\n",j,scc_id,c););
+        } else {
+            IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+        }
 
         v = fcg_offset+j;
 
