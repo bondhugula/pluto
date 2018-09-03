@@ -1609,6 +1609,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                     /* Sccs will be renumbered; hence all sccs have to be revisited; */
                     i=-1;
                     prev_scc = -1;
+                    continue;
                 } else {
                     prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
                 }
