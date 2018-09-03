@@ -447,6 +447,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                 row_offset = conflictcst->nrows-CST_WIDTH+1+inter_scc_constraints->nrows;
 
                 /* Add conflict constraints at the end of inter_scc_constraints */
+                /* pluto_constraints_cplex_print (stdout,conflictcst); */
                 pluto_constraints_add(inter_scc_constraints, conflictcst);
 
                 /* Set the shifting lb of coefficient for each statement in SCC1 to 0 */
@@ -478,8 +479,8 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                             stmt2 = sccs[scc2].vertices[j];
                             if(dim2<=stmts[stmt2]->dim_orig) {
                                 stmt2_offset = npar+1+(nvar+1)*stmt2;
-                                inter_scc_constraints->val[row_offset+stmt2_offset+dim1][CST_WIDTH-1] = -1;
-                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim1] = 0;
+                                inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = -1;
+                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 0;
                             }
                         }
                         /* Check if fusing ith dimesion of the source with ith dimension
@@ -493,7 +494,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                         /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
                         if(sol == NULL)
                         {
-                            IF_DEBUG(printf("Unable to fuse Dimesnion %d of scc %d with dimension %d of scc %d \n",dim1,scc1 ,dim2 ,scc2););
+                            IF_DEBUG(printf("Unable to fuse dimension %d of scc %d with dimension %d of scc %d \n",dim1,scc1 ,dim2 ,scc2););
                             IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",scc1_fcg_offset+dim1,scc2_fcg_offset+dim2););
                             fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
                         } else {
@@ -511,8 +512,8 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                             stmt2 = sccs[scc2].vertices[j];
                             if(dim2<=stmts[stmt2]->dim_orig) {
                                 stmt2_offset = npar+1+(nvar+1)*stmt2;
-                                inter_scc_constraints->val[row_offset+stmt2_offset+dim1][CST_WIDTH-1] = 0;
-                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim1] = 1;
+                                inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = 0;
+                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 1;
                             }
                         }
                     }
