@@ -1834,6 +1834,7 @@ int pluto_auto_transform(PlutoProg *prog)
         if (options->scc_cluster) {
             for (i=0; i<ddg->num_sccs; i++) {
                 ddg->sccs[i].fcg_scc_offset = nVertices;
+                ddg->sccs[i].is_scc_coloured = false;
                 nVertices += ddg->sccs[i].max_dim;
             }
         } else {

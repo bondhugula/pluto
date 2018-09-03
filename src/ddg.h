@@ -44,6 +44,9 @@ struct scc{
      * when used with SCC based clustering heuristic */
     int fcg_scc_offset;
 
+    /* Set to true if the scc is couloured with current colour else false */
+    bool is_scc_coloured;
+
 };
 typedef struct scc Scc;
 

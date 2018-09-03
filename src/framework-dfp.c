@@ -1464,7 +1464,7 @@ int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
     return stmt_colour;
 }
 
-int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int nvertices)
+int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int current_colour, int nvertices)
 {
     int i, j, scc_offset, stmt_id;
     int nvar, num_sccs;
@@ -1489,6 +1489,7 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
         }
 
         for (j=0; j<sccs[i].max_dim; j++) {
+            sccs[i].is_scc_coloured = (stmt_colour[stmt_id*(nvar)+j] == current_colour)?true:false;
             scc_colour[scc_offset+j] = stmt_colour[stmt_id*(nvar)+j];
         }
         sccs[i].fcg_scc_offset = scc_offset;
@@ -1525,8 +1526,15 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
         nvertices += prog->ddg->sccs[i].max_dim;
     }
 
-    scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, nvertices);
+    scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices);
     prog->fcg = build_fusion_conflict_graph(prog, colour, nvertices, c);
+
+    /* These two have to be reset in the clustered apporoach as 
+     * Scc's will change when FCG is rebuilt and 
+     * they will be revisited during colouring */
+    prog->fcg->num_coloured_vertices = 0;
+    prog->total_coloured_stmts[c-1] = 0;
+
     free (colour);
     free(stmt_colour);
     return scc_colour;
@@ -1550,6 +1558,19 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 
     for (i=0; i<nsccs; i++) {
         t_start = rtclock();
+
+        /* In clustering approach, when FCG is rebuilt, DDG is upadated. 
+         * However, if some Sccs were previously coloured before the rebuilding the FCG, 
+         * we dont have to re-colour those SCCs again. If fcg has to be rebuilt, 
+         * then SCC ids would not have changed from previous clouring */
+        if (options->scc_cluster && fcg->to_be_rebuilt == false && prog->ddg->sccs[i].is_scc_coloured) {
+            fcg->num_coloured_vertices += ddg->sccs[i].max_dim;
+            prog->total_coloured_stmts[c-1] += ddg->sccs[i].size;
+            prev_scc = i;
+            prog->fcg_colour_time += rtclock() - t_start;
+            continue;
+        }
+
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
         if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) {
             printf("Parallelism Preserving colouring for SCC %d \n", i);
@@ -1584,6 +1605,10 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                     colour = rebuild_scc_cluster_fcg (prog, colour,c);
                     /* rebuliding the cluster_fcg will update ddg, hence number of sccs can increase */
                     nsccs = prog->ddg->num_sccs;
+
+                    /* Sccs will be renumbered; hence all sccs have to be revisited; */
+                    i=-1;
+                    prev_scc = -1;
                 } else {
                     prog->fcg = build_fusion_conflict_graph(prog, colour, fcg->nVertices, c);
                 }
@@ -1685,7 +1710,13 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
             }
             assert (is_distributed == true);
         }
-        fcg->num_coloured_vertices += ddg->sccs[i].size;
+
+        prog->ddg->sccs[i].is_scc_coloured = true;
+        if (options->scc_cluster) {
+            fcg->num_coloured_vertices += ddg->sccs[i].max_dim;
+        } else {
+            fcg->num_coloured_vertices += ddg->sccs[i].size;
+        }
         prog->total_coloured_stmts[c-1] += ddg->sccs[i].size;
         prev_scc = i;
         prog->fcg_colour_time += rtclock() - t_start;
