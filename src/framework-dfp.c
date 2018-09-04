@@ -1333,9 +1333,9 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         }
         assert (sccs[scc_id].size ==1);
 
-        if(sccs[scc_id].size == 1){
-            for(j=0;j<ddg->num_sccs; j++){
-                if(scc_id!=j){
+        if (sccs[scc_id].size == 1) {
+            for (j=0;j<ddg->num_sccs; j++) {
+                if (scc_id!=j) {
                     if((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
                         IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
                         if(options->fuse == NO_FUSE) { 
