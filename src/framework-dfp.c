@@ -1374,10 +1374,10 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         return true;
     }
 
-    stmt_id = sccs[scc_id].vertices[stmt_pos];
     if (options->scc_cluster) {
         fcg_offset = ddg->sccs[scc_id].fcg_scc_offset;
     } else {
+        stmt_id = sccs[scc_id].vertices[stmt_pos];
         fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
     }
 
@@ -1421,7 +1421,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
             colour[v] = c;
             /* If this is a valid colour, then try colouring the next vertex in the SCC */
             if (colour_scc(scc_id, colour, c, stmt_pos+1, v, prog)) {
-                IF_DEBUG(printf("[Colour SCC]Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
+                IF_DEBUG(printf("[Colour SCC] Colouring dimension %d of statement %d with colour %d\n",j,stmt_id,c););
                 return true;
             } else { 
                 list[num_discarded] = v;
@@ -1835,18 +1835,18 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring (PlutoConstraints *c
     scc_offset = 0;
 
     for (j=0;j<num_sccs; j++) {
-        for (k=0; k<ddg->sccs[j].max_dim; k++) {
-            for (i=0;i<ddg->sccs[j].size; i++) {
-                stmt_id = ddg->sccs[j].vertices[i];
+        for (i=0;i<ddg->sccs[j].size; i++) {
+            stmt_id = ddg->sccs[j].vertices[i];
+            for (k=0; k<ddg->sccs[j].max_dim; k++) {
                 if (colour[scc_offset+k]==c && stmts[stmt_id]->is_orig_loop[k]) {
                     pluto_constraints_add_lb(coeffcst,npar+1+stmt_id*(nvar+1)+k,1);
                 } else {
                     pluto_constraints_add_equality(coeffcst);
-                    coeffcst->val[coeffcst->nrows-1][npar+1+j*(stmt_id+1)+k] = 1;
+                    coeffcst->val[coeffcst->nrows-1][npar+1+stmt_id*(nvar+1)+k] = 1;
                 }
             }
         }
-        scc_offset += k;
+        scc_offset += ddg->sccs[j].max_dim;
     }
 }
 
