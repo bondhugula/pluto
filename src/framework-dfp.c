@@ -1410,6 +1410,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
             continue;
         }
 
+        /* This check is redundant. covered in the next condition; */
         if (pv>=0 && is_adjecent(fcg,v,pv)) {
             list[num_discarded] = v;
             num_discarded++;
@@ -1438,6 +1439,43 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     }
     return false;
 }
+
+bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg* prog)
+{
+    int max_dim, scc_offset;
+    int i, v;
+    Graph *ddg, *fcg;
+    ddg = prog->ddg;
+    fcg = prog->fcg;
+
+    max_dim = ddg->sccs[scc_id].max_dim;
+    scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+    for (i =0; i< max_dim; i++) {
+        v = scc_offset + i;
+        if (colour[v]>0 && colour[v]!=current_colour) {
+            IF_DEBUG(printf("[Colour SCC] Dimension %d of SCC %d already coloured with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]););
+            continue;
+        }
+        if (is_valid_colour(v, current_colour, fcg, colour)) {
+           colour[v] = current_colour; 
+           return true;
+        }
+    }
+    return false;
+
+    /* scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset; */
+    /* while (num_discarded != max_dim) { */
+    /*     v = get_next_min_cluster_vertex (scc_id, ddg); */
+    /*     if (colour[v]>0 && colour[v]!=c) { */
+    /*         IF_DEBUG(printf("[Colour SCC] Dimension %d of SCC %d already coloured with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]);); */
+    /*         list[num_discarded] = v; */
+    /*         num_discarded++; */
+    /*         continue; */
+    /*     } */
+    /*  */
+    /* } */
+}
+
 
 /* Returns colours corresponding vertices of the original FCG 
  * from the colours of vertices of scc clustered FCG */
@@ -1573,7 +1611,9 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
         }
 
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
-        if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) {
+        if (options->scc_cluster) {
+            is_successful = colour_scc_cluster (i, colour, c, prog);
+        } else if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) {
             printf("Parallelism Preserving colouring for SCC %d \n", i);
             is_successful = colour_scc_from_lp_solution_with_parallelism(i, colour, prog, c);
         } else {
