@@ -1458,6 +1458,7 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
         }
         if (is_valid_colour(v, current_colour, fcg, colour)) {
            colour[v] = current_colour; 
+            IF_DEBUG(printf("[Colour SCC] Colouring dimension %d of SCC %d  with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]););
            return true;
         }
     }
@@ -1573,6 +1574,7 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
      * they will be revisited during colouring */
     prog->fcg->num_coloured_vertices = 0;
     prog->total_coloured_stmts[c-1] = 0;
+    prog->fcg->to_be_rebuilt = false;
 
     free (colour);
     free(stmt_colour);
@@ -1724,7 +1726,11 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
                 IF_DEBUG( printf("FCG after Updating \n"););
                 IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
-                is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                if (options->scc_cluster) {
+                    is_distributed = colour_scc_cluster (i, colour, c, prog);
+                } else {
+                    is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                }
             }
 
             /* Needed in case of partial satisfaction */
@@ -1747,7 +1753,11 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 fcg = prog->fcg;
                 IF_DEBUG(printf("[Pluto]: Fcg After reconstruction\n"););
                 IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
-                is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                if (options->scc_cluster) {
+                    is_distributed = colour_scc_cluster (i, colour, c, prog);
+                } else {
+                    is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                }
 
             }
             assert (is_distributed == true);
