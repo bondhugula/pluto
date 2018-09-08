@@ -1284,7 +1284,47 @@ bool colour_scc_from_lp_solution_with_parallelism (int scc_id, int *colour, Plut
 
 }
 
+void cut_around_scc (int scc_id, PlutoProg *prog)
+{
+    int j;
+    Graph *ddg;
+    ddg = prog->ddg;
+    for (j=0;j<ddg->num_sccs; j++) {
+        if (scc_id!=j) {
+            if((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
+                IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
+                if(options->fuse == NO_FUSE) { 
+                    cut_all_sccs(prog,ddg);
+                } else {
+                    cut_between_sccs(prog,ddg,j,scc_id);
+                    /* cut_smart(prog,ddg); */
+                    /* You also need to cut between a successor node as well */
+                    for (j=scc_id+1; j<ddg->num_sccs; j++) {
+                        if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
+                            IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
+                            /* cut_between_sccs(prog, ddg, scc_id, j); */
+                            cut_all_sccs(prog, ddg);
+                            /* cut_smart(prog,ddg); */
+                            break;
+                        }
+                    }
+                    break;
+                }
+            } else if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
+                IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",scc_id,j););
 
+                if (options->fuse == NO_FUSE) {
+                    cut_all_sccs(prog,ddg);
+                }
+                else {
+                    cut_between_sccs(prog, ddg, scc_id, j);
+                }
+                /* cut_smart(prog,ddg); */
+                break;
+            }
+        }
+    }
+}
 /* Colours the input SCC recursively.  The statement pos refers to the position 
  * of the statement in the list of vertices in the scc and pv refers to the 
  * previous vertex.  Returns true if the colouring is successful; 
@@ -1450,6 +1490,14 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
 
     max_dim = ddg->sccs[scc_id].max_dim;
     scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+    /* All dimensions of the current SCC have already been coloured */
+    if (prog->coloured_dims > max_dim) return true;
+
+    if (prog->coloured_dims == max_dim) {
+        cut_around_scc (scc_id, prog);
+        return true;
+    }
+
     for (i =0; i< max_dim; i++) {
         v = scc_offset + i;
         if (colour[v]>0 && colour[v]!=current_colour) {
