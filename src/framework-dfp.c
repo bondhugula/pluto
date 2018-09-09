@@ -1504,6 +1504,15 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
             IF_DEBUG(printf("[Colour SCC] Dimension %d of SCC %d already coloured with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]););
             continue;
         }
+
+        /* Cannot colour a vertex with a self edge. This is will not be 
+         * covered in the next case as the vertex v is not coloured in 
+         * the first place */
+        if (fcg->adj->val[v][v] == 1) {
+            continue;
+        }
+
+        /* Check if there is an adjecent vertex with the same colour */
         if (is_valid_colour(v, current_colour, fcg, colour)) {
            colour[v] = current_colour; 
             IF_DEBUG(printf("[Colour SCC] Colouring dimension %d of SCC %d  with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]););
@@ -1872,7 +1881,6 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
         /* Recompute the SCC's in the updated DDG */
         ddg = prog->ddg;
-        IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
 
         if (options->lpcolour) {
             for (j=0; j<ddg->num_sccs; j++) {
@@ -1892,6 +1900,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
             ddg_update(ddg, prog);
             IF_DEBUG(printf("DDG after colouring with colour %d\n",i););
             IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
+            IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
             ddg_compute_scc(prog);
             compute_scc_vertices(ddg);
         }
