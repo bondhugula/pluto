@@ -754,7 +754,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
 
             /* stmt_offset = (npar+1)+ i*(nvar+1); */
 
-            fcg_scc_offset = 0;
+            fcg_scc_offset = sccs[i].fcg_scc_offset;
             for (j=0; j<sccs[i].max_dim; j++) {
 /* Todo: Update this check for the clustered routine once the colour array is fixed */
                 /* if (colour[fcg_stmt_offset + j]==0 || colour[fcg_stmt_offset+j] == current_colour) { */
@@ -762,7 +762,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                     /* Set the lower bounds of the jth coefficient for all the statments in scc i to 1. */
                     for (k=0; k<sccs[i].size; k++) {
                         stmt_id = sccs[i].vertices[k];
-                        if(j<=stmts[stmt_id]->dim_orig) {
+                        if(stmts[stmt_id]->is_orig_loop[j]) {
                             stmt_offset = npar+1+stmt_id*(nvar+1)+j;
                             coeff_bounds->is_eq[nrows+stmt_offset] = 0;
                             coeff_bounds->val[nrows+stmt_offset][CST_WIDTH-1] = -1;
@@ -799,7 +799,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
             pluto_constraints_free(coeff_bounds);
         }
         free(intra_scc_dep_cst);
-        fcg_scc_offset += sccs[i].max_dim;
+        /* fcg_scc_offset += sccs[i].max_dim; */
     }
 }
 
