@@ -1551,6 +1551,7 @@ int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
     sccs = prog->ddg->sccs;
 
     stmt_colour = (int*) malloc (nstmts*(nvar)*sizeof(int));
+    bzero(stmt_colour,nvar*nstmts*sizeof(int));
     for (i=0; i<nstmts; i++) {
         scc_id = stmts[i]->scc_id;
         scc_offset = sccs[scc_id].fcg_scc_offset;
@@ -1575,6 +1576,7 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
     sccs = prog->ddg->sccs;
 
     scc_colour = (int*) malloc (nvertices*sizeof(int));
+    bzero(scc_colour,nvertices*sizeof(int));
 
     scc_offset = 0;
 
