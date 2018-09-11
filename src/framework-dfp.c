@@ -1414,12 +1414,12 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         return true;
     }
 
-    if (options->scc_cluster) {
-        fcg_offset = ddg->sccs[scc_id].fcg_scc_offset;
-    } else {
-        stmt_id = sccs[scc_id].vertices[stmt_pos];
-        fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
-    }
+    /* if (options->scc_cluster) { */
+    /*     fcg_offset = ddg->sccs[scc_id].fcg_scc_offset; */
+    /* } else { */
+    stmt_id = sccs[scc_id].vertices[stmt_pos];
+    fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+    /* } */
 
     while (num_discarded!=nvar) {
         j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
@@ -1726,7 +1726,11 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
                 /* Needed only if it is not the first SCC */
                 if (i!=0) {
-                    is_distributed = colour_scc(i, colour, c, 0, -1, prog);
+                    if (options->scc_cluster) {
+                        is_distributed = colour_scc_cluster(i, colour, c, prog);
+                    } else {
+                        is_distributed = colour_scc(i, colour, c, 0, -1, prog);
+                    }
                     if (!is_distributed){
                         /* Colouring was prevented by a fusion preventing dependence. 
                          * Therefore cut DDG then update FCG and then colour */
@@ -1756,7 +1760,11 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 
                         IF_DEBUG( printf("FCG after Updating \n"););
                         IF_DEBUG( pluto_matrix_print(stdout, fcg->adj););
-                        is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                        if (options->scc_cluster) {
+                            is_distributed = colour_scc_cluster(i, colour, c, prog);
+                        } else {
+                            is_distributed = colour_scc(i,colour,c,0, -1, prog);
+                        }
                     }
                 } else {
                     /* If the colouring of first SCC had failed previously */ 
