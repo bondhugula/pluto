@@ -1583,7 +1583,7 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
     for (i=0; i<num_sccs; i++) {
         for (j=0; j<sccs[i].size; j++) {
             stmt_id = sccs[i].vertices[j];
-            if (sccs[i].max_dim == stmts[j]->dim)
+            if (sccs[i].max_dim == stmts[stmt_id]->dim)
                 break;
         }
 
