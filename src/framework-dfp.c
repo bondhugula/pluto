@@ -439,7 +439,6 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
             if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2)) {
                 inter_scc_constraints = get_inter_scc_dep_constraints (scc1, scc2, prog);
 
-
                 /* Conflict constraints are added at the end of inter_scc_constraints. 
                  * Hence, we have inter_scc_constraints, followed by bounding constraints, 
                  * followed by dimension wise constraints, which are set or unset based on 
@@ -464,66 +463,70 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                 }
                 /* Check for pairwise permutability of dimensions between scc1 and scc2 */
                 for (dim1=0; dim1<sccs[scc1].max_dim; dim1++) {
-                    /* Set lb of dim1 of each statement in Scc 1 */
-                    for (i=0; i<sccs[scc1].size; i++) {
-                        stmt1 = sccs[scc1].vertices[i];
-                        if(dim1<=stmts[stmt1]->dim_orig) {
-                            stmt1_offset = npar+1+(nvar+1)*stmt1;
-                            inter_scc_constraints->val[row_offset+stmt1_offset+dim1][CST_WIDTH-1] = -1;
-                            inter_scc_constraints->is_eq[row_offset+stmt1_offset+dim1] = 0;
-                        }
-                    }
-                    for (dim2=0; dim2<sccs[scc2].max_dim; dim2++) {
-                        /* Set the lower bounds of dimensions of each statement in SCC2 */
-                        for (j=0; j<sccs[scc2].size; j++) {
-                            stmt2 = sccs[scc2].vertices[j];
-                            if(dim2<=stmts[stmt2]->dim_orig) {
-                                stmt2_offset = npar+1+(nvar+1)*stmt2;
-                                inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = -1;
-                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 0;
+                    if (colour[scc1_fcg_offset+dim1] ==0 || colour[scc1_fcg_offset+dim1] == current_colour) {
+                        /* Set lb of dim1 of each statement in Scc 1 */
+                        for (i=0; i<sccs[scc1].size; i++) {
+                            stmt1 = sccs[scc1].vertices[i];
+                            if(dim1<=stmts[stmt1]->dim_orig) {
+                                stmt1_offset = npar+1+(nvar+1)*stmt1;
+                                inter_scc_constraints->val[row_offset+stmt1_offset+dim1][CST_WIDTH-1] = -1;
+                                inter_scc_constraints->is_eq[row_offset+stmt1_offset+dim1] = 0;
                             }
                         }
-                        /* Check if fusing ith dimesion of the source with ith dimension
-                         * of the target is valid */
+                        for (dim2=0; dim2<sccs[scc2].max_dim; dim2++) {
+                            /* Set the lower bounds of dimensions of each statement in SCC2 */
+                            if (colour[scc2_fcg_offset+dim2] ==0 || colour[scc2_fcg_offset+dim2] == current_colour) {
+                                for (j=0; j<sccs[scc2].size; j++) {
+                                    stmt2 = sccs[scc2].vertices[j];
+                                    if(dim2<=stmts[stmt2]->dim_orig) {
+                                        stmt2_offset = npar+1+(nvar+1)*stmt2;
+                                        inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = -1;
+                                        inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 0;
+                                    }
+                                }
+                                /* Check if fusing ith dimesion of the source with ith dimension
+                                 * of the target is valid */
 
-                        prog->num_lp_calls ++;
-                        tstart = rtclock();
-                        sol = pluto_fusion_constraints_feasibility_solve(inter_scc_constraints, obj);
-                        prog->mipTime += rtclock()-tstart;
+                                prog->num_lp_calls ++;
+                                tstart = rtclock();
+                                sol = pluto_fusion_constraints_feasibility_solve(inter_scc_constraints, obj);
+                                prog->mipTime += rtclock()-tstart;
 
-                        /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
-                        if(sol == NULL)
-                        {
-                            IF_DEBUG(printf("Unable to fuse dimension %d of scc %d with dimension %d of scc %d \n",dim1,scc1 ,dim2 ,scc2););
-                            IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",scc1_fcg_offset+dim1,scc2_fcg_offset+dim2););
-                            fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
-                        } else {
-                            if (check_parallel) {
-                                if (!is_lp_solution_parallel(sol,npar)) {
-                                    printf("Adding Parallelism preventing edge:%d to %d in fcg \n", scc1_fcg_offset+dim1, scc2_fcg_offset+dim2);
+                                /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
+                                if(sol == NULL)
+                                {
+                                    IF_DEBUG(printf("Unable to fuse dimension %d of scc %d with dimension %d of scc %d \n",dim1,scc1 ,dim2 ,scc2););
+                                    IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",scc1_fcg_offset+dim1,scc2_fcg_offset+dim2););
                                     fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
+                                } else {
+                                    if (check_parallel) {
+                                        if (!is_lp_solution_parallel(sol,npar)) {
+                                            printf("Adding Parallelism preventing edge:%d to %d in fcg \n", scc1_fcg_offset+dim1, scc2_fcg_offset+dim2);
+                                            fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
 
+                                        }
+                                    }
+                                    free(sol);
+                                }
+                                /* Reset the lower bounds of dimensions of each statement in SCC2 */
+                                for (j=0; j<sccs[scc2].size; j++) {
+                                    stmt2 = sccs[scc2].vertices[j];
+                                    if(dim2<=stmts[stmt2]->dim_orig) {
+                                        stmt2_offset = npar+1+(nvar+1)*stmt2;
+                                        inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = 0;
+                                        inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 1;
+                                    }
                                 }
                             }
-                            free(sol);
                         }
-                        /* Reset the lower bounds of dimensions of each statement in SCC2 */
-                        for (j=0; j<sccs[scc2].size; j++) {
-                            stmt2 = sccs[scc2].vertices[j];
-                            if(dim2<=stmts[stmt2]->dim_orig) {
-                                stmt2_offset = npar+1+(nvar+1)*stmt2;
-                                inter_scc_constraints->val[row_offset+stmt2_offset+dim2][CST_WIDTH-1] = 0;
-                                inter_scc_constraints->is_eq[row_offset+stmt2_offset+dim2] = 1;
+                        /* Set lb of dim1 of each statement in Scc 1 */
+                        for (i=0; i<sccs[scc1].size; i++) {
+                            stmt1 = sccs[scc1].vertices[i];
+                            if(dim1<=stmts[stmt1]->dim_orig) {
+                                stmt1_offset = npar+1+(nvar+1)*stmt1;
+                                inter_scc_constraints->val[row_offset+stmt1_offset+dim1][CST_WIDTH-1] = 0;
+                                inter_scc_constraints->is_eq[row_offset+stmt1_offset+dim1] = -1;
                             }
-                        }
-                    }
-                    /* Set lb of dim1 of each statement in Scc 1 */
-                    for (i=0; i<sccs[scc1].size; i++) {
-                        stmt1 = sccs[scc1].vertices[i];
-                        if(dim1<=stmts[stmt1]->dim_orig) {
-                            stmt1_offset = npar+1+(nvar+1)*stmt1;
-                            inter_scc_constraints->val[row_offset+stmt1_offset+dim1][CST_WIDTH-1] = 0;
-                            inter_scc_constraints->is_eq[row_offset+stmt1_offset+dim1] = -1;
                         }
                     }
                 }
@@ -752,12 +755,13 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
             /* printf("Coeff Boumnds\n"); */
             /* pluto_constraints_cplex_print(stdout,coeff_bounds); */
 
+            fcg_scc_offset = sccs[i].fcg_scc_offset;
             /* stmt_offset = (npar+1)+ i*(nvar+1); */
 
             fcg_scc_offset = sccs[i].fcg_scc_offset;
             for (j=0; j<sccs[i].max_dim; j++) {
-/* Todo: Update this check for the clustered routine once the colour array is fixed */
-                /* if (colour[fcg_stmt_offset + j]==0 || colour[fcg_stmt_offset+j] == current_colour) { */
+                /* Check for permutability only if the current scc vertex in the fcg is not coloured or has the current colour */
+                if (colour[fcg_scc_offset + j]==0 || colour[fcg_scc_offset+j] == current_colour) {
                     IF_DEBUG(printf("[Permute_preventing_edges]: Checking permutability of dimension %d of Scc %d \n",j,i););
                     /* Set the lower bounds of the jth coefficient for all the statments in scc i to 1. */
                     for (k=0; k<sccs[i].size; k++) {
@@ -794,7 +798,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                             coeff_bounds->val[nrows+stmt_offset][CST_WIDTH-1] = 0;
                         }
                     }
-                /* } */
+                }
             }
             pluto_constraints_free(coeff_bounds);
         }
