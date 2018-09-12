@@ -1580,15 +1580,14 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
     sccs = prog->ddg->sccs;
 
     scc_colour = (int*) malloc (nvertices*sizeof(int));
-    bzero(scc_colour,nvertices*sizeof(int));
+    bzero(scc_colour, nvertices*sizeof(int));
 
     scc_offset = 0;
 
     for (i=0; i<num_sccs; i++) {
         for (j=0; j<sccs[i].size; j++) {
             stmt_id = sccs[i].vertices[j];
-            if (sccs[i].max_dim == stmts[stmt_id]->dim)
-                break;
+            if (sccs[i].max_dim == stmts[stmt_id]->dim) break;
         }
 
         for (j=0; j<sccs[i].max_dim; j++) {
