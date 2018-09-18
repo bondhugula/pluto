@@ -40,6 +40,7 @@
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj);
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog);
+void pluto_print_colours(int *colour,PlutoProg *prog);
 
 static double rtclock()
 {
@@ -394,7 +395,7 @@ PlutoConstraints* get_inter_scc_dep_constraints (int scc1, int scc2, PlutoProg* 
         dest_stmt = dep->dest;
         if ((stmts[src_stmt]->scc_id == scc1 || stmts[src_stmt]->scc_id == scc2) &&
                 (stmts[dest_stmt]->scc_id == scc1 || stmts[dest_stmt]->scc_id == scc2)) {
-            IF_DEBUG(printf("Computing Inter Scc deps for SCCs: %d and %d Dep: %d\n", stmts[src_stmt]->scc_id, stmts[dest_stmt]->scc_id, dep->id););
+            IF_DEBUG(printf("Computing Inter Scc deps for SCCs %d and %d: Dep: %d\n", stmts[src_stmt]->scc_id, stmts[dest_stmt]->scc_id, dep->id););
             if (dep->cst==NULL) {
                 compute_pairwise_permutability(dep,prog);
             }
@@ -436,7 +437,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
         scc1_fcg_offset = sccs[scc1].fcg_scc_offset;
         for (scc2=scc1+1; scc2<num_sccs; scc2++) {
             scc2_fcg_offset = sccs[scc2].fcg_scc_offset;
-            if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2)) {
+            if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2) || ddg_sccs_direct_connected (ddg, prog, scc2, scc1)) {
                 inter_scc_constraints = get_inter_scc_dep_constraints (scc1, scc2, prog);
 
                 /* Conflict constraints are added at the end of inter_scc_constraints. 
@@ -499,6 +500,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                                     IF_DEBUG(printf(" Adding edge %d to %d in fcg\n",scc1_fcg_offset+dim1,scc2_fcg_offset+dim2););
                                     fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
                                 } else {
+                                    IF_DEBUG(printf("Able to fuse dimension %d of scc %d with dimension %d of scc %d \n",dim1,scc1 ,dim2 ,scc2););
                                     if (check_parallel) {
                                         if (!is_lp_solution_parallel(sol,npar)) {
                                             printf("Adding Parallelism preventing edge:%d to %d in fcg \n", scc1_fcg_offset+dim1, scc2_fcg_offset+dim2);
@@ -1629,7 +1631,7 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     }
 
     scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices);
-    prog->fcg = build_fusion_conflict_graph(prog, colour, nvertices, c);
+    prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
 
     /* These two have to be reset in the clustered apporoach as 
      * Scc's will change when FCG is rebuilt and 
