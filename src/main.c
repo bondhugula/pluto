@@ -671,10 +671,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
         if (options-> dfp){
-            /* printf("[pluto] \t\ttotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time); */
-            /* printf("[pluto] \t\ttotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time); */
+            printf("[pluto] \t\tTotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time);
+            printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time);
             /* printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time); */
-            printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time+prog->fcg_colour_time+prog->fcg_colour_time);
+            /* printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time + prog->fcg_colour_time); */
             printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n", prog->fcg_dims_scale_time);
             /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
             printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n",prog->skew_time);
