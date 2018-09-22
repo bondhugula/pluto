@@ -41,6 +41,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj);
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog);
 void pluto_print_colours(int *colour,PlutoProg *prog);
+PlutoMatrix *par_preventing_adj_mat;
 
 static double rtclock()
 {
@@ -439,6 +440,9 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
             scc2_fcg_offset = sccs[scc2].fcg_scc_offset;
             if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2) || ddg_sccs_direct_connected (ddg, prog, scc2, scc1)) {
                 inter_scc_constraints = get_inter_scc_dep_constraints (scc1, scc2, prog);
+                if ((sccs[scc1].is_parallel || sccs[scc2].is_parallel) && options->fuse == TYPED_FUSE) {
+                    check_parallel = true;
+                }
 
                 /* Conflict constraints are added at the end of inter_scc_constraints. 
                  * Hence, we have inter_scc_constraints, followed by bounding constraints, 
@@ -504,7 +508,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                                     if (check_parallel) {
                                         if (!is_lp_solution_parallel(sol,npar)) {
                                             printf("Adding Parallelism preventing edge:%d to %d in fcg \n", scc1_fcg_offset+dim1, scc2_fcg_offset+dim2);
-                                            fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
+                                            par_preventing_adj_mat->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
 
                                         }
                                     }
@@ -738,11 +742,13 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
 
     /* fcg_stmt_offset = 0; */
     for (i=0; i<num_sccs; i++) {
+        sccs[i].is_parallel = 1;
         intra_scc_dep_cst = compute_intra_scc_dep_cst(i, prog);
         /* pluto_constraints_cplex_print(stdout, intra_scc_dep_cst); */
         /* printf("Bound constraints \n"); */
         /* pluto_constraints_cplex_print(stdout,boundcst); */
         if (intra_scc_dep_cst!=NULL) {
+            sccs[i].is_parallel = 0;
             /* Constraints to check permutability are added in the beginning */
             coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
             coeff_bounds->nrows = 0;
@@ -775,8 +781,8 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                         }
                     }
 
-            /* printf("Coeff Boumnds\n"); */
-            /* pluto_constraints_cplex_print(stdout,coeff_bounds); */
+                    /* printf("Coeff Boumnds\n"); */
+                    /* pluto_constraints_cplex_print(stdout,coeff_bounds); */
                     prog->num_lp_calls++;
 
                     tstart = rtclock();
@@ -788,6 +794,14 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
                         IF_DEBUG(printf("Dimension %d of scc %d is not permutable\n",j,i););
                         fcg->adj->val[fcg_scc_offset+j][fcg_scc_offset+j] = 1;
                     } else {
+                        if (options->fuse == TYPED_FUSE) {
+                            if (! is_lp_solution_parallel(sol, prog->npar)) {
+                                par_preventing_adj_mat->val[fcg_scc_offset+j][fcg_scc_offset+j] = 1;
+
+                            } else {
+                                sccs[i].is_parallel = 1;
+                            }
+                        }
                         IF_DEBUG(printf("Dimension %d of scc %d is permutable\n",j,i););
                         free(sol);
                     }
@@ -966,6 +980,10 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
     t_start = rtclock();
 
     fcg = graph_alloc(num_nodes);
+
+    if (options->fuse == TYPED_FUSE) {
+        par_preventing_adj_mat = pluto_matrix_alloc (num_nodes, num_nodes);
+    }
 
     boundcst = get_coeff_bounding_constraints(prog);
 
