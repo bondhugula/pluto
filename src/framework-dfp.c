@@ -987,6 +987,9 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     if (options->fuse == TYPED_FUSE) {
         par_preventing_adj_mat = pluto_matrix_alloc (num_nodes, num_nodes);
+        for(i=0; i<num_nodes; i++) {
+            bzero(par_preventing_adj_mat->val[i], num_nodes*sizeof(int64));
+        }
     }
 
     boundcst = get_coeff_bounding_constraints(prog);
@@ -1031,7 +1034,7 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     /* Add inter statement fusion and permute preventing edges.  */
 
-    if (options->fuse == TYPED_FUSE) {
+    if (options->fuse == TYPED_FUSE && !options->scc_cluster) {
         /* The lp solutions are found and the parallel sccs are marked. 
          * However marking is only used in parallel case of typed fuse only */
         mark_parallel_sccs(colour, prog);
