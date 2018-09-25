@@ -859,6 +859,10 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoPr
                     for (dim2 =0; dim2<sccs[j].max_dim; dim2++) {
                         fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 0;
                         fcg->adj->val[scc2_fcg_offset+dim2][scc1_fcg_offset+dim1] = 0;
+                        if (options->fuse == TYPED_FUSE) {
+                            par_preventing_adj_mat->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 0;
+                            par_preventing_adj_mat->val[scc2_fcg_offset+dim2][scc1_fcg_offset+dim1] = 0;
+                        }
                     }
                 }
             }
@@ -1504,13 +1508,29 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     return false;
 }
 
+/* Returns true if there is a parallelism preventing edge between vertex v and 
+ * any vertex i which has been coloured with the current_colour */
+bool is_colour_par_preventing (int v, int *colour, int current_colour)
+{
+    int i;
+    for (i=0; i<par_preventing_adj_mat->nrows; i++) {
+        if (colour[i]==current_colour && (par_preventing_adj_mat->val[v][i] || par_preventing_adj_mat->val[i][v])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg* prog)
 {
     int max_dim, scc_offset;
     int i, v;
     Graph *ddg, *fcg;
+    Scc *sccs;
     ddg = prog->ddg;
     fcg = prog->fcg;
+    sccs = ddg->sccs;
 
     max_dim = ddg->sccs[scc_id].max_dim;
     scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
@@ -1536,11 +1556,17 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
             continue;
         }
 
-        /* Check if there is an adjecent vertex with the same colour */
+        /* Check if there is an adjecent vertex with the same colour. 
+         * In case of typed fuse it checks if there is an adjecent vertex 
+         * with the same colour and has a parallelism preventing edge  */
         if (is_valid_colour(v, current_colour, fcg, colour)) {
-           colour[v] = current_colour; 
+            if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && 
+                    is_colour_par_preventing(v, colour, current_colour)) {
+                continue;
+            }
+            colour[v] = current_colour; 
             IF_DEBUG(printf("[Colour SCC] Colouring dimension %d of SCC %d  with colour %d\n",v-(ddg->sccs[scc_id].fcg_scc_offset),scc_id,colour[v]););
-           return true;
+            return true;
         }
     }
     return false;
