@@ -1675,6 +1675,7 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     }
 
     scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices);
+    pluto_matrix_free(par_preventing_adj_mat);
     prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
 
     /* These two have to be reset in the clustered apporoach as 
