@@ -1511,6 +1511,30 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     return false;
 }
 
+/* Returns an array corresponding to convex successors that have parallel dimensions */
+int* get_convex_successors(int scc_id, PlutoProg *prog, int* num_convex_successors)
+{
+    int i, num_successors, num_sccs;
+    Graph *ddg;
+    Scc *sccs;
+    int* convex_successors = NULL;
+    ddg = prog->ddg;
+    sccs = ddg->sccs;
+    num_sccs = ddg->num_sccs;
+
+    num_successors=0;
+    for (i=scc_id+1; i<ddg->num_sccs; i++) {
+        if (sccs[i].is_parallel && is_convex_scc(scc_id, i, ddg, prog)) {
+            if (convex_successors == NULL) {
+                convex_successors = (int*) malloc (num_sccs*sizeof(int));
+            }
+            convex_successors[num_successors++] = i;
+        }
+    }
+    *num_convex_successors = num_successors;
+    return convex_successors;
+}
+
 /* Returns true if there is a parallelism preventing edge between vertex v and 
  * any vertex i which has been coloured with the current_colour */
 bool is_colour_par_preventing (int v, int *colour, int current_colour)
@@ -1525,6 +1549,52 @@ bool is_colour_par_preventing (int v, int *colour, int current_colour)
 }
 
 
+bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, PlutoProg* prog)
+{
+    Graph *ddg, *fcg;
+    Scc *sccs;
+    int i,v,max_dim, num_convex_successors, num_parallel_dims;
+    bool* parallel_dims;
+    int *convex_successors;
+
+    ddg = prog->ddg;
+    fcg = prog->fcg;
+    sccs = ddg->sccs;
+
+    v = sccs[scc_id].fcg_scc_offset;
+    max_dim = sccs[scc_id].max_dim;
+    num_convex_successors = 0;
+
+    /* Get parallel dimensions of the input scc */
+    parallel_dims = (bool*) malloc(max_dim*sizeof(bool));
+    bzero (parallel_dims, max_dim*sizeof(bool));
+
+    num_parallel_dims = 0;
+    for(i=0; i<max_dim; i++) {
+        if (!fcg->adj->val[v+i][v+i] && !par_preventing_adj_mat->val[v+i][v+i]) {
+            parallel_dims[i] = true;
+            num_parallel_dims ++;
+        }
+
+    }
+    
+    convex_successors = get_convex_successors(scc_id, prog, &num_convex_successors);
+    if (num_convex_successors == 0) {
+        for (i=0; i<max_dim; i++) {
+            if (parallel_dims[i] && colour[v+i] == 0 && !fcg->adj->val[v+i][v+i] && is_valid_colour(v+i, current_colour, fcg, colour)) {
+                colour[v+i] = current_colour;
+                return true;
+            }
+        }
+    }
+    /* common_dims = get_common_parallel_dims(convexsuccessors); */
+    /* colouring_dim = choose_colouring_dim_from_common_dim; */
+    /* colour_convex_successors (convex_successors, colour, prog); */
+
+    
+    return false;
+}
+
 bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg* prog)
 {
     int max_dim, scc_offset;
@@ -1536,7 +1606,6 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     sccs = ddg->sccs;
 
     max_dim = ddg->sccs[scc_id].max_dim;
-    scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
     /* All dimensions of the current SCC have already been coloured */
     if (prog->coloured_dims > max_dim) return true;
 
@@ -1544,6 +1613,12 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
         cut_around_scc (scc_id, prog);
         return true;
     }
+
+    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel) {
+        return colour_scc_cluster_greedy(scc_id, colour, current_colour, prog);
+    } 
+
+    scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
 
     for (i =0; i< max_dim; i++) {
         v = scc_offset + i;
