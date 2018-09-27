@@ -1245,6 +1245,8 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
 bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
 {
     int i;
+    Scc *sccs;
+    sccs = prog->ddg->sccs;
     for (i=scc1+1; i<scc2; i++) {
         if (ddg_sccs_direct_connected(ddg, prog, i,scc2)) {
             /* In case of typed fuse, this scc may have already been coloured */
@@ -1552,14 +1554,53 @@ bool is_colour_par_preventing (int v, int *colour, int current_colour)
     return false;
 }
 
+/* Returns the common parallel dims of other scc that 
+ * can be coloured with a dimension of the current scc */
+int* get_common_parallel_dims(int scc_id, int* convex_successors, int num_convex_successors, int *colour, int current_colour, bool *is_colourable, PlutoProg *prog)
+{
+    int i, j, k, v;
+    Graph *ddg, *fcg;
+    Scc *sccs;
+    int scc_offset, succ_scc_offset, succ_scc;
+    int *common_dims;
+
+    ddg= prog->ddg;
+    fcg = prog->fcg;
+    sccs = ddg->sccs;
+
+    common_dims = NULL;
+    scc_offset = sccs[scc_id].fcg_scc_offset;
+    for (k=0; k<sccs[scc_id].max_dim; k++) {
+        if (colour[scc_offset+k]!=0 || !is_colourable[k]) continue;
+        for (i=0; i<num_convex_successors; i++) {
+            succ_scc = convex_successors[i];
+            succ_scc_offset = sccs[succ_scc].fcg_scc_offset;
+            for (j=0; j<sccs[succ_scc].max_dim; j++) {
+                v = succ_scc_offset+j;
+                /* The vertex can be coloured if there is no self edge on j, 
+                 * no edge between dimension j and k in the fcg, and there is 
+                 * no vertex adjecent to j that is already coloured. */
+                if (colour[v]==0 && !fcg->adj->val[v][v] && ! is_adjecent(fcg, v, scc_offset+k) 
+                        && is_valid_colour (v, current_colour, fcg, colour)) {
+                    if (common_dims==NULL) {
+                        common_dims = (int*) malloc (sizeof(int)*sccs[scc_id].max_dim);
+                        bzero(common_dims, sccs[scc_id].max_dim*sizeof(int));
+                    }
+                    common_dims[k] ++;
+                }
+            }
+        }
+    }
+    return common_dims;
+}
 
 bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, PlutoProg* prog)
 {
     Graph *ddg, *fcg;
     Scc *sccs;
     int i,v,max_dim, num_convex_successors, num_parallel_dims;
-    bool* parallel_dims;
-    int *convex_successors;
+    bool* parallel_dims, *is_colourable;
+    int *convex_successors, *common_dims;
 
     ddg = prog->ddg;
     fcg = prog->fcg;
@@ -1587,11 +1628,13 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i] && colour[v+i] == 0 && !fcg->adj->val[v+i][v+i] && is_valid_colour(v+i, current_colour, fcg, colour)) {
                 colour[v+i] = current_colour;
+                free (parallel_dims);
                 return true;
             }
         }
     }
-    /* common_dims = get_common_parallel_dims(convexsuccessors); */
+
+    common_dims = get_common_parallel_dims(scc_id, convex_successors, num_convex_successors, colour, current_colour, is_colourable, prog);
     /* colouring_dim = choose_colouring_dim_from_common_dim; */
     /* colour_convex_successors (convex_successors, colour, prog); */
 
