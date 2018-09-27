@@ -1247,6 +1247,10 @@ bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
     int i;
     for (i=scc1+1; i<scc2; i++) {
         if (ddg_sccs_direct_connected(ddg, prog, i,scc2)) {
+            /* In case of typed fuse, this scc may have already been coloured */
+            if (options->fuse == TYPED_FUSE && sccs[i].is_scc_coloured) {
+                continue;
+            }
             printf("SCCs %d %d are not convex. %d is a predecessor of %d\n ", scc1,scc2,i,scc2);
             return false;
         }
