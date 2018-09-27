@@ -1621,7 +1621,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     Scc *sccs;
     int i,v,max_dim, num_convex_successors, num_parallel_dims;
     bool* parallel_dims;
-    int *convex_successors, *common_dims;
+    int *convex_successors, *common_dims, colouring_dim;
 
     ddg = prog->ddg;
     fcg = prog->fcg;
@@ -1637,7 +1637,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
 
     num_parallel_dims = 0;
     for(i=0; i<max_dim; i++) {
-        if (colour[v+i]==0 !fcg->adj->val[v+i][v+i] && !par_preventing_adj_mat->val[v+i][v+i] 
+        if (colour[v+i]==0 && !fcg->adj->val[v+i][v+i] && !par_preventing_adj_mat->val[v+i][v+i] 
                 && is_valid_colour(v+i, current_colour, fcg, colour)) {
             parallel_dims[i] = true;
             num_parallel_dims ++;
@@ -1663,7 +1663,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     }
 
     common_dims = get_common_parallel_dims(scc_id, convex_successors, num_convex_successors, colour, current_colour, parallel_dims, prog);
-    colouring_dim = choose_colouring_dim(common_dims,max_dim);
+    colouring_dim = get_colouring_dim(common_dims,max_dim);
     if (colouring_dim == -1) {
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
