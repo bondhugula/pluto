@@ -1583,7 +1583,8 @@ int* get_common_parallel_dims(int scc_id, int* convex_successors, int num_convex
                  * vertex j must be parallel and fusing with dimension k 
                  * must not hinder parallelism */
                 if (colour[v]==0 && !fcg->adj->val[v][v] && ! is_adjecent(fcg, v, scc_offset+k) 
-                        && is_valid_colour (v, current_colour, fcg, colour)) {
+                        && is_valid_colour (v, current_colour, fcg, colour) && 
+                        !par_preventing_adj_mat->val[v][v] && !par_preventing_adj_mat->val[v][k]) {
                     if (common_dims==NULL) {
                         common_dims = (int*) malloc (sizeof(int)*sccs[scc_id].max_dim);
                         bzero(common_dims, sccs[scc_id].max_dim*sizeof(int));
@@ -1615,7 +1616,7 @@ int get_colouring_dim(int *common_dims, int max_dim)
     }
     return dim;
 }
-void colour_convex_successors(int *convex_successors, int num_successors, int *colour, int current_colour, PlutoProg *prog)
+void colour_convex_successors(int k, int *convex_successors, int num_successors, int *colour, int current_colour, PlutoProg *prog)
 {
     Graph *fcg;
     Scc *sccs;
@@ -1630,7 +1631,7 @@ void colour_convex_successors(int *convex_successors, int num_successors, int *c
         scc_offset = sccs[scc_id].fcg_scc_offset;
         for (j=0;j<max_dim; j++) {
             v = scc_offset +j;
-            if (colour[v]==0 && !fcg->adj->val[v][v] && 
+            if (colour[v]==0 && !fcg->adj->val[v][v] && !par_preventing_adj_mat->val[v][k] &&
                     !par_preventing_adj_mat->val[v][v] && is_valid_colour (v, current_colour, fcg, colour)) {
                 colour[v] = current_colour;
                 sccs[scc_id].is_scc_coloured = true;
@@ -1701,7 +1702,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         }
     }
     colour[v+colouring_dim] = current_colour;
-    colour_convex_successors(convex_successors, num_convex_successors, colour, current_colour, prog);
+    colour_convex_successors(v+colouring_dim, convex_successors, num_convex_successors, colour, current_colour, prog);
     return true;
 }
 
