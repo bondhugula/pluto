@@ -1579,7 +1579,9 @@ int* get_common_parallel_dims(int scc_id, int* convex_successors, int num_convex
                 v = succ_scc_offset+j;
                 /* The vertex can be coloured if there is no self edge on j, 
                  * no edge between dimension j and k in the fcg, and there is 
-                 * no vertex adjecent to j that is already coloured. */
+                 * no vertex adjecent to j that is already coloured. Also 
+                 * vertex j must be parallel and fusing with dimension k 
+                 * must not hinder parallelism */
                 if (colour[v]==0 && !fcg->adj->val[v][v] && ! is_adjecent(fcg, v, scc_offset+k) 
                         && is_valid_colour (v, current_colour, fcg, colour)) {
                     if (common_dims==NULL) {
@@ -1612,6 +1614,30 @@ int get_colouring_dim(int *common_dims, int max_dim)
         }
     }
     return dim;
+}
+void colour_convex_successors(int *convex_successors, int num_successors, int *colour, int current_colour, PlutoProg *prog)
+{
+    Graph *fcg;
+    Scc *sccs;
+    int i, j, v, max_dim, scc_offset, scc_id;
+
+    fcg = prog->fcg;
+    sccs = prog->ddg->sccs;
+
+    for (i=0; i<num_successors; i++) {
+        scc_id = convex_successors[i];
+        max_dim = sccs[scc_id].max_dim;
+        scc_offset = sccs[scc_id].fcg_scc_offset;
+        for (j=0;j<max_dim; j++) {
+            v = scc_offset +j;
+            if (colour[v]==0 && !fcg->adj->val[v][v] && 
+                    !par_preventing_adj_mat->val[v][v] && is_valid_colour (v, current_colour, fcg, colour)) {
+                colour[v] = current_colour;
+                sccs[scc_id].is_scc_coloured = true;
+                break;
+            }
+        }
+    }
 }
 
 /* The scc being coloured has a parallel dimension. */
@@ -1662,7 +1688,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         }
     }
 
-    common_dims = get_common_parallel_dims(scc_id, convex_successors, num_convex_successors, colour, current_colour, parallel_dims, prog);
+    common_dims = get_common_parallel_dims(scc_id, convex_successors, 
+            num_convex_successors, colour, current_colour, parallel_dims, prog);
     colouring_dim = get_colouring_dim(common_dims,max_dim);
     if (colouring_dim == -1) {
         for (i=0; i<max_dim; i++) {
@@ -1674,10 +1701,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         }
     }
     colour[v+colouring_dim] = current_colour;
-    /* colour_convex_successors (convex_successors, colour, current_successors, prog); */
-
-    
-    return false;
+    colour_convex_successors(convex_successors, num_convex_successors, colour, current_colour, prog);
+    return true;
 }
 
 bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg* prog)
