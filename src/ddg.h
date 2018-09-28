@@ -47,6 +47,9 @@ struct scc{
     /* Set to true if the scc is couloured with current colour else false */
     bool is_scc_coloured;
 
+    /* Set to true if there is a parallel hyperplane has already been found for this scc */
+    bool has_parallel_hyperplane;
+
 };
 typedef struct scc Scc;
 
