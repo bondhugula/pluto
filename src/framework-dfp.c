@@ -1635,6 +1635,7 @@ void colour_convex_successors(int k, int *convex_successors, int num_successors,
                     !par_preventing_adj_mat->val[v][v] && is_valid_colour (v, current_colour, fcg, colour)) {
                 colour[v] = current_colour;
                 sccs[scc_id].is_scc_coloured = true;
+                sccs[scc_id].has_parallel_hyperplane = true;
                 break;
             }
         }
@@ -1726,7 +1727,11 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     }
 
     if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel) {
-        return colour_scc_cluster_greedy(scc_id, colour, current_colour, prog);
+        if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
+            sccs[scc_id].has_parallel_hyperplane = true;
+        } else {
+            return false;
+        }
     } 
 
     scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
