@@ -62,12 +62,17 @@ void usage_message(void)
     fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
-    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver (default in case of pluto-lp and pluto-dfp)\n");
+#endif
+#if defined GLPK || defined GUROBI
     fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
     fprintf(stdout, "       --dfp                     Use Pluto-lp-dfp instead of pluto-ilp [disabled by default]\n");
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
+#endif
     fprintf(stdout, "\n");
+#ifdef GUROBI
+    fprintf(stdout, "       --gurobi                  Use Gurobi as ILP solver\n");
 #endif
     fprintf(stdout, "\n");
     fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
@@ -207,6 +212,11 @@ int main(int argc, char *argv[])
         {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
         {"glpk", no_argument, &options->glpk, 1},
+#endif
+#ifdef GUROBI
+        {"gurobi", no_argument, &options->gurobi, 1},
+#endif
+#if defined GLPK || defined GUROBI
         {"lp", no_argument, &options->lp, 1},
         {"dfp", no_argument, &options->dfp, 1},
         {"ilp", no_argument, &options->ilp, 1},
@@ -356,8 +366,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
+    if (options->gurobi) {
+        options->islsolve = 0;
+    }
 #ifdef GLPK
-    if (options->lp && !options->glpk) {
+    if (options->lp && !(options->glpk || options->gurobi)) {
         printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
     }
@@ -367,8 +380,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lp = 1;
     }
         
-    if (options->dfp && !options->glpk) {
-        printf("[pluto]: Dfp framework is currently supported only with GLPK solver. Using GLPK for constraint solving \n");
+    if (options->dfp && !(options->glpk || options->gurobi)) {
+        printf("[pluto]: Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
+        printf("[pluto]: Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
         options->glpk = 1;
     } 
     if (options->glpk) {
@@ -378,8 +392,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
 #endif
 
-    if(options->dfp && !options->glpk) {
-        printf ("[pluto]: ERROR: DFP framework currently supported with GLPK solver only. Configure Pluto with --enable-glpk \n");
+    if (options->dfp && !(options->glpk || options->gurobi)) {
+        printf ("[pluto]: ERROR: DFP framework is currently supported with GLPK or GUROBI solvers only. Run ./configure --help to for more information on using different solvers with Pluto.\n");
         pluto_options_free(options);
         usage_message();
         return 1;

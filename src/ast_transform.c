@@ -77,7 +77,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         }else{
             for (j=0; j<nloops; j++) {
                 loops[j]->parallel = CLAST_PARALLEL_NOT;
-                char *private_vars = malloc(128);
+                char *private_vars = malloc(512);
                 strcpy(private_vars, "lbv,ubv");
                 if (options->parallel) {
                     IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););

@@ -36,7 +36,7 @@
 #include <isl/set.h>
 #include "candl/candl.h"
 
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
 
 static double rtclock()
@@ -53,11 +53,19 @@ static double rtclock()
 
 /* Checks for feasibility of constraints.
  * If feasible then return the solution else returns NULL */
-/* double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, PlutoProg *prog, int src_dim, int target_dim, int fcg_src, int fcg_dest) */
-double* pluto_fusion_constraints_feasibility_solve_glpk(PlutoConstraints *cst, PlutoMatrix *obj)
+double* pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, PlutoMatrix *obj)
 {
     double* sol;
-    sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
+    sol = NULL;
+    if (options->gurobi) {
+#ifdef GUROBI
+        sol = pluto_fcg_constraints_lexmin_gurobi(cst, obj);
+#endif
+    }else{
+#ifdef GLPK
+        sol = pluto_fcg_constraints_lexmin_glpk(cst, obj);
+#endif
+    }
     return sol;
 }
 
@@ -95,8 +103,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
     /* conflictcst->val[row_offset][CST_WIDTH-1] = -1; */
     /* conflictcst->val[row_offset +1][CST_WIDTH-1] = -1; */
 
-    tstart = rtclock();
-    for (i=0; i<ndeps; i++){
+    for (i=0; i<ndeps; i++) {
         dep = deps[i];
         /*if (options->varliberalize && dep->skipdep) {
           continue;
@@ -151,8 +158,8 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 
                     prog->num_lp_calls ++;
                     tstart = rtclock();
-                    sol = pluto_fusion_constraints_feasibility_solve_glpk(conflictcst, obj);
-                    prog->cst_solve_time += rtclock() - tstart;
+                    sol = pluto_fusion_constraints_feasibility_solve(conflictcst, obj);
+                    prog->mipTime += rtclock()-tstart;
 
                     /* If no solutions, then dimensions are not fusable. Add an edge in the conflict graph. */
                     if(sol == NULL)
@@ -235,7 +242,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
 {
     int nstmts,nvar,npar,i,j,stmt_offset,fcg_stmt_offset;
     int nrows;
-    double *sol;
+    double *sol, tstart;
     Stmt **stmts;
     PlutoConstraints *intra_stmt_dep_cst, *coeff_bounds;
 
@@ -255,9 +262,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
     for (i=0; i<nstmts; i++) {
         if (stmts[i]->intra_stmt_dep_cst!=NULL) {
             /* Constraints to check permutability are added in the first row */
-            double tstart = rtclock();
             coeff_bounds = pluto_constraints_alloc(1,CST_WIDTH);
-            prog->fcg_cst_alloc_time += rtclock() - tstart;
             coeff_bounds->nrows = 0;
             coeff_bounds->ncols = CST_WIDTH;
             /* Add the intra statement dependence constraints and bounding constraints */
@@ -278,7 +283,9 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
                     /* coeff_bounds->val[0][stmt_offset+j] = 1; */
                     prog->num_lp_calls++;
 
-                    sol = pluto_fusion_constraints_feasibility_solve_glpk(coeff_bounds,obj);
+                    tstart = rtclock();
+                    sol = pluto_fusion_constraints_feasibility_solve(coeff_bounds,obj);
+                    prog->mipTime += rtclock()-tstart;
                     /* If the constraints are infeasible then add a self edge in the FCG */
 
                     if (sol == NULL) {
@@ -292,9 +299,7 @@ void add_permute_preventing_edges(Graph* fcg, int *colour, PlutoProg *prog, Plut
                     coeff_bounds->val[nrows+stmt_offset+j][CST_WIDTH-1] = 0;
                 }
             }
-            tstart = rtclock();
             pluto_constraints_free(coeff_bounds);
-            prog->fcg_cst_alloc_time += rtclock() - tstart;
         }
         fcg_stmt_offset += stmts[i]->dim_orig;
     }
@@ -1039,10 +1044,10 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
                     H_SCALAR: H_LOOP;
 
             }
+            prog->scaling_cst_sol_time += rtclock()-t_start;
             free(sol);
             IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
             pluto_constraints_free(coeffcst);
-            prog->scaling_cst_sol_time += rtclock()-t_start;
             return 1;
         } else {
             printf("[pluto] No Hyperplane found\n");

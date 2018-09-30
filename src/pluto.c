@@ -347,13 +347,13 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
     }
-#ifdef GLPK
-    else if (options->glpk || options->lp || options->dfp) {
+    else if (options->glpk || options->lp || options->dfp || options->gurobi) {
          
         double **val = NULL;
         int **index = NULL;
         int num_ccs, nrows;
         num_ccs = 0;
+        nrows = 0;
 
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
 
@@ -364,7 +364,16 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         }
 
         t_start = rtclock(); 
+        if (options->glpk) {
+#ifdef GLPK
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
+#endif
+        } 
+        else if (options->gurobi) {
+#ifdef GUROBI
+            sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, npar, num_ccs);
+#endif
+        }
         prog->mipTime += rtclock()-t_start;
 
         pluto_matrix_free(obj);
@@ -376,9 +385,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             free(val);
             free(index);
         }
-    }
-#endif
-    else {
+    }else{
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
@@ -1716,7 +1723,7 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
 
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
     Graph* fcg;
     int *colour, nVertices;
 #endif
@@ -1810,7 +1817,7 @@ int pluto_auto_transform(PlutoProg *prog)
     conc_start_found = 0;
 
     if (options->dfp) {
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
         if(options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
@@ -1989,7 +1996,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
  /* Deallocate the fusion conflict graph */
     if (options->dfp){
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
         ddg = prog->ddg;
         for(i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);
