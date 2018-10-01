@@ -564,6 +564,7 @@ void pluto_band_print(const Band *band)
 void pluto_bands_print(Band **bands, int num)
 {
     int i;
+    if (num == 0) printf("0 bands\n");
     for (i=0; i<num; i++) {
         pluto_band_print(bands[i]);
     }

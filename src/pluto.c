@@ -298,6 +298,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    sol = NULL;
 
     assert(cst->ncols - 1 == CST_WIDTH - 1);
 
@@ -346,21 +347,27 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
-    }
-    else if (options->glpk || options->lp || options->dfp || options->gurobi) {
-         
+    }else if (options->glpk || options->lp || options->dfp || options->gurobi) {
         double **val = NULL;
         int **index = NULL;
-        int num_ccs, nrows;
-        num_ccs = 0;
+        int nrows;
+
         nrows = 0;
 
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
 
+#if defined(GLPK) || defined(GUROBI)
+        int num_ccs;
+
+        num_ccs = 0;
+#endif
+
         if (options->lp) {
             nrows = newcst->ncols-1-npar-1;
             populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
+#if defined(GLPK) || defined(GUROBI)
             num_ccs = prog->ddg->num_ccs;
+#endif
         }
 
         t_start = rtclock(); 
@@ -368,8 +375,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
 #ifdef GLPK
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
 #endif
-        } 
-        else if (options->gurobi) {
+        } else if (options->gurobi) {
 #ifdef GUROBI
             sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, npar, num_ccs);
 #endif
@@ -386,13 +392,11 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             free(index);
         }
     }else{
+        /* Use PIP */
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
     }
-    /* sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
-    /* print_polylib_visual_sets("csts", newcst); */
-
 
     fsol = NULL;
     if (sol) {
