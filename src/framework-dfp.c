@@ -1688,11 +1688,14 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
                 colour[v+i] = current_colour;
+                IF_DEBUG(printf("[colour_scc_cluster_greedy] Dimension %d of SCC %d coloured with colour %d\n", i, scc_id, current_colour););
                 free (parallel_dims);
                 return true;
             }
         }
     }
+
+    printf("Scc %d has %d convex_successors \n", scc_id, num_convex_successors);
 
     common_dims = get_common_parallel_dims(scc_id, convex_successors, 
             num_convex_successors, colour, current_colour, parallel_dims, prog);
@@ -1701,12 +1704,14 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
                 colour[v+i] = current_colour;
+                IF_DEBUG(printf("[colour_scc_cluster_greedy] Dimension %d of SCC %d coloured with colour %d\n", i, scc_id, current_colour););
                 free (parallel_dims);
                 return true;
             }
         }
     }
     colour[v+colouring_dim] = current_colour;
+    IF_DEBUG(printf("[colour_scc_cluster_greedy] Dimension %d of SCC %d coloured with colour %d\n", i, scc_id, current_colour););
     colour_convex_successors(v+colouring_dim, convex_successors, num_convex_successors, colour, current_colour, prog);
     return true;
 }
@@ -1731,8 +1736,11 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     }
 
     if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel) {
+        printf("Scc %d has a parallel hyperplane\n", scc_id);
+        pluto_matrix_print(stdout, par_preventing_adj_mat);
         if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
             sccs[scc_id].has_parallel_hyperplane = true;
+            return true;
         } else {
             return false;
         }
