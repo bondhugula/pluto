@@ -1609,6 +1609,9 @@ int get_colouring_dim(int *common_dims, int max_dim)
     int i, dim, max;
     max = 0;
     dim = -1;
+    if (common_dims == NULL) {
+        return dim;
+    }
     for (i=0;i<max_dim; i++) {
         if (common_dims[i] > max) {
             dim = i;
@@ -1616,6 +1619,7 @@ int get_colouring_dim(int *common_dims, int max_dim)
     }
     return dim;
 }
+
 void colour_convex_successors(int k, int *convex_successors, int num_successors, int *colour, int current_colour, PlutoProg *prog)
 {
     Graph *fcg;
