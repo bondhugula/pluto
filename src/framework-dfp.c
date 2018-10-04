@@ -1716,6 +1716,19 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     return true;
 }
 
+void cut_from_predecessor(int scc_id, PlutoProg* prog)
+{
+    int i;
+    Graph *ddg;
+    ddg = prog->ddg;
+    for (i=scc_id-1; i>=0; i--) {
+        if(ddg_sccs_direct_connected(ddg, prog, i, scc_id)) {
+            cut_between_sccs(prog, ddg, i, scc_id);
+        }
+    }
+}
+
+
 bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg* prog)
 {
     int max_dim, scc_offset;
@@ -1742,6 +1755,16 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
             sccs[scc_id].has_parallel_hyperplane = true;
             return true;
         } else {
+            /* Colouring might fail because of a parallelism preventing egde. 
+             * Hence cut between SCCs and try colouring again. */
+            cut_from_predecessor(scc_id, prog);
+            update_fcg_between_sccs (fcg, scc_id-1, scc_id, prog);
+            if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
+                sccs[scc_id].has_parallel_hyperplane = true;
+                return true;
+            }
+            /* Colouring the cluster has failed due to a permute 
+             * or fusion preventing edge. Hence FCG has to be rebuilt. */
             return false;
         }
     } 
