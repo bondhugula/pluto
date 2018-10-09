@@ -1763,7 +1763,7 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     }
 
     printf("Colouring Scc %d with colour %d \n", scc_id, current_colour);
-    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel) {
+    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && !sccs[scc_id].has_parallel_hyperplane) {
         printf("Scc %d has a parallel hyperplane\n", scc_id);
         printf("Parallelism preventing adjecency Matrix\n");
         pluto_matrix_print(stdout, par_preventing_adj_mat);
