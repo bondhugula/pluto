@@ -438,7 +438,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
         scc1_fcg_offset = sccs[scc1].fcg_scc_offset;
         for (scc2=scc1+1; scc2<num_sccs; scc2++) {
             scc2_fcg_offset = sccs[scc2].fcg_scc_offset;
-            if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2) || ddg_sccs_direct_connected (ddg, prog, scc2, scc1)) {
+            if(ddg_sccs_direct_connected(ddg, prog, scc1, scc2)) {
                 inter_scc_constraints = get_inter_scc_dep_constraints (scc1, scc2, prog);
                 if ((sccs[scc1].is_parallel || sccs[scc2].is_parallel) && options->fuse == TYPED_FUSE) {
                     check_parallel = true;
