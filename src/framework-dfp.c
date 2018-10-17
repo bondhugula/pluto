@@ -1834,7 +1834,7 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
 
 /* Returns colours corresponding vertices of the original FCG 
  * from the colours of vertices of scc clustered FCG */
-int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
+int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour, int* has_parallel_hyperplane)
 {
     int i, j, scc_offset, scc_id;
     int nvar, nstmts;
@@ -1855,11 +1855,14 @@ int* get_vertex_colour_from_scc_colour (PlutoProg *prog, int *colour)
         for (j=0; j<stmts[i]->dim_orig; j++) {
             stmt_colour[i*(nvar)+j] = colour[scc_offset+j];
         }
+        if (options->fuse == TYPED_FUSE) {
+            has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
+        }
     }
     return stmt_colour;
 }
 
-int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int current_colour, int nvertices)
+int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int current_colour, int nvertices, int* has_parallel_hyperplane)
 {
     int i, j, scc_offset, stmt_id;
     int nvar, num_sccs;
@@ -1892,6 +1895,9 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
         }
         sccs[i].fcg_scc_offset = scc_offset;
         scc_offset += sccs[i].max_dim;
+        if (options->fuse == TYPED_FUSE) {
+            sccs[i].has_parallel_hyperplane = has_parallel_hyperplane[stmt_id];
+        }
     }
     return scc_colour;
 }
@@ -1902,11 +1908,15 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     int *stmt_colour, nvertices, i, num_sccs;
     int *scc_colour;
     Graph *ddg;
+    int* has_parallel_hyperplane = NULL;
 
     ddg = prog->ddg;
 
 
-    stmt_colour = get_vertex_colour_from_scc_colour(prog, colour);
+    if (options->fuse == TYPED_FUSE) {
+        has_parallel_hyperplane = (int*)malloc((prog->nstmts)*sizeof(int));
+    }
+    stmt_colour = get_vertex_colour_from_scc_colour(prog, colour, has_parallel_hyperplane);
     free_scc_vertices(ddg);
 
     /* You can update the DDG but do not update the FCG.  Doing otherwise will remove 
@@ -1924,7 +1934,7 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
         nvertices += prog->ddg->sccs[i].max_dim;
     }
 
-    scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices);
+    scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
     pluto_matrix_free(par_preventing_adj_mat);
     prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
 
@@ -2155,6 +2165,12 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
     max_colours = prog->nvar;
     stmts = prog->stmts;
+
+    if (options->fuse == TYPED_FUSE && options->scc_cluster) {
+        for (i=0;i<prog->ddg->num_sccs; i++) {
+            prog->ddg->sccs[i].has_parallel_hyperplane = 0;
+        }
+    }
 
     for (i=1; i<=max_colours; i++) {
         for (j=0; j<prog->ddg->num_sccs; j++) {
