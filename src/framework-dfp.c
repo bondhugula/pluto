@@ -537,7 +537,7 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                     }
                 }
 
-                free(inter_scc_constraints);
+                pluto_constraints_free(inter_scc_constraints);
             }
 
         }
@@ -818,7 +818,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph* fcg, int *colour, Pluto
             }
             pluto_constraints_free(coeff_bounds);
         }
-        free(intra_scc_dep_cst);
+        pluto_constraints_free(intra_scc_dep_cst);
         /* fcg_scc_offset += sccs[i].max_dim; */
     }
 }
@@ -1666,6 +1666,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     v = sccs[scc_id].fcg_scc_offset;
     max_dim = sccs[scc_id].max_dim;
     num_convex_successors = 0;
+    common_dims = NULL;
 
     /* Get parallel dimensions of the input scc */
     parallel_dims = (bool*) malloc(max_dim*sizeof(bool));
@@ -1710,12 +1711,16 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     /*     } */
     /* } */
     colouring_dim = get_colouring_dim(common_dims,max_dim);
+    if (common_dims!=NULL) {
+        free(common_dims);
+    }
     if (colouring_dim == -1) {
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
                 colour[v+i] = current_colour;
                 IF_DEBUG(printf("[colour_scc_cluster_greedy] Dimension %d of SCC %d coloured with colour %d\n", i, scc_id, current_colour););
                 free (parallel_dims);
+                free (convex_successors);
                 return true;
             }
         }
@@ -1724,6 +1729,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     IF_DEBUG(printf("[colour_scc_cluster_greedy] Dimension %d of SCC %d coloured with colour %d\n", colouring_dim, scc_id, current_colour););
     /* printf("Colouring Convex Successors of SCC %d\n", scc_id); */
     colour_convex_successors(v+colouring_dim, convex_successors, num_convex_successors, colour, current_colour, prog);
+    free(convex_successors);
+    free(parallel_dims);
     return true;
 }
 
@@ -1901,9 +1908,10 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
 {
     int *stmt_colour, nvertices, i, num_sccs;
     int *scc_colour;
-    Graph *ddg;
+    Graph *ddg, *fcg;
     int* has_parallel_hyperplane = NULL;
 
+    fcg = prog->fcg;
     ddg = prog->ddg;
 
 
@@ -1939,8 +1947,10 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     prog->total_coloured_stmts[c-1] = 0;
     prog->fcg->to_be_rebuilt = false;
 
+    graph_free(fcg);
     free (colour);
     free(stmt_colour);
+    free (has_parallel_hyperplane);
     return scc_colour;
 
 }
@@ -1967,7 +1977,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
          * However, if some Sccs were previously coloured before the rebuilding the FCG, 
          * we dont have to re-colour those SCCs again. If fcg has to be rebuilt, 
          * then SCC ids would not have changed from previous clouring */
-        if (options->scc_cluster && fcg->to_be_rebuilt == false && prog->ddg->sccs[i].is_scc_coloured) {
+        if (options->scc_cluster && prog->fcg->to_be_rebuilt == false && prog->ddg->sccs[i].is_scc_coloured) {
             fcg->num_coloured_vertices += ddg->sccs[i].max_dim;
             prog->total_coloured_stmts[c-1] += ddg->sccs[i].size;
             prev_scc = i;
@@ -2011,6 +2021,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                     colour = rebuild_scc_cluster_fcg (prog, colour,c);
                     /* rebuliding the cluster_fcg will update ddg, hence number of sccs can increase */
                     nsccs = prog->ddg->num_sccs;
+                    fcg = prog->fcg;
 
                     /* Sccs will be renumbered; hence all sccs have to be revisited; */
                     i=-1;
