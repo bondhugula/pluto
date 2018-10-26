@@ -539,7 +539,6 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
 
                 pluto_constraints_free(inter_scc_constraints);
             }
-
         }
     }
 }
@@ -1059,7 +1058,6 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
             (*conflicts)->is_eq[nrows + npar+1+i*(nvar+1)+nvar] = 1;
         }
     }
-    /* IF_DEBUG(printf("[Pluto] Build Fusion Conflict graph: FCG add parwise edges: %0.6lfs\n", rtclock()-t_start2);); */
 
     pluto_matrix_free(obj);
 

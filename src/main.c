@@ -375,7 +375,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 #ifdef GLPK
     if (options->lp && !(options->glpk || options->gurobi)) {
-        printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
+        printf("[pluto] LP option available with a LP solver only. Using GLPK for lp solving\n");
         options->glpk = 1;
     }
 
@@ -385,8 +385,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
         
     if (options->dfp && !(options->glpk || options->gurobi)) {
-        printf("[pluto]: Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
-        printf("[pluto]: Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
+        printf("[pluto] Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
+        printf("[pluto] Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
         options->glpk = 1;
     }
     if (options->glpk) {
@@ -397,18 +397,24 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 #endif
 
     if (options->dfp && !(options->glpk || options->gurobi)) {
-        printf ("[pluto]: ERROR: DFP framework is currently supported with GLPK or GUROBI solvers only. Run ./configure --help to for more information on using different solvers with Pluto.\n");
+        printf ("[pluto] ERROR: DFP framework is currently supported with GLPK or GUROBI solvers only. Run ./configure --help to for more information on using different solvers with Pluto.\n");
         pluto_options_free(options);
         usage_message();
         return 1;
     }
     if (options->scc_cluster && !options->dfp) {
-        printf("[pluto]: Warning: SCC clustering heuristics available with dfp option (FCG based approach) only. Disabling clustering \n");
+        printf("[pluto] Warning: SCC clustering heuristics available with dfp option (FCG based approach) only. Disabling clustering \n");
     }
 
     if (options->fuse == TYPED_FUSE && !options->dfp) {
         printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. Turning off Typed fuse\n");
         options->fuse = SMART_FUSE;
+    }
+
+    /* Make lastwriter default with dfp. This removes transitive dependences and hence reduces FCG construction time */
+    if (options->dfp) {
+        printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
+        options->lastwriter = 1;
     }
 
     /* Extract polyhedral representation */

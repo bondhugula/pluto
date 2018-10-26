@@ -1878,6 +1878,7 @@ int pluto_auto_transform(PlutoProg *prog)
         /* This routine frees colour internally */
         find_permutable_dimensions_scc_based(colour, prog);
 
+
         if(!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
             pluto_transformations_pretty_print(prog);
@@ -2207,7 +2208,7 @@ void ddg_compute_cc(PlutoProg *prog)
     graph_free(gU);
 }
 
-/* Compute the SCCs of a graph (usig Kosaraju's algorithm) */
+/* Compute the SCCs of a graph (using Kosaraju's algorithm) */
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;
