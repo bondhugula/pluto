@@ -469,6 +469,13 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                 /* Check for pairwise permutability of dimensions between scc1 and scc2 */
                 for (dim1=0; dim1<sccs[scc1].max_dim; dim1++) {
                     if (colour[scc1_fcg_offset+dim1] ==0 || colour[scc1_fcg_offset+dim1] == current_colour) {
+                        /* If there is a self edge on this vertex, then dont solve LP's. Just add edges to all dimensions of SCC2. */
+                        if (fcg->adj->val[scc1_fcg_offset+dim1][scc1_fcg_offset+dim1]==1) {
+                            for (dim2=0; dim2<sccs[scc2].max_dim; dim2++) {
+                                fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
+                            }
+                            continue;
+                        }
                         /* Set lb of dim1 of each statement in Scc 1 */
                         for (i=0; i<sccs[scc1].size; i++) {
                             stmt1 = sccs[scc1].vertices[i];
@@ -481,6 +488,10 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                         for (dim2=0; dim2<sccs[scc2].max_dim; dim2++) {
                             /* Set the lower bounds of dimensions of each statement in SCC2 */
                             if (colour[scc2_fcg_offset+dim2] ==0 || colour[scc2_fcg_offset+dim2] == current_colour) {
+                                if (fcg->adj->val[scc2_fcg_offset+dim2][scc2_fcg_offset+dim2]==1) {
+                                    fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
+                                    continue;
+                                }
                                 for (j=0; j<sccs[scc2].size; j++) {
                                     stmt2 = sccs[scc2].vertices[j];
                                     if(dim2<=stmts[stmt2]->dim_orig) {
