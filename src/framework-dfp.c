@@ -311,6 +311,13 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
          * is because,even after satisfying the permute preventing dep, it might
          * still prevent fusion. */
         if (colour[fcg_offset1 + i] == 0 || colour[fcg_offset1 + i] == current_colour) {
+            if(fcg->adj->val[fcg_offset1+i][fcg_offset1+i]==1) {
+                /* Do not solve LPs if a dimenion of a statement is not permutable */
+                for(j=0;j<stmts[v2]->dim_orig; j++) {
+                    fcg->adj->val[fcg_offset1+i][fcg_offset2+j]=1;
+                }
+                continue;
+            }
 
             /* Set the lower bound of i^th dimension of v1 to 1 */
             conflictcst->val[row_offset + src_offset+i][CST_WIDTH-1] = -1;
@@ -318,6 +325,11 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog, int *co
 
             for (j=0; j<stmts[v2]->dim_orig; j++) {
                 if (colour[fcg_offset2 + j] == 0 || colour[fcg_offset2 + j] == current_colour) {
+                    if(fcg->adj->val[fcg_offset1+i][fcg_offset1+i]==1) {
+                        fcg->adj->val[fcg_offset1+i][fcg_offset2+j]=1;
+                        continue;
+
+                    }
 
                     /* Set the lower bound of i^th dimension of v1 to 1 */
                     conflictcst->val[row_offset + dest_offset+j][CST_WIDTH-1] = -1;
