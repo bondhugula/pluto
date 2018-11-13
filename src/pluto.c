@@ -328,7 +328,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in case of pluto-lp-dfp */
-    if (!options->dfp){
+    if (!options->dfp) {
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
         for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -403,7 +403,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
-        if(!options->dfp){
+        if (!options->dfp){
             j = npar + 1;
             for (i=0; i<nstmts; i++)    {
                 for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -1822,7 +1822,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
     if (options->dfp) {
 #if defined GLPK || defined GUROBI
-        if(options->fuse == NO_FUSE) {
+        if (options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
@@ -1849,7 +1849,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         colour = (int*) malloc(nVertices*sizeof(int));
-        for(i=0; i<nVertices;i++){
+        for (i=0; i<nVertices;i++){
             colour[i] = 0;
         }
 
@@ -1879,7 +1879,7 @@ int pluto_auto_transform(PlutoProg *prog)
         find_permutable_dimensions_scc_based(colour, prog);
 
 
-        if(!options->silent && options->debug) {
+        if (!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
             pluto_transformations_pretty_print(prog);
         }
@@ -2005,10 +2005,10 @@ int pluto_auto_transform(PlutoProg *prog)
     }
 
  /* Deallocate the fusion conflict graph */
-    if (options->dfp){
+    if (options->dfp) {
 #if defined GLPK || defined GUROBI
         ddg = prog->ddg;
-        for(i=0; i<ddg->num_sccs; i++){
+        for (i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);
         }
         graph_free(prog->fcg);
