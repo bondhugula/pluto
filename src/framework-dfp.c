@@ -1254,16 +1254,7 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
         }
     }
     assert((stmt1 >= 0) && (stmt2 >= 0));
-    /* printf ("Parallel sol for scc %d\n", scc1.id); */
-    /* for (i=0;i<nvar;i++) { */
-    /*     printf ("c_%d: %d ", i, npar+1+stmt1*(nvar+1)+i); */
-    /* } */
-    /* printf("\n"); */
-    /* printf ("Parallel sol for scc %d\n", scc2.id); */
-    /* for (i=0;i<nvar;i++) { */
-    /*     printf ("c_%d: %d ", i, npar+1+stmt2*(nvar+1)+i); */
-    /* } */
-    /* printf("\n"); */
+    
     stmt_offset = npar+1;
     for (i=0; i<nvar ; i++) {
         if (stmts[stmt1]->is_orig_loop[i] && stmts[stmt2]->is_orig_loop[i]) {
