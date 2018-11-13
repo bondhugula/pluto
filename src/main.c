@@ -375,7 +375,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 #ifdef GLPK
     if (options->lp && !(options->glpk || options->gurobi)) {
+        if (!options->silent) {
         printf("[pluto] LP option available with a LP solver only. Using GLPK for lp solving\n");
+        }
         options->glpk = 1;
     }
 
@@ -385,8 +387,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
         
     if (options->dfp && !(options->glpk || options->gurobi)) {
-        printf("[pluto] Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
-        printf("[pluto] Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
+        if (!options->silent) {
+            printf("[pluto] Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
+            printf("[pluto] Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
+        }
         options->glpk = 1;
     }
     if (options->glpk) {
@@ -412,9 +416,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make lastwriter default with dfp. This removes transitive dependences and hence reduces FCG construction time */
-    if (options->dfp) {
-        printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
+    if (options->dfp && !options->lastwriter) {
+        if (!options->silent) {
+            printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
+        }
         options->lastwriter = 1;
+    }
+    /* Typed fuse is available with clustered FCG approach only */
+    if (options->fuse ==TYPED_FUSE && options->dfp && !options->scc_cluster) {
+        if (!options->silent) {
+            printf("[pluto] Typed fuse supported only with clustered FCG approach. Turning on SCC clustering\n");
+        }
+        options->scc_cluster = 1;
     }
 
     /* Extract polyhedral representation */
@@ -685,7 +698,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
             printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n",prog->skew_time);
         }
-        printf("[pluto] \t\ttotal constraint solving time (LP/MIP/ILP) time: %0.6lfs\n", prog->mipTime);
+        printf("[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: %0.6lfs\n", prog->mipTime);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
