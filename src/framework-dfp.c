@@ -1241,9 +1241,10 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
     npar = prog->npar;
 
     stmt1 = -1;
+    stmt2 = -1;
     parallel_dims = NULL;
 
-    for (i=0; i<(scc1.size && stmt1 == -1); i++) {
+    for (i=0; (i<scc1.size) && (stmt1 == -1); i++) {
         for (j=0; j<scc2.size; j++) {
             if (is_adjecent(ddg, scc1.vertices[i], scc2.vertices[j])) {
                 stmt1 = scc1.vertices[i];
@@ -1252,16 +1253,17 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
             }
         }
     }
-    printf ("Parallel sol for scc %d\n", scc1.id);
-    for (i=0;i<nvar;i++) {
-        printf ("c_%d: %d ", i, npar+1+stmt1*(nvar+1)+i);
-    }
-    printf("\n");
-    printf ("Parallel sol for scc %d\n", scc2.id);
-    for (i=0;i<nvar;i++) {
-        printf ("c_%d: %d ", i, npar+1+stmt2*(nvar+1)+i);
-    }
-    printf("\n");
+    assert((stmt1 >= 0) && (stmt2 >= 0));
+    /* printf ("Parallel sol for scc %d\n", scc1.id); */
+    /* for (i=0;i<nvar;i++) { */
+    /*     printf ("c_%d: %d ", i, npar+1+stmt1*(nvar+1)+i); */
+    /* } */
+    /* printf("\n"); */
+    /* printf ("Parallel sol for scc %d\n", scc2.id); */
+    /* for (i=0;i<nvar;i++) { */
+    /*     printf ("c_%d: %d ", i, npar+1+stmt2*(nvar+1)+i); */
+    /* } */
+    /* printf("\n"); */
     stmt_offset = npar+1;
     for (i=0; i<nvar ; i++) {
         if (stmts[stmt1]->is_orig_loop[i] && stmts[stmt2]->is_orig_loop[i]) {
@@ -1933,6 +1935,7 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
     bzero(scc_colour, nvertices*sizeof(int));
 
     scc_offset = 0;
+    stmt_id = -1;
 
     for (i=0; i<num_sccs; i++) {
         sccs[i].is_scc_coloured = false;
@@ -1940,7 +1943,7 @@ int* get_scc_colours_from_vertex_colours (PlutoProg *prog, int *stmt_colour, int
             stmt_id = sccs[i].vertices[j];
             if (sccs[i].max_dim == stmts[stmt_id]->dim) break;
         }
-
+        assert (stmt_id >= 0);
         for (j=0; j<sccs[i].max_dim; j++) {
             if (stmt_colour[(stmt_id*nvar)+j] == current_colour) {
                 sccs[i].is_scc_coloured = true;
