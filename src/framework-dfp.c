@@ -928,6 +928,9 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
         return;
     }
 
+    if (!ddg_sccs_direct_connected(ddg,prog,scc1,scc2)) {
+        return;
+    }
     
     if (options->scc_cluster) {
         update_scc_cluster_fcg_between_sccs(fcg, scc1, scc2, prog);
@@ -2005,6 +2008,60 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
 
 }
 
+bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2)
+{
+    int i, num_hyperplanes, stmt1, stmt2, nvar, npar;
+    Scc *sccs;
+    Stmt **stmts;
+    bool sccs_fused = true;
+
+    num_hyperplanes = prog->num_hyperplanes;
+    sccs = prog->ddg->sccs;
+    stmts = prog->stmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    stmt1 = sccs[scc1].vertices[0];
+    stmt2 = sccs[scc2].vertices[0];
+
+    for (i=0; i<num_hyperplanes; i++) {
+        if (prog->hProps[i].type == H_LOOP) {
+            continue;
+        }
+        if (stmts[stmt1]->trans->val[i][nvar+npar] != stmts[stmt2]->trans->val[i][nvar+npar]) {
+            sccs_fused = false;
+            break;
+        }
+    }
+    return sccs_fused;
+}
+
+void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1, int scc2)
+{
+    int i, j, nstmts, nvar, npar;
+    Stmt **stmts;
+
+    stmts = prog->stmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+
+    pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
+
+    for (i=0; i<nstmts; i++) {
+        pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
+        for (j=0; j<nvar+npar; j++)  {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][j] = 0;
+        }
+        if (stmts[i]->scc_id < scc2)   {
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 0;
+        }else{
+            stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 1;
+        }
+
+    }
+}
+
 /* Colours all scc's with a colour c. Returns the current colouring of the fcg. */
 int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 {
@@ -2012,12 +2069,14 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
     bool is_distributed, is_successful;
     Graph *ddg, *fcg;
     double t_start;
+    bool is_parallel_scc_coloured;
 
     ddg = prog->ddg;
     fcg = prog->fcg;
     nsccs = ddg->num_sccs;
 
     is_distributed = false;
+    is_parallel_scc_coloured = false;
     prev_scc = -1;
 
     for (i=0; i<nsccs; i++) {
@@ -2038,6 +2097,46 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
         if (options->scc_cluster) {
+            if (options->fuse == TYPED_FUSE) {
+                        printf("Analyzing SCC %d \n", i);
+                /* case when the previous scc that was coloured was parallel and the current one is seqential */
+                if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured) {
+                    if (are_sccs_fused(prog, prev_scc, i)) {
+                        printf ("SCCs %d and %d are fused\n", prev_scc, i);
+                        /* distribute the loops here. Note that
+                         * sccs may not be connected at all. However we still
+                         * need to cut to preserve parallelism */
+                        if (ddg_sccs_direct_connected(ddg, prog, prev_scc, i)) {
+                            cut_between_sccs(prog, ddg, prev_scc, i);
+                            update_fcg_between_sccs(fcg, prev_scc, i, prog);
+                        } else {
+                            pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
+                        }
+                    }
+                } else if (ddg->sccs[i].is_parallel && !is_parallel_scc_coloured && prev_scc != -1) {
+                    if (are_sccs_fused(prog, prev_scc, i)) {
+                        printf ("SCCs %d and %d are fused\n", prev_scc, i);
+                        /* distribute the loops here. Note that
+                         * sccs may not be connected at all. However we still
+                         * need to cut to preserve parallelism */
+                        if (ddg_sccs_direct_connected(ddg, prog, prev_scc, i)) {
+                            cut_between_sccs(prog, ddg, prev_scc, i);
+                            update_fcg_between_sccs(fcg, prev_scc, i, prog);
+                        } else {
+                            pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
+                        }
+                    }
+                }
+                /* Set that a parallel SCC is being coloured */
+                if (ddg->sccs[i].is_parallel && !ddg->sccs[i].has_parallel_hyperplane) {
+                    printf ("Setting Parallel SCC while colouring SCC %d \n", i);
+                    is_parallel_scc_coloured = true;
+                } else if (!ddg->sccs[i].is_parallel) {
+                    is_parallel_scc_coloured = false;
+                }
+                /* if (sccs[i].is_parallel && !sccs[i].has_parallel_hyperplane && !is_parallel_scc_coloured) { */
+                /* } */
+            }
             is_successful = colour_scc_cluster (i, colour, c, prog);
         } else if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) {
             is_successful = colour_scc_from_lp_solution_with_parallelism(i, colour, prog, c);
@@ -2520,6 +2619,66 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
         loop_dims++;
     }
     return has_negative_comp;
+}
+
+bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst, PlutoProg *prog) {
+    int i,j,ndeps,nstmts,nvar,npar;
+    Stmt **stmts;
+    Dep **deps;
+    PlutoMatrix *obj;
+
+    ndeps = prog->ndeps;
+    nstmts = prog->nstmts;
+    npar = prog->npar;
+    nvar = prog->nvar;
+    deps = prog->deps;
+    stmts = prog->stmts;
+
+
+    basecst->nrows = 0;
+    basecst->ncols = CST_WIDTH;
+    for (i=0; i<ndeps; i++) {
+        Dep *dep = deps[i];
+        if((stmts[dep->src]->scc_id == scc_id) && (stmts[dep->dest]->scc_id == scc_id) ){
+            pluto_constraints_add(basecst, dep->cst);
+        }
+    }
+    /* If deps are constant then \vec{u} is zero vector. Hence set the value of u to be zero*/
+    for (i=0;i<npar; i++){
+        pluto_constraints_add_equality(basecst);
+        basecst->val[basecst->nrows-1][i] = 1;
+    }
+    pluto_constraints_add_lb(basecst, npar, 0);
+    /* Set the transformation coefficients to be equalities with same values as in the input permutation */
+    for (i=0; i<nstmts; i++) {
+        for(j=0; j<nvar+1; j++) {
+            pluto_constraints_add_equality(basecst);
+            basecst->val[basecst->nrows-1][npar+1+i*(nvar+1)+j] = 1;
+            basecst->val[basecst->nrows-1][basecst->ncols -1] = -stmts[i]->trans->val[level][j];
+
+        }
+    }
+    /* printf("Constraints for const dep check \n"); */
+    /* pluto_constraints_cplex_print(stdout, basecst); */
+    IF_DEBUG(pluto_constraints_cplex_print(stdout, basecst););
+    /* Replace this with LP call */
+
+    /* obj = construct_cplex_objective(basecst, prog);  */
+    /* double* sol = pluto_fusion_constraints_feasibility_solve(basecst, obj); */
+    /* pluto_matrix_free(obj); */
+    int64* sol = pluto_prog_constraints_lexmin(basecst, prog);
+    if (sol == NULL) {
+        return false;
+    }
+
+    if(sol[npar]>10) {
+        free(sol);
+        return false;
+    }
+    free(sol);
+    return true;
+
+
 }
 
 
