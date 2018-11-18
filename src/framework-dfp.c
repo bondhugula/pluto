@@ -884,6 +884,7 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoPr
         }
     } else {
         /* Update fcg only between scc1 and scc2 */
+        IF_DEBUG(printf("Updating FCG between SCCs%d and %d\n",scc1,scc2););
         for (i=0; i<scc2; i++) {
             scc1_fcg_offset = sccs[i].fcg_scc_offset;
             for (dim1 =0; dim1<sccs[i].max_dim; dim1++) {
@@ -931,12 +932,15 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
         return;
     }
 
-    if (!ddg_sccs_direct_connected(ddg,prog,scc1,scc2)) {
-        return;
-    }
+    /* This has to be removed  */
+    /* if (!ddg_sccs_direct_connected(ddg,prog,scc1,scc2)) { */
+    /*     #<{(| printf("SCCs %d and %d not connected\n"); |)}># */
+    /*     return; */
+    /* } */
     
     if (options->scc_cluster) {
         update_scc_cluster_fcg_between_sccs(fcg, scc1, scc2, prog);
+        prog->fcg_update_time += rtclock() - tstart;
         return;
     }
     /* Assumes that the DDG has already been cut. */
@@ -1729,6 +1733,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     }
 
     if (num_parallel_dims == 0) {
+        /* pluto_matrix_print(stdout, par_preventing_adj_mat); */
+        /* printf("No Parallel Dims\n"); */
         free (parallel_dims);
         return false;
     }
@@ -1825,14 +1831,16 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
              * Hence cut between SCCs and try colouring again. */
             cut_from_predecessor(scc_id, prog);
             /* pluto_print_colours(colour, prog); */
-            IF_DEBUG(printf("Updating FCG between SCCs %d and %d to preserve parallellism after cutting DDG \n", scc_id, scc_id-1););
+            IF_DEBUG(printf("[colour_scc_cluster]Updating FCG between SCCs %d and %d to preserve parallellism after cutting DDG \n", scc_id, scc_id-1););
             update_fcg_between_sccs (fcg, scc_id-1, scc_id, prog);
+
             if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
                 sccs[scc_id].has_parallel_hyperplane = true;
                 return true;
             }
             /* Colouring the cluster has failed due to a permute 
              * or fusion preventing edge. Hence FCG has to be rebuilt. */
+            printf ("Unable to colour scc %d\n", scc_id);
             return false;
         }
     } 
@@ -1993,7 +2001,9 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
     }
 
     scc_colour = get_scc_colours_from_vertex_colours (prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
-    pluto_matrix_free(par_preventing_adj_mat);
+    if(options->fuse == TYPED_FUSE) {
+        pluto_matrix_free(par_preventing_adj_mat);
+    }
     prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
 
     /* These two have to be reset in the clustered apporoach as 
@@ -2123,14 +2133,17 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                             cut_between_sccs(prog, ddg, prev_scc, i);
                             update_fcg_between_sccs(fcg, prev_scc, i, prog);
                         } else {
+                            IF_DEBUG(printf("Adding Scalar hyperplanes without cut\n"););
                             pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
                         }
                     }
                 }
                 /* Set that a parallel SCC is being coloured */
                 if (ddg->sccs[i].is_parallel && !ddg->sccs[i].has_parallel_hyperplane) {
+                    /* printf("Scc %d is parallel\n", i); */
                     is_parallel_scc_coloured = true;
                 } else if (!ddg->sccs[i].is_parallel) {
+                    /* printf("Scc %d is sequential\n", i); */
                     is_parallel_scc_coloured = false;
                 }
                 /* if (sccs[i].is_parallel && !sccs[i].has_parallel_hyperplane && !is_parallel_scc_coloured) { */
@@ -2404,6 +2417,9 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
     IF_DEBUG(pluto_print_colours(colour,prog););
 
     free(colour);
+    if (options->fuse == TYPED_FUSE) {
+        pluto_matrix_free(par_preventing_adj_mat);
+    }
 
 
     return;
