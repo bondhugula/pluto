@@ -922,7 +922,7 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
     ddg = prog->ddg;
     stmts = prog->stmts;
 
-    if (!options->fuse == TYPED_FUSE) {
+    if (!(options->fuse == TYPED_FUSE)) {
         /* This assertion might not hold in case of typed fuse */
         assert (fcg->to_be_rebuilt == false);
     }
@@ -2640,7 +2640,6 @@ bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst, Plut
     int i,j,ndeps,nstmts,nvar,npar;
     Stmt **stmts;
     Dep **deps;
-    PlutoMatrix *obj;
 
     ndeps = prog->ndeps;
     nstmts = prog->nstmts;
