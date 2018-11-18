@@ -921,7 +921,10 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog)
     ddg = prog->ddg;
     stmts = prog->stmts;
 
-    assert (fcg->to_be_rebuilt == false);
+    if (!options->fuse == TYPED_FUSE) {
+        /* This assertion might not hold in case of typed fuse */
+        assert (fcg->to_be_rebuilt == false);
+    }
     tstart = rtclock();
 
     if (nstmts == 1) {
@@ -2098,11 +2101,9 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
         if (options->scc_cluster) {
             if (options->fuse == TYPED_FUSE) {
-                        printf("Analyzing SCC %d \n", i);
                 /* case when the previous scc that was coloured was parallel and the current one is seqential */
                 if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured) {
                     if (are_sccs_fused(prog, prev_scc, i)) {
-                        printf ("SCCs %d and %d are fused\n", prev_scc, i);
                         /* distribute the loops here. Note that
                          * sccs may not be connected at all. However we still
                          * need to cut to preserve parallelism */
@@ -2115,7 +2116,6 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                     }
                 } else if (ddg->sccs[i].is_parallel && !is_parallel_scc_coloured && prev_scc != -1) {
                     if (are_sccs_fused(prog, prev_scc, i)) {
-                        printf ("SCCs %d and %d are fused\n", prev_scc, i);
                         /* distribute the loops here. Note that
                          * sccs may not be connected at all. However we still
                          * need to cut to preserve parallelism */
@@ -2129,7 +2129,6 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                 }
                 /* Set that a parallel SCC is being coloured */
                 if (ddg->sccs[i].is_parallel && !ddg->sccs[i].has_parallel_hyperplane) {
-                    printf ("Setting Parallel SCC while colouring SCC %d \n", i);
                     is_parallel_scc_coloured = true;
                 } else if (!ddg->sccs[i].is_parallel) {
                     is_parallel_scc_coloured = false;
