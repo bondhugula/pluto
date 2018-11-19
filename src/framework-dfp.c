@@ -2021,6 +2021,8 @@ int* rebuild_scc_cluster_fcg (PlutoProg *prog, int *colour, int c)
 
 }
 
+/* The routine checks if the two SCCs are fused in the till the current level.
+ * If yes it returns true else returns false */
 bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2)
 {
     int i, num_hyperplanes, stmt1, stmt2, nvar, npar;
@@ -2049,6 +2051,10 @@ bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2)
     return sccs_fused;
 }
 
+/* Routines adds a scalr hyperplane between two SCCs.
+ * Note that SCCs might not be connected. Ideally this routine
+ * can be moved to pluto.c (or framework.c) and approprite 
+ * changes can be made in DDG cut routines */
 void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1, int scc2)
 {
     int i, j, nstmts, nvar, npar;
@@ -2636,6 +2642,11 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components, PlutoProg
     return has_negative_comp;
 }
 
+/* Checks if there are any non constant dependences in the loop nest.
+ * This is done by computing \vec{d}.\vec{h} and the resultant \vec{u}
+ * has to be zero in pluto's cost function. Constraints to ensure u
+ * is zero is added and if the resulting LP formulation is unsat, then
+ * there are non constant deps in the SCC  */
 bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst, PlutoProg *prog) {
     int i,j,ndeps,nstmts,nvar,npar;
     Stmt **stmts;
