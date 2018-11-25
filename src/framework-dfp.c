@@ -2939,15 +2939,7 @@ void introduce_skew(PlutoProg *prog)
                     skew_dim++;
                 }
             }
-            printf("Skewing at level %d\n", level);
-            printf ("Src:dims\n");
-            for (j=0; j<nvar; j++) {
-                printf("%d : %d\n", j, src_dims[j]);
-            }
-            printf ("skew:dims\n");
-            for (j=0; j<nvar; j++) {
-                printf("%d : %d\n", j, skew_dims[j]);
-            }
+
             /* Skewing has to be done at level j+1 */
             if (j==prog->num_hyperplanes) {
                 break;
