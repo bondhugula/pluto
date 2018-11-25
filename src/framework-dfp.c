@@ -2048,7 +2048,7 @@ bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2)
     return sccs_fused;
 }
 
-/* Routines adds a scalr hyperplane between two SCCs.
+/* Routine adds a scalar hyperplane between two SCCs.
  * Note that SCCs might not be connected. Ideally this routine
  * can be moved to pluto.c (or framework.c) and approprite 
  * changes can be made in DDG cut routines */
@@ -2078,6 +2078,9 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1, int sc
     }
 }
 
+/* Routine adds a hyperplane (H_LOOP) from the solution an ILP solution. 
+ * This method can also be moved to framework.c (or pluto.c) and 
+ * appropriate changes can be made. */
 void add_hyperplane_from_ilp_solution (int64 *sol, PlutoProg *prog)
 {
     int j, k;
