@@ -59,6 +59,9 @@ struct plutoOptions{
     /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
     int fuse;
 
+    /* For experimental purposes with dfp */
+    int delayed_cut;
+
     /* for debugging - print default cloog-style total */
     int scancount;
 

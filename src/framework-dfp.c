@@ -1733,8 +1733,6 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
     }
 
     if (num_parallel_dims == 0) {
-        /* pluto_matrix_print(stdout, par_preventing_adj_mat); */
-        /* printf("No Parallel Dims\n"); */
         free (parallel_dims);
         return false;
     }
@@ -1757,16 +1755,13 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour, Plut
 
     common_dims = get_common_parallel_dims(scc_id, convex_successors, 
             num_convex_successors, colour, current_colour, parallel_dims, prog);
-    /* if (common_dims != NULL) { */
-    /*     printf("Common dims for scc %d\n",scc_id); */
-    /*     for (i=0;i<max_dim; i++) { */
-    /*         printf("%d\n", common_dims[i]); */
-    /*     } */
-    /* } */
+
     colouring_dim = get_colouring_dim(common_dims,max_dim);
+
     if (common_dims!=NULL) {
         free(common_dims);
     }
+
     if (colouring_dim == -1) {
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
@@ -1817,7 +1812,9 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     if (prog->coloured_dims > max_dim) return true;
 
     if (prog->coloured_dims == max_dim) {
-        cut_around_scc (scc_id, prog);
+        if (!options->delayed_cut) {
+            cut_around_scc (scc_id, prog);
+        }
         return true;
     }
 
@@ -2077,6 +2074,39 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1, int sc
         }else{
             stmts[i]->trans->val[stmts[i]->trans->nrows-1][nvar+npar] = 1;
         }
+
+    }
+}
+
+void add_hyperplane_from_ilp_solution (int64 *sol, PlutoProg *prog)
+{
+    int j, k;
+    int nvar, npar,nstmts;
+    Stmt **stmts;
+
+    nvar = prog->nvar;
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+
+    for (j=0; j<nstmts; j++)    {
+        Stmt *stmt = stmts[j];
+        pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
+        for (k=0; k<nvar; k++)    {
+            stmt->trans->val[stmt->trans->nrows-1][k] = sol[npar+1+j*(nvar+1)+k];
+        }
+        /* No parameteric shifts */
+        for (k=nvar; k<nvar+npar; k++)    {
+            stmt->trans->val[stmt->trans->nrows-1][k] = 0;
+        }
+        /* Constant loop shift */
+        stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
+
+        stmt->hyp_types[stmt->trans->nrows-1] =
+            pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
+            H_SCALAR: H_LOOP;
 
     }
 }
@@ -2518,11 +2548,11 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     assert (basecst->ncols == CST_WIDTH);
 
     boundcst = get_coeff_bounding_constraints(prog);
-    pluto_constraints_add(basecst,boundcst);
-    pluto_constraints_free(boundcst);
+    /* pluto_constraints_add(basecst,boundcst); */
+    /* pluto_constraints_free(boundcst); */
 
-    coeffcst = pluto_constraints_alloc(basecst->nrows + (nstmts*nvar), basecst->ncols);
-    coeffcst->nrows = basecst->nrows;
+    coeffcst = pluto_constraints_alloc(basecst->nrows + boundcst->nrows + (nstmts*nvar), basecst->ncols);
+    coeffcst->nrows = 0;
     coeffcst->ncols = basecst->ncols;
     assert (coeffcst->ncols == CST_WIDTH);
 
@@ -2530,7 +2560,8 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
     IF_DEBUG(printf("Num stmts coloured with colour %d: %d\n", c+1, prog->total_coloured_stmts[c]););
 
     if (prog->total_coloured_stmts[c] == nstmts) {
-        coeffcst = pluto_constraints_copy(coeffcst,basecst);
+        coeffcst = pluto_constraints_copy(coeffcst,boundcst);
+        pluto_constraints_free(boundcst);
 
         /* Pick a colour that you would start with. This is buggy. You need to pick a colour*/
         select = c+1;
@@ -2544,6 +2575,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
         } else {
             add_coeff_constraints_from_fcg_colouring (coeffcst, colour, select, prog);
         }
+        coeffcst = pluto_constraints_add(coeffcst,basecst);
 
         /* Solve the constraints to find the hyperplane at this level */
         t_start = rtclock();
@@ -2570,26 +2602,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
             /*         } */
             /*     } */
             /* } */
-            pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
-
-            for (j=0; j<nstmts; j++)    {
-                Stmt *stmt = stmts[j];
-                pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
-                for (k=0; k<nvar; k++)    {
-                    stmt->trans->val[stmt->trans->nrows-1][k] = sol[npar+1+j*(nvar+1)+k];
-                }
-                /* No parameteric shifts */
-                for (k=nvar; k<nvar+npar; k++)    {
-                    stmt->trans->val[stmt->trans->nrows-1][k] = 0;
-                }
-                /* Constant loop shift */
-                stmt->trans->val[stmt->trans->nrows-1][nvar+npar] = sol[npar+1+j*(nvar+1)+nvar];
-
-                stmt->hyp_types[stmt->trans->nrows-1] =  
-                    pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows-1)?
-                    H_SCALAR: H_LOOP;
-
-            }
+            add_hyperplane_from_ilp_solution(sol, prog);
             prog->scaling_cst_sol_time += rtclock()-t_start;
             free(sol);
             IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
@@ -2597,6 +2610,21 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
             return 1;
         } else {
             printf("[pluto] No Hyperplane found\n");
+            if (options->delayed_cut) {
+                coeffcst->nrows  = coeffcst->nrows - basecst->nrows;
+                cut_smart(prog, prog->ddg);
+                basecst = get_permutability_constraints(prog);
+                coeffcst = pluto_constraints_add(coeffcst, basecst);
+                sol = pluto_prog_constraints_lexmin(coeffcst, prog);
+                if (sol != NULL) {
+                    add_hyperplane_from_ilp_solution(sol, prog);
+                    prog->scaling_cst_sol_time += rtclock()-t_start;
+                    free(sol);
+                    IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes-1););
+                    pluto_constraints_free(coeffcst);
+                    return 1;
+                }
+            }
             pluto_constraints_free(coeffcst);
             prog->scaling_cst_sol_time += rtclock()-t_start;
             return 0;
@@ -2894,6 +2922,7 @@ void introduce_skew(PlutoProg *prog)
         skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
         src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
         level++;
+        
 
         for (; level <prog->num_hyperplanes; level++) {
             if (hProps[level].type != H_LOOP) {
@@ -2910,7 +2939,15 @@ void introduce_skew(PlutoProg *prog)
                     skew_dim++;
                 }
             }
-
+            printf("Skewing at level %d\n", level);
+            printf ("Src:dims\n");
+            for (j=0; j<nvar; j++) {
+                printf("%d : %d\n", j, src_dims[j]);
+            }
+            printf ("skew:dims\n");
+            for (j=0; j<nvar; j++) {
+                printf("%d : %d\n", j, skew_dims[j]);
+            }
             /* Skewing has to be done at level j+1 */
             if (j==prog->num_hyperplanes) {
                 break;
