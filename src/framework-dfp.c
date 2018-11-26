@@ -2532,18 +2532,16 @@ void add_coeff_constraints_from_fcg_colouring (PlutoConstraints *coeffcst, int *
  * was successful. Else returns 0. */
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
 {
-    int j, k, select;
+    int select;
     int nvar, npar;
     int nstmts;
     double t_start;
     PlutoConstraints *basecst,*coeffcst, *boundcst;
     int64 *sol;
 
-    Stmt **stmts;
 
     nvar = prog->nvar;
     npar = prog->npar;
-    stmts = prog->stmts;
     nstmts = prog->nstmts;
 
 
