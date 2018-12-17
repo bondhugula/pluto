@@ -1810,7 +1810,7 @@ int pluto_auto_transform(PlutoProg *prog)
                     num_ind_sols_found));
     }else{
         num_ind_sols_found = 0;
-        if (options->fuse == SMART_FUSE)    {
+        if (options->fuse == SMART_FUSE && !options->dfp)    {
             cut_scc_dim_based(prog,ddg);
         }
     }

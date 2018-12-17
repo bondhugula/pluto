@@ -1819,7 +1819,9 @@ bool colour_scc_cluster (int scc_id, int *colour, int current_colour, PlutoProg*
     }
 
     /* printf("Colouring Scc %d with colour %d \n", scc_id, current_colour); */
-    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && !sccs[scc_id].has_parallel_hyperplane) {
+    bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
+    /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid, then look max_fuse instead of greedy typed fuse heuristic */
+    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && !hybrid_cut ) {
         if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
             sccs[scc_id].has_parallel_hyperplane = true;
             return true;
@@ -2149,6 +2151,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
 
         IF_DEBUG(printf("[colour_fcg_scc_based]: Colouring Scc %d of Size %d with colour %d\n",i,ddg->sccs[i].size, c););
         if (options->scc_cluster) {
+            bool hybrid_cut = options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
             if (options->fuse == TYPED_FUSE) {
                 /* case when the previous scc that was coloured was parallel and the current one is seqential */
                 if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured) {
@@ -2163,7 +2166,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                             pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
                         }
                     }
-                } else if (ddg->sccs[i].is_parallel && !is_parallel_scc_coloured && prev_scc != -1) {
+                } else if (ddg->sccs[i].is_parallel && !hybrid_cut && !is_parallel_scc_coloured && prev_scc != -1) {
                     if (are_sccs_fused(prog, prev_scc, i)) {
                         /* distribute the loops here. Note that
                          * sccs may not be connected at all. However we still

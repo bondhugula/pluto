@@ -95,6 +95,7 @@ void usage_message(void)
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
     fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
     fprintf(stdout, "       --typedfuse               Typed fusion. Fuses SCCs only when there is no loss of parallelism\n");
+    fprintf(stdout, "       --hybridfuse              Typed fusion at outer levels and max fuse at inner level\n");
     fprintf(stdout, "       --delayedcut              Delays the cut between SCCs of different dimensionalities in dfp approach\n");
     fprintf(stdout, "\n   Index Set Splitting        \n");
     fprintf(stdout, "       --iss                  \n");
@@ -177,6 +178,7 @@ int main(int argc, char *argv[])
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
         {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+        {"hybridfuse", no_argument, &options->hybridcut, 1},
         {"delayedcut", no_argument, &options->delayed_cut,1},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},

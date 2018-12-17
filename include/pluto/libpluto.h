@@ -62,6 +62,9 @@ struct plutoOptions{
     /* For experimental purposes with dfp */
     int delayed_cut;
 
+    /* Tyepd fuse at outer levels, max fuse at inner levels */
+    int hybridcut;
+
     /* for debugging - print default cloog-style total */
     int scancount;
 
@@ -203,6 +206,8 @@ typedef struct plutoOptions PlutoOptions;
 #define SMART_FUSE 2
 /* Fuses SCCs only if fusion does not result in loss of parallelism */
 #define TYPED_FUSE 3
+/* Typed fuse at outer levels, Max fuse at inner levels */
+# define HYBRID_FUSE 4
 
 
 PlutoOptions *pluto_options_alloc();
