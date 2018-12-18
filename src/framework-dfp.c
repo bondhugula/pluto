@@ -1314,7 +1314,7 @@ void cut_around_scc (int scc_id, PlutoProg *prog)
     int j;
     Graph *ddg;
     ddg = prog->ddg;
-    for (j=0;j<ddg->num_sccs; j++) {
+    for (j=0; j<ddg->num_sccs; j++) {
         if (scc_id!=j) {
             if ((j < scc_id) && ddg_sccs_direct_connected(ddg,prog,j,scc_id)) {
                 IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",j,scc_id););
