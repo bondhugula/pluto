@@ -59,6 +59,12 @@ struct plutoOptions{
     /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
     int fuse;
 
+    /* For experimental purposes with dfp */
+    int delayed_cut;
+
+    /* Tyepd fuse at outer levels, max fuse at inner levels */
+    int hybridcut;
+
     /* for debugging - print default cloog-style total */
     int scancount;
 
@@ -172,6 +178,9 @@ struct plutoOptions{
     /* Use LP solutions to colour SCCs */
     int lpcolour;
 
+    /* Cluster the statements of the SCC. Currently supported with DFP based approach only */
+    int scc_cluster;
+
     /* Index set splitting */
     int iss;
 
@@ -195,6 +204,10 @@ typedef struct plutoOptions PlutoOptions;
 #define MAXIMAL_FUSE 1
 /* Something in between the above two */
 #define SMART_FUSE 2
+/* Fuses SCCs only if fusion does not result in loss of parallelism */
+#define TYPED_FUSE 3
+/* Typed fuse at outer levels, Max fuse at inner levels */
+# define HYBRID_FUSE 4
 
 
 PlutoOptions *pluto_options_alloc();

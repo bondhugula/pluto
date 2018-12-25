@@ -328,7 +328,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in case of pluto-lp-dfp */
-    if (!options->dfp){
+    if (!options->dfp) {
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
         for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -403,7 +403,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
-        if(!options->dfp){
+        if (!options->dfp){
             j = npar + 1;
             for (i=0; i<nstmts; i++)    {
                 for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -1810,7 +1810,7 @@ int pluto_auto_transform(PlutoProg *prog)
                     num_ind_sols_found));
     }else{
         num_ind_sols_found = 0;
-        if (options->fuse == SMART_FUSE)    {
+        if (options->fuse == SMART_FUSE && !options->dfp)    {
             cut_scc_dim_based(prog,ddg);
         }
     }
@@ -1822,7 +1822,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
     if (options->dfp) {
 #if defined GLPK || defined GUROBI
-        if(options->fuse == NO_FUSE) {
+        if (options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
@@ -1835,13 +1835,21 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         nVertices = 0;
-        for (i=0; i<nstmts; i++) {
-            ddg->vertices[i].fcg_stmt_offset = nVertices;
-            nVertices += stmts[i]->dim_orig;
+        if (options->scc_cluster) {
+            for (i=0; i<ddg->num_sccs; i++) {
+                ddg->sccs[i].fcg_scc_offset = nVertices;
+                ddg->sccs[i].is_scc_coloured = false;
+                nVertices += ddg->sccs[i].max_dim;
+            }
+        } else {
+            for (i=0; i<nstmts; i++) {
+                ddg->vertices[i].fcg_stmt_offset = nVertices;
+                nVertices += stmts[i]->dim_orig;
+            }
         }
 
         colour = (int*) malloc(nVertices*sizeof(int));
-        for(i=0; i<nVertices;i++){
+        for (i=0; i<nVertices;i++){
             colour[i] = 0;
         }
 
@@ -1867,20 +1875,18 @@ int pluto_auto_transform(PlutoProg *prog)
             prog->scaled_dims[i] = 0;
         }
 
-        /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
+        /* This routine frees colour internally */
         find_permutable_dimensions_scc_based(colour, prog);
 
-        IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
-        IF_DEBUG(pluto_print_colours(colour,prog););
 
-        if(!options->silent && options->debug) {
+        if (!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
             pluto_transformations_pretty_print(prog);
         }
 
         introduce_skew(prog);
 
-        free(colour);
+        /* free(colour); */
         free(prog->total_coloured_stmts);
         free(prog->scaled_dims);
 #endif
@@ -1999,10 +2005,10 @@ int pluto_auto_transform(PlutoProg *prog)
     }
 
  /* Deallocate the fusion conflict graph */
-    if (options->dfp){
+    if (options->dfp) {
 #if defined GLPK || defined GUROBI
         ddg = prog->ddg;
-        for(i=0; i<ddg->num_sccs; i++){
+        for (i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);
         }
         graph_free(prog->fcg);
@@ -2202,7 +2208,7 @@ void ddg_compute_cc(PlutoProg *prog)
     graph_free(gU);
 }
 
-/* Compute the SCCs of a graph (usig Kosaraju's algorithm) */
+/* Compute the SCCs of a graph (using Kosaraju's algorithm) */
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;

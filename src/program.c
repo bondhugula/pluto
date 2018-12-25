@@ -2658,6 +2658,12 @@ void pluto_prog_free(PlutoProg *prog)
 
     pluto_constraints_free(prog->globcst);
 
+    /* Free data names */
+    for (i=0; i<prog->num_data; i++) {
+        free(prog->data_names[i]);
+    }
+    free(prog->data_names);
+
     free(prog);
 }
 
@@ -2710,6 +2716,8 @@ PlutoOptions *pluto_options_alloc()
 
     /* Experimental */
     options->polyunroll = 0;
+    options->delayed_cut = 0;
+    options->hybridcut = 0;
 
     /* Default context is no context */
     options->codegen_context = -1;
@@ -2736,6 +2744,8 @@ PlutoOptions *pluto_options_alloc()
     options->ilp = 0;
 
     options->lpcolour = 0;
+    options->scc_cluster = 0;
+   
 
     options->readscop = 0;
 
