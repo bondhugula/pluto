@@ -298,6 +298,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     nstmts = prog->nstmts;
     nvar = prog->nvar;
     npar = prog->npar;
+    sol = NULL;
 
     assert(cst->ncols - 1 == CST_WIDTH - 1);
 
@@ -327,7 +328,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
     /* Permute the constraints so that if all else is the same, the original
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in case of pluto-lp-dfp */
-    if (!options->dfp){
+    if (!options->dfp) {
     j = npar + 1;
     for (i=0; i<nstmts; i++)    {
         for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -346,25 +347,39 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
-    }
-#ifdef GLPK
-    else if (options->glpk || options->lp || options->dfp) {
-         
+    }else if (options->glpk || options->lp || options->dfp || options->gurobi) {
         double **val = NULL;
         int **index = NULL;
-        int num_ccs, nrows;
-        num_ccs = 0;
+        int nrows;
+
+        nrows = 0;
 
         PlutoMatrix *obj = construct_cplex_objective(newcst, prog);
+
+#if defined(GLPK) || defined(GUROBI)
+        int num_ccs;
+
+        num_ccs = 0;
+#endif
 
         if (options->lp) {
             nrows = newcst->ncols-1-npar-1;
             populate_scaling_csr_matrices_for_pluto_program(&index, &val, nrows, prog);
+#if defined(GLPK) || defined(GUROBI)
             num_ccs = prog->ddg->num_ccs;
+#endif
         }
 
         t_start = rtclock(); 
+        if (options->glpk) {
+#ifdef GLPK
         sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar, num_ccs);
+#endif
+        } else if (options->gurobi) {
+#ifdef GUROBI
+            sol = pluto_prog_constraints_lexmin_gurobi(newcst, obj, val, index, npar, num_ccs);
+#endif
+        }
         prog->mipTime += rtclock()-t_start;
 
         pluto_matrix_free(obj);
@@ -376,23 +391,19 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
             free(val);
             free(index);
         }
-    }
-#endif
-    else {
+    }else{
+        /* Use PIP */
         t_start = rtclock(); 
         sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
         prog->mipTime += rtclock()-t_start;
     }
-    /* sol = pluto_constraints_lexmin(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF); */
-    /* print_polylib_visual_sets("csts", newcst); */
-
 
     fsol = NULL;
     if (sol) {
         int k1, k2, q;
         int64 tmp;
         /* Permute the solution in line with the permuted cst */
-        if(!options->dfp){
+        if (!options->dfp){
             j = npar + 1;
             for (i=0; i<nstmts; i++)    {
                 for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
@@ -1716,7 +1727,7 @@ int pluto_auto_transform(PlutoProg *prog)
     /* Pluto algo mode -- LAZY or EAGER */
     bool hyp_search_mode;
 
-#ifdef GLPK
+#if defined GLPK || defined GUROBI
     Graph* fcg;
     int *colour, nVertices;
 #endif
@@ -1799,7 +1810,7 @@ int pluto_auto_transform(PlutoProg *prog)
                     num_ind_sols_found));
     }else{
         num_ind_sols_found = 0;
-        if (options->fuse == SMART_FUSE)    {
+        if (options->fuse == SMART_FUSE && !options->dfp)    {
             cut_scc_dim_based(prog,ddg);
         }
     }
@@ -1810,8 +1821,8 @@ int pluto_auto_transform(PlutoProg *prog)
     conc_start_found = 0;
 
     if (options->dfp) {
-#ifdef GLPK
-        if(options->fuse == NO_FUSE) {
+#if defined GLPK || defined GUROBI
+        if (options->fuse == NO_FUSE) {
             ddg_compute_scc(prog);
             cut_all_sccs(prog, ddg);
         }
@@ -1824,13 +1835,21 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         nVertices = 0;
-        for (i=0; i<nstmts; i++) {
-            ddg->vertices[i].fcg_stmt_offset = nVertices;
-            nVertices += stmts[i]->dim_orig;
+        if (options->scc_cluster) {
+            for (i=0; i<ddg->num_sccs; i++) {
+                ddg->sccs[i].fcg_scc_offset = nVertices;
+                ddg->sccs[i].is_scc_coloured = false;
+                nVertices += ddg->sccs[i].max_dim;
+            }
+        } else {
+            for (i=0; i<nstmts; i++) {
+                ddg->vertices[i].fcg_stmt_offset = nVertices;
+                nVertices += stmts[i]->dim_orig;
+            }
         }
 
         colour = (int*) malloc(nVertices*sizeof(int));
-        for(i=0; i<nVertices;i++){
+        for (i=0; i<nVertices;i++){
             colour[i] = 0;
         }
 
@@ -1856,20 +1875,18 @@ int pluto_auto_transform(PlutoProg *prog)
             prog->scaled_dims[i] = 0;
         }
 
-        /* printf("[Pluto]: Num hyperplanes found so far %d\n", prog->num_hyperplanes); */
+        /* This routine frees colour internally */
         find_permutable_dimensions_scc_based(colour, prog);
 
-        IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
-        IF_DEBUG(pluto_print_colours(colour,prog););
 
-        if(!options->silent && options->debug) {
+        if (!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
             pluto_transformations_pretty_print(prog);
         }
 
         introduce_skew(prog);
 
-        free(colour);
+        /* free(colour); */
         free(prog->total_coloured_stmts);
         free(prog->scaled_dims);
 #endif
@@ -1988,10 +2005,10 @@ int pluto_auto_transform(PlutoProg *prog)
     }
 
  /* Deallocate the fusion conflict graph */
-    if (options->dfp){
-#ifdef GLPK
+    if (options->dfp) {
+#if defined GLPK || defined GUROBI
         ddg = prog->ddg;
-        for(i=0; i<ddg->num_sccs; i++){
+        for (i=0; i<ddg->num_sccs; i++){
             free(ddg->sccs[i].vertices);
         }
         graph_free(prog->fcg);
@@ -2191,7 +2208,7 @@ void ddg_compute_cc(PlutoProg *prog)
     graph_free(gU);
 }
 
-/* Compute the SCCs of a graph (usig Kosaraju's algorithm) */
+/* Compute the SCCs of a graph (using Kosaraju's algorithm) */
 void ddg_compute_scc(PlutoProg *prog)
 {
     int i;

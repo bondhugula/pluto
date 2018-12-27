@@ -279,6 +279,9 @@ PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog
         dep = prog->deps[i];
         src = dep->src;
         dest = dep->dest;
+        if (dep_is_satisfied(dep)) {
+            continue;
+        }
         if (prog->stmts[src]->scc_id == scc_id && prog->stmts[src]->scc_id == prog->stmts[dest]->scc_id) {
             if (dep->cst == NULL) {
                 compute_permutability_constraints_dep(dep, prog);
