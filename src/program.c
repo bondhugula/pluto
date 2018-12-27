@@ -2835,7 +2835,8 @@ void pluto_prog_free(PlutoProg *prog)
 
     free(prog->decls);
 
-    /* Free data names */
+    /* Free data names. This is not allocated with pet.
+     * Hence we need a guarded free here*/
     if (!prog->data_names) {
         for (i=0; i<prog->num_data; i++) {
             free(prog->data_names[i]);
