@@ -4778,7 +4778,6 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
 
         isl_id_list * iterators = generate_names(ctx, stmt);
         build = isl_ast_build_set_iterators(build, iterators);
-        //isl_ast_build_dump(build);
 
         ref2expr = pet_stmt_build_ast_exprs(stmt, build,
                                     &pullback_index, iterator_map, NULL, NULL);
