@@ -65,7 +65,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
         ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
-        clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
+        clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
         /* There should be at least one */
         if (nloops==0) {
@@ -137,7 +137,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
         // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
         ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
-        clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
+        clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
         /* There should be at least one */
         if (nloops==0) {

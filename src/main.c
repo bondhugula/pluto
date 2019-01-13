@@ -621,8 +621,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
           cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
   
           if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-              strncpy(outFileName, bname, strlen(bname)-2);
-              strncpy(cloogFileName, bname, strlen(bname)-2);
+              memcpy(outFileName, bname, strlen(bname)-2);
+              memcpy(cloogFileName, bname, strlen(bname)-2);
               outFileName[strlen(bname)-2] = '\0';
               cloogFileName[strlen(bname)-2] = '\0';
           }else{

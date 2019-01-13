@@ -110,7 +110,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     stmt->id = id;
 
     for (i=0; i<stmt->dim; i++) {
-        char *iter = malloc(5);
+        char *iter = malloc(13);
         sprintf(iter, "i%d",  i);
         stmt->iterators[i] = iter;
     }
@@ -121,7 +121,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
 
     for (i=0; i<npar; i++) {
-        char *param = malloc(5);
+        char *param = malloc(13);
         sprintf(param, "p%d", i);
         stmt->domain->names[stmt->dim+i] = param;
     }
@@ -630,9 +630,9 @@ int pluto_schedule_osl(osl_scop_p scop,
 */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *domains,
         isl_union_map *dependences,
-        Ploop*** ploops,
-        int* nploops,
-        Remapping** remap,
+        Ploop ***ploops,
+        unsigned *nploops,
+        Remapping **remap,
         PlutoOptions *options_l)
 {
     unsigned i, j, nbands, n_ibands;
@@ -842,7 +842,7 @@ void pluto_schedule_str(const char *domains_str,
 
     isl_ctx *ctx = isl_ctx_alloc();
     Ploop** ploop;
-    int nploop = 0,i;
+    unsigned nploop = 0, i;
     Remapping* remapping;
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);

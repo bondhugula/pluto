@@ -232,7 +232,7 @@ int pluto_schedule_osl(osl_scop_p scop,
  * and divs.
  */
 struct remapping {
-    int nstmts;
+    unsigned nstmts;
     PlutoMatrix **stmt_inv_matrices;
     int **stmt_divs;
 };

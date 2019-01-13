@@ -547,6 +547,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         lb=0;
         ub=0;
         nb=0;
+
         /* Variable does appear */
         for (j=0; j<cst->nrows; j++)    {
             if (cst->val[j][pos] == 0) {
@@ -566,7 +567,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         pluto_constraints_zero(newcst);
         newcst->nrows = 0;
 
-        p=0;
+        p = 0;
         for (j=0; j<cst->nrows; j++)    {
             if (bound[j] == UB) {
                 for (k=0; k<cst->nrows; k++)    {
