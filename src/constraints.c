@@ -1025,7 +1025,7 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
                 char var[6];
                 var[5] = '\0';
                 if (cst->names) strncpy(var, cst->names[j], 5);
-                else sprintf(var, "c_%d", j);
+                else snprintf(var, 5, "c_%d", j);
 
                 if (cst->val[i][j] == 1) {
                     fprintf(fp, "+%s ", var);

@@ -2685,8 +2685,9 @@ PlutoOptions *pluto_options_alloc()
     options->innerpar = 0;
     options->identity = 0;
 
-    options->lbtile = 0;
-    options->partlbtile = 0;
+    /* Enable one dimension of concurrent startup by default */
+    options->diamondtile = 1;
+    options->fulldiamondtile = 0;
 
     options->iss = 0;
     options->unroll = 0;

@@ -82,10 +82,8 @@ void usage_message(void)
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) [disabled by default] \n");
     fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas) [disabled by default]\n");
     fprintf(stdout, "    or --parallelize\n");
-    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start (recommended)\n");
-    fprintf(stdout, "    or --part-diamond-tile\n");
-    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
-    fprintf(stdout, "    or --diamond-tile\n");
+    fprintf(stdout, "       --[no]diamond-tile        Performs diamond tiling (enabled by default)\n");
+    fprintf(stdout, "       --full-diamond-tile       Enables full-dimensional concurrent start\n");
     fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --multipar                Extract all degrees of parallelism [disabled by default];\n");
     fprintf(stdout, "                                    by default one degree is extracted within any schedule sub-tree (if it exists)\n");
@@ -166,10 +164,9 @@ int main(int argc, char *argv[])
         {"notile", no_argument, &options->tile, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
         {"nointratileopt", no_argument, &options->intratileopt, 0},
-        {"lbtile", no_argument, &options->lbtile, 1},
-        {"diamond-tile", no_argument, &options->lbtile, 1},
-        {"part-diamond-tile", no_argument, &options->partlbtile, 1},
-        {"partlbtile", no_argument, &options->partlbtile, 1},
+        {"diamond-tile", no_argument, &options->diamondtile, 1},
+        {"nodiamond-tile", no_argument, &options->diamondtile, 0},
+        {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -352,15 +349,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->identity == 1) {
-        options->partlbtile = 0;
-        options->lbtile = 0;
+        options->diamondtile = 0;
+        options->fulldiamondtile = 0;
     }
 
-    if (options->partlbtile == 1 && options->lbtile == 0)    {
-        options->lbtile = 1;
+    if (options->fulldiamondtile == 1 && options->diamondtile == 0)    {
+        options->diamondtile = 1;
     }
 
-    if (options->lbtile == 1 && options->tile == 0)    {
+    if (options->diamondtile == 1 && options->tile == 0)    {
         options->tile = 1;
     }
 

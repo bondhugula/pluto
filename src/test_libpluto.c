@@ -34,6 +34,7 @@ int test2()
     isl_union_map_free(deps);
 
     isl_ctx_free(ctx);
+    return 0;
 }
 
 void test1()
@@ -100,12 +101,6 @@ void crash_negative_dep_vector()
 
 }
 
-/*
-Works with options->lbtile = 1. Does not work with options->libtile = 0 &&
-    options->partlbtile = 1.
-i0: time
-i1: row
-*/
 void test_diamond_tiling() 
 {
     printf("\n\n*** TEST CASE 3 ***\n\n");
@@ -199,8 +194,8 @@ int main()
     options->debug = 0;
     options->moredebug = 0;
     options->islsolve = 1;
-    options->partlbtile = 1;
-    options->lbtile = 1;
+    options->diamondtile = 1;
+    options->fulldiamondtile = 0;
 
     test1();
     test2();

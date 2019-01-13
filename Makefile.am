@@ -63,10 +63,10 @@ test: .PHO
 	./test.sh --silent
 	./test.sh --silent --tile --parallel --cloogsh --nocloogbacktrack
 	./test.sh --silent --lastwriter --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --partlbtile --cloogsh --nocloogbacktrack
+	./test.sh --silent --diamondtile --cloogsh --nocloogbacktrack
 	./test.sh --silent --lastwriter
 	./test.sh --silent --nofuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --partlbtile --cloogsh --nocloogbacktrack
+	./test.sh --silent --lastwriter --diamondtile --cloogsh --nocloogbacktrack
 	./test.sh --silent --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
 	./test.sh --silent --nofuse
 	./test.sh --silent --iss

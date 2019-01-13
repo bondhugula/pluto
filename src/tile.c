@@ -289,7 +289,7 @@ void pluto_tile(PlutoProg *prog)
         /* pluto_print_hyperplane_properties(prog); */
     }
 
-    if (options->lbtile) {
+    if (options->diamondtile) {
         int retval;
         retval = pluto_diamond_tile_reschedule(prog);
 

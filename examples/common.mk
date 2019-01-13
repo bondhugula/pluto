@@ -56,12 +56,8 @@ $(SRC).tiled.c:  $(SRC).c
 $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
-$(SRC).lbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
-
-$(SRC).mlbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --lbtile --multipar $(TILEFLAGS) $(PLCFLAGS) -o $@
-
+$(SRC).pipepar.c:  $(SRC).c
+	$(PLC) $(SRC).c --tile --parallel --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
@@ -75,12 +71,8 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
-lbpar: $(SRC).lbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
-
-mlbpar: $(SRC).mlbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
-
+pipepar: $(SRC).pipepar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
 
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
@@ -92,10 +84,10 @@ perf: orig tiled par orig_par
 	./tiled
 	OMP_NUM_THREADS=$(NTHREADS) ./par 
 
-lbperf: par lbpar
+pipeperf: par pipepar
 	rm -f .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 
 
 
 test: orig tiled par
@@ -108,14 +100,13 @@ test: orig tiled par
 	diff -q out_orig out_par4
 	@echo Success!
 
-lbtest: par lbpar mlbpar
+lbtest: par pipepar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
-	OMP_NUM_THREADS=$(NTHREADS) ./mlbpar 2> out_mlbpar4
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 2> out_pipepar4
 	rm -f .test
-	diff -q out_par4 out_lbpar4
-	diff -q out_par4 out_mlbpar4
+	diff -q out_par4 out_pipepar4
+	diff -q out_par4 out_fulldiamondtile4
 	@echo Success!
 
 opt-test: orig opt
@@ -128,11 +119,11 @@ opt-test: orig opt
 	rm -f .test
 
 clean:
-	rm -f out_* *.lbpar.c *.tiled.c *.opt.c *.par.c *.mlbpar.c orig opt tiled par sched orig_par \
+	rm -f out_* *.pipepar.c *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
 		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
-	rm -f out_* opt orig tiled lbtile lbpar  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
+	rm -f out_* opt orig tiled sched sched hopt hopt par pipepar orig_par *.out.* *.kernel.* a.out \
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d

@@ -1568,10 +1568,13 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces, i
 
             lastcst->val[lastcst->nrows-1][stmt_offset2] = -(conc_start_faces->val[s][j]);
 
-            if (options->partlbtile) {
+            /* Unless fulldiamondtile is set, enable concurrent start along
+             * only one dimension. */
+            if (!options->fulldiamondtile) {
                 lastcst->val[lastcst->nrows-1][stmt_offset2+1] = 
                     stmt->trans->val[cone_complement_pos][j];
             }else{
+                // Full dimensional concurrent start */
                 lambda_k = 0;
                 /* Just for the band depth hyperplanes */
                 for (k=band->loop->depth; k < band->loop->depth + band->width; k++){
@@ -1603,8 +1606,6 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces, i
 
     pluto_constraints_add(con_start_cst, lastcst);
     pluto_constraints_free(lastcst);
-    // printf("Cone complement constraints\n");
-    // pluto_constraints_pretty_print(stdout, con_start_cst);
 
     /* pluto_constraints_lexmin is being called directly */
     bestsol = pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
@@ -1930,7 +1931,7 @@ int pluto_auto_transform(PlutoProg *prog)
 
             if (nsols >= 1) {
                 /* Diamond tiling: done for the first band of permutable loops */
-                if (options->lbtile && nsols >= 2 && !conc_start_found) {
+                if (options->diamondtile && nsols >= 2 && !conc_start_found) {
                     conc_start_found = pluto_diamond_tile(prog);
                 }
 
@@ -2014,7 +2015,7 @@ int pluto_auto_transform(PlutoProg *prog)
         graph_free(prog->fcg);
 #endif
     }
-    if (options->lbtile && !conc_start_found) {
+    if (options->diamondtile && !conc_start_found) {
         PLUTO_MESSAGE(printf("[pluto] Diamond tiling not possible/useful\n"););
     }
 
