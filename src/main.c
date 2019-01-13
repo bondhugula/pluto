@@ -555,7 +555,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->parallel && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
-        int nbands;
+        unsigned nbands;
         Band **bands;
         pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);

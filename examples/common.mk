@@ -56,6 +56,7 @@ $(SRC).tiled.c:  $(SRC).c
 $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
+# Version that doesn't use diamond tiling
 $(SRC).pipepar.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
@@ -71,6 +72,7 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
+# Version that doesn't use diamond tiling
 pipepar: $(SRC).pipepar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
 
@@ -84,6 +86,7 @@ perf: orig tiled par orig_par
 	./tiled
 	OMP_NUM_THREADS=$(NTHREADS) ./par 
 
+# Compare performance with and without diamond tiling.
 pipeperf: par pipepar
 	rm -f .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par

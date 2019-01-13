@@ -2332,14 +2332,14 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog)
 /* Are these statements completely fused until the innermost level */
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
 {
-    int num;
+    unsigned num;
 
     if (prog->num_hyperplanes <= 1) return 1;
 
     Ploop **loops = pluto_get_loops_under(stmts, nstmts, prog->num_hyperplanes-2, prog, &num);
     pluto_loops_free(loops, num);
 
-    return num==1;
+    return (num == 1);
 }
 
 
@@ -2348,7 +2348,8 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog)
  */
 int pluto_diamond_tile(PlutoProg *prog)
 {
-    int b, d, nbands, conc_start_enabled, conc_start_enabled_band;
+    int b, d, conc_start_enabled, conc_start_enabled_band;
+    unsigned nbands;
 
     IF_DEBUG(printf("[pluto] pluto_diamond_tile\n")); 
 
@@ -2370,7 +2371,8 @@ int pluto_diamond_tile(PlutoProg *prog)
         PlutoMatrix **cone_complement_hyps;
         Band *band = bands[b];
         int evict_pos;
-        int i, first_loop_hyp, cone_complement_pos, ni, s;
+        int i, first_loop_hyp, cone_complement_pos, s;
+        unsigned ni;
 
         /* Band should not have outer parallelism */
         if (pluto_loop_is_parallel(prog, band->loop)) continue;
@@ -2415,7 +2417,7 @@ int pluto_diamond_tile(PlutoProg *prog)
             continue;
         }
 
-        cone_complement_hyps = malloc(
+        cone_complement_hyps = (PlutoMatrix **) malloc(
                 band->loop->nstmts*sizeof(PlutoMatrix *));
         for (i=0; i<band->loop->nstmts; i++) {
             cone_complement_hyps[i] = NULL;

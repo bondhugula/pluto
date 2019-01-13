@@ -222,7 +222,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes)
  */
 void pluto_tile(PlutoProg *prog)
 {
-    int nbands, i, j, n_ibands, num_tiled_levels, nloops;
+    unsigned nbands, i, j, n_ibands, num_tiled_levels, nloops;
     Band **bands, **ibands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);

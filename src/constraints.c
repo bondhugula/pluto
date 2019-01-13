@@ -1002,7 +1002,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
 {
-    int i, j;
+    int i;
 
     int nrows = cst->nrows;
     int ncols = cst->ncols;
@@ -1015,7 +1015,7 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
 
     for (i=0; i<nrows; i++) {
             int first = 1;
-        for (j=0; j<ncols; j++)    {
+        for (unsigned char j=0; j<ncols; j++)    {
             if (j==ncols-1) {
                 /* constant */
                 /* Not supported in CPLEX format */
@@ -1023,9 +1023,8 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
                 if (!first) fprintf(fp, "%s %lld\n", cst->is_eq[i]? "=": ">=", -cst->val[i][j]);
             }else{
                 char var[6];
-                var[5] = '\0';
                 if (cst->names) strncpy(var, cst->names[j], 5);
-                else snprintf(var, 5, "c_%d", j);
+                else snprintf(var, 6, "c_%d", j);
 
                 if (cst->val[i][j] == 1) {
                     fprintf(fp, "+%s ", var);

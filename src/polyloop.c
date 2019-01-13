@@ -108,9 +108,9 @@ Ploop **pluto_loops_cat(Ploop **dest, int num1, Ploop **src, int num2)
 
 
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
-        int *num)
+        unsigned *num)
 {
-    int ni, i;
+    unsigned ni, i;
 
     Ploop **loops = pluto_get_loops_under(ploop->stmts, ploop->nstmts,
             ploop->depth, prog, &ni);
@@ -137,10 +137,9 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
  * If all 'stmts' aren't fused up to depth-1, no such loops exist by
  * definition
  */
-Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
-        const PlutoProg *prog, int *num)
+Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
+        const PlutoProg *prog, unsigned *num)
 {
-    int i;
     Ploop **all_loops = NULL;
     bool loop;
 
@@ -149,6 +148,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         return NULL;
     }
 
+    unsigned i;
     for (i=0; i<nstmts; i++) {
         if (stmts[i]->type != ORIG) continue;
         if (pluto_is_hyperplane_loop(stmts[i], depth)) break;
@@ -160,7 +160,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
         /* Even if one of the statements is a loop at this level, 
          * all of the statements are treated as being fused with it; 
          * check any limitations of this later */
-        int num_inner=0, loop_nstmts, i;
+        unsigned num_inner, loop_nstmts, i;
         Ploop **inner_loops, *this_loop;
         this_loop = pluto_loop_alloc();
         this_loop->stmts = malloc(nstmts*sizeof(Stmt *));
@@ -229,7 +229,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
 
         int nloops = 0;
         for (i=0; i<num_grps; i++) {
-            int num_inner = 0;
+            unsigned num_inner = 0;
             Ploop **inner_loops;
             inner_loops =  pluto_get_loops_under(groups[i], num_stmts_per_grp[i], 
                     depth+1, prog, &num_inner);
@@ -251,7 +251,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
 }
 
 
-Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num)
+Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num)
 {
     Ploop **loops;
     loops = pluto_get_loops_under(prog->stmts, prog->nstmts, 0, prog, num);
@@ -460,10 +460,10 @@ int pluto_loop_compar(const void *_l1, const void *_l2)
 
 
 /* Get all parallel loops */
-Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops)
+Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops)
 {
     Ploop **loops, **ploops;
-    int num=0, i;
+    unsigned num = 0, i;
 
     ploops = NULL;
     loops = pluto_get_all_loops(prog, &num);
@@ -486,10 +486,10 @@ Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops)
 
 
 /* List of parallel loops such that no loop dominates another in the list */
-Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *ndploops)
+Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *ndploops)
 {
     Ploop **loops, **dom_loops;
-    int i, j, ndomloops, nploops;
+    unsigned i, j, ndomloops, nploops;
 
     loops = pluto_get_parallel_loops(prog, &nploops);
 
@@ -515,7 +515,8 @@ Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *ndploops)
 Ploop **pluto_get_outermost_loops(const PlutoProg *prog, int *ndploops)
 {
     Ploop **loops, **dom_loops;
-    int i, j, ndomloops, nploops;
+    int i, j;
+    unsigned ndomloops, nploops;
 
     loops = pluto_get_all_loops(prog, &nploops);
 
@@ -614,11 +615,9 @@ void pluto_band_free(Band *band)
 }
 
 
-void pluto_bands_free(Band **bands, int nbands)
+void pluto_bands_free(Band **bands, unsigned nbands)
 {
-    int i;
-
-    for (i=0; i<nbands; i++) {
+    for (unsigned i=0; i<nbands; i++) {
         pluto_band_free(bands[i]);
     }
     free(bands);
@@ -739,10 +738,10 @@ Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog, int *innermost_split
 
 
 /* Returns subset of these bands that are not dominated by any other band */
-Band **pluto_get_dominator_bands(Band **bands, int nbands, int *ndom_bands)
+Band **pluto_get_dominator_bands(Band **bands, unsigned nbands, unsigned *ndom_bands)
 {
     Band **dom_bands;
-    int i, j, ndbands;
+    unsigned i, j, ndbands;
 
     dom_bands = NULL;
     ndbands = 0;
@@ -764,10 +763,10 @@ Band **pluto_get_dominator_bands(Band **bands, int nbands, int *ndom_bands)
 /*
  * Return dominating parallel bands
  */
-Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_placement_levels)
+Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands, int **comm_placement_levels)
 {
     Ploop **loops;
-    int num, i;
+    unsigned num, i;
     Band **bands;
 
     num = 0;
@@ -802,10 +801,10 @@ Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_pla
 
 
 /* Set of outermost non-trivial permutable bands (of width >= 2) */
-Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
+Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, unsigned *ndbands)
 {
     Ploop **loops;
-    int num, i, nbands;
+    unsigned num, i, nbands;
     Band **bands, **dbands;
 
     num = 0;
@@ -837,7 +836,7 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands)
 
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog)
 {
-    int num=-1;
+    unsigned num;
     Ploop **loops;
 
     loops = pluto_get_loops_under(loop->stmts, loop->nstmts, 
@@ -865,7 +864,7 @@ int pluto_is_band_innermost(const Band *band, int num_tiling_levels)
 Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops)
 {
     Ploop **loops, **iloops;
-    int i, num;
+    unsigned i, num;
 
     loops = pluto_get_all_loops(prog, &num);
 
@@ -885,10 +884,10 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops)
 
 
 /* Set of innermost non-trivial permutable bands (of width >= 2) */
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands)
+Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands)
 {
     Ploop **loops;
-    int num, i, nbands;
+    unsigned num, i, nbands;
     Band **bands, **dbands;
 
     bands = NULL;

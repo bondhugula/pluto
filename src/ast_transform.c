@@ -33,7 +33,7 @@
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         CloogOptions *cloogOptions)
 {
-    int i, j, nloops, nstmts, nploops;
+    unsigned i, j, nloops, nstmts, nploops;
     struct clast_for **loops;
     int *stmts;
     assert(root != NULL);
@@ -50,7 +50,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     // clast_pprint(stdout, root, 0, cloogOptions);
 
     for (i=0; i<nploops; i++) {
-        char iter[5];
+        char iter[13];
         sprintf(iter, "t%d", ploops[i]->depth+1);
         int *stmtids = malloc(ploops[i]->nstmts*sizeof(int));
         int max_depth = 0;
@@ -105,7 +105,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
         CloogOptions *cloogOptions)
 {
-    int i, j, nloops, nstmts, nploops;
+    unsigned i, j, nloops, nstmts, nploops;
     struct clast_for **loops;
     int *stmts;
     assert(root != NULL);
@@ -124,7 +124,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
 
         IF_DEBUG(printf("[pluto_mark_vector] marking loop vectorizable\n"););
         IF_DEBUG(pluto_loop_print(ploops[i]););
-        char iter[5];
+        char iter[13];
         sprintf(iter, "t%d", ploops[i]->depth+1);
         int *stmtids = malloc(ploops[i]->nstmts*sizeof(int));
         for (j=0; j<ploops[i]->nstmts; j++) {
