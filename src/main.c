@@ -65,12 +65,18 @@ void usage_message(void)
     fprintf(stdout, "       --islsolve [default]      Use ISL as ILP solver (default)\n");
     fprintf(stdout, "       --pipsolve                Use PIP as ILP solver\n");
 #ifdef GLPK
-    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver\n");
+    fprintf(stdout, "       --glpk                    Use GLPK as ILP solver (default in case of pluto-lp and pluto-dfp)\n");
+#endif
+#if defined GLPK || defined GUROBI
     fprintf(stdout, "       --lp                      Solve MIP instead of ILP\n");
     fprintf(stdout, "       --dfp                     Use Pluto-lp-dfp instead of pluto-ilp [disabled by default]\n");
     fprintf(stdout, "       --ilp                     Use ILP in pluto-lp-dfp instead of LP\n");
     fprintf(stdout, "       --lpcolor                 Color FCG based on the solutions of the lp-problem [disabled by default]\n");
+    fprintf(stdout, "       --clusterscc              Cluster the statemtns of an SCC. This is supported only availabe with decoupled approach [disabled by default]\n");
+#endif
     fprintf(stdout, "\n");
+#ifdef GUROBI
+    fprintf(stdout, "       --gurobi                  Use Gurobi as ILP solver\n");
 #endif
     fprintf(stdout, "\n");
     fprintf(stdout, "\n  Optimizations          Options related to optimization\n");
@@ -91,6 +97,9 @@ void usage_message(void)
     fprintf(stdout, "       --nofuse                  Do not fuse across SCCs of data dependence graph\n");
     fprintf(stdout, "       --maxfuse                 Maximal fusion\n");
     fprintf(stdout, "       --smartfuse [default]     Heuristic (in between nofuse and maxfuse)\n");
+    fprintf(stdout, "       --typedfuse               Typed fusion. Fuses SCCs only when there is no loss of parallelism\n");
+    fprintf(stdout, "       --hybridfuse              Typed fusion at outer levels and max fuse at inner level\n");
+    fprintf(stdout, "       --delayedcut              Delays the cut between SCCs of different dimensionalities in dfp approach\n");
     fprintf(stdout, "\n   Index Set Splitting        \n");
     fprintf(stdout, "       --iss                  \n");
     fprintf(stdout, "\n   Code generation       Options to control Cloog code generation\n");
@@ -175,6 +184,9 @@ int main(int argc, char *argv[])
         {"nofuse", no_argument, &options->fuse, NO_FUSE},
         {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
         {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
+        {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+        {"hybridfuse", no_argument, &options->hybridcut, 1},
+        {"delayedcut", no_argument, &options->delayed_cut,1},
         {"parallel", no_argument, &options->parallel, 1},
         {"parallelize", no_argument, &options->parallel, 1},
         {"innerpar", no_argument, &options->innerpar, 1},
@@ -215,10 +227,16 @@ int main(int argc, char *argv[])
         {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
         {"glpk", no_argument, &options->glpk, 1},
+#endif
+#ifdef GUROBI
+        {"gurobi", no_argument, &options->gurobi, 1},
+#endif
+#if defined GLPK || defined GUROBI
         {"lp", no_argument, &options->lp, 1},
         {"dfp", no_argument, &options->dfp, 1},
         {"ilp", no_argument, &options->ilp, 1},
         {"lpcolor", no_argument, &options->lpcolour, 1},
+        {"clusterscc", no_argument, &options->scc_cluster, 1},
 #endif
         {"islsolve", no_argument, &options->islsolve, 1},
         {"time", no_argument, &options->time, 1},
@@ -364,9 +382,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->parallel = 1;
     }
 
+    if (options->gurobi) {
+        options->islsolve = 0;
+    }
 #ifdef GLPK
-    if (options->lp && !options->glpk) {
-        printf("[pluto]: LP option available with a LP solver only. Using GLPK for lp solving\n");
+    if (options->lp && !(options->glpk || options->gurobi)) {
+        if (!options->silent) {
+        printf("[pluto] LP option available with a LP solver only. Using GLPK for lp solving\n");
+        }
         options->glpk = 1;
     }
 
@@ -375,21 +398,47 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lp = 1;
     }
         
-    if (options->dfp && !options->glpk) {
-        printf("[pluto]: Dfp framework is currently supported only with GLPK solver. Using GLPK for constraint solving \n");
+    if (options->dfp && !(options->glpk || options->gurobi)) {
+        if (!options->silent) {
+            printf("[pluto] Dfp framework is currently supported with GLPK and Gurobi solvers.\n"); 
+            printf("[pluto] Using GLPK for constraint solving [default]. Use --gurobi to use Gurobi instead of GLPK.\n");
+        }
         options->glpk = 1;
-    } 
+    }
     if (options->glpk) {
         /* Turn off islsolve */
         options->islsolve = 0;
     }
 #endif
 
-    if(options->dfp && !options->glpk) {
-        printf ("[pluto]: ERROR: DFP framework currently supported with GLPK solver only. Configure Pluto with --enable-glpk \n");
+    if (options->dfp && !(options->glpk || options->gurobi)) {
+        printf ("[pluto] ERROR: DFP framework is currently supported with GLPK or GUROBI solvers only. Run ./configure --help to for more information on using different solvers with Pluto.\n");
         pluto_options_free(options);
         usage_message();
         return 1;
+    }
+    if (options->scc_cluster && !options->dfp) {
+        printf("[pluto] Warning: SCC clustering heuristics available with dfp option (FCG based approach) only. Disabling clustering \n");
+    }
+
+    if (options->fuse == TYPED_FUSE && !options->dfp) {
+        printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. Turning off Typed fuse\n");
+        options->fuse = SMART_FUSE;
+    }
+
+    /* Make lastwriter default with dfp. This removes transitive dependences and hence reduces FCG construction time */
+    if (options->dfp && !options->lastwriter) {
+        if (!options->silent) {
+            printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
+        }
+        options->lastwriter = 1;
+    }
+    /* Typed fuse is available with clustered FCG approach only */
+    if (options->fuse ==TYPED_FUSE && options->dfp && !options->scc_cluster) {
+        if (!options->silent) {
+            printf("[pluto] Typed fuse supported only with clustered FCG approach. Turning on SCC clustering\n");
+        }
+        options->scc_cluster = 1;
     }
 
     /* Extract polyhedral representation from osl scop */
@@ -553,9 +602,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
          * parallelism, we will warn the user */
         if (retval)   {
             printf("[pluto] WARNING: pipelined parallelism exists and --tile is not used.\n");
-            printf("use --tile for better parallelization \n");
-            IF_DEBUG(fprintf(stdout, "[pluto] After skewing:\n"););
-            IF_DEBUG(pluto_transformations_pretty_print(prog););
+            printf("\tUse --tile for better parallelization \n");
+            fprintf(stdout, "[pluto] After skewing:\n");
+            pluto_transformations_pretty_print(prog);
             /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
     }
@@ -699,15 +748,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence analysis time: %0.6lfs\n", t_d);
         printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
         if (options-> dfp){
-            /* printf("[pluto] \t\ttotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time); */
-            /* printf("[pluto] \t\ttotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time); */
+            printf("[pluto] \t\tTotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time);
+            printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time);
             /* printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time); */
-            printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time+prog->fcg_colour_time+prog->fcg_colour_time);
+            /* printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time + prog->fcg_colour_time); */
             printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n", prog->fcg_dims_scale_time);
             /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
             printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n",prog->skew_time);
         }
-        printf("[pluto] \t\ttotal constraint solving time (LP/MIP/ILP) time: %0.6lfs\n", prog->mipTime);
+        printf("[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: %0.6lfs\n", prog->mipTime);
         printf("[pluto] Code generation time: %0.6lfs\n", t_c);
         printf("[pluto] Other/Misc time: %0.6lfs\n", t_all-t_c-t_t-t_d);
         printf("[pluto] Total time: %0.6lfs\n", t_all);
