@@ -36,7 +36,7 @@
  * given as a command line option to polycc.  */
 
 /* Prints the error message corresponding to the error value passed */
-inline void check_error_gurobi(GRBmodel *lp, int error)
+static inline void check_error_gurobi(GRBmodel *lp, unsigned int error)
 {
     if(error) {
         GRBenv *env;
@@ -149,7 +149,7 @@ double* get_lp_solution_from_gurobi_problem(GRBmodel *lp)
     return sol;
 }
 
-inline void find_optimal_solution_gurobi(GRBmodel *lp, double tol)
+static inline void find_optimal_solution_gurobi(GRBmodel *lp, double tol)
 {
      GRBsetdblparam(GRBgetenv(lp), "IntFeasTol", tol);
 
