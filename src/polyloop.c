@@ -654,6 +654,8 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog)
             assert(dep->satvec != NULL);
             /* Dependences satisfied outer to the band don't matter */
             if (dep->satisfaction_level < loop->depth) continue;
+            /* Dependences not satisfied yet don't matter */
+            if (!dep->satisfied) continue;
             /* Dependences satisfied in previous scalar dimensions in the band
              * don't count as well (i.e., they can have negative components) */
             if (pluto_is_depth_scalar(loop, dep->satisfaction_level)) continue;
