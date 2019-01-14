@@ -630,7 +630,7 @@ static int get_osl_read_access_position(osl_relation_list_p rl,
     osl_relation_list_p tmp = rl;
     for (; tmp; tmp = tmp->next)  {
 
-        if ( (tmp->elt->type == OSL_TYPE_READ) )
+        if (tmp->elt->type == OSL_TYPE_READ)
             num++;
 
         if(tmp->elt == access)
@@ -3432,7 +3432,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs)
         if (remap->val[i][i] <= -1) {
             pluto_matrix_negate_row(remap, i);
         }
-        (*divs)[i] = abs(remap->val[i][i]);
+        (*divs)[i] = llabs(remap->val[i][i]);
     }
     // pluto_matrix_print(stdout, remap);
 
