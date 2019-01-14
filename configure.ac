@@ -56,6 +56,7 @@ AC_ARG_ENABLE(gurobi,
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
 AC_PROG_CXX
+AC_PROG_CC_STDC
 dnl AC_CHECK_PROG(CXX,g++,g++)
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
