@@ -348,17 +348,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lastwriter = 0;
     }
 
-    if (options->identity == 1) {
-        options->diamondtile = 0;
-        options->fulldiamondtile = 0;
-    }
-
-    if (options->fulldiamondtile == 1 && options->diamondtile == 0)    {
-        options->diamondtile = 1;
-    }
-
-    if (options->diamondtile == 1 && options->tile == 0)    {
+    /* Make options consistent */
+    if (options->diamondtile == 1)    {
         options->tile = 1;
+    }
+    if (options->fulldiamondtile == 1)    {
+        options->tile = 1;
+        options->diamondtile = 1;
     }
 
     if (options->multipar == 1 && options->parallel == 0)    {
