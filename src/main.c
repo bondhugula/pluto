@@ -407,9 +407,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         printf("[pluto] Warning: SCC clustering heuristics available with dfp option (FCG based approach) only. Disabling clustering \n");
     }
 
+    if (options->hybridcut && !(options->fuse == TYPED_FUSE)) {
+        options->fuse = TYPED_FUSE;
+    }
+
     if (options->fuse == TYPED_FUSE && !options->dfp) {
-        printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. Turning off Typed fuse\n");
+        printf("[Pluto] WARNING: Hybrid and Typed fusion available with dfp framework only.");
+        printf(" Turning off Typed / Hybrid fuse\n");
         options->fuse = SMART_FUSE;
+        options->hybridcut = 0;
     }
 
     /* Make lastwriter default with dfp. This removes transitive dependences and hence reduces FCG construction time */
@@ -419,6 +425,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         }
         options->lastwriter = 1;
     }
+
     /* Typed fuse is available with clustered FCG approach only */
     if (options->fuse ==TYPED_FUSE && options->dfp && !options->scc_cluster) {
         if (!options->silent) {

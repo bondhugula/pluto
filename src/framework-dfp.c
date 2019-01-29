@@ -1132,6 +1132,10 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 
     IF_DEBUG(printf("FCG \n"););
     IF_DEBUG(pluto_matrix_print(stdout, fcg->adj));
+    if(options->fuse == TYPED_FUSE) {
+        IF_DEBUG(printf("Parallelism preventing edges \n"));
+        IF_DEBUG(pluto_matrix_print(stdout, par_preventing_adj_mat));
+    }
 
     IF_DEBUG(printf("[Pluto] Build FCG: Total number of LP calls in building the FCG: %ld\n",prog->num_lp_calls););
     return fcg;
@@ -1142,7 +1146,8 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
 /* Prints colour of each vertex of the FCG */
 void pluto_print_colours(int *colour,PlutoProg *prog)
 {
-    int nstmts,i,j,stmt_offset;
+    int nstmts, i, j, stmt_offset;
+    int color;
     Stmt **stmts;
 
     nstmts = prog->nstmts;
@@ -1152,16 +1157,18 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
 
     if (options->scc_cluster) {
         for (i=0; i<prog->ddg->num_sccs;i++){
-            for (j=0;j<prog->ddg->sccs[i].max_dim;j++){
-                printf("Colour of dimension %d of Scc %d: %d\n",j,i,colour[stmt_offset+j]);
+            for (j=0; j<prog->ddg->sccs[i].max_dim;j++){
+                color = colour[stmt_offset+j];
+                printf("Colour of dimension %d of Scc %d: %d\n",j,i,color);
             }
             stmt_offset += j;
         }
         return;
     }
-    for (i=0; i<nstmts;i++){
-        for (j=0;j<stmts[i]->dim_orig;j++){
-            printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,colour[stmt_offset+j]);
+    for (i=0; i<nstmts; i++) {
+        for (j=0; j<stmts[i]->dim_orig; j++) {
+            color = colour[stmt_offset+j];
+            printf("Colour of Dimension %d of Stmt %d: %d\n",j,i,color);
         }
         stmt_offset += j;
     }
@@ -1169,13 +1176,22 @@ void pluto_print_colours(int *colour,PlutoProg *prog)
 
 /* Check if it is valid to give colour c to a vertex v in the fcg.
  * Colour is the array containing the colours assigned to each vertex */
-bool is_valid_colour(int v, int c, Graph *fcg, int * colour)
+bool is_valid_colour(int v, int c, Graph *fcg, int * colour, bool is_parallel)
 {
     int i, fcg_nVertices;
+    bool par_preventing_edge;
     fcg_nVertices = fcg->nVertices;
-    for (i=0; i<fcg_nVertices; i++){
+    for (i=0; i<fcg_nVertices; i++) {
         if ((fcg->adj->val[i][v]==1 || fcg->adj->val[v][i]==1) && colour[i]==c) {
             return false;
+        }
+
+        if (is_parallel) {
+            par_preventing_edge = par_preventing_adj_mat->val[v][i] ||
+                par_preventing_adj_mat->val[i][v];
+            if(par_preventing_edge && colour[i] == c) {
+                return false;
+            }
         }
     }
     return true;
@@ -1406,6 +1422,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
 
     int list[nvar];
     int num_discarded = 0;
+    bool is_parallel = false;
 
     /* ToDo: Check if this condition can really happen.  */
     if (stmt_pos >= sccs[scc_id].size){
@@ -1515,7 +1532,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
         }
 
         /* Check if this is a valid colour */
-        if (is_valid_colour(v,c,fcg,colour)) {
+        if (is_valid_colour(v,c,fcg,colour, is_parallel)) {
             colour[v] = c;
             /* If this is a valid colour, then try colouring the next vertex in the SCC */
             if (colour_scc(scc_id, colour, c, stmt_pos+1, v, prog)) {
@@ -1592,6 +1609,7 @@ int* get_common_parallel_dims(int scc_id, int* convex_successors,
     Scc *sccs;
     int scc_offset, succ_scc_offset, succ_scc;
     int *common_dims;
+    bool is_parallel = true;
 
     ddg= prog->ddg;
     fcg = prog->fcg;
@@ -1612,7 +1630,7 @@ int* get_common_parallel_dims(int scc_id, int* convex_successors,
                  * vertex j must be parallel and fusing with dimension k 
                  * must not hinder parallelism */
                 if (colour[v]==0 && !fcg->adj->val[v][v] && ! is_adjecent(fcg, v, scc_offset+k) 
-                        && is_valid_colour (v, current_colour, fcg, colour) && 
+                        && is_valid_colour (v, current_colour, fcg, colour, is_parallel) &&
                         !par_preventing_adj_mat->val[v][v] && 
                         !(par_preventing_adj_mat->val[v][scc_offset+k] || 
                             par_preventing_adj_mat->val[scc_offset+k][v])) {
@@ -1661,10 +1679,11 @@ void colour_convex_successors(int k, int *convex_successors, int num_successors,
     Graph *fcg;
     Scc *sccs;
     int i, j, v, max_dim, scc_offset, scc_id;
-    bool colourable_successor;
+    bool colourable_successor, is_parallel;
 
     fcg = prog->fcg;
     sccs = prog->ddg->sccs;
+    is_parallel = true;
 
     for (i=0; i<num_successors; i++) {
         scc_id = convex_successors[i];
@@ -1675,7 +1694,7 @@ void colour_convex_successors(int k, int *convex_successors, int num_successors,
             colourable_successor = colour[v]==0 && !fcg->adj->val[v][v] &&
                 !par_preventing_adj_mat->val[v][k] &&
                 !par_preventing_adj_mat->val[v][v] &&
-                is_valid_colour (v, current_colour, fcg, colour);
+                is_valid_colour (v, current_colour, fcg, colour, is_parallel);
             if (!colourable_successor) continue;
 
             IF_DEBUG(printf("[pluto] Colouring dimension %d of Scc", j););
@@ -1700,7 +1719,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     Graph *ddg, *fcg;
     Scc *sccs;
     int i,v,max_dim, num_convex_successors, num_parallel_dims;
-    bool* parallel_dims, is_dim_parallel;
+    bool* parallel_dims, is_dim_parallel, is_parallel;
     int *convex_successors, *common_dims, colouring_dim;
 
     ddg = prog->ddg;
@@ -1716,11 +1735,13 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     parallel_dims = (bool*) malloc(max_dim*sizeof(bool));
     bzero (parallel_dims, max_dim*sizeof(bool));
 
+    is_parallel = true;
+
     num_parallel_dims = 0;
     for (i=0; i<max_dim; i++) {
         is_dim_parallel = (colour[v+i]==0 && !fcg->adj->val[v+i][v+i] &&
                 !par_preventing_adj_mat->val[v+i][v+i] &&
-                is_valid_colour(v+i, current_colour, fcg, colour));
+                is_valid_colour(v+i, current_colour, fcg, colour, is_parallel));
         if (is_dim_parallel) {
             parallel_dims[i] = true;
             num_parallel_dims ++;
@@ -1803,6 +1824,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
     int i, v;
     Graph *ddg, *fcg;
     Scc *sccs;
+
+    bool check_parallel;
     ddg = prog->ddg;
     fcg = prog->fcg;
     sccs = ddg->sccs;
@@ -1821,7 +1844,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
     bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
     /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid, 
      * then look max_fuse instead of greedy typed fuse heuristic */
-    if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && !hybrid_cut ) {
+    if ((options->fuse == TYPED_FUSE || options->hybridcut) &&
+            sccs[scc_id].is_parallel && !hybrid_cut ) {
         if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
             sccs[scc_id].has_parallel_hyperplane = true;
             return true;
@@ -1845,6 +1869,7 @@ bool colour_scc_cluster (int scc_id, int *colour,
     } 
 
     scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+    check_parallel = false;
 
     for (i =0; i< max_dim; i++) {
         v = scc_offset + i;
@@ -1864,7 +1889,7 @@ bool colour_scc_cluster (int scc_id, int *colour,
         /* Check if there is an adjecent vertex with the same colour. 
          * In case of typed fuse it checks if there is an adjecent vertex 
          * with the same colour and has a parallelism preventing edge  */
-        if (is_valid_colour(v, current_colour, fcg, colour)) {
+        if (is_valid_colour(v, current_colour, fcg, colour, check_parallel)) {
             if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && 
                     is_colour_par_preventing(v, colour, current_colour)) {
                 continue;
