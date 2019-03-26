@@ -2468,11 +2468,16 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
         IF_DEBUG2(pluto_print_dep_directions(prog););
     }
+
+    /* This can be delayed further. Introduce this cut after diamond tiling */
+
+#if 0
     /* All dimensions have been coloured but still there are some deps that 
      * need to be satisfied at the innermost level by distribution.  */
     if (i == max_colours+1 && !deps_satisfaction_check(prog)) {
         cut_all_sccs(prog, prog->ddg);
     }
+#endif
 
     IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
     IF_DEBUG(pluto_print_colours(colour,prog););
