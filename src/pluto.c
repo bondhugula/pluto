@@ -1887,7 +1887,7 @@ int pluto_auto_transform(PlutoProg *prog)
         }
 
         is_skewed = introduce_skew(prog);
-        if (is_skewed && options->lbtile) {
+        if (is_skewed && options->diamondtile) {
             conc_start_found = pluto_diamond_tile(prog);
         }
 
