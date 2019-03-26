@@ -110,7 +110,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     stmt->id = id;
 
     for (i=0; i<stmt->dim; i++) {
-        char *iter = malloc(5);
+        char *iter = malloc(13);
         sprintf(iter, "i%d",  i);
         stmt->iterators[i] = iter;
     }
@@ -121,7 +121,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user)
     pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0, stmt->dim);
 
     for (i=0; i<npar; i++) {
-        char *param = malloc(5);
+        char *param = malloc(13);
         sprintf(param, "p%d", i);
         stmt->domain->names[stmt->dim+i] = param;
     }
@@ -198,7 +198,8 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
         isl_union_map *dependences, 
         PlutoOptions *options_l)
 {
-    int i, j, nbands, n_ibands, retval;
+    int i, j, retval;
+    unsigned nbands, n_ibands;
     isl_ctx *ctx;
     isl_space *space;
     double t_t, t_all, t_start;
@@ -242,7 +243,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
-        char *param = malloc(5);
+        char *param = malloc(13);
         sprintf(param, "p%d", i);
         prog->params[i] = param;
     }
@@ -303,7 +304,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     if ((options->parallel) && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
-        int nbands;
+        unsigned nbands;
         Band **bands;
         pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
@@ -322,7 +323,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     }
 
     if (options->parallel && !options->silent) {
-        int nploops;
+        unsigned nploops;
         Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
         printf("[pluto_mark_parallel] %d parallel loops\n", nploops);
         pluto_loops_print(ploops, nploops);
@@ -379,7 +380,8 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
         isl_union_map *dependences, PlutoOptions *options_l) 
 {
 
-    int i, nbands, n_ibands, retval;
+    unsigned i, nbands, n_ibands;
+    int retval;
     isl_space *space;
 
     space = isl_union_set_get_space(domains);
@@ -420,7 +422,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     }else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
-        char *param = malloc(5);
+        char *param = malloc(13);
         sprintf(param, "p%d", i);
         prog->params[i] = param;
     }
@@ -569,7 +571,7 @@ int pluto_schedule_osl(osl_scop_p scop,
   if (options->parallel && !options->tile && !options->identity)   {
       /* Obtain wavefront/pipelined parallelization by skewing if
        * necessary */
-      int nbands;
+      unsigned nbands;
       Band **bands;
       pluto_compute_dep_satisfaction(prog);
       bands = pluto_get_outermost_permutable_bands(prog, &nbands);
@@ -628,12 +630,13 @@ int pluto_schedule_osl(osl_scop_p scop,
 */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *domains,
         isl_union_map *dependences,
-        Ploop*** ploops,
-        int* nploops,
-        Remapping** remap,
+        Ploop ***ploops,
+        unsigned *nploops,
+        Remapping **remap,
         PlutoOptions *options_l)
 {
-    int i, j, nbands, n_ibands, retval;
+    unsigned i, j, nbands, n_ibands;
+    int retval;
     isl_ctx *ctx;
     isl_space *space;
     double t_t, t_all, t_start;
@@ -674,7 +677,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     }else prog->npar = 0;
 
     for (i=0; i<prog->npar; i++) {
-        char *param = malloc(5);
+        char *param = malloc(11);
         sprintf(param, "p%d", i);
         prog->params[i] = param;
     }
@@ -735,7 +738,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(isl_union_set *
     if ((options->parallel) && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
-        int nbands;
+        unsigned nbands;
         Band **bands;
         pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
@@ -839,7 +842,7 @@ void pluto_schedule_str(const char *domains_str,
 
     isl_ctx *ctx = isl_ctx_alloc();
     Ploop** ploop;
-    int nploop = 0,i;
+    unsigned nploop = 0, i;
     Remapping* remapping;
 
     isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);

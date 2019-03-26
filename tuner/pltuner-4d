@@ -3,7 +3,7 @@
 NTHREADS=4
 
 # flags to run Pluto with
-PLFLAGS="--partlbtile --parallel --silent --nolastwriter"
+PLFLAGS="--parallel --silent --nolastwriter"
 
 CC=icc
 CFLAGS="-O3 -xHost -ansi-alias -ipo -openmp -fp-model precise -DTIME -DVERIFY"

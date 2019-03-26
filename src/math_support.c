@@ -698,9 +698,9 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars)
             snprintf(out+strlen(out), 6, "-%s", var[j]);
         }else if (func[j] != 0)  {
             if (func[j] >= 1) {
-                snprintf(out+strlen(out), 9, "%s%lld%s", first?"+":"", func[j], var[j]);
+                snprintf(out+strlen(out), n - strlen(out), "%s%lld%s", first?"+":"", func[j], var[j]);
             }else{
-                snprintf(out+strlen(out), 8, "%lld%s", func[j], var[j]);
+                snprintf(out+strlen(out), n - strlen(out), "%lld%s", func[j], var[j]);
             }
         }
         if (func[j] != 0) first = 1;

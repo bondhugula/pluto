@@ -547,6 +547,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         lb=0;
         ub=0;
         nb=0;
+
         /* Variable does appear */
         for (j=0; j<cst->nrows; j++)    {
             if (cst->val[j][pos] == 0) {
@@ -566,7 +567,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos)
         pluto_constraints_zero(newcst);
         newcst->nrows = 0;
 
-        p=0;
+        p = 0;
         for (j=0; j<cst->nrows; j++)    {
             if (bound[j] == UB) {
                 for (k=0; k<cst->nrows; k++)    {
@@ -1002,7 +1003,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst)
 
 void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
 {
-    int i, j;
+    int i;
 
     int nrows = cst->nrows;
     int ncols = cst->ncols;
@@ -1015,7 +1016,7 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
 
     for (i=0; i<nrows; i++) {
             int first = 1;
-        for (j=0; j<ncols; j++)    {
+        for (unsigned char j=0; j<ncols; j++)    {
             if (j==ncols-1) {
                 /* constant */
                 /* Not supported in CPLEX format */
@@ -1023,9 +1024,8 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst)
                 if (!first) fprintf(fp, "%s %lld\n", cst->is_eq[i]? "=": ">=", -cst->val[i][j]);
             }else{
                 char var[6];
-                var[5] = '\0';
                 if (cst->names) strncpy(var, cst->names[j], 5);
-                else sprintf(var, "c_%d", j);
+                else snprintf(var, 6, "c_%d", j);
 
                 if (cst->val[i][j] == 1) {
                     fprintf(fp, "+%s ", var);

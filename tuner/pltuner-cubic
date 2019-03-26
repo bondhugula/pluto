@@ -7,7 +7,7 @@
 NTHREADS=4
 
 # flags to run Pluto with
-PLFLAGS="--pet --parallel --partlbtile --silent"
+PLFLAGS="--pet --parallel --silent"
 
 # flags to compile the generated code
 CC=icc

@@ -21,7 +21,7 @@ for file in $TESTS; do
     fi
 done
 
-OPTS="--iss --islsolve --lbtile --parallel"
+OPTS="--iss --islsolve --parallel"
 for file in $TESTS; do
 	echo -e "$file" 
     echo ./polycc $OPTS $file $*  -o test_temp_out.pluto.c

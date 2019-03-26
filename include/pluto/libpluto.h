@@ -32,12 +32,14 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
-    /* Load-balanced tiling */
-    int lbtile;
+    /* Diamond tiling for concurrent startup; enables concurrent startup along
+     * one dimension. */
+    int diamondtile;
 
-    /* Load-balanced tiling (one dimensional concurrent start)*/
-    int partlbtile;
-    /* parallelization */
+    /* Enables concurrent startup along dimensions  */
+    int fulldiamondtile;
+
+    /* Parallelization */
     int parallel;
 
     /* prefer pure inner parallelism to pipelined parallelism */
@@ -230,7 +232,7 @@ int pluto_schedule_osl(osl_scop_p scop,
  * and divs.
  */
 struct remapping {
-    int nstmts;
+    unsigned nstmts;
     PlutoMatrix **stmt_inv_matrices;
     int **stmt_divs;
 };

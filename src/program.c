@@ -370,7 +370,7 @@ osl_relation_p pluto_trans_to_osl_scattering(PlutoMatrix *mat, int npar)
  */
 osl_loop_p pluto_get_vector_loop_list( const PlutoProg *prog)
 {
-    int i, j, nploops;
+    unsigned i, j, nploops;
     osl_loop_p ret_loop = NULL;
 
     Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
@@ -384,8 +384,8 @@ osl_loop_p pluto_get_vector_loop_list( const PlutoProg *prog)
 
         osl_loop_p newloop = osl_loop_malloc();
 
-        char iter[5];
-        sprintf(iter, "t%d", ploops[i]->depth+1);
+        char iter[13];
+        snprintf(iter, sizeof(iter), "t%d", ploops[i]->depth+1);
         newloop->iter =  strdup(iter);
 
 
@@ -412,7 +412,7 @@ osl_loop_p pluto_get_vector_loop_list( const PlutoProg *prog)
  */
 osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog, int vloopsfound)
 {
-    int i, j, nploops;
+    unsigned i, j, nploops;
     osl_loop_p ret_loop = NULL;
 
     Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
@@ -420,13 +420,11 @@ osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog, int vloopsfound)
     IF_DEBUG(printf("[pluto_parallel_loop_list] parallelizable loops\n"););
     IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-
     for (i=0; i<nploops; i++) {
-
         osl_loop_p newloop = osl_loop_malloc();
 
-        char iter[5];
-        sprintf(iter, "t%d", ploops[i]->depth+1);
+        char iter[13];
+        snprintf(iter, sizeof(iter), "t%d", ploops[i]->depth+1);
         newloop->iter = strdup(iter);
 
         newloop->nb_stmts = ploops[i]->nstmts;
@@ -632,7 +630,7 @@ static int get_osl_read_access_position(osl_relation_list_p rl,
     osl_relation_list_p tmp = rl;
     for (; tmp; tmp = tmp->next)  {
 
-        if ( (tmp->elt->type == OSL_TYPE_READ) )
+        if (tmp->elt->type == OSL_TYPE_READ)
             num++;
 
         if(tmp->elt == access)
@@ -2195,7 +2193,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 isl_map *write_pos;
                 isl_map *schedule_i;
 
-                char name[20];
+                char name[25];
 
                 if (access->elt->type == OSL_TYPE_READ) {
                     snprintf(name, sizeof(name), "S_%d_r%d", i, racc_num);
@@ -2685,8 +2683,9 @@ PlutoOptions *pluto_options_alloc()
     options->innerpar = 0;
     options->identity = 0;
 
-    options->lbtile = 0;
-    options->partlbtile = 0;
+    /* Enable one dimension of concurrent startup by default */
+    options->diamondtile = 1;
+    options->fulldiamondtile = 0;
 
     options->iss = 0;
     options->unroll = 0;
@@ -3433,7 +3432,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs)
         if (remap->val[i][i] <= -1) {
             pluto_matrix_negate_row(remap, i);
         }
-        (*divs)[i] = abs(remap->val[i][i]);
+        (*divs)[i] = llabs(remap->val[i][i]);
     }
     // pluto_matrix_print(stdout, remap);
 
