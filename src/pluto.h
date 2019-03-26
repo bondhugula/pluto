@@ -529,6 +529,6 @@ PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoP
 #ifdef GLPK
 Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour);
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
-void introduce_skew(PlutoProg *prog);
+bool introduce_skew(PlutoProg *prog);
 #endif
 #endif

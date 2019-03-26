@@ -1730,6 +1730,7 @@ int pluto_auto_transform(PlutoProg *prog)
 #if defined GLPK || defined GUROBI
     Graph* fcg;
     int *colour, nVertices;
+    int is_skewed = false;
 #endif
 
     Stmt **stmts = prog->stmts;
@@ -1870,7 +1871,7 @@ int pluto_auto_transform(PlutoProg *prog)
         prog->total_coloured_stmts = (int*) malloc(nvar*sizeof(int));
         prog->scaled_dims = (int*) malloc(nvar*sizeof(int));
         prog->coloured_dims = 0;
-        for (i=0;i<nvar;i++) {
+        for (i=0; i<nvar; i++) {
             prog->total_coloured_stmts[i] = 0;
             prog->scaled_dims[i] = 0;
         }
@@ -1884,7 +1885,10 @@ int pluto_auto_transform(PlutoProg *prog)
             pluto_transformations_pretty_print(prog);
         }
 
-        introduce_skew(prog);
+        is_skewed = introduce_skew(prog);
+        if (is_skewed && options->lbtile) {
+            conc_start_found = pluto_diamond_tile(prog);
+        }
 
         /* free(colour); */
         free(prog->total_coloured_stmts);

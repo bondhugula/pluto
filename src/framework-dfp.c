@@ -2826,8 +2826,9 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool* skew_dims,
     return skewCst;
 }
 
-/* Introduce loop skewing transformations if necessary */
-void introduce_skew(PlutoProg *prog)
+/*  Introduce loop skewing transformations if necessary.Returns true if
+ *  skew was introuduced at some level for some SCC  */
+bool introduce_skew(PlutoProg *prog)
 {
     int i, j, k, num_sccs, nvar, npar, nstmts, level,ndeps;
     int initial_cuts, nrows, stmt_offset;
@@ -2838,6 +2839,7 @@ void introduce_skew(PlutoProg *prog)
     Stmt **stmts;
     bool *src_dims, *skew_dims, tile_preventing_deps[prog->ndeps];
     double tstart;
+    bool is_skew_introduced = false;
 
     nvar = prog->nvar;
     npar = prog->npar;
@@ -2847,7 +2849,7 @@ void introduce_skew(PlutoProg *prog)
 
     /* If there are zero or one hyperpane then you dont need to skew */
     if (prog->num_hyperplanes <=1) {
-        return;
+        return is_skew_introduced;
     }
     assert (prog->hProps != NULL);
     hProps = prog->hProps;
@@ -2881,7 +2883,7 @@ void introduce_skew(PlutoProg *prog)
 
     /* Needed to handle the case when there are no loops  */
     if (initial_cuts == prog->num_hyperplanes) {
-        return;
+        return is_skew_introduced;
     }
     basecst = get_permutability_constraints(prog);
     ddg_update(newDDG, prog);
@@ -2956,6 +2958,7 @@ void introduce_skew(PlutoProg *prog)
 
             }
             free(sol);
+            is_skew_introduced = true;
 
             dep_satisfaction_update(prog, level);
             pluto_compute_dep_directions(prog);
@@ -2982,6 +2985,6 @@ void introduce_skew(PlutoProg *prog)
     if (!options->silent) {
         printf("[Pluto]: Post processing skewing complete\n");
     }
-    return;
+    return is_skew_introduced;
 }
 #endif
