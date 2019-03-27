@@ -329,14 +329,15 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog)
      * hyperplane order is preserved (no strong reason to do this) */
     /* We do not need to permute in case of pluto-lp-dfp */
     if (!options->dfp) {
-    j = npar + 1;
-    for (i=0; i<nstmts; i++)    {
-        for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
-            pluto_constraints_interchange_cols(newcst, k, j + (stmts[i]->dim_orig - 1 - (k-j)));
+        j = npar + 1;
+        for (i=0; i<nstmts; i++)    {
+            for (k=j; k<j+(stmts[i]->dim_orig)/2; k++) {
+                pluto_constraints_interchange_cols(newcst, k,
+                        j + (stmts[i]->dim_orig - 1 - (k-j)));
 
+            }
+            j += stmts[i]->dim_orig+1;
         }
-        j += stmts[i]->dim_orig+1;
-    }
 
     }
     IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
@@ -1880,15 +1881,21 @@ int pluto_auto_transform(PlutoProg *prog)
         /* This routine frees colour internally */
         find_permutable_dimensions_scc_based(colour, prog);
 
-
         if (!options->silent && options->debug) {
             printf("[Pluto]: Transformations before skewing \n");
             pluto_transformations_pretty_print(prog);
         }
 
         is_skewed = introduce_skew(prog);
+
+        pluto_dep_satisfaction_reset(prog);
         if (is_skewed && options->diamondtile) {
             conc_start_found = pluto_diamond_tile(prog);
+        }
+        /* if there are any unsatisfied deps, they have to be
+         * distributed at the inner most level */
+        if (!deps_satisfaction_check(prog)) {
+            cut_all_sccs(prog, prog->ddg);
         }
 
         /* free(colour); */
@@ -2383,6 +2390,7 @@ int pluto_diamond_tile(PlutoProg *prog)
 
         /* Band should have inner parallelism */
         Ploop **iloops = pluto_get_loops_immediately_inner(band->loop, prog, &ni);
+        printf("%d Inner parallel loops exist\n", ni);
         for (i=0; i<ni; i++) {
             for (s=0; s<band->loop->nstmts; s++) {
                 if (!pluto_loop_is_parallel_for_stmt(prog, iloops[i], 
@@ -2390,6 +2398,7 @@ int pluto_diamond_tile(PlutoProg *prog)
             }
             if (s<band->loop->nstmts) break;
         }
+        printf("%d All statements do not have inner parallelism\n", i);
         if (i<ni) {
             pluto_loops_free(iloops, ni);
             continue;
@@ -2401,6 +2410,7 @@ int pluto_diamond_tile(PlutoProg *prog)
                         prog, iloops[i])) break;
         }
         pluto_loops_free(iloops, ni);
+        printf("%d\n Inner parallelism lost by tiling", i);
         if (i<ni) continue;
 
         /* Domains should allows point-wise concurrent start */
