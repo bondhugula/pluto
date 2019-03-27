@@ -2390,7 +2390,6 @@ int pluto_diamond_tile(PlutoProg *prog)
 
         /* Band should have inner parallelism */
         Ploop **iloops = pluto_get_loops_immediately_inner(band->loop, prog, &ni);
-        printf("%d Inner parallel loops exist\n", ni);
         for (i=0; i<ni; i++) {
             for (s=0; s<band->loop->nstmts; s++) {
                 if (!pluto_loop_is_parallel_for_stmt(prog, iloops[i], 
@@ -2398,7 +2397,6 @@ int pluto_diamond_tile(PlutoProg *prog)
             }
             if (s<band->loop->nstmts) break;
         }
-        printf("%d All statements do not have inner parallelism\n", i);
         if (i<ni) {
             pluto_loops_free(iloops, ni);
             continue;
@@ -2410,7 +2408,6 @@ int pluto_diamond_tile(PlutoProg *prog)
                         prog, iloops[i])) break;
         }
         pluto_loops_free(iloops, ni);
-        printf("%d\n Inner parallelism lost by tiling", i);
         if (i<ni) continue;
 
         /* Domains should allows point-wise concurrent start */
