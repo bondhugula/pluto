@@ -2512,6 +2512,29 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring (PlutoConstraints *c
     scc_offset = 0;
 
     for (j=0; j<num_sccs; j++) {
+        /* If the Scc's dimesionality is greater than c, then all vertices 
+         * of this scc are coloured. Hence set the lower bound of the 
+         * transformation coefficients of this SCC to zero.*/
+
+        if (sccs[j].max_dim < c) {
+            for (i=0; i<sccs[j].size; i++) {
+                stmt_id = sccs[j].vertices[i];
+                for(k=0; k<sccs[j].max_dim; k++) {
+                    if (stmts[stmt_id]->is_orig_loop[k]) {
+                        pluto_constraints_add_lb(coeffcst, 
+                                npar+1+stmt_id*(nvar+1)+k, 0);
+                    } else {
+                        pluto_constraints_add_equality(coeffcst);
+                        coeffcst->val[coeffcst->nrows-1]
+                            [npar+1+stmt_id*(nvar+1)+k] = 1;
+                    }
+                }
+            }
+            scc_offset += sccs[j].max_dim;
+            continue;
+        }
+
+
         for (i=0; i<sccs[j].size; i++) {
             stmt_id = sccs[j].vertices[i];
             for (k=0; k<sccs[j].max_dim; k++) {
@@ -2525,6 +2548,7 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring (PlutoConstraints *c
         }
         scc_offset += sccs[j].max_dim;
     }
+    return;
 }
 
 /* Set the lower bounds for statements that are coloured with colour c. 
