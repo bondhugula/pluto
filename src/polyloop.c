@@ -718,11 +718,10 @@ Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog, int *innermost_split
             /* Dependences satisfied outer to the band don't matter */
             if (dep->satisfaction_level < loop->depth) continue;
             /* The loop (or scalar dimension) has to be parallel */
-            if (dep->dirvec[depth] != DEP_ZERO) break;
+            if (dep->satvec[depth]) break;
         }
         if (i<prog->ndeps) break;
         depth++;
-        // printf("Depth %d\n", depth);
     }while (depth < prog->num_hyperplanes);
 
     /* Peel off scalar dimensions from the end */
