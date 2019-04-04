@@ -1,4 +1,5 @@
 /*
+    printf("Depth: %d\n", depth);
  * PLUTO: An automatic parallelizer and locality optimizer
  * 
  * Copyright (C) 2007 Uday Bondhugula
@@ -482,6 +483,7 @@ Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands, int **comm_placement_levels);
+Band *pluto_get_parallel_band(Ploop* loop, PlutoProg *prog, int *innermost_split_level);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
