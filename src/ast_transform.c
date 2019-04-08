@@ -34,7 +34,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         CloogOptions *cloogOptions)
 {
     unsigned i, j, nloops, nstmts, nploops, k;
-    unsigned npbands, ninloops, width;
+    unsigned npbands, ninloops;
     struct clast_for **loops;
     int *stmts;
     Band **pbands;
@@ -55,7 +55,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     for (i=0; i<nploops; i++) {
        pbands[i] = pluto_get_parallel_band(ploops[i], prog, &innermost_split_level);
        assert (pbands[i]->width > 0);
-       pluto_band_print(pbands[i]);
     }
     npbands = nploops;
     // clast_pprint(stdout, root, 0, cloogOptions);
@@ -107,7 +106,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                 if (ninloops == 0 ||
                         inloops[0]->depth > band->loop->depth + band->width) {
                     printf("Warning: parallel poly loop not found in AST\n");
-                    break;
+                    curr_loop = NULL;
                 } else {
                     curr_loop = inloops[0];
                 }
