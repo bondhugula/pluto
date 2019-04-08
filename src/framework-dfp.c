@@ -1761,6 +1761,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
                 colour[v+i] = current_colour;
+                sccs[scc_id].is_scc_coloured = true;
+                sccs[scc_id].has_parallel_hyperplane = true;
                 IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
                 IF_DEBUG(printf("coloured with colour %d\n", current_colour););
                 free (parallel_dims);
@@ -1782,6 +1784,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
         for (i=0; i<max_dim; i++) {
             if (parallel_dims[i]) {
                 colour[v+i] = current_colour;
+                sccs[scc_id].is_scc_coloured = true;
+                sccs[scc_id].has_parallel_hyperplane = true;
                 IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
                 IF_DEBUG(printf("coloured with colour %d\n", current_colour););
                 free (parallel_dims);
@@ -1791,6 +1795,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
         }
     }
     colour[v+colouring_dim] = current_colour;
+    sccs[scc_id].is_scc_coloured = true;
+    sccs[scc_id].has_parallel_hyperplane = true;
     IF_DEBUG(printf("Dimension %d of SCC %d ", colouring_dim, scc_id););
     IF_DEBUG(printf("coloured with colour %d\n", current_colour););
 
@@ -1831,6 +1837,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
     sccs = ddg->sccs;
 
     max_dim = ddg->sccs[scc_id].max_dim;
+
+    printf ("Trying to Colour SCC %d with colour %d\n", scc_id, current_colour);
     /* All dimensions of the current SCC have already been coloured */
     if (prog->coloured_dims > max_dim) return true;
 
@@ -2162,8 +2170,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
          * the FCG, we dont have to re-colour those SCCs again. If fcg has to
          * be rebuilt, then SCC ids would not have changed from previous
          * colouring */
-        if (options->scc_cluster && prog->fcg->to_be_rebuilt == false 
-                && prog->ddg->sccs[i].is_scc_coloured) {
+        if (options->scc_cluster && prog->ddg->sccs[i].is_scc_coloured) {
             fcg->num_coloured_vertices += ddg->sccs[i].max_dim;
             prog->total_coloured_stmts[c-1] += ddg->sccs[i].size;
             prev_scc = i;
@@ -2172,14 +2179,15 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
             continue;
         }
 
-        IF_DEBUG(printf("Colouring Scc %d of Size %d ",i,ddg->sccs[i].size););
+        IF_DEBUG(printf(" Trying Colouring Scc %d of Size %d ",i,ddg->sccs[i].size););
         IF_DEBUG(printf("with colour %d\n", c););
         if (options->scc_cluster) {
             hybrid_cut = options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
             if (options->fuse == TYPED_FUSE) {
                 /* case when the previous scc that was coloured was parallel
                  * and the current one is seqential */
-                if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured) {
+                if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured
+                        && prev_scc != -1) {
                     if (are_sccs_fused(prog, prev_scc, i)) {
                         /* distribute the loops here. Note that
                          * sccs may not be connected at all. However we still
@@ -2207,11 +2215,9 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
                     }
                 }
                 /* Set that a parallel SCC is being coloured */
-                if (ddg->sccs[i].is_parallel && !ddg->sccs[i].has_parallel_hyperplane) {
-                    /* printf("Scc %d is parallel\n", i); */
+                if (ddg->sccs[i].is_parallel) {
                     is_parallel_scc_coloured = true;
-                } else if (!ddg->sccs[i].is_parallel) {
-                    /* printf("Scc %d is sequential\n", i); */
+                } else {
                     is_parallel_scc_coloured = false;
                 }
             }
@@ -2381,6 +2387,20 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
     return colour;
 }
 
+/* Resets that an scc has coloured. This is called after permutation
+ * found at the current level is scaled and shifted, thus enabling
+ * colouring at the next level. */
+void reset_scc_colouring (Graph *ddg)
+{
+    int nsccs, i;
+    nsccs = ddg->num_sccs;
+
+    for(i=0; i<nsccs; i++) {
+        ddg->sccs[i].is_scc_coloured = false;
+    }
+    return;
+}
+
 /* Routine to find permutable hyperplanes in the FCG based approach. 
  * Colouring is done on a per SCC basis. Natural number ordering of the 
  * scc ids is used to ensure convexity. */
@@ -2438,7 +2458,6 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
 
         prog->fcg->to_be_rebuilt = 1;
 
-        /* Recompute the SCC's in the updated DDG */
         ddg = prog->ddg;
 
         if (options->lpcolour) {
@@ -2462,13 +2481,16 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
             IF_DEBUG(printf("[Find_permutable_dims_scc_based]: Updating SCCs \n"););
             ddg_compute_scc(prog);
             compute_scc_vertices(ddg);
+        }else{
+            /* Reset SCC colouring to enable colouring at the next level*/
+            reset_scc_colouring(ddg);
         }
+
         IF_DEBUG2(pluto_transformations_pretty_print(prog););
         IF_DEBUG2(pluto_compute_dep_directions(prog););
         IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
         IF_DEBUG2(pluto_print_dep_directions(prog););
     }
-
     /* This can be delayed further. Introduce this cut after diamond tiling */
 
 #if 0
