@@ -1838,7 +1838,6 @@ bool colour_scc_cluster (int scc_id, int *colour,
 
     max_dim = ddg->sccs[scc_id].max_dim;
 
-    printf ("Trying to Colour SCC %d with colour %d\n", scc_id, current_colour);
     /* All dimensions of the current SCC have already been coloured */
     if (prog->coloured_dims > max_dim) return true;
 
@@ -1871,7 +1870,7 @@ bool colour_scc_cluster (int scc_id, int *colour,
             }
             /* Colouring the cluster has failed due to a permute 
              * or fusion preventing edge. Hence FCG has to be rebuilt. */
-            printf ("Unable to colour scc %d\n", scc_id);
+            IF_DEBUG(printf ("Unable to colour scc %d\n", scc_id););
             return false;
         }
     } 
@@ -2181,7 +2180,7 @@ int* colour_fcg_scc_based(int c, int *colour, PlutoProg *prog)
             continue;
         }
 
-        IF_DEBUG(printf(" Trying Colouring Scc %d of Size %d ",i,ddg->sccs[i].size););
+        IF_DEBUG(printf("Trying Colouring Scc %d of Size %d ",i,ddg->sccs[i].size););
         IF_DEBUG(printf("with colour %d\n", c););
         if (options->scc_cluster) {
             hybrid_cut = options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
