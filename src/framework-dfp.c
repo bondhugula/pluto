@@ -1852,7 +1852,7 @@ bool colour_scc_cluster (int scc_id, int *colour,
     bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
     /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid, 
      * then look max_fuse instead of greedy typed fuse heuristic */
-    if ((options->fuse == TYPED_FUSE || options->hybridcut) &&
+    if (options->fuse == TYPED_FUSE &&
             sccs[scc_id].is_parallel && !hybrid_cut ) {
         if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
             sccs[scc_id].has_parallel_hyperplane = true;
@@ -1897,9 +1897,11 @@ bool colour_scc_cluster (int scc_id, int *colour,
         /* Check if there is an adjecent vertex with the same colour. 
          * In case of typed fuse it checks if there is an adjecent vertex 
          * with the same colour and has a parallelism preventing edge  */
+        hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
         if (is_valid_colour(v, current_colour, fcg, colour, check_parallel)) {
-            if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && 
+            if (!hybrid_cut && options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel &&
                     is_colour_par_preventing(v, colour, current_colour)) {
+                IF_DEBUG(printf("Cannot colour dimension %d of SCC %d\n", i, scc_id););
                 continue;
             }
             colour[v] = current_colour; 
