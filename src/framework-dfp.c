@@ -359,7 +359,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog,
              * Add an edge in the conflict graph. */
             if (sol == NULL) {
                 IF_DEBUG(printf("Unable to fuse dimension %d of statement %d",i,v1););
-                IF_DEBUG(printf("with dimension %d of statement %d \n",j,v2););
+                IF_DEBUG(printf(" with dimension %d of statement %d \n",j,v2););
                 IF_DEBUG(printf(" Adding edge %d to %d in fcg\n", fcg_offset1+i,
                             fcg_offset2+j););
                 fcg->adj->val[fcg_offset1+i][fcg_offset2+j] = 1;
