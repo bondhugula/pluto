@@ -2535,10 +2535,9 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring (PlutoConstraints *c
     scc_offset = 0;
 
     for (j=0; j<num_sccs; j++) {
-        /* If the Scc's dimesionality is greater than c, then all vertices 
+        /* If the Scc's dimesionality is greater less c, then all vertices 
          * of this scc are coloured. Hence set the lower bound of the 
          * transformation coefficients of this SCC to zero.*/
-
         if (sccs[j].max_dim < c) {
             for (i=0; i<sccs[j].size; i++) {
                 stmt_id = sccs[j].vertices[i];
@@ -2589,9 +2588,20 @@ void add_coeff_constraints_from_fcg_colouring (PlutoConstraints *coeffcst,
     stmt_offset = 0;
 
     for (j=0; j<nstmts; j++) {
+        /* If a statements's dimesionality is less than c, then all 
+         * dimensions of this statement are coloured. Hence set the
+         *  lower bound of the transformation coefficients of this 
+         *  statement to zero.*/
+        if (stmts[j]->dim_orig < c) {
+            for (k =0; k<stmts[j]->dim_orig; k++) {
+                pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k, 1);
+            }
+            stmt_offset += stmts[j]->dim_orig;
+            continue;
+        }
         for (k=0; k<nvar; k++) {
-            if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k]==c) {
-                pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k,1);
+            if (stmts[j]->is_orig_loop[k] && colour[stmt_offset+k] == c) {
+                pluto_constraints_add_lb(coeffcst,npar+1+j*(nvar+1)+k, 1);
             } else {
                 pluto_constraints_add_equality(coeffcst);
                 coeffcst->val[coeffcst->nrows-1][npar+1+j*(nvar+1)+k] = 1;
@@ -2647,9 +2657,9 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c)
      * These redundant cols are then removed. */
 
     if (options->scc_cluster) {
-        add_coeff_constraints_from_scc_clustered_fcg_colouring (coeffcst, colour, select, prog);
+        add_coeff_constraints_from_scc_clustered_fcg_colouring(coeffcst, colour, select, prog);
     } else {
-        add_coeff_constraints_from_fcg_colouring (coeffcst, colour, select, prog);
+        add_coeff_constraints_from_fcg_colouring(coeffcst, colour, select, prog);
     }
     coeffcst = pluto_constraints_add(coeffcst,basecst);
 
