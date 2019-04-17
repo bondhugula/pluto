@@ -42,6 +42,7 @@ double * pluto_fusion_constraints_feasibility_solve(PlutoConstraints *cst, Pluto
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg *prog);
 void pluto_print_colours(int *colour,PlutoProg *prog);
 PlutoMatrix *par_preventing_adj_mat;
+PlutoMatrix *dep_distance_mat;
 
 static double rtclock()
 {
@@ -99,9 +100,20 @@ PlutoConstraints* dfp_get_scc_ortho_constraints (int *colour, int scc_id,
     return indcst;
 }
 
+static int64 get_dep_dist_from_pluto_sol(double *sol, int npar)
+{
+    unsigned int i;
+    int64 sum = 0;
+    for (i=0; i<npar+1; i++) {
+        sum = sum + ceil(sol[i]);
+    }
+    return sum;
+}
+
+
 /* A hyperplane is parallel if u+w is zero. */
 /* Returns true if the solution represents a parallel hyperplane */
-static inline bool is_lp_solution_parallel(double *sol, int npar)
+static bool is_lp_solution_parallel(double *sol, int npar)
 {
     int i;
     double tmp;
@@ -167,7 +179,7 @@ void mark_parallel_sccs(int *colour, PlutoProg* prog)
             assert (sol != NULL);
             if (is_lp_solution_parallel(sol, prog->npar)) {
                 prog->ddg->sccs[i].is_parallel = 1;
-                printf("SCC %d is parallel \n",i);
+                IF_DEBUG(printf("SCC %d is parallel \n",i););
             } else {
                 prog->ddg->sccs[i].is_parallel = 0;
             }
@@ -565,6 +577,9 @@ void fcg_scc_cluster_add_inter_scc_edges (Graph* fcg, int *colour, PlutoProg *pr
                                     scc1_fcg_offset+dim1,scc2_fcg_offset+dim2););
                         fcg->adj->val[scc1_fcg_offset+dim1][scc2_fcg_offset+dim2] = 1;
                     } else {
+                        if (options->lpcolour) {
+                            dep_distance_mat->val[i][j] = get_dep_dist_from_pluto_sol(sol, npar);
+                        }
                         if (check_parallel && !is_lp_solution_parallel(sol,npar)) {
                             IF_DEBUG(printf("Adding Parallelism preventing edge"););
                             IF_DEBUG(printf("%d to %d in fcg \n", scc1_fcg_offset+dim1,
@@ -1035,6 +1050,13 @@ Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, 
         par_preventing_adj_mat = pluto_matrix_alloc (num_nodes, num_nodes);
         for (i=0; i<num_nodes; i++) {
             bzero(par_preventing_adj_mat->val[i], num_nodes*sizeof(int64));
+        }
+    }
+
+    if (options->lpcolour) {
+        dep_distance_mat = pluto_matrix_alloc (num_nodes, num_nodes);
+        for (i=0; i<num_nodes; i++) {
+            bzero(dep_distance_mat->val[i], num_nodes*sizeof(int64));
         }
     }
 
@@ -2508,6 +2530,9 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
     free(colour);
     if (options->fuse == TYPED_FUSE) {
         pluto_matrix_free(par_preventing_adj_mat);
+    }
+    if (options->lpcolour) {
+        pluto_matrix_free(dep_distance_mat);
     }
     return;
 }
