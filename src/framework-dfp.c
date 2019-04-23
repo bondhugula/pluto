@@ -1842,7 +1842,23 @@ void cut_from_predecessor(int scc_id, PlutoProg* prog)
         }
     }
 }
+int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
+        int num_discarded, int* discarded_list)
+{
+    int i, max_dim;
+    Scc *sccs;
 
+    sccs = prog->ddg->sccs;
+    max_dim = sccs[scc_id].max_dim;
+    if (num_discarded == max_dim) {
+        return -1;
+    }
+    for (i=0; i<max_dim; i++) {
+        if (!is_discarded(i, discarded_list, num_discarded)) {
+            return i;
+        }
+    }
+}
 
 /* Colours an SCC of the FCG in the clustered approach */
 bool colour_scc_cluster (int scc_id, int *colour,
@@ -1852,6 +1868,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
     int i, v;
     Graph *ddg, *fcg;
     Scc *sccs;
+    int *disc_list, num_discarded;
+
 
     bool check_parallel;
     ddg = prog->ddg;
@@ -1897,14 +1915,20 @@ bool colour_scc_cluster (int scc_id, int *colour,
         }
     } 
 
-    scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+    scc_offset = sccs[scc_id].fcg_scc_offset;
     check_parallel = false;
-
-    for (i =0; i< max_dim; i++) {
-        v = scc_offset + i;
+    disc_list = (int*)malloc(max_dim*sizeof(int));
+    num_discarded = 0;
+    /* for (i =0; i<max_dim; i++) { */
+    do {
+        v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list);
+        assert (v != -1);
+        /* v = scc_offset + i; */
         if (colour[v]>0 && colour[v]!=current_colour) {
             IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
             IF_DEBUG(printf("already coloured with colour %d\n",colour[v]););
+            disc_list[num_discarded] = v;
+            num_discarded ++;
             continue;
         }
 
@@ -1912,6 +1936,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
          * covered in the next case as the vertex v is not coloured in 
          * the first place */
         if (fcg->adj->val[v][v] == 1) {
+            disc_list[num_discarded] = v;
+            num_discarded ++;
             continue;
         }
 
@@ -1923,6 +1949,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
             if (!hybrid_cut && options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel &&
                     is_colour_par_preventing(v, colour, current_colour)) {
                 IF_DEBUG(printf("Cannot colour dimension %d of SCC %d\n", i, scc_id););
+                disc_list[num_discarded] = v;
+                num_discarded ++;
                 continue;
             }
             colour[v] = current_colour; 
@@ -1930,7 +1958,10 @@ bool colour_scc_cluster (int scc_id, int *colour,
             IF_DEBUG(printf("with colour %d\n", colour[v]););
             return true;
         }
-    }
+
+        disc_list[num_discarded] = v;
+        num_discarded ++;
+    } while (num_discarded != max_dim);
     return false;
 }
 
