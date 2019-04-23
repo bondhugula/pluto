@@ -73,7 +73,7 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
 {
     int i, j;
     int n_eq = 0, n_ineq = 0;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
     isl_basic_set *bset;
 

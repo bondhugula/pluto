@@ -1545,7 +1545,7 @@ void pluto_dep_free(Dep *dep)
 /* Set the dimension names of type "type" according to the elements
  * in the array "names".
  */
-static __isl_give isl_dim *set_names(__isl_take isl_dim *dim,
+static __isl_give isl_space *set_names(__isl_take isl_space *dim,
         enum isl_dim_type type, char **names)
 {
     int i;
@@ -1562,7 +1562,7 @@ static __isl_give isl_dim *set_names(__isl_take isl_dim *dim,
  * One shot only; does not take into account the next ptr.
  */
 static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
-        __isl_take isl_dim *dim)
+        __isl_take isl_space *dim)
 {
     int i, j;
     int n_eq = 0, n_ineq = 0;
@@ -1609,7 +1609,7 @@ static __isl_give isl_set *osl_relation_to_isl_set(osl_relation_p relation,
  * to an isl_set.
  */
 static __isl_give isl_set *osl_relation_list_to_isl_set(
-        osl_relation_p list, __isl_take isl_dim *dim)
+        osl_relation_p list, __isl_take isl_space *dim)
 {
     isl_set *set;
 
@@ -1703,7 +1703,7 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
  * the isl_map { i -> A i + c } in the space prescribed by "dim".
  */
 static __isl_give isl_map *osl_scattering_to_isl_map(
-        osl_relation_p scattering, __isl_take isl_dim *dim)
+        osl_relation_p scattering, __isl_take isl_space *dim)
 {
     int n_col;
     isl_ctx *ctx;
@@ -1740,7 +1740,7 @@ static __isl_give isl_union_map *osl_access_list_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
     isl_union_map *res;
 
@@ -1789,7 +1789,7 @@ static __isl_give isl_map *osl_basic_access_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
 
     ctx = isl_set_get_ctx(dom);
@@ -1830,7 +1830,7 @@ static __isl_give isl_map *pluto_basic_access_to_isl_union_map(
 {
     int len, n_col;
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_mat *eq, *ineq;
 
     ctx = isl_set_get_ctx(dom);
@@ -2074,7 +2074,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     int i, racc_num, wacc_num;
     int nstmts = osl_statement_number(scop->statement);
     isl_ctx *ctx;
-    isl_dim *dim;
+    isl_space *dim;
     isl_space *param_space;
     isl_set *context;
     isl_union_map *empty;
