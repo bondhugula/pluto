@@ -3289,6 +3289,8 @@ void pluto_stmt_free(Stmt *stmt)
         free(reads);
     }
 
+    pluto_matrix_free(stmt->evicted_hyp);
+
     free(stmt);
 }
 
