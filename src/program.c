@@ -2674,12 +2674,12 @@ PlutoOptions *pluto_options_alloc()
 
     /* Initialize to default */
     options->flic = 0;
-    options->tile = 0;
+    options->tile = 1;
     options->intratileopt = 1;
     options->debug = 0;
     options->moredebug = 0;
     options->scancount = 0;
-    options->parallel = 0;
+    options->parallel = 1;
     options->innerpar = 0;
     options->identity = 0;
 

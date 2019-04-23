@@ -9,7 +9,6 @@ test/jacobi-2d-imper.c \
 test/matmul.c \
 test/costfunc.c \
 test/fdtd-2d.c \
-test/heat-3d-imperfect.c \
 test/seq.c \
 test/gemver.c \
 test/seidel.c \
@@ -44,6 +43,9 @@ test/multi-stmt-lazy-lin-ind.c \
 test/ludcmp.c \
 test/tce-4index-transform.c \
 test/noloop.c"
+
+# Disabled because Cloog is taking too long on this
+# test/heat-3d-imperfect.c
 
 for file in $TESTS; do
 	echo -e "$file"

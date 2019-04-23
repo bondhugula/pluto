@@ -162,6 +162,7 @@ int main(int argc, char *argv[])
         {"flic", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
+        {"noparallel", no_argument, &options->parallel, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
         {"nointratileopt", no_argument, &options->intratileopt, 0},
         {"diamond-tile", no_argument, &options->diamondtile, 1},
@@ -349,12 +350,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Make options consistent */
-    if (options->diamondtile == 1)    {
-        options->tile = 1;
+    if (options->diamondtile == 1 && options->tile == 0)    {
+        options->diamondtile = 0;
     }
-    if (options->fulldiamondtile == 1)    {
-        options->tile = 1;
-        options->diamondtile = 1;
+    if (options->fulldiamondtile == 1 && options->tile == 0)    {
+        options->diamondtile = 0;
+        options->fulldiamondtile = 0;
     }
 
     if (options->multipar == 1 && options->parallel == 0)    {

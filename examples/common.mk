@@ -48,17 +48,17 @@ endif
 all: orig tiled par
 
 $(SRC).opt.c:  $(SRC).c
-	$(PLC) $(SRC).c $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --notile --noparallel $(PLCFLAGS)  -o $@
 
 $(SRC).tiled.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 # Version that doesn't use diamond tiling
 $(SRC).pipepar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
+	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
