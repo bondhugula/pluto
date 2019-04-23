@@ -58,8 +58,7 @@
 #include <isl/set.h>
 #include <isl/flow.h>
 #include <isl/union_map.h>
-#include <isl/deprecated/int.h>
-#include <isl/deprecated/mat_int.h>
+#include <isl/val.h>
 
 osl_relation_p get_identity_schedule(int dim, int npar);
 static int read_codegen_context_from_file(PlutoConstraints *codegen_context);
@@ -1632,25 +1631,21 @@ static __isl_give isl_mat *extract_equalities_osl(isl_ctx *ctx,
 {
     int i, j;
     int n_col, n_row;
-    isl_int v;
     isl_mat *eq;
 
     n_col = relation->nb_columns;
     n_row = relation->nb_rows;
 
-    isl_int_init(v);
     eq = isl_mat_alloc(ctx, n_row, n_col - 1);
 
     for (i = 0; i < n_row; ++i) {
         for (j = 0; j < n_col - 1; ++j) {
             int row = osl_relation_get_row_id_for_nth_dimension(relation, i+1);
             int t = osl_int_get_si(relation->precision, relation->m[row][1 + j]);
-            isl_int_set_si(v, t);
-            eq = isl_mat_set_element(eq, i, j, v);
+            isl_val *v = isl_val_int_from_si(ctx, t);
+            eq = isl_mat_set_element_val(eq, i, j, v);
         }
     }
-
-    isl_int_clear(v);
 
     return eq;
 }
@@ -1665,21 +1660,19 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
 {
     int i, j;
     int n_col, n_row;
-    isl_int v;
     isl_mat *eq;
 
     n_row = relation->nb_rows==1?1:relation->nb_rows-1;
     n_col = relation->nb_columns - (relation->nb_rows==1?1:2);
 
-    isl_int_init(v);
     eq = isl_mat_alloc(ctx, n_row, n_col);
 
     if(relation->nb_rows==1){
-        isl_int_set_si(v, -1);
-        eq = isl_mat_set_element(eq, 0, 0, v);
+        isl_val *v = isl_val_negone(ctx);
+        eq = isl_mat_set_element_val(eq, 0, 0, v);
         for (j = 1; j < n_col; ++j) {
-            isl_int_set_si(v, 0);
-            eq = isl_mat_set_element(eq, 0, j, v);
+            v = isl_val_zero(ctx);
+            eq = isl_mat_set_element_val(eq, 0, j, v);
         }
     }
     else{
@@ -1687,13 +1680,11 @@ static __isl_give isl_mat *extract_equalities_osl_access(isl_ctx *ctx,
             for (j = 2; j < relation->nb_columns; ++j) {
                 int row = osl_relation_get_row_id_for_nth_dimension(relation, i+1);
                 int t = osl_int_get_si(relation->precision, relation->m[row][j]);
-                isl_int_set_si(v, t);
-                eq = isl_mat_set_element(eq, i-1, j-2, v);
+                isl_val *v = isl_val_int_from_si(ctx, t);
+                eq = isl_mat_set_element_val(eq, i-1, j-2, v);
             }
         }
     }
-
-    isl_int_clear(v);
 
     return eq;
 }
