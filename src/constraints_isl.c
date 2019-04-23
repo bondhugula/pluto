@@ -86,7 +86,7 @@ __isl_give isl_basic_set *isl_basic_set_from_pluto_constraints(
     eq = isl_mat_alloc(ctx, n_eq, cst->ncols);
     ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
 
-    dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+    dim = isl_space_set_alloc(ctx, 0, cst->ncols - 1);
 
     n_eq = n_ineq = 0;
     for (i = 0; i < cst->nrows; ++i) {
@@ -127,7 +127,7 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
 {
     isl_set *set; 
 
-    isl_space *dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+    isl_space *dim = isl_space_set_alloc(ctx, 0, cst->ncols - 1);
     set = isl_set_empty(dim);
 
     while (cst != NULL) {
@@ -353,7 +353,7 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar)
 
     // Allow only positive values.
     if(negvar == 0) {
-        all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
+        all_positive = isl_basic_set_positive_orthant(isl_set_get_space(domain));
         all_positive_set = isl_set_from_basic_set(all_positive);
         domain = isl_set_intersect(domain, all_positive_set);
     }
