@@ -30,7 +30,6 @@
 
 #include "isl/val.h"
 #include "isl/val_gmp.h"
-#include "isl/deprecated/int.h"
 
 /*
  * Allocated; not initialized
@@ -825,9 +824,6 @@ long long isl_val_get_num_ll(__isl_keep isl_val *v)
     long long result;
 
     mpz_init(tmp);
-    // isl_val_get_num_gmp(v, tmp);
-    // gmp_printf("isl_int: %Zd\n", tmp );
-    // gmp_printf("isl_int hex: %Zx\n", tmp);
     
     if (!v)
         return 0;
@@ -839,8 +835,6 @@ long long isl_val_get_num_ll(__isl_keep isl_val *v)
     isl_val_get_num_gmp(v, z);
 
     if (!mpz_fits_ll(z)) {
-        // gmp_printf("isl_int: %Zd\n", z);
-        // gmp_printf("isl_int hex: %Zx\n", z);
         printf("[pluto_math_support] numerator too large; returning largest/smallest signed 64-bit number\n");
         sign = mpz_sgn(z);
         mpz_clear(z);
