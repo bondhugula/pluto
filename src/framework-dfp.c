@@ -1842,22 +1842,25 @@ void cut_from_predecessor(int scc_id, PlutoProg* prog)
         }
     }
 }
+
+/* Returns a dimension of an SCC (vetex in the FCG)
+ * that can be colored next. */
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         int num_discarded, int* discarded_list)
 {
-    int i, max_dim;
+    int i, max_dim, scc_offset;
     Scc *sccs;
 
     sccs = prog->ddg->sccs;
     max_dim = sccs[scc_id].max_dim;
-    if (num_discarded == max_dim) {
-        return -1;
-    }
+    scc_offset = sccs[scc_id].fcg_scc_offset;
     for (i=0; i<max_dim; i++) {
         if (!is_discarded(i, discarded_list, num_discarded)) {
-            return i;
+            return scc_offset + i;
         }
     }
+    /* If none of the vertices are colourable */
+    return -1;
 }
 
 /* Colours an SCC of the FCG in the clustered approach */
@@ -1924,6 +1927,8 @@ bool colour_scc_cluster (int scc_id, int *colour,
         v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list);
         assert (v != -1);
         /* v = scc_offset + i; */
+        /* Used for debugging purposes */
+        i = scc_offset - max_dim;
         if (colour[v]>0 && colour[v]!=current_colour) {
             IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
             IF_DEBUG(printf("already coloured with colour %d\n",colour[v]););
