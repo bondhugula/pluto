@@ -56,6 +56,7 @@
 #include <isl/map.h>
 #include <isl/mat.h>
 #include <isl/set.h>
+#include <isl/space.h>
 #include <isl/flow.h>
 #include <isl/union_map.h>
 #include <isl/val.h>

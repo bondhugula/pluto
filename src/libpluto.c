@@ -30,6 +30,7 @@
 #include "program.h"
 #include "pluto/libpluto.h"
 #include "isl/map.h"
+#include "isl/space.h"
 
 #include "candl/scop.h"
 

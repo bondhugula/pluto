@@ -16,6 +16,7 @@
 
 #include "isl/map.h"
 #include "isl/set.h"
+#include "isl/space.h"
 #include "isl/val_gmp.h"
 
 /* start: 0-indexed */
