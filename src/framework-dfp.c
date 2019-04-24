@@ -1578,8 +1578,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv, PlutoProg 
     return false;
 }
 
-/* Returns an array corresponding to convex
- * successors that have parallel dimensions */
+/* Returns SCCs that are convex successors of the input SCC */
 int* get_convex_successors(int scc_id, PlutoProg *prog,
         int* num_convex_successors)
 {
@@ -1604,6 +1603,8 @@ int* get_convex_successors(int scc_id, PlutoProg *prog,
     return convex_successors;
 }
 
+/* Returns SCCs that are convex successors of
+ * the given SCC and have a parallel dimension */
 int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
         int *num_convex_par_successors) {
     int i, num, par_successors, num_sccs;
