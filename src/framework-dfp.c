@@ -1848,15 +1848,16 @@ void cut_from_predecessor(int scc_id, PlutoProg* prog)
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         int num_discarded, int* discarded_list)
 {
-    int i, max_dim, scc_offset;
+    int i, v, max_dim, scc_offset;
     Scc *sccs;
 
     sccs = prog->ddg->sccs;
     max_dim = sccs[scc_id].max_dim;
     scc_offset = sccs[scc_id].fcg_scc_offset;
     for (i=0; i<max_dim; i++) {
-        if (!is_discarded(i, discarded_list, num_discarded)) {
-            return scc_offset + i;
+        v = scc_offset + i;
+        if (!is_discarded(v, discarded_list, num_discarded)) {
+            return v;
         }
     }
     /* If none of the vertices are colourable */
@@ -1872,7 +1873,6 @@ bool colour_scc_cluster (int scc_id, int *colour,
     Graph *ddg, *fcg;
     Scc *sccs;
     int *disc_list, num_discarded;
-
 
     bool check_parallel;
     ddg = prog->ddg;
@@ -2483,7 +2483,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog)
         for (j=0; j<prog->ddg->num_sccs; j++) {
             prog->ddg->sccs[j].is_scc_coloured = false;
         }
-        if (options->lpcolour) {
+        if (options->lpcolour && !options->scc_cluster) {
             mark_parallel_sccs(colour, prog);
         }
         colour = colour_fcg_scc_based(i, colour, prog);
