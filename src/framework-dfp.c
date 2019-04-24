@@ -1585,15 +1585,15 @@ int* get_convex_successors(int scc_id, PlutoProg *prog,
 {
     int i, num_successors, num_sccs;
     Graph *ddg;
-    Scc *sccs;
     int* convex_successors = NULL;
+
     ddg = prog->ddg;
-    sccs = ddg->sccs;
     num_sccs = ddg->num_sccs;
 
+
     num_successors=0;
-    for (i=scc_id+1; i<ddg->num_sccs; i++) {
-        if (sccs[i].is_parallel && is_convex_scc(scc_id, i, ddg, prog)) {
+    for (i=scc_id+1; i<num_sccs; i++) {
+        if (is_convex_scc(scc_id, i, ddg, prog)) {
             if (convex_successors == NULL) {
                 convex_successors = (int*) malloc (num_sccs*sizeof(int));
             }
@@ -1602,6 +1602,31 @@ int* get_convex_successors(int scc_id, PlutoProg *prog,
     }
     *num_convex_successors = num_successors;
     return convex_successors;
+}
+
+int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
+        int *num_convex_par_successors) {
+    int i, num, par_successors, num_sccs;
+    int *convex_successors, *convex_par_successors;
+    Scc *sccs;
+
+    sccs = prog->ddg->sccs;
+    num_sccs = prog->ddg->num_sccs;
+    convex_par_successors = NULL;
+    par_successors = 0;
+    convex_successors = get_convex_successors(scc_id, prog, &num);
+
+    for (i=0; i<num; i++) {
+        if (!sccs[i].is_parallel) 
+            continue;
+
+        if (convex_par_successors==NULL) {
+            convex_par_successors = (int*) malloc (num_sccs*sizeof(int));
+        }
+        convex_par_successors[par_successors++] = convex_successors[i];
+    }
+    *num_convex_par_successors = par_successors;
+    return convex_par_successors;
 }
 
 /* Returns true if there is a parallelism preventing edge between vertex v
@@ -1775,7 +1800,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
         return false;
     }
 
-    convex_successors = get_convex_successors(scc_id, prog,
+    convex_successors = get_convex_parallel_successors(scc_id, prog,
             &num_convex_successors);
 
     /* If there are no convex successors, colour this scc */
