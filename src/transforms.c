@@ -31,8 +31,8 @@ void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog)
 {
     assert(stmt->dim == stmt->domain->ncols-prog->npar-1);
 
-    char iter[5];
-    sprintf(iter, "d%d", stmt->dim);
+    char iter[13];
+    snprintf(iter, sizeof(iter), "d%d", stmt->dim);
 
     pluto_stmt_add_dim(stmt, depth, -1, iter, H_SCALAR, prog);
 

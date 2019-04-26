@@ -94,14 +94,13 @@ ICC (Intel C compiler), uncomment line 7 and comment line
   )
 
 - do a make (this will build all executables; 'orig' is the original code 
-  compiled with the native compiler, 'tiled' is the tiled code, 'par' is the 
-  OpenMP parallelized+locality optimized code, 'lbpar' with diamond tiling 
-  when possible. One could do 'make <target>' where target can be orig, 
-  orig_par, opt, tiled, par, lbpar, etc. (see examples/common.mk for full 
-  list)
+  compiled with the native compiler, 'tiled' is the tiled code, 'par' is 
+  the OpenMP parallelized + locality optimized code. One could do 'make 
+  <target>' where target can be orig, orig_par, opt, tiled, par, 
+  pipepar, etc.  (see examples/common.mk for full list)
 
-- 'make test' to test for correctness, 'make perf', 'make lbperf' to compare 
-performance
+- 'make test' to test for correctness, 'make perf' to compare 
+  performance
 
 
 COMMAND-LINE OPTIONS

@@ -85,10 +85,8 @@ void usage_message(void)
     fprintf(stdout, "       --l2tile                  Tile a second time (typically for L2 cache) [disabled by default] \n");
     fprintf(stdout, "       --parallel                Automatically parallelize (generate OpenMP pragmas) [disabled by default]\n");
     fprintf(stdout, "    or --parallelize\n");
-    fprintf(stdout, "       --partlbtile              Enables one-dimensional concurrent start (recommended)\n");
-    fprintf(stdout, "    or --part-diamond-tile\n");
-    fprintf(stdout, "       --lbtile                  Enables full-dimensional concurrent start\n");
-    fprintf(stdout, "    or --diamond-tile\n");
+    fprintf(stdout, "       --[no]diamond-tile        Performs diamond tiling (enabled by default)\n");
+    fprintf(stdout, "       --full-diamond-tile       Enables full-dimensional concurrent start\n");
     fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) vectorization (enabled by default)\n");
     fprintf(stdout, "       --multipar                Extract all degrees of parallelism [disabled by default];\n");
     fprintf(stdout, "                                    by default one degree is extracted within any schedule sub-tree (if it exists)\n");
@@ -170,13 +168,13 @@ int main(int argc, char *argv[])
         {"flic", no_argument, &options->flic, 1},
         {"tile", no_argument, &options->tile, 1},
         {"notile", no_argument, &options->tile, 0},
+        {"noparallel", no_argument, &options->parallel, 0},
         {"intratileopt", no_argument, &options->intratileopt, 1},
         {"nointratileopt", no_argument, &options->intratileopt, 0},
-        {"lbtile", no_argument, &options->lbtile, 1},
         {"pet", no_argument, &options->pet, 1},
-        {"diamond-tile", no_argument, &options->lbtile, 1},
-        {"part-diamond-tile", no_argument, &options->partlbtile, 1},
-        {"partlbtile", no_argument, &options->partlbtile, 1},
+        {"diamond-tile", no_argument, &options->diamondtile, 1},
+        {"nodiamond-tile", no_argument, &options->diamondtile, 0},
+        {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
         {"debug", no_argument, &options->debug, true},
         {"moredebug", no_argument, &options->moredebug, true},
         {"rar", no_argument, &options->rar, 1},
@@ -359,17 +357,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         options->lastwriter = 0;
     }
 
-    if (options->identity == 1) {
-        options->partlbtile = 0;
-        options->lbtile = 0;
+    /* Make options consistent */
+    if (options->diamondtile == 1 && options->tile == 0)    {
+        options->diamondtile = 0;
     }
-
-    if (options->partlbtile == 1 && options->lbtile == 0)    {
-        options->lbtile = 1;
-    }
-
-    if (options->lbtile == 1 && options->tile == 0)    {
-        options->tile = 1;
+    if (options->fulldiamondtile == 1 && options->tile == 0)    {
+        options->diamondtile = 0;
+        options->fulldiamondtile = 0;
     }
 
     if (options->multipar == 1 && options->parallel == 0)    {
@@ -449,7 +443,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Extract polyhedral representation from input program */
     if (options->pet) {
-        isl_ctx *pctx = isl_ctx_alloc();
+        isl_ctx *pctx = isl_ctx_alloc_with_pet_options();
         pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
         if (!pscop) {
@@ -591,7 +585,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->parallel && !options->tile && !options->identity)   {
         /* Obtain wavefront/pipelined parallelization by skewing if
          * necessary */
-        int nbands;
+        unsigned nbands;
         Band **bands;
         pluto_compute_dep_satisfaction(prog);
         bands = pluto_get_outermost_permutable_bands(prog, &nbands);
@@ -637,110 +631,108 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         pluto_populate_scop(scop, prog, options);
         osl_scop_print(stdout, scop);
     }else{  // do the usual Pluto stuff
+  
+      /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
+      /* Since meta info about loops
+       * is printed to be processed by scripts - if transformations are
+       * performed, changed loop order/iterator names will be missed  */
+      gen_unroll_file(prog);
 
-        /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-        /* Since meta info about loops
-         * is printed to be processed by scripts - if transformations are
-         * performed, changed loop order/iterator names will be missed  */
-        gen_unroll_file(prog);
+      char *basec, *bname;
+      char *outFileName, *cloogFileName;
+      if (options->out_file == NULL)  {
+          /* Get basename, remove .c extension and append a new one */
+          basec = strdup(srcFileName);
+          bname = basename(basec);
 
-        char *outFileName;
-        char *cloogFileName;
-        char *basec, *bname;
-        if (options->out_file == NULL)  {
-            /* Get basename, remove .c extension and append a new one */
-            basec = strdup(srcFileName);
-            bname = basename(basec);
+          /* max size when tiled.* */
+          outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
+          cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
 
-            /* max size when tiled.* */
-            outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
-            cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
+          if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+              outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
+              strncpy(outFileName, bname, strlen(bname)-2);
+              outFileName[strlen(bname)-2] = '\0';
+          }else{
+              outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
+              strcpy(outFileName, bname);
+          }
+          strcat(outFileName, ".pluto.c");
+      }else{
+          basec = strdup(options->out_file);
+          bname = basename(basec);
 
-            if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-                outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
-                strncpy(outFileName, bname, strlen(bname)-2);
-                outFileName[strlen(bname)-2] = '\0';
-            }else{
-                outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
-                strcpy(outFileName, bname);
-            }
-            strcat(outFileName, ".pluto.c");
-        }else{
-            basec = strdup(options->out_file);
-            bname = basename(basec);
+          outFileName = malloc(strlen(options->out_file)+1);
+          strcpy(outFileName, options->out_file);
+      }
 
-            outFileName = malloc(strlen(options->out_file)+1);
-            strcpy(outFileName, options->out_file);
-        }
+      if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+          cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
+          strncpy(cloogFileName, bname, strlen(bname)-2);
+          cloogFileName[strlen(bname)-2] = '\0';
+      }else{
+          cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
+          strcpy(cloogFileName, bname);
+      }
+      strcat(cloogFileName, ".pluto.cloog");
+      free(basec);
 
-        if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-            cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
-            strncpy(cloogFileName, bname, strlen(bname)-2);
-            cloogFileName[strlen(bname)-2] = '\0';
-        }else{
-            cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
-            strcpy(cloogFileName, bname);
-        }
-        strcat(cloogFileName, ".pluto.cloog");
-        free(basec);
+      cloogfp = fopen(cloogFileName, "w+");
+      if (!cloogfp)   {
+          fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
+          free(cloogFileName);
+          pluto_options_free(options);
+          pluto_prog_free(prog);
+          return 9;
+      }
+      free(cloogFileName);
 
-        cloogfp = fopen(cloogFileName, "w+");
-        if (!cloogfp)   {
-            fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
-            free(cloogFileName);
-            pluto_options_free(options);
-            pluto_prog_free(prog);
-            return 9;
-        }
-        free(cloogFileName);
+      outfp = fopen(outFileName, "w");
+      if (!outfp) {
+          fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+          free(outFileName);
+          pluto_options_free(options);
+          pluto_prog_free(prog);
+          fclose(cloogfp);
+          return 10;
+      }
 
-        outfp = fopen(outFileName, "w");
-        if (!outfp) {
-            fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
-            free(outFileName);
-            pluto_options_free(options);
-            pluto_prog_free(prog);
-            fclose(cloogfp);
-            return 10;
-        }
+      if (options->moredebug) {
+          printf("After scalar dimension detection (final transformations)\n");
+          pluto_transformations_pretty_print(prog);
+      }
 
-        if (options->moredebug) {
-            printf("After scalar dimension detection (final transformations)\n");
-            pluto_transformations_pretty_print(prog);
-        }
+      /* Generate .cloog file */
+      pluto_gen_cloog_file(cloogfp, prog);
+      /* Add the <irregular> tag from clan, if any */
+      if(!options->pet) {
+          if (irroption) {
+              fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
+              free(irroption);
+          }
+      }
+      rewind(cloogfp);
 
-        /* Generate .cloog file */
-        pluto_gen_cloog_file(cloogfp, prog);
-        /* Add the <irregular> tag from clan, if any */
-        if(!options->pet) {
-            if (irroption) {
-                fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-                free(irroption);
-            }
-        }
-        rewind(cloogfp);
+      /* Very important: Dont change the order of calls to print_dynsched_file
+       * between pluto_gen_cloog_file() and pluto_*_codegen()
+       */
 
-        /* Very important: Dont change the order of calls to print_dynsched_file
-         * between pluto_gen_cloog_file() and pluto_*_codegen()
-         */
+      /* Generate code using Cloog and add necessary stuff before/after code */
+      t_start = rtclock();
+      pluto_multicore_codegen(cloogfp, outfp, prog);
+      t_c = rtclock() - t_start;
 
-        /* Generate code using Cloog and add necessary stuff before/after code */
-        t_start = rtclock();
-        pluto_multicore_codegen(cloogfp, outfp, prog);
-        t_c = rtclock() - t_start;
+      FILE *tmpfp = fopen(".outfilename", "w");
+      if (tmpfp)    {
+          fprintf(tmpfp, "%s\n", outFileName);
+          fclose(tmpfp);
+          PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
+      }
+      free(outFileName);
 
-        FILE *tmpfp = fopen(".outfilename", "w");
-        if (tmpfp)    {
-            fprintf(tmpfp, "%s\n", outFileName);
-            fclose(tmpfp);
-            PLUTO_MESSAGE(printf( "[Pluto] Output written to %s\n", outFileName););
-        }
-        free(outFileName);
-
-        fclose(cloogfp);
-        fclose(outfp);
+      fclose(cloogfp);
+      fclose(outfp);
     }
-
 
     t_all = rtclock() - t_start_all;
 
