@@ -646,12 +646,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
           bname = basename(basec);
 
           /* max size when tiled.* */
-          outFileName = alloca(strlen(bname)+strlen(".pluto.c")+1);
-          cloogFileName = alloca(strlen(bname)+strlen(".pluto.cloog")+1);
+          outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
+          cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
 
           if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-              outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
-              strncpy(outFileName, bname, strlen(bname)-2);
+              memcpy(outFileName, bname, strlen(bname)-2);
+              strncpy(cloogFileName, bname, strlen(bname)-2);
               outFileName[strlen(bname)-2] = '\0';
           }else{
               outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);

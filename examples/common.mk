@@ -54,9 +54,12 @@ $(SRC).tiled.c:  $(SRC).c
 	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
+<<<<<<< HEAD
 	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).mlbpar.c:  $(SRC).c
+=======
+>>>>>>> origin/master
 	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 # Version that doesn't use diamond tiling
@@ -81,6 +84,9 @@ mlbpar: $(SRC).mlbpar.c
 # Version that doesn't use diamond tiling
 pipepar: $(SRC).pipepar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
+
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
