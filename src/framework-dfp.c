@@ -1859,10 +1859,12 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
 
     common_dims = get_common_parallel_dims(scc_id, convex_successors, 
             num_convex_successors, colour, current_colour, parallel_dims, prog);
-    printf ("common dims for SCC %d\n", scc_id);
-    if (common_dims!=NULL) {
-        for (i=0; i<max_dim; i++) {
-            printf("%d, %d\n", i, common_dims[i]);
+    if (options->debug) {
+        printf ("common dims for SCC %d\n", scc_id);
+        if (common_dims!=NULL) {
+            for (i=0; i<max_dim; i++) {
+                printf("%d, %d\n", i, common_dims[i]);
+            }
         }
     }
 
