@@ -541,19 +541,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     if (options->iss) {
-        // PlutoConstraints *dom = pluto_constraints_read(stdin);
-        // printf("Input set\n");
-        // pluto_constraints_compact_print(stdout, dom);
-        // PlutoConstraints **doms = malloc(1*sizeof(PlutoConstraints *));
-        // doms[0] = dom;
-        // pluto_find_iss(doms, 1, 1, NULL);
-        // PlutoMatrix *mat = pluto_matrix_input(stdin);
-        // pluto_constraints_print(stdout, dom);
-        // pluto_matrix_print(stdout, mat);
-        // PlutoConstraints *farkas = farkas_affine(dom, mat);
-        //pluto_constraints_pretty_print(stdout, farkas);
-        // pluto_constraints_free(dom);
-        // pluto_options_free(options);
         pluto_iss_dep(prog);
     }
 
