@@ -21,4 +21,4 @@
 	url = https://github.com/periscop/openscop.git
 [submodule "pet"]
 	path = pet
-	url = git://repo.or.cz/pet.git
+	url = https://github.com/bondhugula/pet-for-pluto.git
