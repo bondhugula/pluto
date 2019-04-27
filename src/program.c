@@ -2005,7 +2005,7 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
      * and t' < T } */
     isl_space *space = isl_basic_map_get_space(bmap);
     if (isl_space_range_is_wrapping(space)) {
-        bmap = isl_basic_map_range_factor_domain(isl_basic_map_copy(bmap));
+        bmap = isl_basic_map_range_factor_domain(bmap);
         isl_space_free(space);
         space = isl_basic_map_get_space(bmap);
     }
