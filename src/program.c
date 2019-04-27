@@ -4847,18 +4847,22 @@ static __isl_give isl_printer *print_user(__isl_take isl_printer *p,
     isl_id *id;
     struct pet_stmt *stmt;
     struct pet_scop *scop = (struct pet_scop *) user;
+    /* Printer just for the stmt text */
     isl_printer *p_l;
 
     p_l = isl_printer_to_str(isl_printer_get_ctx(p));
     p_l = isl_printer_set_output_format(p_l, ISL_FORMAT_C);
+
     stmt = extract_pet_stmt(node, scop);
 
     id = isl_ast_node_get_annotation(node);
     ref2expr = (isl_id_to_ast_expr *) isl_id_get_user(id);
     isl_id_free(id);
 
-    /* Print to both p and p_l */
-    // p = pet_stmt_print_body(stmt, p, ref2expr);
+    /* Print to both p and p_l. */
+    /* Printing to 'p' is just for debugging purposes - so that we could see the
+     * AST */
+    p = pet_stmt_print_body(stmt, p, ref2expr);
     p_l = pet_stmt_print_body(stmt, p_l, ref2expr);
     assert(stmt->text == NULL);
     stmt->text = isl_printer_get_str(p_l);
