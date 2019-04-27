@@ -2491,9 +2491,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         }
     }
 
-    // Disabled due to a potential bug in coalescing. Reproduce with
-    // examples/heat-2d/heat-2d.c - coalescing dep_raw leads to no hyperplanes
-    // being found.
     if (options->isldepcoalesce) {
         assert(0 && "dep coalesce disabled with --pet due to a potential bug");
         dep_raw = isl_union_map_coalesce(dep_raw);
@@ -2912,7 +2909,10 @@ PlutoOptions *pluto_options_alloc()
 
     options->isldep = 0;
     options->isldepaccesswise = 1;
-    options->isldepcoalesce = 1;
+    /* Disabled due to a potential bug in coalescing. Reproduce with
+     * examples/heat-2d/heat-2d.c - coalescing dep_raw leads to no hyperplanes
+     * being found. */
+    options->isldepcoalesce = 0;
 
     options->candldep = 0;
 
