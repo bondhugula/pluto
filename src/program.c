@@ -4471,7 +4471,9 @@ static void compute_deps_pet(struct pet_scop *pscop, isl_map **stmt_wise_schedul
     isl_union_map_free(schedule);
 }
 
-static void pet_remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
+/* Removes certain trivial dead code - in particular, all writes to variables
+ * that have been marked as killed through special kill statements */
+static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
     bzero(dead, sizeof(int) * pscop->n_stmt);
     for (unsigned s = 0; s < pscop->n_stmt; s++)  {
         struct pet_stmt *pstmt = pscop->stmts[s];
@@ -4523,10 +4525,13 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop, isl_map **stmt_wise_sch
 
     IF_DEBUG(printf("[pluto] Pet to Pluto stmts\n"););
 
-    int dead[pscop->n_stmt];
-    pet_remove_trivial_dead_code(pscop, dead);
     npar = isl_set_dim(pscop->context, isl_dim_all);
     *nstmts = pscop->n_stmt;
+
+    /* This takes cares of marking trivial statements such as original iterator
+     * assignments and increments as dead code */
+    int dead[pscop->n_stmt];
+    remove_trivial_dead_code(pscop, dead);
 
     if (*nstmts == 0)    return NULL;
 
@@ -4737,35 +4742,6 @@ static __isl_give isl_multi_pw_aff *pullback_index(
     return isl_multi_pw_aff_pullback_pw_multi_aff(index, iterator_map);
 }
 
-
-#if 0
-/* Return a list of isl_ids of the form "prefix%d".
-*/
-static __isl_give isl_id_list *generate_names_(isl_ctx * ctx)
-{
-    isl_id_list *names;
-
-    names = isl_id_list_alloc(ctx, 7);
-        isl_id *id;
-
-        id = isl_id_alloc(ctx, "0", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "t", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "0", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "i", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "0", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "j", NULL);
-        names = isl_id_list_add(names, id);
-        id = isl_id_alloc(ctx, "0", NULL);
-        names = isl_id_list_add(names, id);
-
-    return names;
-}
-#endif
 
 /* Set the iterator names using schedule map of the statement*/
 static __isl_give isl_id_list *generate_names(isl_ctx *ctx, struct pet_stmt *stmt)
@@ -5291,7 +5267,6 @@ void pluto_stmt_transformation_print(const Stmt *stmt)
  * access_matrix: access function matrix for source iterators of dep2. pass NULL to use access function in dep2
  * returns dependence polyhedron
  */
-
 PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstraints *domain2, Dep *dep1, Dep *dep2,
         PlutoProg *prog, PlutoMatrix *access_matrix)
 {
@@ -5468,10 +5443,6 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
         else
             pluto_constraints_unionize(tdpoly, deps[i]->dpolytope);
     }
-
-
-
-    //TODO: Free deps
 
     isl_union_map_free(dep_raw);
 
