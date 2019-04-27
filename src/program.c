@@ -5329,7 +5329,7 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     char **iter = (char**)malloc(domain_dim*sizeof(char*));
 
     for (i=0; i < domain_dim; i++) {
-        iter[i] = malloc(10 * sizeof(char));
+        iter[i] = malloc(12 * sizeof(char));
         sprintf(iter[i], "d%d", i+1);
     }
 
@@ -5391,7 +5391,7 @@ PlutoConstraints* pluto_find_dependence(PlutoConstraints *domain1, PlutoConstrai
     iter = (char**)malloc(domain_dim*sizeof(char*));
 
     for (i=0; i < domain_dim; i++) {
-        iter[i] = malloc(10 * sizeof(char));
+        iter[i] = malloc(12 * sizeof(char));
         sprintf(iter[i], "d%d", i+1);
     }
 
