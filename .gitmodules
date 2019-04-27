@@ -1,6 +1,6 @@
 [submodule "isl"]
 	path = isl
-	url = git://repo.or.cz/isl.git
+	url = https://github.com/bondhugula/isl-for-pluto.git
 [submodule "cloog-isl"]
 	path = cloog-isl
 	url = https://github.com/periscop/cloog.git
