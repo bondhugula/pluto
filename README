@@ -48,7 +48,6 @@ $ git clone git://repo.or.cz/pluto.git
 $ cd pluto/
 $ git submodule init 
 $ git submodule update
-$ ./apply_patches.sh
 $ ./autogen.sh
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
