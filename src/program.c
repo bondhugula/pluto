@@ -63,7 +63,6 @@
 #include <isl/val.h>
 
 #include "pet.h"
-#include "../pet/expr_access_type.h"
 
 osl_relation_p get_identity_schedule(int dim, int npar);
 static int read_codegen_context_from_file(PlutoConstraints *codegen_context);
@@ -4564,7 +4563,7 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop, isl_map **stmt_wise_sch
 
     for(s = 0, t = 0; s < pscop->n_stmt; s++)  {
         if (dead[s]) {
-            free(pscop->stmts[s]->stmt_text);
+            free(pscop->stmts[s]->text);
             continue;
         }
     	struct pet_stmt *pstmt = pscop->stmts[s];
@@ -4618,13 +4617,13 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop, isl_map **stmt_wise_sch
          * the newline character at the end to make it compatible to ClooG 
          * format.
          */
-        if (pstmt->stmt_text) {
-            int len=(strlen(pstmt->stmt_text));
+        if (pstmt->text) {
+            int len=(strlen(pstmt->text));
             stmt->text = (char *) malloc(len+1);
-            strcpy(stmt->text, pstmt->stmt_text);
+            strcpy(stmt->text, pstmt->text);
             stmt->text[len-1]='\0'; 
-            free(pstmt->stmt_text);
-            pstmt->stmt_text = NULL;
+            free(pstmt->text);
+            pstmt->text = NULL;
         }else stmt->text = strdup("/* kill statement */");
 
         isl_space *space = isl_set_get_space(pscop->context);
@@ -4832,7 +4831,7 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
 
 /* 
  * Print the statement corresponding to "node" to "p", and also set
- * pet_stmt's stmt_text to that.
+ * pet_stmt's text to that.
  *
  * We look for the statement in the pet_scop passed through "user".
  * The AST expressions for all references in the statement
@@ -4861,8 +4860,8 @@ static __isl_give isl_printer *print_user(__isl_take isl_printer *p,
     /* Print to both p and p_l */
     // p = pet_stmt_print_body(stmt, p, ref2expr);
     p_l = pet_stmt_print_body(stmt, p_l, ref2expr);
-    assert(stmt->stmt_text == NULL);
-    stmt->stmt_text = isl_printer_get_str(p_l);
+    assert(stmt->text == NULL);
+    stmt->text = isl_printer_get_str(p_l);
     isl_printer_free(p_l);
 
     isl_ast_print_options_free(print_options);
