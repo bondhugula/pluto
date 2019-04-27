@@ -54,12 +54,9 @@ $(SRC).tiled.c:  $(SRC).c
 	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
-<<<<<<< HEAD
 	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).mlbpar.c:  $(SRC).c
-=======
->>>>>>> origin/master
 	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 # Version that doesn't use diamond tiling
