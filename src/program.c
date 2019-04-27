@@ -2135,8 +2135,6 @@ static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, voi
 
     isl_map *map;
 
-    // isl_basic_map_dump(bmap);
-
     map = isl_map_from_basic_map(bmap);
 
     int dim = isl_map_dim(map, isl_dim_out);
@@ -2149,7 +2147,6 @@ static int isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, voi
         PlutoMatrix *func_onedim = NULL;
         if (isl_map_dim_is_single_valued(map, i)) {
             isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
-            // isl_pw_aff_dump(pw_aff);
             /* Best effort: Gets it from the last piece */
             isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
             pluto_matrix_add(func, func_onedim);
@@ -2432,9 +2429,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
             }
         }
     }
-    // isl_union_map_dump(read);
-    // isl_union_map_dump(write);
-    // isl_union_map_dump(schedule);
 
     if (options->lastwriter) {
         // compute RAW dependences which do not contain transitive dependences
@@ -2443,7 +2437,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
-        // isl_union_map_dump(dep_raw);
         // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(write),
                 isl_union_map_copy(write),
@@ -4357,9 +4350,6 @@ static void compute_deps_pet(struct pet_scop *pscop, isl_map **stmt_wise_schedul
 
     isl_space *space = isl_set_get_space(pscop->context);
     empty = isl_union_map_empty(isl_space_copy(space));
-    // writes = pet_scop_collect_may_writes(pscop);
-    // schedule = pet_scop_collect_schedule(pscop);
-    // reads = pet_scop_collect_may_reads(pscop);
 
     reads = isl_union_map_copy(empty);
     writes = isl_union_map_copy(empty);
@@ -4396,10 +4386,6 @@ static void compute_deps_pet(struct pet_scop *pscop, isl_map **stmt_wise_schedul
     isl_union_map_free(schedules);
     isl_space_free(space);
 
-    isl_union_map_dump(reads);
-    isl_union_map_dump(writes);
-    isl_union_map_dump(schedule);
-
     if (options->lastwriter) {
         // compute RAW dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(reads),
@@ -4407,7 +4393,6 @@ static void compute_deps_pet(struct pet_scop *pscop, isl_map **stmt_wise_schedul
                 isl_union_map_copy(empty),
                 isl_union_map_copy(schedule),
                 &dep_raw, NULL, NULL, NULL);
-        // isl_union_map_dump(dep_raw);
         // compute WAW and WAR dependences which do not contain transitive dependences
         isl_union_map_compute_flow(isl_union_map_copy(writes),
                 isl_union_map_copy(writes),
@@ -4996,8 +4981,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx, PlutoOptions 
     IF_DEBUG(printf("[pluto] Pet SCoP context\n"));
     IF_DEBUG(isl_set_dump(pscop->context););
     IF_DEBUG(pluto_constraints_compact_print(stdout, prog->context));
-
-    // isl_set_dump(pscop->context);
 
     if (options->codegen_context != -1)	{
         for (i=0; i<prog->npar; i++)  {
