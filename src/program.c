@@ -1993,35 +1993,27 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
     bmap = isl_basic_map_remove_divs(bmap);
 
     dep = info->deps[info->index];
+
     dep->id = info->index;
 
-    const char *dest_name;
-    isl_space *space;
-    isl_space *range_space = isl_space_range(isl_basic_map_get_space(bmap));
-    /* The range space can be wrapped, if we didn't use lastwriter. 
-     * For example, [T, N] -> { S_1_w0[t, i] -> [S_0_r2[t', i'] -> a[o2]] : i'
-     * = -1 + i and o2 = i and t >= 0 and i >= 3 and i <= -2 + N and t' > t
-     * and t' < T } */
-    if (isl_space_is_wrapping(range_space)) {
-        space = isl_space_unwrap(range_space);
-        dest_name = isl_space_get_tuple_name(space, isl_dim_in);
-    } else {
-        space = range_space;
-        dest_name = isl_basic_map_get_tuple_name(bmap, isl_dim_out);
-    }
-    isl_space_free(space);
-
-    dep->dest = atoi(dest_name + 2);
-
-    bmap = isl_basic_map_project_out(bmap, isl_dim_out, stmts[dep->dest]->dim,
-            isl_basic_map_dim(bmap, isl_dim_out) - stmts[dep->dest]->dim);
-
-    dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
-    dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
     dep->dirvec = NULL;
     dep->type = info->type;
-    const char *src_name = isl_basic_map_get_tuple_name(bmap, isl_dim_in);
-    dep->src = atoi(src_name + 2);
+    dep->src = atoi(isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2);
+
+    /* The range space can be wrapped, if we didn't use lastwriter.  For 
+     * example, [T, N] -> { S_1_w0[t, i] -> [S_0_r2[t', i'] -> a[o2]] : i'
+     * = -1 + i and o2 = i and t >= 0 and i >= 3 and i <= -2 + N and t' > t
+     * and t' < T } */
+    isl_space *space = isl_basic_map_get_space(bmap);
+    if (isl_space_range_is_wrapping(space)) {
+        bmap = isl_basic_map_range_factor_domain(isl_basic_map_copy(bmap));
+        isl_space_free(space);
+        space = isl_basic_map_get_space(bmap);
+    }
+    dep->dest = atoi(isl_space_get_tuple_name(space, isl_dim_out) + 2);
+    dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
+    dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
+    isl_space_free(space);
 
     /* Inconsistent dependence if this assertion fails */
     assert(dep->dpolytope->ncols == stmts[dep->src]->dim + stmts[dep->dest]->dim 
@@ -2060,12 +2052,15 @@ static int basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user)
         /* Extract access function information */
         int src_acc_num, dest_acc_num;
         char src_type, dest_type;
+        const char *src_name, *dest_name;
+        src_name = isl_basic_map_get_tuple_name(bmap, isl_dim_in) + 2;
         while (*src_name != '\0' && *(src_name++) != '_');
         if (*src_name != '\0'){
             src_type = *src_name;
             src_acc_num = atoi(src_name+1);
         }else assert(0); // access function num not encoded in dependence
 
+        dest_name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
         while (*dest_name != '\0' && *(dest_name++) != '_');
         if (*dest_name != '\0') {
             dest_type = *dest_name;
@@ -4400,6 +4395,10 @@ static void compute_deps_pet(struct pet_scop *pscop, isl_map **stmt_wise_schedul
     }
     isl_union_map_free(schedules);
     isl_space_free(space);
+
+    isl_union_map_dump(reads);
+    isl_union_map_dump(writes);
+    isl_union_map_dump(schedule);
 
     if (options->lastwriter) {
         // compute RAW dependences which do not contain transitive dependences
