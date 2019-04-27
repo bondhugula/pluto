@@ -1307,22 +1307,56 @@ int* get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog)
     return parallel_dims;
 }
 
-/* Check if there is a predecessor of SCC2 which is numbered greater than SCC1 and has not been coloured */
+int get_min_succ_scc(int scc_id, Graph *ddg, PlutoProg* prog) {
+    int i, num_sccs;
+    num_sccs = ddg->num_sccs;
+    for (i=scc_id+1; i<num_sccs; i++) {
+        if (ddg_sccs_direct_connected(ddg, prog, scc_id, i)) break;
+    }
+    return i;
+}
+
+int get_max_pred_scc(int scc_id, Graph *ddg, PlutoProg *prog) {
+    int i;
+    for (i=scc_id-1; i>=0; i--) {
+        if (ddg_sccs_direct_connected(ddg, prog, i, scc_id)) break;
+    }
+    return i;
+}
+/* Check if there is a successor of SCC1 and a predecessor of SCC2 
+ * which is numbered greater than SCC1 and has not been coloured */
 bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
 {
-    int i;
+    int i, succ_id, pred_id;
     Scc *sccs;
     sccs = prog->ddg->sccs;
-    for (i=scc1+1; i<scc2; i++) {
-        if (ddg_sccs_direct_connected(ddg, prog, i,scc2)) {
-            /* In case of typed fuse, this scc may have already been coloured */
-            if (options->fuse == TYPED_FUSE && sccs[i].is_scc_coloured) {
-                continue;
-            }
-            return false;
-        }
+
+    succ_id = get_min_succ_scc(scc1, ddg, prog);
+    pred_id = get_max_pred_scc(scc2, ddg, prog);
+
+    if (pred_id < succ_id) {
+        return true;
     }
-    return true;
+    return false;
+
+    /* for (i=scc1+1; i<scc2; i++) { */
+    /*     if (ddg_sccs_direct_connected(ddg, prog, i,scc2)) { */
+    /*         #<{(| In case of typed fuse, this scc may have already been coloured |)}># */
+    /*         if (options->fuse == TYPED_FUSE && sccs[i].is_scc_coloured) { */
+    /*  */
+    /*             continue; */
+    /*         } */
+    /*         printf ("SCCs %d and %d are not convex because of scc %d\n", scc1, scc2, i); */
+    /*         printf ("Vertices of SCC %d \n", scc1); */
+    /*         print_scc_vertices(scc1, prog->ddg); */
+    /*         printf ("Vertices of SCC %d \n", scc2); */
+    /*         print_scc_vertices(scc2, prog->ddg); */
+    /*         printf ("Vertices of SCC %d \n", i); */
+    /*         print_scc_vertices(i, prog->ddg); */
+    /*         return false; */
+    /*     } */
+    /* } */
+    /* return true; */
 }
 
 /* The following routine isn't used anymore. Can be removed in future commits if found unnecessary. */
@@ -1590,7 +1624,8 @@ int* get_convex_successors(int scc_id, PlutoProg *prog,
     num_sccs = ddg->num_sccs;
 
 
-    num_successors=0;
+    num_successors = 0;
+
     for (i=scc_id+1; i<num_sccs; i++) {
         if (is_convex_scc(scc_id, i, ddg, prog)) {
             if (convex_successors == NULL) {
@@ -1616,9 +1651,10 @@ int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
     convex_par_successors = NULL;
     par_successors = 0;
     convex_successors = get_convex_successors(scc_id, prog, &num);
+    printf("Num Convex successors for Scc %d : %d \n", scc_id, num);
 
     for (i=0; i<num; i++) {
-        if (!sccs[i].is_parallel) 
+        if (!sccs[convex_successors[i]].is_parallel) 
             continue;
 
         if (convex_par_successors==NULL) {
@@ -1804,6 +1840,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     convex_successors = get_convex_parallel_successors(scc_id, prog,
             &num_convex_successors);
 
+    printf("Scc %d has %d parallel convex successors \n", scc_id, num_convex_successors);
+
     /* If there are no convex successors, colour this scc */
     if (num_convex_successors == 0) {
         for (i=0; i<max_dim; i++) {
@@ -1821,6 +1859,12 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
 
     common_dims = get_common_parallel_dims(scc_id, convex_successors, 
             num_convex_successors, colour, current_colour, parallel_dims, prog);
+    printf ("common dims for SCC %d\n", scc_id);
+    if (common_dims!=NULL) {
+        for (i=0; i<max_dim; i++) {
+            printf("%d, %d\n", i, common_dims[i]);
+        }
+    }
 
     colouring_dim = get_colouring_dim(common_dims,max_dim);
 
