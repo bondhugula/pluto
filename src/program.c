@@ -3207,17 +3207,9 @@ void pluto_prog_free(PlutoProg *prog)
     pluto_constraints_free(prog->context);
     pluto_constraints_free(prog->codegen_context);
 
-//    pluto_constraints_free(prog->globcst);
-
-    for(i=0; i< prog->num_data; i++) {
-        free(prog->data_names[i]);
-    }
-    free(prog->data_names);
-
     free(prog->decls);
 
-    /* Free data names. This is not allocated with pet.
-     * Hence we need a guarded free here*/
+    /* Free data names. */
     for (i=0; i<prog->num_data; i++) {
         free(prog->data_names[i]);
     }
