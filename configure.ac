@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.12.0, [uday@csa.iisc.ernet.in])
+AC_INIT(pluto, 0.12.0, [udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
