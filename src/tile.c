@@ -239,31 +239,9 @@ void pluto_dist_tile_array_dim(Array *arr, PlutoConstraints *domain,
   num_domain_supernodes++;
 }
 
-// void pluto_dist_update_arr_domain(Array *arr, PlutoConstraints *domain, int
-// copy_level
-//		, PlutoProg *prog){
-//
-//	int j =0;
-//	arr->array_bounds = pluto_constraints_dup(domain);
-//	arr->copy_level = copy_level;
-//
-//	arr->dim = domain->ncols - prog->npar - 1;
-//	arr->dim_orig = domain->ncols - copy_level - prog->npar - 1;
-//
-//	arr->iterators = (char **)malloc(arr->dim * sizeof(char *));
-//	for (j = 0; j < arr->dim; ++j) {
-//		arr->iterators[j] = (char *)malloc(25 * sizeof(char));
-//		sprintf(arr->iterators[j], "t%d", j);
-//	}
-//
-//	return;
-//
-//}
-
 /* Returns the data tiles required to allocate the data space parametrized on
  * copy level
  */
-
 void pluto_dist_permute_tile_dims(PlutoConstraints *cst, int start, int last) {
   int j = start, k = last;
 
@@ -297,12 +275,8 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
                                                      int copylevel,
                                                      char *arr_name,
                                                      PlutoProg *prog) {
-
   int k, j;
   Array *arr = pluto_get_corrs_array(arr_name, prog);
-
-  //	PlutoConstraints *tiled_domain = pluto_get_new_arr_domain(arr, domain,
-  // arr->copy_level);
   PlutoConstraints *tiled_domain = pluto_constraints_dup(domain);
 
   assert(arr != NULL);
@@ -315,8 +289,7 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
 
     if (!arr->dim_updated) {
 
-      /* after each dim tiling,  tiled_dim needs to be updated
-      */
+      /* after each dim tiling,  tiled_dim needs to be updated */
       for (j = 0; j < arr->num_hyperplanes_found; ++j) {
 
         if (arr->tiled_hyperplane[j].orig_dim >= t[k].firstD)
@@ -334,10 +307,7 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
       arr->copy_level_used = copylevel;
     }
 
-    //		if(!arr->dim_updated)
     trans_row = t[k].orig_dim;
-    //		else
-    //			trans_row = t[k].orig_dim - arr->copy_level_used;
 
     pluto_dist_tile_array_dim(arr, tiled_domain, &dom_tiled_loops, copylevel,
                               t[k].tile_sizes, t[k].depth, trans_row, prog);
@@ -346,18 +316,6 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
   int i = 0;
 
   if (!arr->dim_updated) {
-
-    //
-    //		arr->first_tile_dim += copylevel;
-    //		arr->last_tile_dim += copylevel;
-    //
-    //		for (i = 0; i< arr->num_tiled_loops; ++i) {
-    //			arr->tiled_hyperplane[i].orig_dim += copylevel;
-    //			arr->tiled_hyperplane[i].tiled_dim += copylevel;
-    //			arr->tiled_hyperplane[i].firstD += copylevel;
-    //			arr->tiled_hyperplane[i].lastD += copylevel;
-    //		}
-
     arr->dim_updated = 1;
     arr->npar = prog->npar;
 
@@ -484,31 +442,7 @@ void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel) {
     }
 
     print_polylib_visual_sets("d", arr->array_bounds);
-    //
-    //		PlutoConstraints *t1 = pluto_constraints_dup(arr->array_bounds);
-    //
-    //		pluto_constraints_project_out(t1, 4, 2);
-    //
-    //		print_polylib_visual_sets("t", t1);
-    //		print_polylib_visual_sets("t", t1);
   }
-
-  //			Array *arr = get_corrs_array(acc, prog);
-  //		print_polylib_visual_sets("domain", stmt->domain);
-  //
-  //		print_polylib_visual_sets("data", data);
-  //
-  //		pluto_dist_update_arr_domain(arr, data, copylevel, prog);
-  //
-  //		struct TiledHyperplane *t = arr->tiled_hyperplane;
-  //
-  //		for (j = 0; j < arr->num_tiled_loops; ++j) {
-  //			pluto_tile_dim(arr, t[j].tile_sizes, t[j].depth,
-  //t[j].firstD,
-  // prog);
-  //		}
-  //
-  //		print_polylib_visual_sets("d", arr->array_bounds);
 }
 
 /* This function returns the size of a data tile
@@ -544,9 +478,6 @@ void pluto_dist_declarations(PlutoProg *prog) {
 
     PlutoConstraints *domain = pluto_constraints_dup(arr->array_bounds);
 
-    /* project out copy level dims
-     */
-    //		pluto_constraints_project_out(domain, 0, arr->copy_level);
     print_polylib_visual_sets("set", domain);
 
     int start = arr->first_tile_dim + arr->num_hyperplanes_found;
@@ -627,10 +558,6 @@ void pluto_dist_print_tiles_strided_access(char *new_stmt_text, Array *arr,
       sprintf(new_stmt_text + strlen(new_stmt_text), "[%s]", arr->iterators[k]);
   }
   sprintf(new_stmt_text + strlen(new_stmt_text), "]");
-  //
-  //	for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
-  //		sprintf(stmt_text+ strlen(stmt_text),"[%s]", arr->iterators[j]);
-  //	}
   return;
 }
 
@@ -836,10 +763,8 @@ void pluto_dist_reorder_hyperplanes(Array *arr, int firstD, int lastD,
       arr->hyperplane_mapping[cur_dim + i] = i;
   }
 }
-/* Copy the loop tiling info like tile size and dims
- * into arrays
- */
 
+/* Copy the loop tiling info like tile size and dims into arrays */
 void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band,
                                    int *tile_sizes) {
   Array *arr;
@@ -865,23 +790,17 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band,
           continue;
 
         arr = get_corrs_array(stmt->reads[i], prog);
-
         assert(arr != NULL);
-
         row = arr->hyperplane_mapping[depth - firstD];
-        //        		row = arr->hyperplane_mapping[depth];
 
         if (row < 0) {
           pluto_dist_reorder_hyperplanes(arr, firstD, lastD, depth);
 
           row = arr->hyperplane_mapping[depth];
-          //					row =
-          // arr->hyperplane_mapping[0];
           if (row < 0)
             continue;
         }
 
-        //        		assert(row<arr->dim_orig);
         if (row >= arr->dim_orig)
           continue;
 
