@@ -341,8 +341,7 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
                                arr->last_tile_dim + copylevel);
 
   print_polylib_visual_sets("tiles", tiled_domain);
-  /* project out the intra data tile iterators
-   */
+  /* Project out the intra data tile iterators */
   pluto_constraints_project_out(tiled_domain, copylevel + arr->num_tiled_loops,
                                 arr->dim_orig);
 
@@ -402,8 +401,6 @@ void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel) {
       pluto_constraints_free(curr);
     }
 
-    //		pluto_dist_update_arr_domain(prog->arrays[j], data, copylevel,
-    // prog);
     pluto_constraints_free(data);
 
     struct TiledHyperplane *t = arr->tiled_hyperplane;
@@ -426,7 +423,6 @@ void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel) {
           arr->tiled_hyperplane[i].tiled_dim++;
       }
 
-      //			arr->num_tiled_loops++;
       t[k].tiled_dim = t[k].firstD;
       arr->first_tile_dim = t[k].firstD;
       arr->last_tile_dim = t[k].lastD;
@@ -468,7 +464,6 @@ char *pluto_dist_get_tile_size(Array *arr) {
 
 /* Generate the code for data tile declarations
  */
-
 void pluto_dist_declarations(PlutoProg *prog) {
 
   int i = 0, j = 0;
