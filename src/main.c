@@ -141,8 +141,6 @@ int main(int argc, char *argv[])
 
     t_start_all = rtclock();
 
-    FILE *src_fp;
-
     int option;
     int option_index = 0;
 
@@ -465,6 +463,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             fclose(srcfp);
         }
     }else{
+      FILE *src_fp;
         /* Extract polyhedral representation from clan scop */
         if(!strcmp(srcFileName, "stdin")){  //read from stdin
             src_fp = stdin;
@@ -495,6 +494,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
                 scop = clan_scop_extract(src_fp, clanOptions);
                 t_d = rtclock() - t_start;
             }
+            fclose(src_fp);
 
             if (!scop || !scop->statement)   {
                 fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
@@ -558,7 +558,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(stdout, "[pluto] Affine transformations [<iter coeff's> <param> <const>]\n\n");
         /* Print out transformations */
         pluto_transformations_pretty_print(prog);
-        /* pluto_print_hyperplane_properties(prog); */
     }
 
     if (options->tile)   {
@@ -586,7 +585,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             printf("\tUse --tile for better parallelization \n");
             fprintf(stdout, "[pluto] After skewing:\n");
             pluto_transformations_pretty_print(prog);
-            /* IF_DEBUG(pluto_print_hyperplane_properties(prog);); */
         }
     }
 
@@ -620,13 +618,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }else{  // do the usual Pluto stuff
   
       /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-      /* Since meta info about loops
-       * is printed to be processed by scripts - if transformations are
-       * performed, changed loop order/iterator names will be missed  */
+      /* Since meta info about loops is printed to be processed by scripts - if
+       * transformations are performed, changed loop order/iterator names will
+       * be missed. */
       gen_unroll_file(prog);
 
       char *basec, *bname;
-      char *outFileName, *cloogFileName;
+      char *outFileName;
       if (options->out_file == NULL)  {
           /* Get basename, remove .c extension and append a new one */
           basec = strdup(srcFileName);
@@ -634,11 +632,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
           /* max size when tiled.* */
           outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
-          cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
 
           if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
               memcpy(outFileName, bname, strlen(bname)-2);
-              strncpy(cloogFileName, bname, strlen(bname)-2);
               outFileName[strlen(bname)-2] = '\0';
           }else{
               outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
@@ -653,6 +649,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
           strcpy(outFileName, options->out_file);
       }
 
+      char *cloogFileName;
       if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
           cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
           strncpy(cloogFileName, bname, strlen(bname)-2);
@@ -729,7 +726,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         if (options-> dfp){
             printf("[pluto] \t\tTotal FCG Construction Time: %0.6lfs\n", prog->fcg_const_time);
             printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n", prog->fcg_colour_time);
-            /* printf("[pluto] \t\ttotal FCG Update Time: %0.6lfs\n", prog->fcg_update_time); */
             /* printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n", prog->fcg_const_time + prog->fcg_colour_time); */
             printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n", prog->fcg_dims_scale_time);
             /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n", prog->scaling_cst_sol_time); */
