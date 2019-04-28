@@ -1327,9 +1327,7 @@ int get_max_pred_scc(int scc_id, Graph *ddg, PlutoProg *prog) {
  * which is numbered greater than SCC1 and has not been coloured */
 bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg * prog)
 {
-    int i, succ_id, pred_id;
-    Scc *sccs;
-    sccs = prog->ddg->sccs;
+    int succ_id, pred_id;
 
     succ_id = get_min_succ_scc(scc1, ddg, prog);
     pred_id = get_max_pred_scc(scc2, ddg, prog);
