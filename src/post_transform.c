@@ -163,10 +163,14 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog)
 }
 
 
-/* Vectorize first loop in band that meets criteria */
+/*
+ * DEPRECATED: Subsumed by intra_tile_optimize_band and not used anymore
+ *
+ * Vectorize first loop in band that meets criteria
+*/
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 {
-    int nloops, l;
+    unsigned nloops, l;
 
     /* Band has to be the innermost band as well */
     if (!pluto_is_band_innermost(band, num_tiling_levels)) return 0;
@@ -193,9 +197,12 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels, PlutoProg *prog)
 }
 
 
+/*
+ * DEPRECATED: Subsumed by pluto_intra_tile_optimize and not used anymore
+ */
 int pluto_pre_vectorize(PlutoProg *prog)
 {
-    int nbands, i;
+    unsigned nbands, i;
     Band **bands;
     bands = pluto_get_outermost_permutable_bands(prog, &nbands);
     int retval = 0;
@@ -315,7 +322,7 @@ int gen_unroll_file(PlutoProg *prog)
  */
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *prog)
 {
-    int nloops, l, max_score;
+    unsigned nloops, l, max_score;
     Ploop *best_loop;
 
     /* Band has to be the innermost band as well */
@@ -369,7 +376,8 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels, PlutoProg *
 /* is_tiled: is the band tiled */
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled)
 {
-    int i, nbands, retval;
+    unsigned i, nbands;
+    int retval;
     Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
     retval = 0;

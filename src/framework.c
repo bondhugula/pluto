@@ -257,6 +257,46 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog)
     pluto_constraints_free(bounding_func_cst);
 }
 
+/* Computes permutability constraints for a dependence. 
+ * An interfacing routine to expose compute_permutability_constraints_dep
+ */
+void compute_pairwise_permutability(Dep *dep,PlutoProg *prog)
+{
+    compute_permutability_constraints_dep(dep,prog);
+}
+
+/* Computes permutatbility constraints for all the dependences within the input SCC */
+PlutoConstraints *get_scc_permutability_constraints (int scc_id, PlutoProg *prog)
+{
+    int i, ndeps, src, dest;
+    Dep *dep;
+    PlutoConstraints* scc_dep_cst;
+
+    ndeps = prog->ndeps;
+
+    scc_dep_cst = NULL;
+
+    for (i=0; i<ndeps; i++) {
+        dep = prog->deps[i];
+        src = dep->src;
+        dest = dep->dest;
+        if (dep_is_satisfied(dep)) {
+            continue;
+        }
+        if (prog->stmts[src]->scc_id == scc_id && prog->stmts[src]->scc_id == prog->stmts[dest]->scc_id) {
+            if (dep->cst == NULL) {
+                compute_permutability_constraints_dep(dep, prog);
+            }
+            if(scc_dep_cst == NULL) {
+                scc_dep_cst = pluto_constraints_alloc((prog->ddg->sccs[scc_id].size * dep->cst->nrows), dep->cst->ncols);
+                scc_dep_cst->nrows = 0;
+                scc_dep_cst->ncols = dep->cst->ncols;
+            }
+            pluto_constraints_add(scc_dep_cst, dep->cst);
+        }
+    }
+    return scc_dep_cst;
+}
 
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog)
@@ -912,7 +952,7 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         if (!options->flic) {
             orthcst_i = isl_basic_set_intersect(orthcst_i,
                     isl_basic_set_copy(isl_currcst));
-            if (isl_basic_set_fast_is_empty(orthcst_i)
+            if (isl_basic_set_plain_is_empty(orthcst_i)
                     || isl_basic_set_is_empty(orthcst_i)) {
                 pluto_constraints_negate_row(orthcst[p], 0);
             }
@@ -955,6 +995,115 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
     return orthcst;
 }
 
+/* PlutoConstraints to avoid trivial solutions (all zeros)
+ *
+ * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked, 
+ * a hyperplane, if found, will be a loop hyperplane.
+ *                 = LAZY: at least one of the hyperplanes for non-full statements 
+ *  should be a loop hyperplane as opposed to all 
+ */
+PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
+        bool hyp_search_mode)
+{
+    PlutoConstraints *nzcst;
+    int i, j, stmt_offset, nvar, npar, nstmts;
+
+    Stmt **stmts = prog->stmts;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+    npar = prog->npar;
+
+    nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
+    nzcst->ncols = CST_WIDTH;
+
+    if (hyp_search_mode == EAGER) {
+        for (i=0; i<nstmts; i++) {
+            /* Don't add the constraint if enough solutions have been found */
+            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+                continue;
+            }
+            stmt_offset = npar+1+i*(nvar+1);
+            for (j=0; j<nvar; j++)  {
+                if (stmts[i]->is_orig_loop[j] == 1) {
+                    nzcst->val[nzcst->nrows][stmt_offset+j] = 1;
+                }
+            }
+            nzcst->val[nzcst->nrows][CST_WIDTH-1] = -1;
+            nzcst->nrows++;
+        }
+    }else{
+        assert(hyp_search_mode == LAZY);
+        for (i=0; i<nstmts; i++) {
+            /* Don't add the constraint if enough solutions have been found */
+            if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig)   {
+                IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+                continue;
+            }
+            stmt_offset = npar+1+i*(nvar+1);
+            for (j=0; j<nvar; j++)  {
+                if (stmts[i]->is_orig_loop[j] == 1) {
+                    nzcst->val[0][stmt_offset+j] = 1;
+                }
+            }
+            nzcst->val[0][CST_WIDTH-1] = -1;
+        }
+        nzcst->nrows = 1;
+    }
+
+    return nzcst;
+}
+
+
+/**
+ * Bounds for Pluto ILP variables
+ */
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog)
+{
+    int i, npar, nstmts, nvar;
+    PlutoConstraints *cst;
+
+    npar = prog->npar;
+    nstmts = prog->nstmts;
+    nvar = prog->nvar;
+
+    cst = pluto_constraints_alloc(1, CST_WIDTH);
+
+    /* Lower bound for bounding coefficients (all non-negative) */
+    for (i=0; i<npar+1; i++)  {
+        pluto_constraints_add_lb(cst, i, 0);
+    }
+    /* Lower bound for transformation coefficients (all non-negative) */
+    for (i=0; i<cst->ncols-npar-1-1; i++)  {
+        IF_DEBUG2(printf("Adding lower bound %d for transformation coefficients\n", 0););
+        pluto_constraints_add_lb(cst, npar+1+i, 0);
+    }
+
+    if (options->coeff_bound != -1) {
+        for (i=0; i<cst->ncols-npar-1-1; i++)  {
+            IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", options->coeff_bound););
+            pluto_constraints_add_ub(cst, npar+1+i, options->coeff_bound);
+        }
+    }else{
+        /* Add upper bounds for transformation coefficients */
+        int ub = pluto_prog_get_largest_const_in_domains(prog);
+
+        /* Putting too small an upper bound can prevent useful transformations;
+         * also, note that an upper bound is added for all statements globally due
+         * to the lack of an easy way to determine bounds for each coefficient to
+         * prevent spurious transformations that involve shifts proportional to
+         * loop bounds
+         */
+        if (ub >= 10)   {
+            for (i=0; i<cst->ncols-npar-1-1; i++)  {
+                IF_DEBUG2(printf("Adding upper bound %d for transformation coefficients\n", ub););
+                pluto_constraints_add_ub(cst, npar+1+i, ub);
+            }
+        }
+    }
+
+    return cst;
+}
 
 /*
  * Check whether the dependence is satisfied at level 'level'
@@ -1015,7 +1164,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level)
 
 
 /*
- * Remove dependence instances that have been satisified at level
+ * Remove dependence instances from 'dep' that have been satisified at 'level'
  *
  * A dependence instance is satisfied if \phi(t) - \phi(s) >= 1; hence, those
  * <s,t> with \phi(t) - \phi(s) <= 0 are the unsatisfied ones. In fact, there
@@ -1065,14 +1214,10 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog, int l
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(dep->depsat_poly, cst);
-    // pluto_constraints_print(stdout, cst);
+    pluto_constraints_intersect_isl(dep->depsat_poly, cst);
 
     retval = !pluto_constraints_is_empty(cst);
-    //printf("Constraints are empty: %d\n", !retval);
 
-    /* All solutions are those that are satisfied */
-    pluto_constraints_subtract(dep->depsat_poly,cst);
     pluto_constraints_free(cst);
 
     return retval;
@@ -1185,7 +1330,7 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog, i
 
     cst->nrows = 1;
 
-    pluto_constraints_intersect(cst, dep->depsat_poly);
+    pluto_constraints_intersect_isl(cst, dep->depsat_poly);
     // pluto_constraints_print(stdout, cst);
 
     retval = !pluto_constraints_is_empty(cst);
@@ -1489,3 +1634,44 @@ PlutoConstraints* pluto_dist_add_constraints_array_access(PlutoAccess *access,
 }
 
 
+/* The routine is used to populate the csr matrices for scaling rational 
+ * solutions of pluto-lp. These matrices are used to construct constraints for scaling MIP */
+void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog)
+{
+    int i, j, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
+    Stmt **stmts;
+
+    nstmts = prog->nstmts;
+    stmts = prog->stmts;
+
+    ddg_compute_cc(prog);
+    num_ccs = prog->ddg->num_ccs;
+
+    *val = (double**)malloc(sizeof(double*)*nrows);
+    *index = (int**)malloc(sizeof(int*)*nrows);
+    for (i=0; i<nrows; i++) {
+        (*val)[i] = (double*) malloc (sizeof(double) * 3);
+        (*index)[i] = (int*) malloc (sizeof(int) * 3);
+    }
+
+    num_rows = 0;
+    stmt_offset = 0;
+    for (i=0; i<nstmts; i++) {
+        cc_id = stmts[i]->cc_id;
+        for (j=0; j<stmts[i]->dim_orig+1; j++) {
+            (*index)[num_rows][0] = 0;
+            (*val)[num_rows][0] = 0.0f;
+
+            (*index)[num_rows][1] = cc_id+1; 
+            /* val[num_row][i] will be set once the mip solution is found */
+
+            (*index)[num_rows][2] = num_ccs+stmt_offset+j+1;
+            (*val)[num_rows][2] = -1.0;
+            num_rows ++;
+        }
+        stmt_offset += stmts[i]->dim_orig+1;
+    }
+
+    /* This is a safety check.  Can be removed after testing the implementation */
+    assert (nrows == num_rows);
+}

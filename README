@@ -15,19 +15,18 @@ PREREQUISITES
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
 running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also 
-be fine if you have GNU utilities. In order to use the development version 
-from Pluto's git repository, automatic build system tools including 
-autoconf, automake, and libtool are needed. LLVM/Clang 3.4 is needed for 
-the pet submodule. GMP (GNU multi precision arithmetic library) is 
-needed by ISL (one of the included libraries). If it's not already on 
-autoconf, automake, and libtool are needed. GMP (GNU multi precision 
-arithmetic library) is needed by ISL (one of the included libraries). If 
-it's not already on your system, it can be installed easily with, for  
-eg., 'sudo yum -y install gmp gmp-devel' on a Fedora. It is also 
-recommended astyle and indent be installed if a user wishes to browse 
+be fine if you have GNU utilities. In order to use the development version from 
+Pluto's git repository, automatic build system tools including autoconf, 
+automake, and libtool are needed. LLVM/Clang (2.9 or higher) is needed for the 
+pet submodule. GMP (GNU multi precision arithmetic library) is needed by ISL 
+(one of the included libraries). If it's not already on your system, it can be 
+installed easily with, for eg., 'sudo yum -y install gmp gmp-devel' on a Fedora 
+('sudo apt-get install libgmp3-dev' or something similar on an Ubuntu).  It is 
+also recommended astyle and indent be installed if a user wishes to browse 
 through generated code.
 
-Pluto includes all polyhedral libraries that it depends on.
+Pluto includes all polyhedral libraries that it depends on. See pet/README for 
+pet's pre-requisites. 
 
 
 BUILDING PLUTO
@@ -49,7 +48,6 @@ $ git clone git://repo.or.cz/pluto.git
 $ cd pluto/
 $ git submodule init 
 $ git submodule update
-$ ./apply_patches.sh
 $ ./autogen.sh
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
@@ -94,14 +92,13 @@ ICC (Intel C compiler), uncomment line 7 and comment line
   )
 
 - do a make (this will build all executables; 'orig' is the original code 
-  compiled with the native compiler, 'tiled' is the tiled code, 'par' is the 
-  OpenMP parallelized+locality optimized code, 'lbpar' with diamond tiling 
-  when possible. One could do 'make <target>' where target can be orig, 
-  orig_par, opt, tiled, par, lbpar, etc. (see examples/common.mk for full 
-  list)
+  compiled with the native compiler, 'tiled' is the tiled code, 'par' is 
+  the OpenMP parallelized + locality optimized code. One could do 'make 
+  <target>' where target can be orig, orig_par, opt, tiled, par, 
+  pipepar, etc.  (see examples/common.mk for full list)
 
-- 'make test' to test for correctness, 'make perf', 'make lbperf' to compare 
-performance
+- 'make test' to test for correctness, 'make perf' to compare 
+  performance
 
 
 COMMAND-LINE OPTIONS

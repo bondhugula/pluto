@@ -31,6 +31,10 @@
 
 #include "osl/extensions/dependence.h"
 
+#ifdef GLPK
+#include <glpk.h>
+#endif
+
 /* Check out which piplib we are linking with */
 /* Candl/piplib_wrapper converts relation to matrices */
 #ifdef SCOPLIB_INT_T_IS_LONGLONG // Defined in src/Makefile.am
@@ -54,6 +58,10 @@
 
 #define ALLOW_NEGATIVE_COEFF 1 
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0 
+
+/* Iterative search modes */
+#define EAGER 0
+#define LAZY 1
 
 typedef enum dirvec_type {DEP_MINUS='-', DEP_ZERO='0', DEP_PLUS='+', DEP_STAR='*'} DepDir;
 
@@ -88,7 +96,7 @@ typedef struct pluto_access{
 } PlutoAccess;
 
 
-
+struct pet_stmt;
 
 struct statement{
     int id;
@@ -150,6 +158,9 @@ struct statement{
     /* ID of the SCC in the DDG this statement belongs to */
     int scc_id;
 
+    /* ID of the CC in the DDG this statement belongs to */
+    int cc_id;
+
     int first_tile_dim;
     int last_tile_dim;
 
@@ -158,7 +169,6 @@ struct statement{
     /* ID of the domain parallel loop that the statement belongs to */
     int ploop_id;
 
-
     /* indicates whether inner loop is vectorized or not*/
     int inner_loop_vec;
 
@@ -166,6 +176,13 @@ struct statement{
 
     int neg_peel_offset;
 
+    /* Compute statement associated with distmem copy/sigma stmt */
+    const struct statement *parent_compute_stmt;
+
+    /* Intra statement depndence constraints.  Used to construct the fusion conflict graph */
+    PlutoConstraints* intra_stmt_dep_cst;
+
+    struct pet_stmt *pstmt;
 };
 typedef struct statement Stmt;
 
@@ -312,6 +329,9 @@ struct dependence{
     /* Has this dependence been satisfied? */
     bool satisfied;
 
+    /* Does this dependence need to be skipped? Set to true during variable liberalization */
+    bool skipdep;
+
     /* Level at which this dependence is completely satisfied (when doing
      * conservative computation) or level *by* which the dependence is
      * completely satisfied (if doing a complex/accurate check) */
@@ -405,6 +425,9 @@ struct plutoProg{
     /* Data dependence graph of the program */
     Graph *ddg;
 
+    /* Fusion conflict graph of the program */
+    Graph *fcg;
+
     /* Options for Pluto */
     PlutoOptions *options;
 
@@ -444,10 +467,27 @@ struct plutoProg{
     /* used by dynschedule */
     int num_parameterized_loops;
 
+<<<<<<< HEAD
     /* used to store decls var for vec optimization in data dist*/
     char **decl_indices;
     int num_decl_indices;
     char *vec_decls;
+=======
+    int num_stmts_to_be_coloured;
+    // Boolean Array indicating whether a dimension is scaled
+    int *scaled_dims;
+
+    /* Total number of statements coloured per dimension in the FCG */
+    int* total_coloured_stmts;
+
+    /* Total number of coloured dimensions that have been coloured for all statements */
+    int coloured_dims;
+
+    /* Used to store constraint solving times */
+    double mipTime,ilpTime, cst_solve_time,cst_const_time,cst_write_time, scaling_cst_sol_time, skew_time;
+    double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time, fcg_cst_alloc_time;
+    long int num_lp_calls;
+>>>>>>> origin/master
 };
 typedef struct plutoProg PlutoProg;
 
@@ -458,9 +498,9 @@ typedef struct plutoProg PlutoProg;
  * the final generated AST
  */
 typedef struct pLoop{
-    int depth;
+    unsigned depth;
     Stmt **stmts;
-    int nstmts;
+    unsigned nstmts;
 } Ploop;
 
 struct pluto_dep_list {
@@ -526,8 +566,11 @@ void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog);
 
 void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
+void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
+void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
+PlutoConstraints *get_scc_permutability_constraints(int , PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **, int);
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
         const PlutoConstraints *currcst, int *orthonum);
@@ -537,6 +580,9 @@ PlutoConstraints *get_global_independence_cst(
         PlutoConstraints ***ortho_cst, int *orthonum, 
         const PlutoProg *prog);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
+PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
+
+int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog);
 
 int pluto_auto_transform(PlutoProg *prog);
 int pluto_dist_auto_transform(PlutoProg *prog);
@@ -571,8 +617,12 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp, FI
 
 void   ddg_update(Graph *g, PlutoProg *prog);
 void   ddg_compute_scc(PlutoProg *prog);
+void   ddg_compute_cc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
-int    ddg_sccs_direct_conn(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
+int    cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
+int    cut_all_sccs(PlutoProg *prog, Graph *ddg);
+void   cut_smart(PlutoProg *prog, Graph *ddg);
 
 void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
 
@@ -584,6 +634,8 @@ int is_access_scalar(PlutoAccess *access);
 
 PlutoConstraints *pluto_arr_get_schedule(const Array *arr);
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog);
+int dep_satisfaction_update(PlutoProg *prog, int level);
+int deps_satisfaction_check(PlutoProg *prog);
 
 PlutoMatrix *get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc, const PlutoProg *prog);
 PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
@@ -637,10 +689,10 @@ void print_dynsched_file(char *srcFileName, FILE *cloogfp, FILE *outfp, PlutoPro
 int get_outermost_parallel_loop(const PlutoProg *prog);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
-Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
-Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
-Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
-Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands, int **comm_placement_levels);
+Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops);
+Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
+Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
+Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands, int **comm_placement_levels);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
@@ -649,7 +701,7 @@ Band *pluto_band_alloc(Ploop *loop, int width);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
-Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, int *ndbands);
+Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop, 
@@ -658,20 +710,20 @@ int pluto_loop_satisfies_inter_stmt_dep(const PlutoProg *prog,
         const Ploop *loop);
 int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog, 
         const Ploop *loop);
-void pluto_bands_free(Band **bands, int nbands);
+void pluto_bands_free(Band **bands, unsigned nbands);
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
-Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
-        const PlutoProg *prog, int *num);
-Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, int *num);
+Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
+        const PlutoProg *prog, unsigned *num);
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog, unsigned *num);
 int pluto_intra_tile_optimize(PlutoProg *prog,  int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, int *ndbands);
+Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 
 PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src, Stmt *dest);
@@ -747,5 +799,12 @@ void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms, int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts, PlutoProg *prog);
 
+void populate_scaling_csr_matrices_for_pluto_program(int ***index, double ***val, int nrows, PlutoProg *prog);
+PlutoMatrix* construct_cplex_objective(const PlutoConstraints *cst, const PlutoProg *prog);
 
+#ifdef GLPK
+Graph* build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes, int current_colour);
+void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
+void introduce_skew(PlutoProg *prog);
+#endif
 #endif

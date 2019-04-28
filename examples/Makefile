@@ -27,9 +27,9 @@ par:
 		make -C $$d par; \
 		done
 
-lbpar:
+pipepar:
 	@-for d in $(DIRS); do \
-		make -C $$d lbpar; \
+		make -C $$d pipepar; \
 		done
 
 dyn:

@@ -1,4 +1,4 @@
-CONSTANT n;
+#pragma scop
 
 for(i=0; i<n; i++)
     A[i] = ina[i];
@@ -12,3 +12,4 @@ for(i=0; i<n; i++)
 
 for(i=0; i<n; i++)
     outb[i] = B[i];
+#pragma endscop

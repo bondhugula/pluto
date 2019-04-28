@@ -152,3 +152,4 @@ m4
 traces.*
 output.*
 requests
+test_libpluto

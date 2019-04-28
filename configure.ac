@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.11.4, [uday@csa.iisc.ernet.in])
+AC_INIT(pluto, 0.12.0, [uday@csa.iisc.ernet.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -44,9 +44,19 @@ if test $debug = "true"; then
     CFLAGS="$CFLAGS -g"
 fi
 
+glpk="false"
+dnl glpk flag
+AC_ARG_ENABLE(glpk,
+              [  --enable-glpk  enable ILP solving with GLPK], glpk="true")
+
+gurobi="false"
+dnl check for gurobi
+AC_ARG_ENABLE(gurobi,
+              [  --enable-gurobi  enable ILP solving with GUROBI], gurobi="true")
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
 AC_PROG_CXX
+AC_PROG_CC_STDC
 dnl AC_CHECK_PROG(CXX,g++,g++)
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
@@ -73,6 +83,39 @@ AC_CHECK_PROG(CAT,cat,cat)
 AC_CHECK_PROG(AR,ar,ar)
 AC_CHECK_PROG(STRIP,strip,strip)
 AC_CHECK_PROG(SED,sed,sed)
+
+if test $glpk = "true"; then
+    dnl check for glpk
+    AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[GLPK solver for solving ILP])]
+                                CFLAGS="$CFLAGS -DGLPK" LDFLAGS="$LDFLAGS -lglpk"
+                                , [AC_ERROR([glpk.h header not found])])
+    AC_CHECK_LIB([glpk], [glp_create_prob], []
+                 , [AC_ERROR([GLPK library not found])])
+fi
+
+dnl Offer --with-gurobi-prefix.
+AC_ARG_WITH(gurobi-prefix,
+            AC_HELP_STRING([--with-gurobi-prefix=DIR],
+                           [DIR location of GUROBI package]),
+                           [CPPFLAGS="${CPPFLAGS} -I$withval/include";
+                            LDFLAGS="${LDFLAGS} -L$withval/lib";
+                            # MAJOR_VERSION=`cat $withval/include/gurobi_c.h| grep VERSION_MAJOR`;
+                            # echo "major version = ${MAJOR_VERSION}";
+                            # LIBS="-lgurobi75 $LIBS";
+                            GUROBI_PREFIX="$withval";
+                            ])
+
+if test $gurobi = "true"; then
+    dnl check for gurobi
+    AC_CHECK_HEADER([gurobi_c.h],[AC_DEFINE([GUROBI],[1],[GUROBI solver for solving ILP])]
+                                   major_version=`cat $GUROBI_PREFIX/include/gurobi_c.h| grep VERSION_MAJOR| awk '{print $3}'`
+                                   minor_version=`cat $GUROBI_PREFIX/include/gurobi_c.h| grep VERSION_MINOR| awk '{print $3}'`
+                                   grb_version=gurobi$major_version$minor_version
+                                   CFLAGS="$CFLAGS -DGUROBI" LDFLAGS="$LDFLAGS -l$grb_version"
+                                   , [AC_ERROR([gurobi_c.h header not found])])
+    AC_CHECK_LIB([$grb_version], [GRBnewmodel], []
+                 , [AC_ERROR([Gurobi library not found])])
+fi
 
 dnl Offer --with-gmp-prefix.
 AC_ARG_WITH(gmp-prefix,

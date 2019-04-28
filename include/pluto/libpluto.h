@@ -2,13 +2,28 @@
 #define __LIBPLUTO__
 #include "isl/union_set.h"
 #include "isl/union_map.h"
-#include "../../src/math_support.h"
 
 #include "osl/scop.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+#define int64 long long int
+/* A matrix */
+struct plutoMatrix{
+    /* The values */
+    int64 **val;
+
+    int nrows;
+    int ncols;
+
+    /* Pre-allocated number of rows */
+    int alloc_nrows;
+    int alloc_ncols;
+};
+typedef struct plutoMatrix PlutoMatrix;
+
 struct plutoOptions{
 
     /* To tile or not? */
@@ -17,11 +32,9 @@ struct plutoOptions{
     /* Intra-tile optimization */
     int intratileopt;
 
-    /* Load-balanced tiling */
-    int lbtile;
-
-    /* Load-balanced tiling (one dimensional concurrent start)*/
-    int partlbtile;
+    /* Diamond tiling for concurrent startup; enables concurrent startup along
+     * one dimension. */
+    int diamondtile;
 
     /* Extract scop information from libpet*/
     int pet;
@@ -44,7 +57,10 @@ struct plutoOptions{
     /* consider transitive dependences between tasks */
     int dyn_trans_deps_tasks;
 
-    /* parallelization */
+    /* Enables concurrent startup along dimensions  */
+    int fulldiamondtile;
+
+    /* Parallelization */
     int parallel;
 
     /* prefer pure inner parallelism to pipelined parallelism */
@@ -65,6 +81,12 @@ struct plutoOptions{
 
     /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
     int fuse;
+
+    /* For experimental purposes with dfp */
+    int delayed_cut;
+
+    /* Tyepd fuse at outer levels, max fuse at inner levels */
+    int hybridcut;
 
     /* for debugging - print default cloog-style total */
     int scancount;
@@ -158,11 +180,32 @@ struct plutoOptions{
     /* Read input from a .scop file */
     int readscop;
 
-    /* Use PIP as ilp solver. */
+    /* Use PIP as the ILP solver. */
     int pipsolve;
 
-    /* Use isl as ilp solver. */
+    /* Use isl as the ILP solver. */
     int islsolve;
+
+    /* Use glpk as the ILP solver. */
+    int glpk;
+
+    /* Use gurobi as the ILP solver. */
+    int gurobi;
+
+    /* Use lp instead of ILP. */
+    int lp;
+
+    /* Use pluto-(i)lp-dfp framework instead of pluto-ilp */
+    int dfp;
+
+    /* Use ILP with pluto-dfp instead of LP. */
+    int ilp;
+
+    /* Use LP solutions to colour SCCs */
+    int lpcolour;
+
+    /* Cluster the statements of the SCC. Currently supported with DFP based approach only */
+    int scc_cluster;
 
     /* Index set splitting */
     int iss;
@@ -242,6 +285,10 @@ typedef struct plutoOptions PlutoOptions;
 #define MAXIMAL_FUSE 1
 /* Something in between the above two */
 #define SMART_FUSE 2
+/* Fuses SCCs only if fusion does not result in loss of parallelism */
+#define TYPED_FUSE 3
+/* Typed fuse at outer levels, Max fuse at inner levels */
+# define HYBRID_FUSE 4
 
 
 PlutoOptions *pluto_options_alloc();
@@ -258,6 +305,17 @@ int pluto_schedule_osl(osl_scop_p scop,
 }
 #endif
 
+/*
+ * Structure to hold Remapping information
+ * Consists of number of statements, Remapping pluto matrix
+ * and divs.
+ */
+struct remapping {
+    unsigned nstmts;
+    PlutoMatrix **stmt_inv_matrices;
+    int **stmt_divs;
+};
+typedef struct remapping Remapping;
 
 /*
 This function is a HACK. The reason this exists is to allow for easy FFI
@@ -272,16 +330,9 @@ isl object.
 void pluto_schedule_str(const char *domains_str,
         const char *dependences_str,
         char** schedules_str_buffer_ptr,
+        char** p_loops,
+        Remapping **remapping_ptr,
         PlutoOptions *options);
-
-
-
-struct remapping {
-    int nstmts;
-    PlutoMatrix **stmt_inv_matrices;
-    int **stmt_divs;
-};
-typedef struct remapping Remapping;
 
 void pluto_remapping_free(Remapping *);
 

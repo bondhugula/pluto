@@ -27,26 +27,13 @@
 
 #include "gmp.h"
 
+#include "pluto/libpluto.h"
+
 #define PLMAX(a,b) ((a>=b)?(a):(b))
 #define PLMIN(a,b) ((a<=b)?(a):(b))
 #define PLABS(a) ((a>=0)?(a):(-a))
 
-#define int64 long long int
 #define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
-
-/* A matrix */
-struct plutoMatrix{
-    /* The values */
-    int64 **val;
-
-    int nrows;
-    int ncols;
-
-    /* Pre-allocated number of rows */
-    int alloc_nrows;
-    int alloc_ncols;
-};
-typedef struct plutoMatrix PlutoMatrix;
 
 void pluto_matrix_print(FILE *, const PlutoMatrix *);
 void pluto_matrix_read(FILE *, const PlutoMatrix *);

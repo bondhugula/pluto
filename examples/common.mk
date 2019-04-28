@@ -25,6 +25,8 @@ POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
 POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 HOSTS_FILE=$(BASEDIR)hosts
 
+POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
+POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
@@ -43,7 +45,7 @@ ifeq ($(CC), icc)
 	CXX           := icpc
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
-	OMP_FLAGS     := -openmp
+	OMP_FLAGS     := -qopenmp
 	ifeq ($(MPI), mvapich)
 		MPICC        := mpicc -cc=icc -D__MPI
 		MPICXX       := mpicc -cc=icpc -D__MPI
@@ -110,16 +112,16 @@ endif
 all: orig tiled par distopt
 
 $(SRC).opt.c:  $(SRC).c
-	$(PLC) $(SRC).c $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --notile --noparallel $(PLCFLAGS)  -o $@
 
 $(SRC).tiled.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).idt.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --identity $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --identity $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).dyn_graph_idt.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --dynschedule_graph --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
@@ -138,9 +140,6 @@ $(SRC).dyn_data_dist.c:  $(SRC).c
 
 $(SRC).data_dist.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --parallel --data_dist --identity_data_dist $(TILEFLAGS) $(PLCFLAGS)  $(DISTOPT_FLAGS) -o $@
-
-$(SRC).lbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 $(SRC).dist.c: $(SRC).c
 	$(PLC) $(SRC).c --distmem --timereport --nocommopt --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
@@ -211,8 +210,11 @@ $(SRC).dist_dynsched_foifi_idt.c: $(SRC).c
 	$(PLC) $(SRC).c --distmem --mpiomp --tile --commopt_foifi --dynschedule --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
 
 $(SRC).mlbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --lbtile --multipar $(TILEFLAGS) $(PLCFLAGS) -o $@
+	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
+# Version that doesn't use diamond tiling
+$(SRC).pipepar.c:  $(SRC).c
+	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
@@ -234,9 +236,6 @@ idtcxx: $(SRC).idt.c
 
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
-
-lbpar: $(SRC).lbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
 
 parcxx: $(SRC).par.c
 	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS) -ltbb
@@ -384,9 +383,17 @@ scalapack_run: scalapack
 	touch .test
 	rm -f .test
 
+=======
+>>>>>>> origin/master
 mlbpar: $(SRC).mlbpar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
 
+# Version that doesn't use diamond tiling
+pipepar: $(SRC).pipepar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
+
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
@@ -395,10 +402,11 @@ perf: orig tiled par orig_par
 	./tiled
 	OMP_NUM_THREADS=$(NTHREADS) ./par 
 
-lbperf: par lbpar
+# Compare performance with and without diamond tiling.
+pipeperf: par pipepar
 	rm -f .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 
 
 distperf: par dist distomp distopt
 	rm -f .test
@@ -418,14 +426,13 @@ test: orig tiled par
 	diff -q out_orig out_par4
 	@echo Success!
 
-lbtest: par lbpar mlbpar
+lbtest: par pipepar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
-	OMP_NUM_THREADS=$(NTHREADS) ./mlbpar 2> out_mlbpar4
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 2> out_pipepar4
 	rm -f .test
-	diff -q out_par4 out_lbpar4
-	diff -q out_par4 out_mlbpar4
+	diff -q out_par4 out_pipepar4
+	diff -q out_par4 out_fulldiamondtile4
 	@echo Success!
 
 data_dist_test: par data_dist
@@ -995,7 +1002,7 @@ dist_data_run: distopt_data_dist
 
 
 clean:
-	rm -f out_* *.lbpar.* *.tiled.* *.opt.* *.idt.* *.par.* *.mlbpar.c *.dyn_graph_idt.* *.dyn_graph.* *.dyn_idt.* *.dyn.* *.*data_dist.* \
+	rm -f out_* *.pipepar.* *.tiled.* *.opt.* *.idt.* *.par.* *.mlbpar.c *.dyn_graph_idt.* *.dyn_graph.* *.dyn_idt.* *.dyn.* *.*data_dist.* \
 		*.dist.c *.distomp.c *.distopt.c *.distrecv.c *.distopt_foifi.c *.distopt_fop.c *.dhpf.c *_idt.c *_idnt.c \
 		*.dist_dynsched*.c \
 	   	orig opt tiled idt idtcxx par parcxx dyn_graph_idt dyn_graph dyn_graph_lib dyn_nopr_idt dyn_idt dyn_nopr dyn dist sched orig_par distomp dhpf lbpar \
@@ -1012,7 +1019,7 @@ clean:
 		pi_*.c sigma.c sigma_*.c packunpack.c pi1.c tau.c pi_defs.h *.append.c .appendfilename *.cloog debug_print_node*
 
 exec-clean:
-	rm -f out_* opt orig tiled sched sched hopt hopt idt idtcxx par parcxx dyn_graph_idt dyn_graph dyn_graph_lib dyn_nopr_idt dyn_idt dyn_nopr dyn lbpar orig_par dist distomp \
+	rm -f out_* opt orig tiled sched sched hopt hopt idt idtcxx par parcxx dyn_graph_idt dyn_graph dyn_graph_lib dyn_nopr_idt dyn_idt dyn_nopr dyn pipepar orig_par dist distomp \
 		distopt distopt_fop distopt_foifi distopt_idt distopt_fop_idt distopt_foifi_idt distopt_idnt distopt_fop_idnt distopt_foifi_idnt \
 		distcxx distcxx_idt dist_dynsched_nopr dist_dynsched_nopr_idt dist_dynsched dist_dynsched_idt \
 		dhpf *.out.* *.kernel.* a.out \
