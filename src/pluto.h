@@ -467,12 +467,10 @@ struct plutoProg{
     /* used by dynschedule */
     int num_parameterized_loops;
 
-<<<<<<< HEAD
     /* used to store decls var for vec optimization in data dist*/
     char **decl_indices;
     int num_decl_indices;
     char *vec_decls;
-=======
     int num_stmts_to_be_coloured;
     // Boolean Array indicating whether a dimension is scaled
     int *scaled_dims;
@@ -487,7 +485,6 @@ struct plutoProg{
     double mipTime,ilpTime, cst_solve_time,cst_const_time,cst_write_time, scaling_cst_sol_time, skew_time;
     double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time, fcg_cst_alloc_time;
     long int num_lp_calls;
->>>>>>> origin/master
 };
 typedef struct plutoProg PlutoProg;
 
