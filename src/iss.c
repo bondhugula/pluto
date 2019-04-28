@@ -25,9 +25,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
   ctx = isl_ctx_alloc();
   assert(ctx);
 
-  // printf("Input matrix\n");
-  // pluto_matrix_print(stdout, mat);
-
   h = isl_mat_alloc(ctx, mat->nrows, ndim);
 
   for (i = 0; i < mat->ncols; i++) {
@@ -76,8 +73,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
       }
     }
   }
-  // printf("Ortho matrix\n");
-  // pluto_matrix_print(stdout, ortho);
 
   for (i = 0; i < ortho->ncols; i++) {
     for (j = 0; j < ndim; j++) {
@@ -87,8 +82,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
     orthcst[i]->val[0][ndim] = -1;
     orthcst[i]->val[0][ndim] = 0;
   }
-
-  // pluto_matrix_print(stdout, stmt->trans);
 
   if (ortho->ncols >= 1) {
     /* Sum of all of the above is the last constraint */
@@ -102,12 +95,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
     *orthonum = ortho->ncols + 1;
   } else
     *orthonum = 0;
-
-  // printf("Ortho constraints: %d set(s)\n", *orthonum);
-  // for (i=0; i<*orthonum; i++) {
-  // print_polylib_visual_sets("li", orthcst[i]);
-  // pluto_constraints_print(stdout, orthcst[i]);
-  // }
 
   /* Free the unnecessary ones */
   for (i = *orthonum; i < ndim + 1; i++) {
@@ -153,7 +140,6 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
   PlutoConstraints *cst = pluto_constraints_alloc(10, iss_cst_width);
 
   for (k = 0; k < ndoms; k++) {
-    // printf("[iss] Domain %d\n", k);
     const PlutoConstraints *dom = doms[k];
 
     /* Linearize m + 2v(p) - h.s - h.t >= 0 */
@@ -270,9 +256,6 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
 int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
   assert(dep->src == dep->dest);
 
-  // printf("Dep %d, dim; %d\n", dep->id+1, dim);
-  // pluto_constraints_compact_print(stdout, dep->dpolytope);
-
   int ndim = (dep->dpolytope->ncols - 1 - npar) / 2;
 
   assert(dim >= 0);
@@ -293,8 +276,6 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
   retval2 = pluto_constraints_get_const_ub(dpolyc, 0, &ub);
 
   pluto_constraints_free(dpolyc);
-
-  // printf("lb = %lld, ub = %lld\n", lb, ub);
 
   return !(retval1 && retval2 && abs(ub) <= 5 && abs(lb) <= 5);
 }
@@ -525,7 +506,6 @@ void pluto_iss_dep(PlutoProg *prog) {
     /* Split the old statements */
     for (i = 0; i < nstmts; i++) {
       pluto_iss(prog->stmts[i], cuts, num_cuts, prog);
-      // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
     }
     /* Remove old statements */
     for (i = 0; i < nstmts; i++) {

@@ -425,7 +425,6 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
       stdout,
       "\tAfter all dependences: num constraints: %d, num variables: %d\n",
       globcst->nrows, globcst->ncols - 1));
-  // IF_DEBUG2(pluto_constraints_pretty_print(stdout, globcst));
 
   return globcst;
 }
@@ -952,8 +951,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
       }
     }
   }
-  // printf("Ortho matrix\n");
-  // pluto_matrix_print(stdout, ortho);
 
   /* Fast linear independence check */
   if (options->flic)

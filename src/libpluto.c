@@ -327,8 +327,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     pluto_loops_free(ploops, nploops);
   }
 
-  // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
-
   /* Construct isl_union_map for pluto schedules */
   isl_union_map *schedules = isl_union_map_empty(isl_space_copy(space));
   for (i = 0; i < prog->nstmts; i++) {
@@ -336,7 +334,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     isl_map *map;
     Stmt *stmt = prog->stmts[i];
     PlutoConstraints *sched = normalize_domain_schedule(stmt, prog);
-    // pluto_constraints_print(stdout, sched);
 
     bmap = isl_basic_map_from_pluto_constraints(
         ctx, sched, sched->ncols - stmt->trans->nrows - prog->npar - 1,
@@ -782,7 +779,6 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     isl_map *map;
     Stmt *stmt = prog->stmts[i];
     PlutoConstraints *sched = normalize_domain_schedule(stmt, prog);
-    // pluto_constraints_print(stdout, sched);
 
     bmap = isl_basic_map_from_pluto_constraints(
         ctx, sched, sched->ncols - stmt->trans->nrows - prog->npar - 1,

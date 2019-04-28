@@ -349,8 +349,6 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
     all_positive_set = isl_set_from_basic_set(all_positive);
     domain = isl_set_intersect(domain, all_positive_set);
   }
-  // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
-  // isl_set_dump(domain);
   lexmin = isl_set_lexmin(domain);
 
   if (isl_set_is_empty(lexmin)) {
@@ -411,7 +409,6 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
     /* Schedule should be single valued */
     assert(isl_map_dim_is_single_valued(map, i));
     isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
-    // isl_pw_aff_dump(pw_aff);
     /* TODO: check to make sure there is only one piece; or else
      * an incorrect schedule will be extracted */
     /* Best effort: Gets it from the last piece */

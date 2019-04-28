@@ -178,8 +178,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   /* Loops should be in the increasing order of their depths */
   qsort(ploops, nploops, sizeof(Ploop *), pluto_loop_compar);
 
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
-
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
@@ -641,9 +639,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
   IF_DEBUG(printf("[pluto_mark_vector] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
-  // clast_pprint(stdout, root, 0, cloogOptions);
-
   for (i = 0; i < nploops; i++) {
     /* Only the innermost ones */
     if (!pluto_loop_is_innermost(ploops[i], prog))
@@ -676,7 +671,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
       continue;
     }
     for (j = 0; j < nloops; j++) {
-      // printf("\tMarking %s ivdep\n", loops[j]->iterator);
       loops[j]->parallel += CLAST_PARALLEL_VEC;
       loops[j]->suffix = strdup(suffix);
       // loops[j]->pos_offset = ploops[i]->stmts[0]->pos_peel_offset;

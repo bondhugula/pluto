@@ -71,11 +71,7 @@ Polyhedron *pluto_constraints_to_polylib(const PlutoConstraints *cst) {
 PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol) {
   PlutoConstraints *cst;
 
-  // printf("Poly\n");
-  // Polyhedron_Print(stdout, "%4d", pol);
   Matrix *polymat = Polyhedron2Constraints(pol);
-  // printf("constraints\n");
-  // Matrix_Print(stdout, "%4d", polymat);
 
   cst = polylib_matrix_to_pluto_constraints(polymat);
   Matrix_Free(polymat);
@@ -93,10 +89,6 @@ PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol) {
  */
 PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst,
                                           const PlutoMatrix *func) {
-  // IF_DEBUG(printf("pluto const image: domain\n"););
-  // IF_DEBUG(pluto_constraints_print(stdout, cst););
-  // IF_DEBUG(printf("pluto const image: func\n"););
-  // IF_DEBUG(pluto_matrix_print(stdout, func););
   assert(func->ncols == cst->ncols);
 
   PlutoConstraints *imagecst;
@@ -114,9 +106,6 @@ PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst,
   Domain_Free(pol);
   Polyhedron_Free(image);
 
-  // IF_DEBUG(printf("pluto const image is\n"););
-  // IF_DEBUG(pluto_constraints_print(stdout, imagecst););
-
   return imagecst;
 }
 
@@ -127,10 +116,6 @@ PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
   Polyhedron *pol3 = DomainUnion(pol1, pol2, 50);
 
   PlutoConstraints *ucst = polylib_to_pluto_constraints(pol3);
-
-  // Polyhedron_Print(stdout, "%4d ", pol1);
-  // Polyhedron_Print(stdout, "%4d ", pol2);
-  // Polyhedron_Print(stdout, "%4d ", pol3);
 
   Domain_Free(pol1);
   Domain_Free(pol2);
