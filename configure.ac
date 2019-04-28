@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.12.0, [uday@csa.iisc.ernet.in])
+AC_INIT(pluto, 0.12.0, [udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -27,7 +27,7 @@ AM_CONFIG_HEADER(config.h)
 dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
 dnl being 32-bit/64-bit
-CFLAGS="$CLAGS -Wall"
+CFLAGS="$CFLAGS -Wall"
 if test CC = icc; then
     LDFLAGS="$LDFLAGS -lirc -limf"
 fi
@@ -56,8 +56,12 @@ AC_ARG_ENABLE(gurobi,
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
 AC_PROG_CXX
-AC_PROG_CC_STDC
-dnl AC_CHECK_PROG(CXX,g++,g++)
+AC_PROG_CC_C99
+
+if test $ac_cv_prog_cc_c99 = "no"; then
+  AC_MSG_ERROR([compiler does not support c99])
+fi
+
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
 AC_PROG_LN_S
