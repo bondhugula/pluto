@@ -357,17 +357,6 @@ char *pluto_dist_get_ptr_dim_stride(Array *arr, int curr_dim, PlutoProg *prog) {
 
   sprintf(stride + strlen(stride), "(");
   int i, first = 1;
-  //
-  //	for (i = curr_dim + 1; i <= arr->last_tile_dim; ++i) {
-  //		if(first)
-  //			sprintf(stride+strlen(stride), "%s_size_%d",
-  //arr->text,i);
-  //		else
-  //			sprintf(stride+strlen(stride), " * %s_size_%d",
-  //arr->text,i);
-  //
-  //		first = 0;
-  //	}
 
   for (i = curr_dim + 1; i < arr->dim_orig; ++i) {
     if (arr->tiled_hyperplane[i].is_tiled) {
@@ -544,7 +533,7 @@ int pluto_dist_apply_mod_optimization(char *stmt_text, char *new_stmt_text,
     pluto_dist_get_array_indcies(stmt_text, &src_index, div_ind, mod_ind);
 
     //		sscanf(stmt_text[src_index], "[%[^]]][%[^]]]", div_ind,
-    //mod_ind);
+    // mod_ind);
 
     i1[0] = 0;
     i2[0] = 0;

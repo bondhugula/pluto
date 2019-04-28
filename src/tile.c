@@ -302,7 +302,7 @@ PlutoConstraints *pluto_dist_get_required_data_tiles(PlutoConstraints *domain,
   Array *arr = pluto_get_corrs_array(arr_name, prog);
 
   //	PlutoConstraints *tiled_domain = pluto_get_new_arr_domain(arr, domain,
-  //arr->copy_level);
+  // arr->copy_level);
   PlutoConstraints *tiled_domain = pluto_constraints_dup(domain);
 
   assert(arr != NULL);
@@ -445,7 +445,7 @@ void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel) {
     }
 
     //		pluto_dist_update_arr_domain(prog->arrays[j], data, copylevel,
-    //prog);
+    // prog);
     pluto_constraints_free(data);
 
     struct TiledHyperplane *t = arr->tiled_hyperplane;
@@ -503,8 +503,9 @@ void pluto_dist_compute_all_data_tiles(PlutoProg *prog, int copylevel) {
   //		struct TiledHyperplane *t = arr->tiled_hyperplane;
   //
   //		for (j = 0; j < arr->num_tiled_loops; ++j) {
-  //			pluto_tile_dim(arr, t[j].tile_sizes, t[j].depth, t[j].firstD,
-  //prog);
+  //			pluto_tile_dim(arr, t[j].tile_sizes, t[j].depth,
+  //t[j].firstD,
+  // prog);
   //		}
   //
   //		print_polylib_visual_sets("d", arr->array_bounds);
@@ -681,13 +682,15 @@ char *pluto_dist_malloc_stmt_text(char *arr_name, PlutoProg *prog,
     //				tiled_dim = arr->tiled_hyperplane[j].tiled_dim;
     //
     //				sprintf(stmt_text + strlen(stmt_text),"(%s)",
-    //arr->iterators[tiled_dim]);
+    // arr->iterators[tiled_dim]);
     //
     //				if(j != arr->dim_orig - 1)
-    //					sprintf(stmt_text + strlen(stmt_text)," * (%s) +
+    //					sprintf(stmt_text + strlen(stmt_text)," * (%s)
+    //+
     //",
-    //							pluto_dist_get_ptr_dim_stride(arr, j,
-    //prog));
+    //							pluto_dist_get_ptr_dim_stride(arr,
+    //j,
+    // prog));
     //
     //				}
     //
@@ -765,8 +768,9 @@ void pluto_dist_intial_copy_stmt(PlutoProg *prog) {
       }
     }
 
-    //		pluto_add_stmt(prog,arr->array_bounds, arr->trans, arr->iterators,
-    //stmt_text,
+    //		pluto_add_stmt(prog,arr->array_bounds, arr->trans,
+    //arr->iterators,
+    // stmt_text,
     //				INITIAL_ARRAY_COPY);
   }
 }
@@ -789,7 +793,7 @@ void pluto_dist_array_intialize(PlutoProg *prog) {
 
     //		arr->tiled_hyperplane = (struct TiledHyperplane *)
     //				malloc(arr->dim_orig * sizeof(struct
-    //TiledHyperplane));
+    // TiledHyperplane));
     //
     //		for(j=0;j<arr->dim_orig;j++){
     //			arr->tiled_hyperplane[j].loop_tiled = 0;
@@ -916,7 +920,7 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band,
 
           row = arr->hyperplane_mapping[depth];
           //					row =
-          //arr->hyperplane_mapping[0];
+          // arr->hyperplane_mapping[0];
           if (row < 0)
             continue;
         }

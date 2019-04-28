@@ -208,11 +208,11 @@ PlutoMatrix *osl_access_relation_to_pluto_matrix(osl_relation_p smat) {
 
   int nrows =
       smat->nb_rows == 1 ? smat->nb_rows : smat->nb_rows - 1; // skp id line
-  int ncols = smat->nb_columns - smat->nb_output_dims - 1; //-1: skip 1st col
+  int ncols = smat->nb_columns - smat->nb_output_dims - 1;    //-1: skip 1st col
   mat = pluto_matrix_alloc(nrows, ncols);
 
   // Special case for scalars.
-  if (smat->nb_rows == 1) { 
+  if (smat->nb_rows == 1) {
     for (j = smat->nb_output_dims + 1; j < smat->nb_columns; j++) {
       mat->val[0][j - (smat->nb_output_dims + 1)] = 0;
     }
@@ -751,7 +751,8 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
   rows = s_dom_rows + t_dom_rows +
          (s_acc_rows == 0 ? 1 : s_acc_rows) // special case for 0-dimention
                                             // array(scalar)
-         + depth;
+         +
+         depth;
   cols = s_dom_output_dims + t_dom_output_dims + nb_pars +
          2; // cols: 2 => eq + const
 
@@ -781,7 +782,7 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
     }
 
     // start of matrix
-    osl_index = 1; // start of src_stmt_domain_output_dims
+    osl_index = 1;    // start of src_stmt_domain_output_dims
     pl_index = 1 - 1; // -1 for pluto
     for (j = 0; j < s_dom_output_dims; j++)
       cst->val[pl_constraint][pl_index + j] =
@@ -2987,61 +2988,6 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options) {
       prog->arrays[narrays - 1 - i] = arr;
     }
   }
-
-  //		i = 0;
-  //		for(symbol = scop->symbol_table;symbol;symbol = symbol->next) {
-  //			//type == 3 for arrays
-  //			if(symbol->type == 3 && symbol->num_of_dimensions > 0)
-  //				i++;
-  //		}
-  //
-  //		prog->narrays = i > scop->nb_arrays ? i : scop->nb_arrays;
-  //		prog->arrays = (Array **) malloc(prog->narrays * sizeof(Array
-  //*));
-  //		i = 0;
-  //		prog->max_array_dim = 0;
-  //		for(symbol = scop->symbol_table;symbol;symbol = symbol->next) {
-  //
-  //			//type == 3 for arrays
-  //			if(symbol->type == 3 && symbol->num_of_dimensions > 0){
-  //				Array *arr = (Array *) malloc(sizeof(Array));
-  //				arr->id = i;
-  //				arr->tiled_hyperplane = NULL;
-  //				arr->num_hyperplanes_found = 0;
-  //				arr->num_tiled_loops = 0;
-  //				arr->first_tile_dim = -1;
-  //				arr->last_tile_dim = -1;
-  //				arr->hyperplane_mapping = NULL;
-  //				arr->text = strdup(symbol->identifier);
-  //				if(symbol->data_type)
-  //					arr->data_type =
-  //strdup(symbol->data_type);
-  //				arr->dim = arr->dim_orig =
-  //symbol->num_of_dimensions;
-  //				if(arr->dim > prog->max_array_dim)
-  //					prog->max_array_dim = arr->dim;
-  //
-  //				arr->iterators = (char **)malloc(arr->dim * sizeof(char
-  //*));
-  //				for (j = 0; j < arr->dim; ++j) {
-  //					arr->iterators[j] = (char *)malloc(25 *
-  //sizeof(char));
-  //					sprintf(arr->iterators[j], "d%d", j);
-  //				}
-  //
-  ////				if(symbol->dimensions_bounds)
-  ////					arr->array_bounds =
-  ///scoplib_matrix_to_pluto_constraints(symbol->dimensions_bounds);
-  //
-  //
-  //				prog->arrays[i] = arr;
-  //				i++;
-  //			}
-  //		}
-  //
-  ////		read_array_bounds_from_file(prog->arrays, prog->narrays);
-  //		prog->narrays = i;
-  //    }
 
   return prog;
 }

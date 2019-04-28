@@ -1937,8 +1937,7 @@ int pluto_auto_transform(PlutoProg *prog) {
   }
 
   if (options->data_dist) {
-    copy_comp_to_data_hyperplanes(prog->stmts[0], prog->arrays[0],
-                                  0);
+    copy_comp_to_data_hyperplanes(prog->stmts[0], prog->arrays[0], 0);
   }
 
   /* Deallocate the fusion conflict graph */

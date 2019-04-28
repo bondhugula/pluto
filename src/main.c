@@ -1070,34 +1070,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     } else if (options->dynschedule_graph && !retval) { // shared-memory
       fprintf(outfp, "#include \"%s\"\n", headerFileName);
       pluto_dynschedule_graph_codegen(prog, sigmafp, outfp, headerfp);
-    } else if (!options->distmem && !options->dynschedule &&
-               options->data_dist) {
-
-      //        	if(!headerfp){
-      //				headerfp = fopen(headerFileName, "w");
-      //				if (!headerfp) {
-      //					fprintf(stderr, "[Pluto] Can't
-      //open file: '%s'\n", headerFileName);
-      //					free(headerFileName);
-      //					pluto_options_free(options);
-      //					pluto_prog_free(prog);
-      //					return 13;
-      //				}
-      //				fprintf(headerfp, "#include
-      //\"polyrt.h\"\n");
-      //				if(options->data_dist)
-      //				fprintf(headerfp, "#include
-      //\"buffer_manager.h\"\n");
-      //        	}
-      //
-      //			pluto_shared_memory_data_dist(prog, headerfp);
-
-      //            fprintf(outfp, "#include \"%s\"\n", headerFileName);
-      // t_start = rtclock();
-      //            pluto_sharedmem_data_dist_codegen(prog, cloogfp, outfp,
-      // headerfp);
-      // t_c = rtclock() - t_start;
-
     } else {
       if (options->distmem) { // no parallel loops to distribute
         // ensure only one processor will output the data
