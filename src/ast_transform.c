@@ -34,7 +34,7 @@ void get_dist_dims(const PlutoProg *prog, Ploop *loop, int *dist_dims, int *num_
     *num_dist_dims = 1;
     dist_dims[0] = loop->depth;
     if (options->multi_level_distribution) {
-        int i, num_inner_loops = 0;
+        unsigned i, num_inner_loops = 0;
         Ploop **inner_loops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth, 
                 prog, &num_inner_loops);
         Stmt *stmt = loop->stmts[0];
@@ -156,8 +156,8 @@ void pluto_mark_parallel_writeout(struct clast_stmt *root, const PlutoProg *prog
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         CloogOptions *cloogOptions)
 {
-    unsigned i, j, nloops, nstmts, nploops;
-    struct clast_for **loops;
+    unsigned i, j, nploops;
+    int nloops, nstmts;
     int *stmts;
     assert(root != NULL);
 
@@ -208,12 +208,12 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             int dist_dims[max_depth];
             get_dist_dims(prog, ploops[i], dist_dims, &num_dist_dims);
 
-            for (d = 0; d<num_dist_dims; d++) {
+            for (int d = 0; d<num_dist_dims; d++) {
                 int dim = dist_dims[d]+1;
                 sprintf(iter, "t%d%s", dim, suffix);
                 /* Get all loops at that depth with compute statements */
                 ClastFilter filter = {iter, stmtids, nstmtids, subset};
-                clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
+                clast_filter(root, filter, &loops, (int *) &nloops, &stmts, (int *)&nstmts);
 
                 /* The parallel loop shouldn't get separated with distmem */
                 if (nloops >= 2)  clast_pprint(stdout, root, 0, cloogOptions);
@@ -266,7 +266,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
             }
 
 
-            for (d = 0; d<num_dist_dims; d++) {
+            for (int d = 0; d<num_dist_dims; d++) {
                 sprintf(iter, "t%d%s", dist_dims[d]+1, suffix);
                 /* MPI parallelize the DATA SETUP statements */
                 /* Time the data_inti statements */
@@ -363,7 +363,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                     // printf("S%d\n", stmtids[nstmtids-1]);
                 }
             }
-            for (d = 0; d<num_dist_dims; d++) {
+            for (int d = 0; d<num_dist_dims; d++) {
                 sprintf(iter, "t%d%s", dist_dims[d]+1, suffix);
                 /* Get all loops at that depth with copy_out statements */
                 ClastFilter filter1 = {iter, stmtids, nstmtids, subset};
@@ -396,7 +396,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                     // printf("S%d\n", stmtids[nstmtids-1]);
                 }
             }
-            for (d = 0; d<num_dist_dims; d++) {
+            for (int d = 0; d<num_dist_dims; d++) {
                 sprintf(iter, "t%d%s", dist_dims[d]+1, suffix);
                 /* Get all loops at that depth with sigma statements */
                 ClastFilter filter2 = {iter, stmtids, nstmtids, subset};
@@ -467,17 +467,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                         for (; depth<=max_depth; depth++) {
                             sprintf(private_vars+strlen(private_vars), ",t%d%s", depth, suffix);
                         }
-=======
-                loops[j]->parallel = CLAST_PARALLEL_NOT;
-                char *private_vars = malloc(512);
-                strcpy(private_vars, "lbv,ubv");
-                if (options->parallel) {
-                    IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
-                    loops[j]->parallel = CLAST_PARALLEL_OMP;
-                    int depth = ploops[i]->depth+1;
-                    for (depth++;depth<=max_depth;depth++) {
-                        sprintf(private_vars+strlen(private_vars), ",t%d", depth);
->>>>>>> origin/master
                     }
                     loops[j]->private_vars = strdup(private_vars);
                     free(private_vars);
