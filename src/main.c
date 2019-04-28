@@ -166,8 +166,6 @@ int main(int argc, char *argv[])
 
     t_start_all = rtclock();
 
-    FILE *src_fp;
-
     int option;
     int option_index = 0;
 
@@ -603,6 +601,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
             fclose(srcfp);
         }
     }else{
+      FILE *src_fp;
         /* Extract polyhedral representation from clan scop */
         if(!strcmp(srcFileName, "stdin")){  //read from stdin
             src_fp = stdin;
@@ -633,6 +632,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
                 scop = clan_scop_extract(src_fp, clanOptions);
                 t_d = rtclock() - t_start;
             }
+            fclose(src_fp);
 
             if (!scop || !scop->statement)   {
                 fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
@@ -760,9 +760,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }else{  // do the usual Pluto stuff
 
       /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
-      /* Since meta info about loops
-       * is printed to be processed by scripts - if transformations are
-       * performed, changed loop order/iterator names will be missed  */
+      /* Since meta info about loops is printed to be processed by scripts - if
+       * transformations are performed, changed loop order/iterator names will
+       * be missed. */
       gen_unroll_file(prog);
 
       char *outFileName, *cloogFileName;
@@ -1069,11 +1069,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
           /* max size when tiled.* */
           outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
-          cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
 
           if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
               memcpy(outFileName, bname, strlen(bname)-2);
-              strncpy(cloogFileName, bname, strlen(bname)-2);
               outFileName[strlen(bname)-2] = '\0';
           }else{
               outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);

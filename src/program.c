@@ -3209,7 +3209,6 @@ void pluto_prog_free(PlutoProg *prog)
 
     free(prog->decls);
 
-    /* Free data names. */
     for (i=0; i<prog->num_data; i++) {
         free(prog->data_names[i]);
     }
