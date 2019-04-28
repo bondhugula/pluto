@@ -92,7 +92,6 @@ void pluto_mark_parallel_writeout(struct clast_stmt *root,
         stmt = prog->stmts[j];
         stmtids[0] = stmt->id + 1;
         assert(stmt->id != -1);
-        // printf("S%d\n", stmtids[0]);
         break;
       }
     }
@@ -120,37 +119,6 @@ void pluto_mark_parallel_writeout(struct clast_stmt *root,
   }
 
   fclose(pidefs);
-  //        char iter[5];
-  //        sprintf(iter, "t%d", ploops[i]->depth+1);
-  //    /* MPI parallelize the DATA INIT statements */
-  //      /* Time the data_inti statements */
-  //      int count = 0;
-  //      for (j=0; j<prog->nstmts; j++) {
-  //          if ((prog->stmts[j]->type == DATA_DIST_INIT ||
-  // prog->stmts[j]->type == DATA_DIST_COPY)
-  //             ) {
-  //              stmtids[count++] = prog->stmts[j]->id+1;
-  //              assert(prog->stmts[j]->id != -1);
-  //              // printf("S%d\n", stmtids[count-1]);
-  //          }
-  //      }
-  //      /* Get all loops at that depth with copy_out statements */
-  //      ClastFilter filter7 = {iter, stmtids, count, subset};
-  //      clast_filter(root, filter7, &loops, &nloops, &stmts, &nstmts);
-  //      for (j=0; j<nloops; j++) {
-  //          // printf("Timing and marking copy_out %s parallel\n",
-  // loops[j]->iterator);
-  //          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
-  //          if (options->commreport) {
-  //              loops[j]->time = 1;
-  //              loops[j]->time_name = strdup("t_data_init");
-  //          }
-  //          loops[j]->parallel = CLAST_PARALLEL_MPI;
-  //      }
-  //      free(loops);
-  //      free(stmts);
-  //    }
-
   free(stmtids);
 }
 
@@ -169,7 +137,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     strncat(suffix, "_", 1);
   }
 
-  // int filter[1] = {1};
   FILE *pidefs = NULL;
   if (options->distmem && options->data_dist && !options->verify_output)
     pidefs = fopen("pi_defs.h", "a");
@@ -180,8 +147,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
-
-  // clast_pprint(stdout, root, 0, cloogOptions);
 
   int *stmtids = malloc(prog->nstmts * sizeof(int));
   for (i = 0; i < nploops; i++) {
@@ -203,7 +168,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 
     IF_DEBUG(printf("\tLooking for loop\n"););
     IF_DEBUG(pluto_loop_print(ploops[i]););
-    // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
     if (options->distmem) {
       int num_dist_dims = 0;
@@ -283,16 +247,12 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
               prog->stmts[j]->ploop_id == i) {
             stmtids[count++] = prog->stmts[j]->id + 1;
             assert(prog->stmts[j]->id != -1);
-            // printf("S%d\n", stmtids[count-1]);
           }
         }
         /* Get all loops at that depth with copy_out statements */
         ClastFilter filter6 = { iter, stmtids, count, subset };
         clast_filter(root, filter6, &loops, &nloops, &stmts, &nstmts);
         for (j = 0; j < nloops; j++) {
-          // printf("Timing and marking copy_out %s parallel\n",
-          // loops[j]->iterator);
-          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
           if (options->timereport) {
             loops[j]->time_var_name = strdup("t_data_init");
           }
@@ -310,16 +270,12 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
               prog->stmts[j]->ploop_id == i) {
             stmtids[count++] = prog->stmts[j]->id + 1;
             assert(prog->stmts[j]->id != -1);
-            // printf("S%d\n", stmtids[count-1]);
           }
         }
         /* Get all loops at that depth with copy_out statements */
         ClastFilter filter7 = { iter, stmtids, count, subset };
         clast_filter(root, filter7, &loops, &nloops, &stmts, &nstmts);
         for (j = 0; j < nloops; j++) {
-          // printf("Timing and marking copy_out %s parallel\n",
-          // loops[j]->iterator);
-          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
           if (options->timereport && d == 0) {
             loops[j]->time_var_name = strdup("t_data_init");
           }
@@ -338,16 +294,12 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
               prog->stmts[j]->ploop_id == i) {
             stmtids[count++] = prog->stmts[j]->id + 1;
             assert(prog->stmts[j]->id != -1);
-            // printf("S%d\n", stmtids[count-1]);
           }
         }
         /* Get all loops at that depth with copy_out statements */
         ClastFilter filter8 = { iter, stmtids, count, subset };
         clast_filter(root, filter8, &loops, &nloops, &stmts, &nstmts);
         for (j = 0; j < nloops; j++) {
-          // printf("Timing and marking copy_out %s parallel\n",
-          // loops[j]->iterator);
-          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
           if (options->timereport && d == 0) {
             loops[j]->time_var_name = strdup("t_data_mang");
           }
@@ -366,7 +318,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         if (prog->stmts[j]->type == COPY_OUT && prog->stmts[j]->ploop_id == i) {
           stmtids[nstmtids++] = prog->stmts[j]->id + 1;
           assert(prog->stmts[j]->id != -1);
-          // printf("S%d\n", stmtids[nstmtids-1]);
         }
       }
       for (int d = 0; d < num_dist_dims; d++) {
@@ -375,9 +326,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         ClastFilter filter1 = { iter, stmtids, nstmtids, subset };
         clast_filter(root, filter1, &loops, &nloops, &stmts, &nstmts);
         for (j = 0; j < nloops; j++) {
-          // printf("Timing and marking copy_out %s parallel\n",
-          // loops[j]->iterator);
-          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
           if (num_dist_dims > 1)
             loops[j]->loop_id = i;
           loops[j]->parallel = CLAST_PARALLEL_MPI;
@@ -399,7 +347,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         if ((prog->stmts[j]->type == SIGMA) && prog->stmts[j]->ploop_id == i) {
           stmtids[nstmtids++] = prog->stmts[j]->id + 1;
           assert(prog->stmts[j]->id != -1);
-          // printf("S%d\n", stmtids[nstmtids-1]);
         }
       }
       for (int d = 0; d < num_dist_dims; d++) {
@@ -408,9 +355,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         ClastFilter filter2 = { iter, stmtids, nstmtids, subset };
         clast_filter(root, filter2, &loops, &nloops, &stmts, &nstmts);
         for (j = 0; j < nloops; j++) {
-          // printf("Timing and marking sigma %s parallel\n",
-          // loops[j]->iterator);
-          // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
           if (num_dist_dims > 1)
             loops[j]->loop_id = i;
           loops[j]->parallel = CLAST_PARALLEL_MPI;
@@ -431,7 +375,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         if (prog->stmts[j]->type == COPY_IN && prog->stmts[j]->ploop_id == i) {
           stmtids[nstmtids++] = prog->stmts[j]->id + 1;
           assert(prog->stmts[j]->id != -1);
-          // printf("S%d\n", stmtids[nstmtids-1]);
         }
       }
       sprintf(iter, "t%d%s", ploops[i]->depth + 1, suffix);
@@ -439,8 +382,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
       ClastFilter filter3 = { iter, stmtids, nstmtids, subset };
       clast_filter(root, filter3, &loops, &nloops, &stmts, &nstmts);
       for (j = 0; j < nloops; j++) {
-        // printf("Timing copy_in %s\n", loops[j]->iterator);
-        // clast_pprint(stdout, loops[j]->body, 0, cloogOptions);
         if (options->timereport) {
           loops[j]->time_var_name = strdup("t_unpack");
         }
@@ -531,7 +472,6 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root,
         stmt = prog->stmts[j];
         stmtids[0] = stmt->id + 1;
         assert(stmt->id != -1);
-        // printf("S%d\n", stmtids[0]);
         for (i = 0; i < stmt->trans->nrows; i++) {
           if (stmt->hyp_types[i] != H_SCALAR)
             break;
@@ -554,8 +494,6 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root,
             printf("[Pluto] Warning: parallel poly loop not found in AST\n"););
       } else {
         for (l = 0; l < nloops; l++) {
-          // printf("Marking all_tasks %s parallel\n", loops[l]->iterator);
-          // clast_pprint(stdout, loops[l]->body, 0, cloogOptions);
           loops[l]->parallel = CLAST_PARALLEL_OMP;
           loops[l]->suffix = strdup(suffix);
           char *private_vars = malloc(512);
@@ -580,9 +518,6 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root,
           free(reduction_vars);
         }
       }
-      //            if ((nloops>0)) {
-      //                assert(nloops == 1);
-      //            }
       free(loops);
       free(stmts);
 
@@ -630,11 +565,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
     strncat(suffix, "_", 1);
   }
 
-  Ploop **ploops;
-  //    if(options->data_dist && options->data_tile_opt )
-  //		ploops = pluto_get_all_loops(prog, &nploops);
-  //    else
-  ploops = pluto_get_parallel_loops(prog, &nploops);
+  Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
 
   IF_DEBUG(printf("[pluto_mark_vector] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
@@ -653,11 +584,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
       stmtids[j] = ploops[i]->stmts[j]->id + 1;
     }
 
-    // IF_DEBUG(printf("Looking for loop\n"););
-    // IF_DEBUG(pluto_loop_print(ploops[i]););
-    // IF_DEBUG(printf("%s in \n", iter););
-    // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
-
     ClastFilter filter = { iter, stmtids, ploops[i]->nstmts, subset };
     clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
@@ -673,8 +599,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
     for (j = 0; j < nloops; j++) {
       loops[j]->parallel += CLAST_PARALLEL_VEC;
       loops[j]->suffix = strdup(suffix);
-      // loops[j]->pos_offset = ploops[i]->stmts[0]->pos_peel_offset;
-      // loops[j]->neg_offset = ploops[i]->stmts[0]->neg_peel_offset;
     }
 
     for (j = 0; j < ploops[i]->nstmts; j++)
