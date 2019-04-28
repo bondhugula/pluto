@@ -765,100 +765,99 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
        * performed, changed loop order/iterator names will be missed  */
       gen_unroll_file(prog);
 
-        char *outFileName;
-        char *headerFileName; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
-        char *cloogFileName;
-        char *dynschedFileName;
-        char *sigmaFileName = NULL; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
-        char *piFileName = NULL; // used only by options->distmem
-        char *bname, *basec;
-        if (options->out_file == NULL)  {
-            /* Get basename, remove .c extension and append a new one */
-            basec = strdup(srcFileName);
-            bname = basename(basec);
-
-            if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-                outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
-                strncpy(outFileName, bname, strlen(bname)-2);
-                outFileName[strlen(bname)-2] = '\0';
-            }else{
-                outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
-                strcpy(outFileName, bname);
-            }
-            strcat(outFileName, ".pluto.c");
-        }else{
-            basec = strdup(options->out_file);
-            bname = basename(basec);
-
-            outFileName = malloc(strlen(options->out_file)+1);
-            strcpy(outFileName, options->out_file);
-        }
+      char *outFileName, *cloogFileName;
+      char *headerFileName; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
+      char *dynschedFileName;
+      char *sigmaFileName = NULL; // used only by options->distmem, options->dynschedule, options->dynschedule_graph
+      char *piFileName = NULL; // used only by options->distmem
+      char *bname, *basec;
+      if (options->out_file == NULL)  {
+        /* Get basename, remove .c extension and append a new one */
+        basec = strdup(srcFileName);
+        bname = basename(basec);
 
         if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
-            headerFileName = malloc(strlen(bname)-2+strlen(".h")+1);
-            cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
-            dynschedFileName = malloc(strlen(bname)-2+strlen(".pluto.append.c")+1);
-            strncpy(headerFileName, bname, strlen(bname)-2);
-            strncpy(cloogFileName, bname, strlen(bname)-2);
-            strncpy(dynschedFileName, bname, strlen(bname)-2);
-            headerFileName[strlen(bname)-2] = '\0';
-            cloogFileName[strlen(bname)-2] = '\0';
-            dynschedFileName[strlen(bname)-2] = '\0';
+          outFileName = malloc(strlen(bname)-2+strlen(".pluto.c")+1);
+          strncpy(outFileName, bname, strlen(bname)-2);
+          outFileName[strlen(bname)-2] = '\0';
         }else{
-            headerFileName = malloc(strlen(bname)+strlen(".h")+1);
-            cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
-            dynschedFileName = malloc(strlen(bname)+strlen(".pluto.append.c")+1);
-            strcpy(headerFileName, bname);
-            strcpy(cloogFileName, bname);
-            strcpy(dynschedFileName, bname);
+          outFileName = malloc(strlen(bname)+strlen(".pluto.c")+1);
+          strcpy(outFileName, bname);
         }
-        strcat(headerFileName, ".h");
-        strcat(cloogFileName, ".pluto.cloog");
-        strcat(dynschedFileName, ".pluto.append.c");
-        free(basec);
+        strcat(outFileName, ".pluto.c");
+      }else{
+        basec = strdup(options->out_file);
+        bname = basename(basec);
 
-        cloogfp = fopen(cloogFileName, "w+");
-        if (!cloogfp)   {
-            fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
-            free(cloogFileName);
-            pluto_options_free(options);
-            pluto_prog_free(prog);
-            return 9;
-        }
+        outFileName = malloc(strlen(options->out_file)+1);
+        strcpy(outFileName, options->out_file);
+      }
+
+      if (strlen(bname) >= 2 && !strcmp(bname+strlen(bname)-2, ".c")) {
+        headerFileName = malloc(strlen(bname)-2+strlen(".h")+1);
+        cloogFileName = malloc(strlen(bname)-2+strlen(".pluto.cloog")+1);
+        dynschedFileName = malloc(strlen(bname)-2+strlen(".pluto.append.c")+1);
+        strncpy(headerFileName, bname, strlen(bname)-2);
+        strncpy(cloogFileName, bname, strlen(bname)-2);
+        strncpy(dynschedFileName, bname, strlen(bname)-2);
+        headerFileName[strlen(bname)-2] = '\0';
+        cloogFileName[strlen(bname)-2] = '\0';
+        dynschedFileName[strlen(bname)-2] = '\0';
+      }else{
+        headerFileName = malloc(strlen(bname)+strlen(".h")+1);
+        cloogFileName = malloc(strlen(bname)+strlen(".pluto.cloog")+1);
+        dynschedFileName = malloc(strlen(bname)+strlen(".pluto.append.c")+1);
+        strcpy(headerFileName, bname);
+        strcpy(cloogFileName, bname);
+        strcpy(dynschedFileName, bname);
+      }
+      strcat(headerFileName, ".h");
+      strcat(cloogFileName, ".pluto.cloog");
+      strcat(dynschedFileName, ".pluto.append.c");
+      free(basec);
+
+      cloogfp = fopen(cloogFileName, "w+");
+      if (!cloogfp)   {
+        fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
         free(cloogFileName);
+        pluto_options_free(options);
+        pluto_prog_free(prog);
+        return 9;
+      }
+      free(cloogFileName);
 
-        outfp = fopen(outFileName, "w");
-        if (!outfp) {
-            fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
-            free(outFileName);
-            pluto_options_free(options);
-            pluto_prog_free(prog);
-            fclose(cloogfp);
-            return 10;
-        }
+      outfp = fopen(outFileName, "w");
+      if (!outfp) {
+        fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n", outFileName);
+        free(outFileName);
+        pluto_options_free(options);
+        pluto_prog_free(prog);
+        fclose(cloogfp);
+        return 10;
+      }
 
-        int retval = 1;
+      int retval = 1;
 
 #ifdef PLUTO_OPENCL
-    if (options->distmem || options->opencl || options->dynschedule || options->dynschedule_graph || options->data_dist)  
+      if (options->distmem || options->opencl || options->dynschedule || options->dynschedule_graph || options->data_dist)  
 #else
         if (options->distmem || options->dynschedule || options->dynschedule_graph || options->data_dist)  
 #endif
         {
-            sigmaFileName = malloc(strlen("sigma_")+strlen(outFileName)+1);
-            strcpy(sigmaFileName, "sigma_");
-            strcat(sigmaFileName, outFileName);
+          sigmaFileName = malloc(strlen("sigma_")+strlen(outFileName)+1);
+          strcpy(sigmaFileName, "sigma_");
+          strcat(sigmaFileName, outFileName);
 
-            sigmafp = fopen(sigmaFileName, "w");
-            if (!sigmafp) {
-                fprintf(stderr, "[Pluto] Can't open file: '%s'\n", sigmaFileName);
-                free(sigmaFileName);
-                pluto_options_free(options);
-                pluto_prog_free(prog);
-                return 12;
-            }
-            fprintf(sigmafp, "#include \"%s\"\n", headerFileName);
-            if (options->distmem)  {
+          sigmafp = fopen(sigmaFileName, "w");
+          if (!sigmafp) {
+            fprintf(stderr, "[Pluto] Can't open file: '%s'\n", sigmaFileName);
+            free(sigmaFileName);
+            pluto_options_free(options);
+            pluto_prog_free(prog);
+            return 12;
+          }
+          fprintf(sigmafp, "#include \"%s\"\n", headerFileName);
+          if (options->distmem)  {
                 fprintf(sigmafp, "#include \"polyrt.h\"\n");
             if(options->data_dist)
             fprintf(sigmafp, "#include \"buffer_manager.h\"\n");
@@ -1063,8 +1062,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fclose(outfp);
         free(headerFileName);
 
-      char *basec, *bname;
-      char *outFileName, *cloogFileName;
       if (options->out_file == NULL)  {
           /* Get basename, remove .c extension and append a new one */
           basec = strdup(srcFileName);
@@ -1147,7 +1144,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       pluto_multicore_codegen(cloogfp, outfp, prog);
       t_c = rtclock() - t_start;
 
-      FILE *tmpfp = fopen(".outfilename", "w");
+      tmpfp = fopen(".outfilename", "w");
       if (tmpfp)    {
           fprintf(tmpfp, "%s\n", outFileName);
           fclose(tmpfp);
