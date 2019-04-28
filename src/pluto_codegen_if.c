@@ -532,9 +532,6 @@ int pluto_dist_apply_mod_optimization(char *stmt_text, char *new_stmt_text,
 
     pluto_dist_get_array_indcies(stmt_text, &src_index, div_ind, mod_ind);
 
-    //		sscanf(stmt_text[src_index], "[%[^]]][%[^]]]", div_ind,
-    // mod_ind);
-
     i1[0] = 0;
     i2[0] = 0;
     ci1[0] = 0;

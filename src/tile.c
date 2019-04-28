@@ -674,28 +674,6 @@ char *pluto_dist_malloc_stmt_text(char *arr_name, PlutoProg *prog,
         sprintf(stmt_text + strlen(stmt_text), " * (%s) + ",
                 pluto_dist_get_ptr_dim_stride_malloc(arr, k, prog));
     }
-    //
-    //		int tiled_dim = -1;
-    //		for (j = 0; j < arr->dim_orig; ++j) {
-    //			if(arr->tiled_hyperplane[j].is_tiled){
-    //
-    //				tiled_dim = arr->tiled_hyperplane[j].tiled_dim;
-    //
-    //				sprintf(stmt_text + strlen(stmt_text),"(%s)",
-    // arr->iterators[tiled_dim]);
-    //
-    //				if(j != arr->dim_orig - 1)
-    //					sprintf(stmt_text + strlen(stmt_text)," * (%s)
-    //+
-    //",
-    //							pluto_dist_get_ptr_dim_stride(arr,
-    //j,
-    // prog));
-    //
-    //				}
-    //
-    //		}
-
     sprintf(stmt_text + strlen(stmt_text), "]");
   } else {
     for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
@@ -767,11 +745,6 @@ void pluto_dist_intial_copy_stmt(PlutoProg *prog) {
                 arr->iterators[h.orig_dim]);
       }
     }
-
-    //		pluto_add_stmt(prog,arr->array_bounds, arr->trans,
-    //arr->iterators,
-    // stmt_text,
-    //				INITIAL_ARRAY_COPY);
   }
 }
 
@@ -790,23 +763,6 @@ void pluto_dist_array_intialize(PlutoProg *prog) {
       continue;
 
     assert(arr->num_hyperplanes_found > 0);
-
-    //		arr->tiled_hyperplane = (struct TiledHyperplane *)
-    //				malloc(arr->dim_orig * sizeof(struct
-    // TiledHyperplane));
-    //
-    //		for(j=0;j<arr->dim_orig;j++){
-    //			arr->tiled_hyperplane[j].loop_tiled = 0;
-    //			arr->tiled_hyperplane[j].orig_dim = j;
-    //			arr->tiled_hyperplane[j].is_tiled = 0;
-    //			arr->tiled_hyperplane[j].tile_sizes = 0;
-    //			arr->tiled_hyperplane[j].tiled_dim = -1;
-    //
-    //		}
-    //
-    //		arr->num_tiled_loops = 0;
-    //		arr->dim_updated = 0;
-    //		arr->num_cur_tiled_loops = 0;
   }
 }
 /* Read tile sizes from file tile.sizes */
@@ -942,14 +898,10 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band,
         arr->num_tiled_loops++;
       }
 
-      /* TODO: duplicate the same for write access also
-               */
+      /* TODO: duplicate the same for write access also */
       for (i = 0; i < stmt->nwrites; i++) {
-
         arr = get_corrs_array(stmt->writes[i], prog);
-
         assert(arr != NULL);
-
         // correct mapping from comp hyperplane being tiled to array hyperplane
         row = arr->hyperplane_mapping[depth - firstD];
 
@@ -984,7 +936,6 @@ void pluto_dist_update_tiling_info(PlutoProg *prog, Band *band,
    */
 
   for (i = 0; i < prog->narrays; ++i) {
-
     arr = prog->arrays[i];
 
     int tiled = 0;
