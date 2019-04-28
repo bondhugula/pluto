@@ -56,8 +56,12 @@ AC_ARG_ENABLE(gurobi,
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
 AC_PROG_CXX
-AC_PROG_CC_STDC
-dnl AC_CHECK_PROG(CXX,g++,g++)
+AC_PROG_CC_C99
+
+if test $ac_cv_prog_cc_c99 = "no"; then
+  AC_MSG_ERROR([compiler does not support c99])
+fi
+
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
 AC_PROG_LN_S
