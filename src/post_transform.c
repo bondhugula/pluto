@@ -509,8 +509,6 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor) {
 
       zstmt->trans->val[zstmt->trans->nrows - 1][zstmt->trans->ncols - 1] = k;
 
-      // printf("%d %d \n", i*ufactor+k, zstmt->trans->ncols);
-
       /* Add the statement to the list of statements */
 
       stmts[i * ufactor + k] = zstmt;

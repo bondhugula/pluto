@@ -571,8 +571,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
 
       clan_options_free(clanOptions);
-
-      /* IF_DEBUG(clan_scop_print_dot_scop(stdout, scop, clanOptions)); */
     }
 
     /* Convert clan scop to Pluto program */
@@ -794,12 +792,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
              prog->fcg_const_time);
       printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n",
              prog->fcg_colour_time);
-      /* printf("[pluto] \t\ttotal Permutation Black box time: %0.6lfs\n",
-       * prog->fcg_const_time + prog->fcg_colour_time); */
       printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n",
              prog->fcg_dims_scale_time);
-      /* printf("[pluto] \t\tTotal Scaling Constraints solve time: %0.6lfs\n",
-       * prog->scaling_cst_sol_time); */
       printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n", prog->skew_time);
     }
     printf("[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: "

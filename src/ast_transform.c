@@ -37,16 +37,10 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   int *stmts;
   assert(root != NULL);
 
-  // int filter[1] = {1};
-
   Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
-
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
 
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
-
-  // clast_pprint(stdout, root, 0, cloogOptions);
 
   for (i = 0; i < nploops; i++) {
     char iter[13];
@@ -113,9 +107,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
   IF_DEBUG(printf("[pluto_mark_vector] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
-  // clast_pprint(stdout, root, 0, cloogOptions);
-
   for (i = 0; i < nploops; i++) {
     /* Only the innermost ones */
     if (!pluto_loop_is_innermost(ploops[i], prog))
@@ -148,7 +139,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
       continue;
     }
     for (j = 0; j < nloops; j++) {
-      // printf("\tMarking %s ivdep\n", loops[j]->iterator);
       loops[j]->parallel += CLAST_PARALLEL_VEC;
     }
     free(stmtids);

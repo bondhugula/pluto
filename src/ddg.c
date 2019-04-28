@@ -130,11 +130,8 @@ void dfs_vertex(Graph *g, Vertex *v, int *time) {
   *time = *time + 1;
   v->vn = *time;
 
-  /* matrix_print(stdout, g->adj, g->nVertices, g->nVertices); */
-
   for (j = 0; j < g->nVertices; j++) {
     if (g->adj->val[v->id][j]) {
-      // Vertex *w = ddg_get_vertex_by_id(g, j);
       g->vertices[j].cc_id = v->cc_id;
       if (g->vertices[j].vn == 0) {
         dfs_vertex(g, &g->vertices[j], time);
@@ -157,7 +154,6 @@ void dfs(Graph *g) {
 
   for (i = 0; i < g->nVertices; i++) {
     if (g->vertices[i].vn == 0) {
-      // printf("DFS vertex: %d\n", i);
       dfs_vertex(g, &g->vertices[i], &time);
     }
   }
@@ -226,8 +222,6 @@ void dfs_for_scc(Graph *g) {
 }
 
 bool is_adjecent(Graph *g, int i, int j) {
-  /* PlutoMatrix *adj; */
-  /* adj = g->adj; */
   if (g->adj->val[i][j] != 0 || g->adj->val[j][i] != 0) {
     return true;
   }

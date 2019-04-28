@@ -141,11 +141,9 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
                          : H_TILE_SPACE_LOOP;
 
       /* 1.2 Specify tile shapes in the original domain */
-      // pluto_constraints_print(stdout, stmt->domain);
       if (hyp_type != H_SCALAR) {
         assert(tile_sizes[depth - firstD] >= 1);
         /* Domain supernodes aren't added for scalar dimensions */
-        // printf("S%d dim: %d %d\n", stmt->id+1, stmt->dim, depth-firstD);
         pluto_stmt_add_dim(stmt, num_domain_supernodes[s], depth, iter,
                            hyp_type, prog);
         /* Add relation b/w tile space variable and intra-tile variables like
@@ -193,12 +191,6 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
         pluto_constraints_free(ub);
 
         num_domain_supernodes[s]++;
-
-        // printf("after adding tile constraints\n");
-        // pluto_constraints_print(stdout, stmt->domain);
-
-        // printf("Stmt %d: depth: %d\n", stmt->id+1,depth);
-        // pluto_matrix_print(stdout, stmt->trans);
 
       } else {
         /* Scattering function for tile space iterator is set the
@@ -321,23 +313,6 @@ void pluto_tile(PlutoProg *prog) {
       }
     }
   }
-
-/* DEPRECATED: now taken care of in intra_tile_optimize */
-#if 0
-    if (options->prevector) {
-        int retval = 0;
-        for (i=0; i<nbands; i++) {
-            int num_tiling_levels = options->tile + options->l2tile;
-            retval |= pluto_pre_vectorize_band(bands[i], num_tiling_levels, prog);
-        }
-        if (retval) pluto_detect_transformation_properties(prog);
-        if (retval && !options->silent) {
-            printf("[Pluto] After pre-vectorize:\n");
-            pluto_transformations_pretty_print(prog);
-            pluto_print_hyperplane_properties(prog);
-        }
-    }
-#endif
 
   if (options->parallel) {
     int retval = pluto_create_tile_schedule(prog, bands, nbands);

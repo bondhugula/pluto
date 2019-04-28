@@ -614,10 +614,8 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog) {
   depth = loop->depth;
 
   do {
-    // printf("Level = %d\n", depth);
     for (i = 0; i < prog->ndeps; i++) {
       Dep *dep = prog->deps[i];
-      // printf("Dep %d\n", i+1);
       if (IS_RAR(dep->type))
         continue;
       assert(dep->satvec != NULL);
@@ -679,10 +677,8 @@ Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog,
   *innermost_split_level = loop->depth;
 
   do {
-    // printf("Level = %d\n", depth);
     for (i = 0; i < prog->ndeps; i++) {
       Dep *dep = prog->deps[i];
-      // printf("Dep %d\n", i+1);
       if (IS_RAR(dep->type))
         continue;
       /* Dependences where both the source and sink don't lie in the
@@ -703,7 +699,6 @@ Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog,
     if (i < prog->ndeps)
       break;
     depth++;
-    // printf("Depth %d\n", depth);
   } while (depth < prog->num_hyperplanes);
 
   /* Peel off scalar dimensions from the end */

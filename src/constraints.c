@@ -236,12 +236,6 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom,
   /* Convert everything into inequalities of >= 0 form */
   PlutoConstraints *idom = pluto_constraints_to_pure_inequalities_single(dom);
 
-  // printf("Initial constraints\n");
-  // pluto_constraints_pretty_print(stdout, idom);
-
-  // printf("phi matrix\n");
-  // pluto_matrix_print(stdout, phi);
-
   /* Add a trivial row (1 >= 0) for the translation Farkas
    * multiplier (\lambda_0) so that the non-negative linear
    * combination of the faces is modeled naturally below */
@@ -290,14 +284,8 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom,
                          "(c_%c) from %d constraints\n",
                          i, 'i' + best_elim, farkas->nrows));
     fourier_motzkin_eliminate_smart(farkas, best_elim);
-    // printf("After eliminating c_%c\n", 'i'+best_elim);
-    // printf("%d rows\n", farkas->nrows);
-    // pluto_constraints_compact_print(stdout, farkas);
   }
   assert(farkas->ncols == phi->ncols);
-
-  // printf("After farkas multiplier elimination\n");
-  // pluto_constraints_pretty_print(stdout, farkas);
 
   pluto_constraints_free(idom);
 
@@ -1897,10 +1885,7 @@ void check_redundancy(PlutoConstraints *cst) {
     pluto_constraints_negate_constraint(row, 0);
     pluto_constraints_add(check, row);
     if (pluto_constraints_is_empty(check)) {
-      // printf("%dth constraint is redundant\n", i);
       count++;
-    } else {
-      // printf("%dth constraint is not redundant\n", i);
     }
     pluto_constraints_free(row);
   }
@@ -2617,10 +2602,6 @@ void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos) {
   assert(pos >= 0);
   assert(pos <= cst->ncols - 2);
 
-  // printf("Before gaussian eliminate\n");
-  // pluto_constraints_compact_print(stdout, cst);
-  // printf("eliminate: c_%c\n", 'i'+pos);
-
   for (r = 0; r < cst->nrows; r++) {
     if (cst->is_eq[r] && cst->val[r][pos] != 0) {
       break;
@@ -2652,9 +2633,6 @@ void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos) {
     }
   }
   pluto_constraints_remove_row(cst, r);
-
-  // printf("After gaussian eliminate\n");
-  // pluto_constraints_compact_print(stdout, cst);
 
   pluto_constraints_remove_dim(cst, pos);
 

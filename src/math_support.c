@@ -372,10 +372,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
   int r, r2, c;
   int factor1, factor2;
 
-  // printf("Before gaussian eliminate\n");
-  // pluto_matrix_print(stdout, mat);
-  // printf("eliminate: %d\n", pos);
-
   for (r = 0; r < mat->nrows; r++) {
     if (mat->val[r][pos] != 0) {
       for (r2 = 0; r2 < mat->nrows; r2++) {
@@ -387,9 +383,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
           factor2 = lcm(llabs(mat->val[r][pos]), llabs(mat->val[r2][pos])) /
                     mat->val[r][pos];
           for (c = 0; c < mat->ncols; c++) {
-            // printf("%d %d\n", mat->val[r2][pos], mat->val[r][pos]);
-            // printf("%d\n", factor1);
-            // printf("%d\n", factor2);
             mat->val[r2][c] =
                 mat->val[r2][c] * factor1 - mat->val[r][c] * factor2;
           }
@@ -399,8 +392,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
       break;
     }
   }
-  // printf("After gaussian eliminate\n");
-  // pluto_matrix_print(stdout, mat);
 
   pluto_matrix_remove_col(mat, pos);
 }
@@ -482,7 +473,6 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat) {
 
   r = 0;
   for (i = 0; i < PLMIN(mat->ncols, mat->nrows); i++) {
-    // pluto_matrix_print(stdout, sched);
     if (mat->val[r][i] == 0) {
       for (k = r + 1; k < mat->nrows; k++) {
         if (mat->val[k][i] != 0)
@@ -515,8 +505,6 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat) {
   int i, j, null, rank;
 
   PlutoMatrix *re = pluto_matrix_to_row_echelon(pluto_matrix_dup(mat));
-
-  // pluto_matrix_print(stdout, re);
 
   null = 0;
   for (i = 0; i < re->nrows; i++) {
@@ -730,7 +718,6 @@ int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
   isl_val *v = isl_aff_get_constant_val(aff);
   mat->val[0][i] = isl_val_get_num_si(v);
   isl_val_free(v);
-  // pluto_matrix_print(stdout, mat);
 
   isl_set_free(set);
   isl_aff_free(aff);
@@ -871,8 +858,6 @@ long long isl_val_get_num_ll(__isl_keep isl_val *v) {
 
   mpz_clear(tmp);
   result = (long long)((((unsigned long long)hi) << 32) + lo);
-
-  // printf("result: %lld\n", result);
 
   return result;
 }
