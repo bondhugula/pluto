@@ -371,13 +371,8 @@ char *pluto_dist_gen_declarations(char *arr_name, PlutoProg *prog) {
   int i;
 
   for (i = 0; i < arr->num_tiled_loops; ++i) {
-
     char *buf_size = get_parametric_bounding_box(data_tiles, i, 1, prog->npar,
                                                  (const char **)prog->params);
-    //
-    //			get_parametric_bounding_box(data_tiles,arr->first_tile_dim -
-    //arr->copy_level + i,
-    //				1, prog->npar, (const char **)prog->params);
 
     sprintf(decl + strlen(decl), "int %s_size_%d = %s;\n", arr->text,
             arr->first_tile_dim + i, buf_size);
@@ -401,12 +396,6 @@ char *pluto_dist_gen_declarations(char *arr_name, PlutoProg *prog) {
 
   sprintf(decl + strlen(decl), "BufferManager *buff_mang_%s = ", arr->text);
   sprintf(decl + strlen(decl), "init_buffer_manager(%s);\n", size_text);
-  //
-  //	sprintf(decl+strlen(decl), "int *");
-  //	sprintf(decl+strlen(decl), "%s_ref = (int *)malloc((%s) *
-  //sizeof(int));\n", arr->text, size_text);
-  //
-  //	sprintf(decl+strlen(decl), "BufferList *list_%s = NULL;\n", arr->text);
 
   pluto_constraints_free(data_tiles);
 
@@ -1227,17 +1216,6 @@ Stmt **gen_read_in_code_old(struct stmt_access_pair **racc_stmts, int num_accs,
   sprintf(init_stmt_text + strlen(init_stmt_text), " %s ", mod_stmt_text);
   sprintf(init_stmt_text + strlen(init_stmt_text), "__endif");
 
-  /*
-if(options->verify_output)
-          init_stmt_text = pluto_dist_copy_init_text(arr, prog);
-else{
-          char *text= pluto_dist_read_init_text(arr->text, prog);
-
-           init_stmt_text = pluto_dist_modify_stmt_text(text,1, prog);
-           free(text);
-}
-   */
-
   char *alloc_stmt_text = pluto_dist_malloc_stmt_text(acc_name, prog, 1);
 
   Stmt *init_stmt = create_helper_stmt(
@@ -1256,21 +1234,12 @@ else{
   pluto_constraints_intersect(alloc_stmt->domain, read_in_tiles);
 
   /* Add dimensions that actually scan the data space */
-  //    if(options->verify_output){
-  //		for (i=0; i < acc_nrows; i++) {
-  //			pluto_stmt_add_dim(init_stmt, init_stmt->dim,
-  //					init_stmt->trans->nrows, arr->iterators[i], H_LOOP,
-  //prog);
-  //		}
-  //    }
-  //    else {
   for (i = 0; i < acc_nrows; i++) {
     char iter[5];
     sprintf(iter, "d%d", i + 1);
     pluto_stmt_add_dim(init_stmt, init_stmt->dim, init_stmt->trans->nrows, iter,
                        H_LOOP, prog);
   }
-  //    }
 
   /* Add constraints on copy loops - completes domain of alloc_stmt */
   pluto_constraints_intersect(init_stmt->domain, read_in);
@@ -1491,7 +1460,8 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
     //		PlutoMatrix *trans_new = pluto_matrix_dup(lw_copy_stmt->trans);
     //		for (i = 0; i < arr->dim_orig; ++i) {
     //			for (j = 0; j < arr->dim_orig + prog->npar + 1; ++j) {
-    //				trans_new->val[src_copy_level+i][src_copy_level + j]
+    //				trans_new->val[src_copy_level+i][src_copy_level +
+    //j]
     //=
     //						arr->trans_orig->val[i][j];
     //
@@ -1603,10 +1573,11 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
     //		int j;
     //		//correct the trans function of init stmt
     //		PlutoMatrix *trans_new =
-    //pluto_matrix_dup(lw_copyback_stmt->trans);
+    // pluto_matrix_dup(lw_copyback_stmt->trans);
     //		for (i = 0; i < arr->dim_orig; ++i) {
     //			for (j = 0; j < arr->dim_orig + prog->npar + 1; ++j) {
-    //				trans_new->val[src_copy_level+i][src_copy_level + j]
+    //				trans_new->val[src_copy_level+i][src_copy_level +
+    //j]
     //=
     //						arr->trans_orig->val[i][j];
     //
@@ -1836,10 +1807,11 @@ void generate_pack_or_unpack(FILE *packfp, PlutoProg *prog,
     //		for (j = arr->last_tile_dim; j >= arr->first_tile_dim; --j) {
     //		   pluto_stmt_add_dim(alloc_stmt, alloc_stmt->dim,
     //			alloc_stmt->trans->nrows, arr->iterators[j], H_LOOP,
-    //prog);
+    // prog);
     //	   }
     //
-    //		/* Add constraints on copy loops - completes domain of alloc_stmt
+    //		/* Add constraints on copy loops - completes domain of
+    //alloc_stmt
     //*/
     //		alloc_stmt->domain = pluto_constraints_dup(data_tiles);
     //
@@ -4119,8 +4091,9 @@ void gen_dynschedule_main_text_code(PlutoProg *prog, Ploop **loops, int nloops,
             fprint_data_dist_parm_call(outfp, acc_name, prog);
             fprintf(outfp, ",send_buf_%s[__tid]", acc_name);
             fprintf(outfp, ",send_reqs_%s[__tid]", acc_name);
-            //						fprintf(outfp, ",send_stats_%s[__tid]",
-            //acc_name);
+            //						fprintf(outfp,
+            //",send_stats_%s[__tid]",
+            // acc_name);
           }
         } else {
           for (i = 0; i < num_write_data[l]; i++) {
@@ -6225,8 +6198,6 @@ Stmt **gen_comm_code_opt(int data_id, struct stmt_access_pair **wacc_stmts,
   Array *arr = pluto_get_corrs_array(acc_name, prog);
   assert(num_accs >= 1);
 
-  // printf("%d accesses: %s\n", num_accs, acc_name);
-
   /* To be inside a loop: can't foresee other use */
   assert(prog->hProps[src_copy_level - 1].type == H_LOOP ||
          prog->hProps[src_copy_level - 1].type == H_TILE_SPACE_LOOP);
@@ -7865,8 +7836,6 @@ void pluto_dynschedule_common_parallelize(PlutoProg *prog, FILE *sigmafp,
 /* Dynamic scheduling parallelization - for shared-memory only */
 int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp,
                                   FILE *headerfp, FILE *pifp) {
-  // print_hyperplane_properties(prog);
-
   FILE *pidefs = NULL;
   pidefs = fopen("pi_defs.h", "w");
   fclose(pidefs);
@@ -8919,9 +8888,6 @@ int pluto_dist_gen_compute_pi(int nloops, Ploop **loops, int *copy_level,
     fprintf(outfp, " = partitions[count++];\n\n");
   }
 
-  //	fprintf(outfp,"polyrt_generalize_partition(pi_mappings,
-  //MAX_TILES_PER_DIM, nprocs);\n\n");
-
   for (i = 0; i < compute_pi->nstmts; i++) {
     fprintf(outfp, "#undef S%d\n", i + 1);
   }
@@ -9188,18 +9154,6 @@ int pluto_sharedmem_data_dist_codegen(PlutoProg *prog, Ploop **loops,
   free(access);
 
   int l, k;
-
-  //	PlutoProg *execute_task_prog = NULL;
-  //	execute_task_prog = pluto_prog_alloc();
-  //
-  //	execute_task_prog->arrays = prog->arrays;
-  //	execute_task_prog->narrays = prog->narrays;
-  //
-  //	data_tile_prog_add_parm(execute_task_prog, prog, 0);
-  //	execute_task_prog->hProps = prog->hProps;
-  //	execute_task_prog->deps = prog->deps;
-  //	execute_task_prog->ndeps = prog->ndeps;
-
   int count = 0;
   int *sep_stmts_size = (int *)malloc(nloops * sizeof(int));
   Stmt ***sep_stmts;
@@ -9252,25 +9206,7 @@ int pluto_sharedmem_data_dist_codegen(PlutoProg *prog, Ploop **loops,
 
     for (i = 0; i < loops[l]->nstmts; i++)
       sep_stmts[l][count++] = loops[l]->stmts[i];
-    /*
-    sprintf(stmt_text+strlen(stmt_text), "\t\t\t\tcompute_task_%d(", l);
-    sprintf(stmt_text+strlen(stmt_text), "t1");
-    for (i=1; i<copy_level[l]; i++) {
-            sprintf(stmt_text+strlen(stmt_text), ",t%d", i+1);
-    }
-    if (options->variables_not_global && !options->data_dist) {
-            for (i=0; i<num_rw_data; i++) {
-                    char *acc_name = accs[i]->name;
-                    sprintf(stmt_text+strlen(stmt_text), ",%s", acc_name);
-            }
-    }
-    for (i=0; i<num_rw_data; i++) {
-            print_data_dist_parm_call_from_access(stmt_text, accs[i], prog);
-    }
-    sprintf(stmt_text+strlen(stmt_text), ");");
-
-    */
-
+    
     stmt_text[0] = '\0';
     sprintf(stmt_text + strlen(stmt_text),
             "\t\t\t\tdata_tile_ref_count_update_%d(", l);
@@ -9368,16 +9304,9 @@ int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp,
   /* Loops should be in the increasing order of their depths */
   qsort(loops, nloops, sizeof(Ploop *), pluto_loop_compar);
 
-  // copy_back_stmts = (Stmt ****) malloc(nloops*sizeof(Stmt ***));
-  // data_alloc_stmts = (Stmt ****) malloc(nloops*sizeof(Stmt ***));
-  // ref_count_update_stmts = (Stmt ****) malloc(nloops*sizeof(Stmt ***));
-
   int *copy_level;
 
   copy_level = (int *)malloc(nloops * sizeof(int));
-  // num_write_data = (int *) malloc(nloops*sizeof(int));
-  // num_read_data = (int *) malloc(nloops*sizeof(int));
-  // num_read_write_data = (int *) malloc(nloops*sizeof(int));
 
   init_packfile();
 
@@ -9394,155 +9323,11 @@ int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp,
                                    copy_level[l], NULL, headerfp);
     gen_data_tile_ref_count_update_cloog_code(
         prog, l, loop->stmts, loop->nstmts, copy_level[l], NULL, headerfp);
-    //		gen_compute_task_cloog_code(prog, l, loop->stmts, loop->nstmts,
-    //copy_level[l], NULL, headerfp);
   }
 
   pluto_dist_generate_copy_back_code(loops, nloops, copy_level, headerfp, prog);
 
   pluto_sharedmem_data_dist_codegen(prog, loops, nloops, copy_level, outfp);
-
-  //	for (l=0; l<nloops; l++) {
-  //		Ploop *loop = loops[l];
-  //
-  //		for (i=0; i<loop->nstmts; i++) {
-  //			loop->stmts[i]->ploop_id = l;
-  //		}
-  //
-  //		int *num_stmts_per_wacc; // indexed by data variable
-  //		int *num_stmts_per_racc; // indexed by data variable
-  //		int *num_stmts_per_acc; // indexed by data variable
-  //
-  //		struct stmt_access_pair ***wacc_stmts; // indexed by data
-  //variable
-  //		struct stmt_access_pair ***racc_stmts; // indexed by data
-  //variable
-  //		struct stmt_access_pair ***acc_stmts; // indexed by data
-  //variable
-  //
-  //		acc_stmts = get_read_write_access_with_stmts(loop->stmts,
-  //				loop->nstmts, &num_read_write_data[l],
-  //&num_stmts_per_acc);
-  //		racc_stmts = get_read_access_with_stmts(loop->stmts,
-  //				loop->nstmts, &num_read_data[l],
-  //&num_stmts_per_racc);
-  //		wacc_stmts = get_write_access_with_stmts(loop->stmts,
-  //				loop->nstmts, &num_write_data[l],
-  //&num_stmts_per_wacc);
-  //
-  //		copy_back_stmts[l] = (Stmt ***) malloc(num_write_data[l]*sizeof(Stmt
-  //**));
-  //
-  //		data_alloc_stmts[l] = (Stmt ***)
-  //malloc(num_read_write_data[l]*sizeof(Stmt **));
-  //		ref_count_update_stmts[l] = (Stmt ***)
-  //malloc(num_read_write_data[l]*sizeof(Stmt **));
-  //
-  //		for (i = 0; i < num_read_write_data[l]; ++i) {
-  //			data_alloc_stmts[l][i] =
-  //					gen_data_tile_alloc_code(acc_stmts[i],num_stmts_per_acc[i],prog,copy_level,l);
-  //		}
-  //
-  //		for (i = 0; i < num_read_write_data[l]; ++i) {
-  //			ref_count_update_stmts[l][i] =
-  //					gen_data_tile_ref_count_update_code(acc_stmts[i],num_stmts_per_acc[i],prog,copy_level,l);
-  //		}
-  //
-  //		for (i=0; i<num_write_data[l]; i++)    {
-  //			copy_back_stmts[l][i] =
-  //					gen_copy_back_code(wacc_stmts[i],num_stmts_per_wacc[i],prog,copy_level,l);
-  //
-  //			gen_data_tile_copy_back_cloog_code(prog, l,
-  //wacc_stmts[i],
-  //					num_stmts_per_wacc[i], copy_level[l],
-  //headerfp);
-  //		}
-  //
-  //
-  //		for (i=0; i<num_write_data[l]; i++) {
-  //			free(wacc_stmts[i]);
-  //		}
-  //		free(wacc_stmts);
-  //		free(num_stmts_per_wacc);
-  //
-  //		for (i=0; i<num_read_data[l]; i++) {
-  //			free(racc_stmts[i]);
-  //		}
-  //		free(racc_stmts);
-  //		free(num_stmts_per_racc);
-  //
-  //		for (i=0; i<num_read_write_data[l]; i++) {
-  //			free(acc_stmts[i]);
-  //		}
-  //		free(acc_stmts);
-  //		free(num_stmts_per_acc);
-  //
-  //	}
-  //
-  //	int num_copy_back_stmts = 1;
-  //	int num_ref_count_update_stmts = 1;
-  //	int num_alloc_stmts = 1;
-  //	int *sep_stmts_size = (int *)malloc(nloops * sizeof(int));
-  //
-  //	gen_copy_back_function(copy_back_stmts, num_write_data,
-  //num_copy_back_stmts,
-  //			nloops, prog,  headerfp);
-  //
-  //	for (l=0; l<nloops; l++) {
-  //		Ploop *loop = loops[l];
-  //
-  //		sep_stmts_size[l] = num_alloc_stmts*num_read_write_data[l]+
-  //				loop->nstmts+
-  //				num_ref_count_update_stmts*num_read_write_data[l];
-  //
-  //		sep_stmts[l] = (Stmt **)malloc(sep_stmts_size[l]*sizeof(Stmt
-  //*));
-  //		count = 0;
-  //
-  //		for (i = 0; i < num_read_write_data[l]; ++i) {
-  //			for (k = 0; k < num_alloc_stmts; ++k) {
-  //				pluto_add_given_stmt(prog,
-  //data_alloc_stmts[l][i][k]);
-  //				sep_stmts[l][count++] =
-  //data_alloc_stmts[l][i][k];
-  //			}
-  //		}
-  //
-  //		for (i = 0; i < loop->nstmts; ++i) {
-  //			sep_stmts[l][count++] = loop->stmts[i];
-  //		}
-  //
-  //		for (i = 0; i < num_read_write_data[l]; ++i) {
-  //			for (k = 0; k < num_ref_count_update_stmts; ++k) {
-  //				pluto_add_given_stmt(prog,
-  //ref_count_update_stmts[l][i][k]);
-  //				sep_stmts[l][count++] =
-  //ref_count_update_stmts[l][i][k];
-  //			}
-  //		}
-  //
-  //	}
-  //
-  //	for (l=0; l<nloops; l++) {
-  //		Ploop *loop = loops[l];
-  //
-  //		int level = outer_dist_loop_level[l];
-  //
-  //		/* Parallel loop is distributed (loop distribution) around these
-  //		 * statements - except for write-out statements */
-  //		pluto_separate_stmts(prog, sep_stmts[l],sep_stmts_size[l], level,
-  //0);
-  //
-  //		Stmt *first_stmt = loop->stmts[0];
-  //		for (k = 1; k < loop->nstmts; ++k) {
-  //			Stmt *orig_stmt = loop->stmts[k];
-  //
-  //			orig_stmt->trans->val[level][orig_stmt->trans->ncols-1]
-  //=
-  //					first_stmt->trans->val[level][first_stmt->trans->ncols-1];
-  //		}
-  //
-  //	}
 
   free(copy_level);
 
@@ -9607,8 +9392,6 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
   int *num_data, *outer_dist_loop_level;
 
   nstmts = prog->nstmts;
-
-  // print_hyperplane_properties(prog);
 
   FILE *pidefs = NULL;
   pidefs = fopen("pi_defs.h", "w");
@@ -9897,22 +9680,9 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
 
     for (l = 0; l < nloops; l++) {
       if (options->data_dist) {
-        //				sep_writeout_stmts_size[l] =
-        //(NUM_WRITE_OUT_STMTS + num_copy_back_stmts)*
-        //						num_write_data[l];
         sep_writeout_stmts_size[l] = (NUM_WRITE_OUT_STMTS) * num_data[l];
         sep_writeout_stmts[l] =
             (Stmt **)malloc(sep_writeout_stmts_size[l] * sizeof(Stmt *));
-
-        //				for (i=0; i<num_write_data[l]; i++) {
-        //					for (k=0; k<num_copy_back_stmts; k++)
-        //{
-        //						pluto_add_given_stmt(write_out_prog,
-        //copy_back_stmts[l][i][k]);
-        //						sep_writeout_stmts[l][count++] =
-        //copy_back_stmts[l][i][k];
-        //					}
-        //				}
 
         count = 0;
         for (i = 0; i < num_write_data[l]; i++) {
@@ -10044,12 +9814,6 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
                            outer_dist_loop_level[l], 0);
 
     if (!options->dynschedule) {
-
-      /* Parallel loop is distributed (loop distribution) around these
-       * statements - except for write-out statements */
-      //                 pluto_separate_stmts(prog, sep_stmts[l],
-      // num_comm_stmts*num_data[l], outer_dist_loop_level[l], 0);
-
       level = outer_dist_loop_level[l];
 
       /* Parallel loop is distributed (loop distribution) around these
@@ -10068,12 +9832,6 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
               first_stmt->trans->val[level][first_stmt->trans->ncols - 1];
         }
       }
-
-      /* Add scalar dimension to separate the fused statements out inside
-       * (immediately inside); since they are
-       * to be fused for dist_parallel_loop - used only for write-out pack and
-       * unpack */
-      //       		   pluto_separate_stmts(prog, NULL, 0, level+2, 0);
 
       /* dist_parallel_loop's position now changes */
       dist_parallel_loop++;
