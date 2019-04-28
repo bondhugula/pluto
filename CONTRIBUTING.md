@@ -3,10 +3,10 @@
   existing code is still in that form. The old code is typically updated when it 
   is touched.
 
-- The Google coding style is used. Automatic formatting for this can be done
+- The LLVM coding style is used. Automatic formatting for this can be done
   using clang-format:
 
-  $ clang-format -style=Google
+  $ clang-format -style=LLVM
 
   A .clang-format corresponding to this config exists in its top-level directory.
 
