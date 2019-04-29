@@ -148,7 +148,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-  int *stmtids = malloc(prog->nstmts * sizeof(int));
   for (i = 0; i < nploops; i++) {
     char iter[13];
     struct clast_for **loops;
@@ -425,8 +424,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
       free(loops);
       free(stmts);
     }
+    free(stmtids);
   }
-  free(stmtids);
 
   if (options->distmem && options->data_dist && !options->verify_output) {
     fclose(pidefs);

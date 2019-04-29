@@ -3096,6 +3096,8 @@ void pluto_prog_free(PlutoProg *prog) {
   }
   free(prog->data_names);
 
+  pluto_constraints_free(prog->globcst);
+
   free(prog);
 }
 

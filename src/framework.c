@@ -314,7 +314,6 @@ PlutoConstraints *get_scc_permutability_constraints(int scc_id,
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   int i, inc, nstmts, nvar, npar, ndeps, total_cst_rows;
-  PlutoConstraints *globcst;
   Dep **deps;
 
   nstmts = prog->nstmts;
@@ -357,16 +356,15 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
       IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n", i + 1,
                        dep->cst->nrows));
       total_cst_rows += dep->cst->nrows;
-      // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
-      // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
     }
   }
 
-  //    if (!prog->globcst) {
-  prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
-  //    }
+  if (!prog->globcst)
+    prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+  else if (prog->globcst->alloc_nrows < total_cst_rows)
+    pluto_constraints_resize(prog->globcst, total_cst_rows, CST_WIDTH);
 
-  globcst = prog->globcst;
+  PlutoConstraints *globcst = prog->globcst;
 
   globcst->ncols = CST_WIDTH;
   globcst->nrows = 0;
