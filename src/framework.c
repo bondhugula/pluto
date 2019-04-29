@@ -355,8 +355,6 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
       IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n", i + 1,
                        dep->cst->nrows));
       total_cst_rows += dep->cst->nrows;
-      // IF_MORE_DEBUG(fprintf(stdout, "Constraints for dep %d\n", i+1));
-      // IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, dep->cst));
     }
   }
 
@@ -494,7 +492,6 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
 
   /* Apply Farkas lemma */
   sched_valid_cst = farkas_lemma_affine(dpoly, phi);
-  // pluto_constraints_pretty_print(stdout, sched_valid_cst);
 
   pluto_matrix_free(phi);
   pluto_constraints_free(dpoly);
@@ -1099,7 +1096,6 @@ int pluto_compute_dep_satisfaction_precise(PlutoProg *prog) {
       dep->satvec[level] = 0;
     }
   }
-  // pluto_print_dep_directions(prog);
   IF_DEBUG(printf("\t %d (out of %d) dep(s) satisfied\n", num_satisfied,
                   prog->ndeps););
   return num_satisfied;
@@ -1150,7 +1146,6 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
   cst->nrows = 1;
 
   pluto_constraints_intersect_isl(cst, dep->depsat_poly);
-  // pluto_constraints_print(stdout, cst);
 
   retval = !pluto_constraints_is_empty(cst);
 
