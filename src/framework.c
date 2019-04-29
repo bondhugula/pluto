@@ -30,11 +30,11 @@
 #include "pluto.h"
 #include "program.h"
 
-#include <isl/constraint.h>
-#include <isl/mat.h>
-#include <isl/set.h>
-#include <isl/deprecated/int.h>
 #include "candl/candl.h"
+
+#include "isl/constraint.h"
+#include "isl/mat.h"
+#include "isl/set.h"
 
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
 #define MAX_FARKAS_CST 2000
