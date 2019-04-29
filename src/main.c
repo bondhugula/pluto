@@ -235,7 +235,6 @@ int main(int argc, char *argv[]) {
     { "iss", no_argument, &options->iss, 1 },
     { "unroll", no_argument, &options->unroll, 1 },
     { "nounroll", no_argument, &options->unroll, 0 },
-    { "polyunroll", no_argument, &options->polyunroll, 1 },
     { "bee", no_argument, &options->bee, 1 },
     { "ufactor", required_argument, 0, 'u' },
     { "prevector", no_argument, &options->prevector, 1 },
@@ -649,7 +648,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
   }
 
-  if (options->unroll || options->polyunroll) {
+  if (options->unroll) {
     /* Will generate a .unroll file */
     /* plann/plorc needs a .params */
     FILE *paramsFP = fopen(".params", "w");
@@ -661,15 +660,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       fclose(paramsFP);
     }
     pluto_detect_mark_unrollable_loops(prog);
-  }
-
-  if (options->polyunroll) {
-    /* Experimental */
-    for (i = 0; i < prog->num_hyperplanes; i++) {
-      if (prog->hProps[i].unroll) {
-        unroll_phis(prog, i, options->ufactor);
-      }
-    }
   }
 
   if (!options->pet && !strcmp(srcFileName, "stdin")) {

@@ -125,9 +125,6 @@ struct plutoOptions {
   /* Not implemented yet: Don't output anything unless something fails */
   int quiet;
 
-  /* Pure polyhedral unrolling (instead of postpass) */
-  int polyunroll;
-
   /* Identity transformation */
   int identity;
 

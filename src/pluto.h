@@ -555,8 +555,6 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
 int cut_all_sccs(PlutoProg *prog, Graph *ddg);
 void cut_smart(PlutoProg *prog, Graph *ddg);
 
-void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor);
-
 void pluto_print_dep_directions(PlutoProg *prog);
 void pluto_print_depsat_vectors(PlutoProg *prog, int levels);
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt);
