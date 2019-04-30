@@ -581,7 +581,7 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
     }
   }
 
-  if (options->unroll || options->polyunroll) {
+  if (options->unroll) {
     /* Will generate a .unroll file */
     /* plann/plorc needs a .params */
     FILE *paramsFP = fopen(".params", "w");
@@ -593,15 +593,6 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
       fclose(paramsFP);
     }
     pluto_detect_mark_unrollable_loops(prog);
-  }
-
-  if (options->polyunroll) {
-    /* Experimental */
-    for (i = 0; i < prog->num_hyperplanes; i++) {
-      if (prog->hProps[i].unroll) {
-        unroll_phis(prog, i, options->ufactor);
-      }
-    }
   }
 
   /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */

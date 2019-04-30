@@ -125,9 +125,6 @@ struct plutoOptions {
   /* Not implemented yet: Don't output anything unless something fails */
   int quiet;
 
-  /* Pure polyhedral unrolling (instead of postpass) */
-  int polyunroll;
-
   /* Identity transformation */
   int identity;
 
@@ -239,9 +236,6 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
                                          PlutoOptions *options);
 
 int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
-#if defined(__cplusplus)
-}
-#endif
 
 /*
  * Structure to hold Remapping information
@@ -279,5 +273,9 @@ void pluto_get_remapping_str(const char *domains_str,
 Free the string stored in schedules_str_buffer_ptr
 */
 void pluto_schedules_strbuf_free(char *schedules_str_buffer);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

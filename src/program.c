@@ -2824,7 +2824,6 @@ PlutoOptions *pluto_options_alloc() {
   options->fuse = SMART_FUSE;
 
   /* Experimental */
-  options->polyunroll = 0;
   options->delayed_cut = 0;
   options->hybridcut = 0;
 
