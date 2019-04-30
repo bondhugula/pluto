@@ -1,6 +1,6 @@
 /*
  * PLUTO: An automatic parallelier and locality optimizer
- * 
+ *
  * Copyright (C) 2007-2008 Uday Bondhugula
  *
  * This program is free software; you can redistribute it and/or modify
@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * A copy of the GNU General Public Licence can be found in the 
- * top-level directory of this program (`COPYING') 
+ * A copy of the GNU General Public Licence can be found in the
+ * top-level directory of this program (`COPYING')
  *
  */
 #ifndef _MATH_SUPPORT_H
@@ -23,13 +23,15 @@
 #include <stdio.h>
 
 #include "isl/mat.h"
+#include "isl/aff.h"
+
 #include "gmp.h"
 
 #include "pluto/libpluto.h"
 
-#define PLMAX(a,b) ((a>=b)?(a):(b))
-#define PLMIN(a,b) ((a<=b)?(a):(b))
-#define PLABS(a) ((a>=0)?(a):(-a))
+#define PLMAX(a, b) ((a >= b) ? (a) : (b))
+#define PLMIN(a, b) ((a <= b) ? (a) : (b))
+#define PLABS(a) ((a >= 0) ? (a) : (-a))
 
 #define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
 
@@ -43,8 +45,8 @@ void pluto_matrix_set(PlutoMatrix *mat, int val);
 PlutoMatrix *pluto_matrix_input(FILE *fp);
 
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
-PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1, 
-        const PlutoMatrix *mat2);
+PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1,
+                                  const PlutoMatrix *mat2);
 int pluto_matrix_get_rank(const PlutoMatrix *mat);
 
 void pluto_matrix_add_row(PlutoMatrix *mat, int pos);
@@ -74,10 +76,14 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars);
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
 
-int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
-int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2, int r2);
+int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2,
+                             int r2);
+int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2,
+                           int r2);
 
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
+int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
+                          void *user);
 
 long long isl_val_get_num_ll(__isl_keep isl_val *v);
 void mpz_set_sll(mpz_t n, long long sll);

@@ -18,7 +18,7 @@ ISL_LIBADD += $(top_srcdir)/isl/libisl.la
 endif
 
 
-SUBDIRS = piplib openscop clan candl polylib $(MAY_ISL) cloog-isl src
+SUBDIRS = piplib polylib $(MAY_ISL) openscop cloog-isl clan candl pet src
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -57,16 +57,14 @@ pclean:
 test_libpluto: src/test_libpluto.c
 	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
 
-test: .PHO
-
-.PHO: 
-	./test.sh --silent
-	./test.sh --silent --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --diamond-tile --cloogsh --nocloogbacktrack
+test: polycc src/pluto
+	./test.sh --silent --notile --noparallel
+	./test.sh --silent --cloogsh --nocloogbacktrack
+	./test.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack
+	./test.sh --silent --lastwriter --cloogsh --nocloogbacktrack
+	./test.sh --silent --lastwriter --nodiamond-tile --cloogsh --nocloogbacktrack
 	./test.sh --silent --lastwriter
-	./test.sh --silent --nofuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --diamond-tile --cloogsh --nocloogbacktrack
-	./test.sh --silent --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
+	./test.sh --silent --nofuse --cloogsh --nocloogbacktrack
+	./test.sh --silent --maxfuse --cloogsh --nocloogbacktrack
 	./test.sh --silent --nofuse
 	./test.sh --silent --iss

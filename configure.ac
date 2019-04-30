@@ -16,7 +16,7 @@ dnl
 
 AC_PREREQ(2.13)
 
-AC_INIT(pluto, 0.11.4, [uday@csa.iisc.ernet.in])
+AC_INIT(pluto, 0.12.0, [udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -27,7 +27,7 @@ AM_CONFIG_HEADER(config.h)
 dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
 dnl being 32-bit/64-bit
-CFLAGS="$CLAGS -Wall"
+CFLAGS="$CFLAGS -Wall"
 if test CC = icc; then
     LDFLAGS="$LDFLAGS -lirc -limf"
 fi
@@ -56,8 +56,12 @@ AC_ARG_ENABLE(gurobi,
 dnl check for programs
 AC_CHECK_PROG(CC,gcc,gcc)
 AC_PROG_CXX
-AC_PROG_CC_STDC
-dnl AC_CHECK_PROG(CXX,g++,g++)
+AC_PROG_CC_C99
+
+if test $ac_cv_prog_cc_c99 = "no"; then
+  AC_MSG_ERROR([compiler does not support c99])
+fi
+
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -264,6 +268,33 @@ configureopts="--with-gmp=system \
 )
 fi
 
+dnl Offer --with-clang-prefix
+AC_ARG_WITH(clang-prefix,
+    AC_HELP_STRING([--with-clang-prefix=DIR], [DIR location of clang install]),
+    [
+        CLANG_PREFIX="$withval";
+        external_clang=true
+    ],
+    [external_clang=false]
+)
+
+AM_CONDITIONAL(EXTERNAL_CLANG, test x$external_clang = xtrue)
+
+dnl Configure PET
+echo -e "\n=========================="
+echo "Configuring PET"
+echo "=========================="
+
+if test x$external_clang = xtrue; then
+    configureopts="CXXFLAGS=-fno-rtti --with-clang-prefix=$CLANG_PREFIX --with-clang-exec-prefix=$CLANG_PREFIX --with-isl-builddir=../isl --prefix=$prefix"
+else
+    configureopts="CXXFLAGS=-fno-rtti --with-isl-builddir=../isl --prefix=$prefix"
+fi
+
+(cd pet && ./configure ${configureopts})
+
+dnl check if pet configure had failed
+AC_CHECK_FILE([pet/Makefile], [], [AC_MSG_ERROR([configure in pet/ failed])])
 
 dnl Configuring Cloog 0.14.1 (long long int)
 echo ""

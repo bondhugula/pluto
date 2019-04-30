@@ -4,7 +4,7 @@
 - Please sign your commits and generate patch against the git version, 
   i.e., use 
 
-$ git format-patch -M origin
+  $ git format-patch -M origin
 
 - Send patches to pluto-development@googlegroups.com or raise a pull request on Pluto's GitHub.
 
