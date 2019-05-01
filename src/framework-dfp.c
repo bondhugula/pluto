@@ -2010,15 +2010,28 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
     min_scc = get_min_convex_successor(scc_id, prog);
-    if (min_scc == -1) {
-      printf("[FCG Colouring]: No Convex Successor for Scc\n");
+    if (min_scc == -1 ||
+        !ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc)) {
+      printf("[FCG Colouring]: No Convex Successor for Scc %d\n", scc_id);
     } else {
       assert(ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc));
       v = get_min_vertex_from_lp_sol(scc_id, min_scc, prog, num_discarded,
                                      discarded_list);
-      return v;
+      /* If the returned value is -1 then it might be due to fact that the
+       * vertex that is chosen for colouring at the current level is adjecent to
+       * a vertex that can be coloured with next level. In such a case, the cut
+       * can be introduced either before colouring the current vertex or after
+       * colouring the current vertex. We choose the later (no particular reason
+       * to do this). For choosing with former, return v==-1 whenever there is
+       * no predecessor for the current SCC */
+      if (v != -1) {
+        printf("Returning vertex %d for colouring \n", v);
+        return v;
+      }
     }
   }
+  /* This case applies for sccs with no convex successors or when lp solution
+   * guided colouring does not find a suitable vertex for colouring */
   for (i = 0; i < max_dim; i++) {
     v = scc_offset + i;
     if (!is_discarded(v, discarded_list, num_discarded)) {
@@ -2089,6 +2102,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   num_discarded = 0;
   do {
     v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list);
+    printf("Colouring vertex %d for colouring \n", v);
     if (v == -1)
       return false;
     assert(v != -1);
@@ -2653,7 +2667,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     for (j = 0; j < prog->ddg->num_sccs; j++) {
       prog->ddg->sccs[j].is_scc_coloured = false;
     }
-    if (options->lpcolour) {
+    if (options->lpcolour && !options->scc_cluster) {
       mark_parallel_sccs(colour, prog);
     }
     colour = colour_fcg_scc_based(i, colour, prog);
