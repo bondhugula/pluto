@@ -182,7 +182,8 @@ doc/DOC.txt
 doc/DOC.txt
 
 
-CONTACT
+BUGS AND ISSUES
 
-Please send all bugs reports and comments to Uday Bondhugula <udayb@iisc.ac.in> 
-or post of pluto-development@googlegroups.com.
+Please report bugs/issues at https://github.com/bondhugula/pluto/issues  
+For questions and general discussion, please email 
+pluto-development@googlegroups.com.
