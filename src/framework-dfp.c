@@ -1947,16 +1947,78 @@ void cut_from_predecessor(int scc_id, PlutoProg *prog) {
   }
 }
 
+/* Returns a convex successor with the smallest scc_id */
+int get_min_convex_successor(int scc_id, PlutoProg *prog) {
+  int i, num, *convex_successors;
+  int min_scc_id;
+  min_scc_id = prog->ddg->num_sccs;
+  convex_successors = get_convex_successors(scc_id, prog, &num);
+  if (num == 0) {
+    return -1;
+  }
+  /* TODO: Fix this by iterating over the list of convex successors and look for
+     an SCC that has atleast one dimension that is not coloured */
+  else {
+    min_scc_id = convex_successors[0];
+    free(convex_successors);
+    return min_scc_id;
+  }
+}
+
+int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
+                               int num_discarded, int *discarded_list) {
+  int i, j, min, v1, v2, min_dist;
+  int scc1_offset, scc2_offset;
+  Graph *fcg, *ddg;
+  PlutoMatrix *dep_dist_mat;
+
+  fcg = prog->fcg;
+  ddg = prog->ddg;
+  dep_dist_mat = dep_distance_mat;
+  min_dist = 10000;
+  min = -1;
+
+  scc1_offset = ddg->sccs[scc1].fcg_scc_offset;
+  scc2_offset = ddg->sccs[scc2].fcg_scc_offset;
+  for (i = 0; i < ddg->sccs[scc1].max_dim; i++) {
+    v1 = scc1_offset + i;
+    if (is_discarded(v1, discarded_list, num_discarded))
+      continue;
+    for (j = 0; j < ddg->sccs[scc2].max_dim; j++) {
+      v2 = scc2_offset + j;
+      /* check if v2 is not coloured with current colour */
+      if (is_adjecent(fcg, v1, v2))
+        continue;
+      if (dep_dist_mat->val[v1][v2] < min_dist) {
+        min_dist = dep_dist_mat->val[v1][v2];
+        min = v1;
+      }
+    }
+  }
+  return min;
+}
+
 /* Returns a dimension of an SCC (vetex in the FCG)
  * that can be colored next. */
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list) {
-  int i, v, max_dim, scc_offset;
+  int i, v, max_dim, scc_offset, min_scc;
   Scc *sccs;
 
   sccs = prog->ddg->sccs;
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
+  if (options->lpcolour) {
+    min_scc = get_min_convex_successor(scc_id, prog);
+    if (min_scc == -1) {
+      printf("[FCG Colouring]: No Convex Successor for Scc\n");
+    } else {
+      assert(ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc));
+      v = get_min_vertex_from_lp_sol(scc_id, min_scc, prog, num_discarded,
+                                     discarded_list);
+      return v;
+    }
+  }
   for (i = 0; i < max_dim; i++) {
     v = scc_offset + i;
     if (!is_discarded(v, discarded_list, num_discarded)) {
@@ -2027,6 +2089,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   num_discarded = 0;
   do {
     v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list);
+    if (v == -1)
+      return false;
     assert(v != -1);
     /* v = scc_offset + i; */
     /* Used for debugging purposes */
