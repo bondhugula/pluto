@@ -156,6 +156,8 @@ COMMAND-LINE OPTIONS
 	-q | --silent
 	UNIX-style silence: no output as long as everything goes fine
 
+    For more please see the output with '--help'.
+
     Besides these, 'tile.sizes' and '.fst' files allow the user to force 
     certain things.
 

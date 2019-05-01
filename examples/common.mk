@@ -54,10 +54,10 @@ $(SRC).tiled.c:  $(SRC).c
 	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
-	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).mlbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 # Version that doesn't use diamond tiling
 $(SRC).pipepar.c:  $(SRC).c
@@ -75,15 +75,15 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
+
 mlbpar: $(SRC).mlbpar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
 
 # Version that doesn't use diamond tiling
 pipepar: $(SRC).pipepar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
-
-par: $(SRC).par.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
