@@ -1660,7 +1660,9 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
   num_successors = 0;
 
   for (i = scc_id + 1; i < num_sccs; i++) {
+
     if (is_convex_scc(scc_id, i, ddg, prog)) {
+      printf("SCC %d and %d are convex\n", scc_id, i);
       if (convex_successors == NULL) {
         convex_successors = (int *)malloc(num_sccs * sizeof(int));
       }
@@ -1959,7 +1961,11 @@ int get_min_convex_successor(int scc_id, PlutoProg *prog) {
   /* TODO: Fix this by iterating over the list of convex successors and look for
      an SCC that has atleast one dimension that is not coloured */
   else {
-    min_scc_id = convex_successors[0];
+    for (i = 0; i < num; i++) {
+      min_scc_id = convex_successors[i];
+      if (ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc_id))
+        break;
+    }
     free(convex_successors);
     return min_scc_id;
   }
@@ -2014,6 +2020,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         !ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc)) {
       printf("[FCG Colouring]: No Convex Successor for Scc %d\n", scc_id);
     } else {
+      printf("Min Convex Successor of SCC %d: %d\n", scc_id, min_scc);
       assert(ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc));
       v = get_min_vertex_from_lp_sol(scc_id, min_scc, prog, num_discarded,
                                      discarded_list);
