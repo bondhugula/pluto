@@ -123,6 +123,13 @@ $(SRC).idt.c:  $(SRC).c
 $(SRC).par.c:  $(SRC).c
 	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
+$(SRC).mlbpar.c:  $(SRC).c
+	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+
+# Version that doesn't use diamond tiling
+$(SRC).pipepar.c:  $(SRC).c
+	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
+
 $(SRC).dyn_graph_idt.c:  $(SRC).c
 	$(PLC) $(SRC).c --tile --dynschedule_graph --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
 
@@ -209,13 +216,6 @@ $(SRC).dist_dynsched_idt.c: $(SRC).c
 $(SRC).dist_dynsched_foifi_idt.c: $(SRC).c
 	$(PLC) $(SRC).c --distmem --mpiomp --tile --commopt_foifi --dynschedule --identity $(TILEFLAGS) $(PLCFLAGS) $(DISTOPT_FLAGS)  -o $@
 
-$(SRC).mlbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
-
-# Version that doesn't use diamond tiling
-$(SRC).pipepar.c:  $(SRC).c
-	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
-
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
@@ -228,17 +228,24 @@ opt: $(SRC).opt.c
 tiled: $(SRC).tiled.c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
+par: $(SRC).par.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
+
+mlbpar: $(SRC).mlbpar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
+
+# Version that doesn't use diamond tiling
+pipepar: $(SRC).pipepar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
+
+parcxx: $(SRC).par.c
+	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS) -ltbb
+
 idt: $(SRC).idt.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).idt.c -o $@  $(LDFLAGS)
 
 idtcxx: $(SRC).idt.c
 	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).idt.c -o $@  $(LDFLAGS) -ltbb
-
-par: $(SRC).par.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
-
-parcxx: $(SRC).par.c
-	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS) -ltbb
 
 data_dist: $(SRC).data_dist.c
 	$(CXX) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).data_dist.c -D__DATA_DIST_DECLS $(POLYRTINCDIR)/buffer_manager.c -o $@ -I $(POLYRTINCDIR) $(LDFLAGS) -ltbb
@@ -382,18 +389,6 @@ scalapack_run: scalapack
 	mpirun_rsh  -np $(NPROCS) -hostfile $(HOSTS_FILE) MV2_ENABLE_AFFINITY=0 OMP_NUM_THREADS=$(NTHREADS) ./scalapack  2>out_scalapack
 	touch .test
 	rm -f .test
-
-=======
->>>>>>> origin/master
-mlbpar: $(SRC).mlbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
-
-# Version that doesn't use diamond tiling
-pipepar: $(SRC).pipepar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
-
-par: $(SRC).par.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
