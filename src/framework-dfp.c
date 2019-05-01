@@ -105,9 +105,10 @@ PlutoConstraints *dfp_get_scc_ortho_constraints(int *colour, int scc_id,
 static int64 get_dep_dist_from_pluto_sol(double *sol, int npar) {
   unsigned int i;
   int64 sum = 0;
-  for (i = 0; i < npar + 1; i++) {
-    sum = sum + ceil(sol[i]);
+  for (i = 0; i < npar; i++) {
+    sum = sum + 100 * ceil(sol[i]);
   }
+  sum = sum + ceil(sol[npar]);
   return sum;
 }
 
@@ -1953,22 +1954,19 @@ void cut_from_predecessor(int scc_id, PlutoProg *prog) {
 int get_min_convex_successor(int scc_id, PlutoProg *prog) {
   int i, num, *convex_successors;
   int min_scc_id;
-  min_scc_id = prog->ddg->num_sccs;
+  min_scc_id = -1;
   convex_successors = get_convex_successors(scc_id, prog, &num);
-  if (num == 0) {
-    return -1;
-  }
   /* TODO: Fix this by iterating over the list of convex successors and look for
      an SCC that has atleast one dimension that is not coloured */
-  else {
-    for (i = 0; i < num; i++) {
-      min_scc_id = convex_successors[i];
-      if (ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc_id))
-        break;
-    }
-    free(convex_successors);
-    return min_scc_id;
+  for (i = 0; i < num; i++) {
+    min_scc_id = convex_successors[i];
+    if (ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc_id))
+      break;
   }
+  if (num > 0) {
+    free(convex_successors);
+  }
+  return min_scc_id;
 }
 
 int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
@@ -2031,6 +2029,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
        * colouring the current vertex. We choose the later (no particular reason
        * to do this). For choosing with former, return v==-1 whenever there is
        * no predecessor for the current SCC */
+      printf("Min vertex found to be -1, switching to brute force search\n");
       if (v != -1) {
         printf("Returning vertex %d for colouring \n", v);
         return v;
@@ -2115,7 +2114,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
     assert(v != -1);
     /* v = scc_offset + i; */
     /* Used for debugging purposes */
-    i = scc_offset - max_dim;
+    i = v - scc_offset;
     if (colour[v] > 0 && colour[v] != current_colour) {
       IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
       IF_DEBUG(printf("already coloured with colour %d\n", colour[v]););
