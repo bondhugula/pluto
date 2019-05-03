@@ -1881,7 +1881,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
   }
 
   convex_successors =
-      get_convex_successors(scc_id, prog, &num_convex_successors);
+      get_convex_parallel_successors(scc_id, prog, &num_convex_successors);
 
   /* If there are no convex successors, colour this scc */
   if (num_convex_successors == 0) {
