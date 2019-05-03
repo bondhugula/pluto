@@ -44,7 +44,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
                 PlutoProg *prog);
 void pluto_print_colours(int *colour, PlutoProg *prog);
 PlutoMatrix *par_preventing_adj_mat;
-PlutoMatrix *dep_distance_mat;
+PlutoMatrix *dep_dist_mat;
 
 static double rtclock() {
   struct timezone Tzp;
@@ -573,8 +573,14 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
             fcg->adj->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 1;
           } else {
             if (options->lpcolour) {
-              dep_distance_mat->val[i][j] =
+              dep_dist_mat
+                  ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] =
                   get_dep_dist_from_pluto_sol(sol, npar);
+              printf("Dependence distance between dims %d and %d\n of SCCs %d "
+                     "and %d: %lld\n",
+                     dim1, dim2, scc1, scc2,
+                     dep_dist_mat
+                         ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2]);
             }
             if (check_parallel && !is_lp_solution_parallel(sol, npar)) {
               IF_DEBUG(printf("Adding Parallelism preventing edge"););
@@ -1062,10 +1068,10 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
       bzero(par_preventing_adj_mat->val[i], num_nodes * sizeof(int64));
     }
   }
-  if (options->lpcolour) {
-    dep_distance_mat = pluto_matrix_alloc(num_nodes, num_nodes);
+  if (options->lpcolour && options->scc_cluster) {
+    dep_dist_mat = pluto_matrix_alloc(num_nodes, num_nodes);
     for (i = 0; i < num_nodes; i++) {
-      bzero(dep_distance_mat->val[i], num_nodes * sizeof(int64));
+      bzero(dep_dist_mat->val[i], num_nodes * sizeof(int64));
     }
   }
 
@@ -1971,14 +1977,13 @@ int get_min_convex_successor(int scc_id, PlutoProg *prog) {
 
 int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
                                int num_discarded, int *discarded_list) {
-  int i, j, min, v1, v2, min_dist;
+  int i, j, min, v1, v2;
   int scc1_offset, scc2_offset;
   Graph *fcg, *ddg;
-  PlutoMatrix *dep_dist_mat;
+  int64 min_dist;
 
   fcg = prog->fcg;
   ddg = prog->ddg;
-  dep_dist_mat = dep_distance_mat;
   min_dist = 10000;
   min = -1;
 
@@ -1994,6 +1999,7 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
       if (is_adjecent(fcg, v1, v2))
         continue;
       if (dep_dist_mat->val[v1][v2] < min_dist) {
+        printf("Dep distance: %lld\n", dep_dist_mat->val[i][j]);
         min_dist = dep_dist_mat->val[v1][v2];
         min = v1;
       }
@@ -2029,11 +2035,11 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
        * colouring the current vertex. We choose the later (no particular reason
        * to do this). For choosing with former, return v==-1 whenever there is
        * no predecessor for the current SCC */
-      printf("Min vertex found to be -1, switching to brute force search\n");
       if (v != -1) {
         printf("Returning vertex %d for colouring \n", v);
         return v;
       }
+      printf("Min vertex found to be -1, switching to brute force search\n");
     }
   }
   /* This case applies for sccs with no convex successors or when lp solution
@@ -2270,6 +2276,9 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
       prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
   if (options->fuse == TYPED_FUSE) {
     pluto_matrix_free(par_preventing_adj_mat);
+  }
+  if (options->lpcolour) {
+    pluto_matrix_free(dep_dist_mat);
   }
   prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
 
@@ -2759,7 +2768,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     pluto_matrix_free(par_preventing_adj_mat);
   }
   if (options->lpcolour) {
-    pluto_matrix_free(dep_distance_mat);
+    pluto_matrix_free(dep_dist_mat);
   }
   return;
 }
