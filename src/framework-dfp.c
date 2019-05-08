@@ -1863,6 +1863,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
 
   is_parallel = true;
 
+  /* find parallel dims for the current SCC */
   num_parallel_dims = 0;
   for (i = 0; i < max_dim; i++) {
     is_dim_parallel =
@@ -1898,6 +1899,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     }
   }
 
+  /* get common dims that can be coloured with current_colour */
   common_dims =
       get_common_parallel_dims(scc_id, convex_successors, num_convex_successors,
                                colour, current_colour, parallel_dims, prog);
@@ -1910,6 +1912,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     }
   }
 
+  /* Choose the colouring dimension. If there are no common dims with the
+   * colouring SCC, one of the parallel dims */
   colouring_dim = get_colouring_dim(common_dims, max_dim);
 
   if (common_dims != NULL) {
@@ -2008,17 +2012,48 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
   return min;
 }
 
+int *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour, int *num) {
+  int i, j, num_col_dims, max_dim, scc_offset, v;
+  int *colourable_dims;
+  Graph *fcg;
+
+  fcg = prog->fcg;
+  max_dim = prog->ddg->sccs[scc_id].max_dim;
+  colourable_dims = NULL;
+  num_col_dims = 0;
+  scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+
+  for (i = 0; i < max_dim; i++) {
+    v = scc_offset + i;
+    if (colour[v] != 0 || is_adjecent(fcg, v, v))
+      continue;
+    if (colourable_dims == NULL) {
+      colourable_dims = (int *)malloc(max_dim * sizeof(int));
+    }
+    colourable_dims[num_col_dims] = i;
+    num_col_dims++;
+  }
+  *num = num_col_dims;
+  return colourable_dims;
+}
 /* Returns a dimension of an SCC (vetex in the FCG)
  * that can be colored next. */
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
-                                    int num_discarded, int *discarded_list) {
+                                    int num_discarded, int *discarded_list,
+                                    int *colour) {
   int i, v, max_dim, scc_offset, min_scc;
+  int num;
   Scc *sccs;
 
   sccs = prog->ddg->sccs;
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
+    convex_successors = get_convex_successors(scc_id, prog, &num);
+    colourable_dims = get_colourable_dims(scc_id, prog, &num_dims, colour);
+    get_common_dims();
+    return colourable vertex();
+
     min_scc = get_min_convex_successor(scc_id, prog);
     if (min_scc == -1 ||
         !ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc)) {
