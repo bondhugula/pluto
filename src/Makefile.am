@@ -2,7 +2,6 @@
 #
 # Copyright (C) Uday Bondhugula 2007
 #
-
 SUBDIRS = 
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -16,7 +15,30 @@ endif
 
 bin_PROGRAMS = pluto
 
-pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c gurobi-plugin.c ddg.c transforms.c pluto.c post_transform.c framework.c framework-dfp.c pluto_codegen_if.c polyloop.c ast_transform.c iss.c main.c constraints.h math_support.h pluto.h program.cpp program.h tile.c unit_tests.c
+pluto_SOURCES = \
+		ast_transform.c \
+		constraints.c \
+		constraints.h \
+	       	constraints_polylib.c \
+		constraints_isl.c \
+		ddg.c \
+		framework.c \
+		framework-dfp.c \
+		gurobi-plugin.c \
+		iss.c \
+		main.c \
+		math_support.c \
+		math_support.h \
+		pluto.c \
+		pluto_codegen_if.c \
+		pluto.h \
+		polyloop.c \
+		post_transform.c \
+		program.cpp \
+		program.h \
+		tile.c \
+		transforms.c \
+		unit_tests.c 
 
 if PLUTO_DEBUG
 OPT_FLAGS = -O3 -funroll-loops -fopenmp
@@ -54,7 +76,27 @@ pluto_LDADD =  \
 lib_LTLIBRARIES = libpluto.la
 
 # libpluto doesn't use polylib-based functions
-libpluto_la_SOURCES = constraints.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c framework-dfp.c polyloop.c iss.c libpluto.c libpluto_dummy.c constraints.h math_support.h pluto.h program.cpp program.h tile.c
+libpluto_la_SOURCES = \
+		      constraints.c \
+		      constraints.h \
+		      constraints_isl.c \
+		      ddg.c \
+		      framework.c \
+		      framework-dfp.c \
+		      iss.c \
+		      libpluto.c \
+		      libpluto_dummy.c \
+		      math_support.c \
+		      math_support.h \
+		      pluto.c \
+		      pluto.h \
+		      polyloop.c \
+		      post_transform.c \
+		      program.cpp \
+		      program.h \
+		      tile.c \
+		      transforms.c
+
 libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
