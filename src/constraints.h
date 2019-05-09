@@ -41,16 +41,16 @@ struct pluto_constraints {
   int64 *buf;
 
   /* Number of inequalities/equalities */
-  int nrows;
+  unsigned nrows;
   /* Number of columns (number of vars + 1) */
-  int ncols;
+  unsigned ncols;
 
   /* Is row i an equality? 1 yes, 0 no */
   int *is_eq;
 
   /* Number of rows allocated a-priori */
-  int alloc_nrows;
-  int alloc_ncols;
+  unsigned alloc_nrows;
+  unsigned alloc_ncols;
 
   /* Names of the dimensions (optional) */
   char **names;
