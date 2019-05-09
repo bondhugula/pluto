@@ -381,6 +381,7 @@ struct plutoProg {
   /* Param context */
   PlutoConstraints *context;
 
+  // Declarations to be emitted.
   char *decls;
 
   /* Codegen context */
@@ -435,6 +436,10 @@ struct pluto_dep_list {
   struct pluto_dep_list *next;
 };
 typedef struct pluto_dep_list PlutoDepList;
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
@@ -703,4 +708,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
 void introduce_skew(PlutoProg *prog);
 #endif
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

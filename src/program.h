@@ -28,6 +28,10 @@
 #include "pet.h"
 #include "osl/scop.h"
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
                        const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
@@ -89,7 +93,6 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc,
 
 int extract_deps(Dep **deps, int first, Stmt **stmts,
                  __isl_keep isl_union_map *umap, int type);
-int isl_map_count(__isl_take isl_map *map, void *user);
 
 int pluto_get_max_ind_hyps(const PlutoProg *prog);
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog);
@@ -117,5 +120,9 @@ Dep *pluto_dep_dup(Dep *d);
 void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

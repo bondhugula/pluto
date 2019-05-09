@@ -78,6 +78,10 @@ struct graph {
 };
 typedef struct graph Graph;
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 Graph *graph_alloc(int nVertices);
 void graph_free(Graph *g);
 void graph_print_sccs(Graph *g);
@@ -94,4 +98,9 @@ int *get_ssc_topological_order(Graph *ddg);
 void compute_scc_vertices(Graph *ddg);
 void print_scc_vertices(int j, Graph *g);
 void free_scc_vertices(Graph *ddg);
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

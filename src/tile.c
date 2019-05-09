@@ -136,7 +136,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
       char iter[6];
       sprintf(iter, "zT%d", stmt->dim);
 
-      int hyp_type = (stmt->hyp_types[depth + depth - firstD] == H_SCALAR)
+      PlutoHypType hyp_type = (stmt->hyp_types[depth + depth - firstD] == H_SCALAR)
                          ? H_SCALAR
                          : H_TILE_SPACE_LOOP;
 
@@ -240,7 +240,7 @@ void pluto_tile(PlutoProg *prog) {
           break;
       }
       if (j == nbands) {
-        bands = realloc(bands, (nbands + 1) * sizeof(Band *));
+        bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
         bands[nbands++] = pluto_band_alloc(loops[i], 1);
       }
     }

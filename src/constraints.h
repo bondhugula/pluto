@@ -24,6 +24,7 @@
 #include <glpk.h>
 #endif
 
+#include "isl/ctx.h"
 #include "isl/set.h"
 #include "math_support.h"
 
@@ -62,6 +63,10 @@ typedef struct pluto_constraints PlutoConstraints;
 /* A constraint with one equality */
 typedef PlutoConstraints PlutoEquality;
 typedef PlutoConstraints Hyperplane;
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
@@ -202,7 +207,7 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst,
                                           int max_elim);
-int isl_map_count(__isl_take isl_map *map, void *user);
+isl_stat isl_map_count(__isl_take isl_map *map, void *user);
 PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar);
 PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h);
 PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h);
@@ -232,6 +237,10 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                             int **index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                             PlutoMatrix *obj);
+#endif
+
+#if defined(__cplusplus)
+}
 #endif
 
 #endif

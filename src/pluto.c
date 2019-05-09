@@ -1230,7 +1230,7 @@ void normalize_domains(PlutoProg *prog) {
 
   /* Avoid the need for bounding function coefficients to take negative
    * values */
-  bool *neg = malloc(sizeof(bool) * npar);
+  bool *neg = (bool *)malloc(sizeof(bool) * npar);
   for (k = 0; k < prog->ndeps; k++) {
     Dep *dep = prog->deps[k];
     PlutoConstraints *dpoly = dep->dpolytope;
@@ -1625,8 +1625,9 @@ int pluto_auto_transform(PlutoProg *prog) {
   if (nstmts == 0)
     return 0;
 
-  PlutoMatrix **orig_trans = malloc(nstmts * sizeof(PlutoMatrix *));
-  PlutoHypType **orig_hyp_types = malloc(nstmts * sizeof(PlutoHypType *));
+  PlutoMatrix **orig_trans =
+      (PlutoMatrix **)malloc(nstmts * sizeof(PlutoMatrix *));
+  PlutoHypType **orig_hyp_types = (PlutoHypType **)malloc(nstmts * sizeof(PlutoHypType *));
   int orig_num_hyperplanes = prog->num_hyperplanes;
   HyperplaneProperties *orig_hProps = prog->hProps;
 

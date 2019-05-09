@@ -56,7 +56,7 @@ struct pluto_extra_stmt_info {
   int index;
 };
 
-static int extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
+static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   Stmt **stmts;
   Stmt *stmt;
   PlutoConstraints *bcst;
@@ -76,12 +76,12 @@ static int extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   }
 
   isl_basic_set_free(bset);
-  return 0;
+  return isl_stat_ok;
 }
 
 /* Used by libpluto interface */
-static int extract_stmt(__isl_take isl_set *set, void *user) {
-  int r;
+static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
+  isl_stat r;
   Stmt **stmts;
   int id, i;
 
@@ -109,7 +109,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user) {
   stmt->id = id;
 
   for (i = 0; i < stmt->dim; i++) {
-    char *iter = malloc(13);
+    char *iter = (char *)malloc(13);
     sprintf(iter, "i%d", i);
     stmt->iterators[i] = iter;
   }
@@ -121,7 +121,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user) {
                                     stmt->dim);
 
   for (i = 0; i < npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     stmt->domain->names[stmt->dim + i] = param;
   }
@@ -239,7 +239,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }
@@ -417,7 +417,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }
@@ -655,7 +655,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(11);
+    char *param = (char *)malloc(11);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }

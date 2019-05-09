@@ -225,8 +225,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   state = cloog_state_malloc();
   cloogOptions = cloog_options_malloc(state);
 
-  cloogOptions->fs = malloc(nstmts * sizeof(int));
-  cloogOptions->ls = malloc(nstmts * sizeof(int));
+  cloogOptions->fs = (int *)malloc(nstmts * sizeof(int));
+  cloogOptions->ls = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->fs_ls_size = nstmts;
 
   for (i = 0; i < nstmts; i++) {

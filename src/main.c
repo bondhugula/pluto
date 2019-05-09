@@ -366,7 +366,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   if (optind <= argc - 1) {
-    srcFileName = alloca(strlen(argv[optind]) + 1);
+    srcFileName = (char *)alloca(strlen(argv[optind]) + 1);
     strcpy(srcFileName, argv[optind]);
   } else {
     /* No non-option argument was specified */
@@ -577,7 +577,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;
-    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+    irreg_ext = (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
       irroption = osl_irregular_sprint(irreg_ext); // TODO: test it
     osl_irregular_free(irreg_ext);
@@ -682,13 +682,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       bname = basename(basec);
 
       /* max size when tiled.* */
-      outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+      outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
 
       if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
         memcpy(outFileName, bname, strlen(bname) - 2);
         outFileName[strlen(bname) - 2] = '\0';
       } else {
-        outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+        outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
         strcpy(outFileName, bname);
       }
       strcat(outFileName, ".pluto.c");
@@ -696,17 +696,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       basec = strdup(options->out_file);
       bname = basename(basec);
 
-      outFileName = malloc(strlen(options->out_file) + 1);
+      outFileName = (char *)malloc(strlen(options->out_file) + 1);
       strcpy(outFileName, options->out_file);
     }
 
     char *cloogFileName;
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      cloogFileName = malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
+      cloogFileName = (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
       strncpy(cloogFileName, bname, strlen(bname) - 2);
       cloogFileName[strlen(bname) - 2] = '\0';
     } else {
-      cloogFileName = malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
+      cloogFileName = (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
       strcpy(cloogFileName, bname);
     }
     strcat(cloogFileName, ".pluto.cloog");

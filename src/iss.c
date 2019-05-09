@@ -301,7 +301,7 @@ void pluto_update_deps_after_iss(PlutoProg *prog, PlutoConstraints **cuts,
 
     if (dep->src != iss_stmt_id && dep->dest != iss_stmt_id) {
       num_iss_deps++;
-      iss_deps = realloc(iss_deps, num_iss_deps * sizeof(Dep *));
+      iss_deps = (Dep **)realloc(iss_deps, num_iss_deps * sizeof(Dep *));
       iss_deps[num_iss_deps - 1] = dep;
       continue;
     }
@@ -339,7 +339,7 @@ void pluto_update_deps_after_iss(PlutoProg *prog, PlutoConstraints **cuts,
 
         if (!pluto_constraints_is_empty(dpolytope)) {
           num_iss_deps++;
-          iss_deps = realloc(iss_deps, num_iss_deps * sizeof(Dep *));
+          iss_deps = (Dep **)realloc(iss_deps, num_iss_deps * sizeof(Dep *));
           iss_deps[num_iss_deps - 1] = pluto_dep_dup(dep);
 
           Dep *iss_dep = iss_deps[num_iss_deps - 1];
@@ -445,7 +445,7 @@ void pluto_iss_dep(PlutoProg *prog) {
       (PlutoConstraints ***)malloc(sizeof(PlutoConstraints **) * ndim);
   for (i = 0; i < ndim; i++) {
     if (num_long_deps[i] >= 1) {
-      long_dep_doms[i] = malloc(num_long_deps[i] * sizeof(PlutoConstraints *));
+      long_dep_doms[i] = (PlutoConstraints **)malloc(num_long_deps[i] * sizeof(PlutoConstraints *));
     } else
       long_dep_doms[i] = NULL;
   }

@@ -406,14 +406,14 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   }
 }
 
-inline int64 lcm(int64 a, int64 b) {
+int64 lcm(int64 a, int64 b) {
   if (a * b == 0)
     return 0;
   return (a * b) / gcd(a, b);
 }
 
 /* Assuming both args are not zero */
-inline int64 gcd(int64 a, int64 b) {
+int64 gcd(int64 a, int64 b) {
   a = llabs(a);
   b = llabs(b);
 
@@ -443,7 +443,7 @@ int64 *min_lexical(int64 *a, int64 *b, int64 num) {
 
 /* Free returned string with free */
 char *concat(const char *prefix, const char *suffix) {
-  char *concat = malloc(strlen(prefix) + strlen(suffix) + 1);
+  char *concat = (char *)malloc(strlen(prefix) + strlen(suffix) + 1);
   sprintf(concat, "%s%s", prefix, suffix);
   return concat;
 }
@@ -577,7 +577,7 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -625,14 +625,14 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
 
   /* max 5 chars for var, 3 for coefficient + 1 if ndims is 0 + 1 null char */
   n = 9 * ndims + 1 + 1;
-  out = malloc(n);
+  out = (char *)malloc(n);
   *out = '\0';
 
   for (j = 0; j < ndims; j++) {
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -679,7 +679,7 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
 /*
  * Convert an isl affine expression to Pluto function
  */
-int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
+isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
                           void *user) {
   int i, j, npar;
 
@@ -700,7 +700,7 @@ int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
       isl_val_free(v);
       isl_set_free(set);
       isl_aff_free(aff);
-      return 0;
+      return isl_stat_ok;
     }
     isl_val_free(v);
   }
@@ -722,7 +722,7 @@ int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
   isl_set_free(set);
   isl_aff_free(aff);
 
-  return 0;
+  return isl_stat_ok;
 }
 
 /*

@@ -14,6 +14,7 @@
 #include "constraints.h"
 #include "pluto.h"
 
+#include "isl/ctx.h"
 #include "isl/map.h"
 #include "isl/set.h"
 #include "isl/space.h"
@@ -135,7 +136,7 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
   return set;
 }
 
-static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
+static isl_stat extract_basic_set_constraints(__isl_take isl_basic_set *bset,
                                          void *usr) {
   PlutoConstraints **cst = (PlutoConstraints **)usr;
 
@@ -151,7 +152,7 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
     pluto_constraints_free(bcst);
   }
 
-  return 0;
+  return isl_stat_ok;
 }
 
 /* Convert an isl_set to PlutoConstraints */
@@ -421,18 +422,16 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
   return func;
 }
 
-static int basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
-  int *count = user;
+static isl_stat basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
+  int *count = (int *)user;
 
   *count += 1;
   isl_basic_map_free(bmap);
-  return 0;
+  return isl_stat_ok;
 }
 
-int isl_map_count(__isl_take isl_map *map, void *user) {
-  int r;
-
-  r = isl_map_foreach_basic_map(map, &basic_map_count, user);
+isl_stat isl_map_count(__isl_take isl_map *map, void *user) {
+  isl_stat r = isl_map_foreach_basic_map(map, &basic_map_count, user);
   isl_map_free(map);
   return r;
 }

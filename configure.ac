@@ -24,11 +24,21 @@ AM_INIT_AUTOMAKE()
 AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
+dnl Determine a C compiler to use
+AC_PROG_CC
+dnl Determine a C++ compiler to use
+AC_PROG_CXX
+
+AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
+
+AC_PROG_LIBTOOL
+AC_PROG_SED
+
 dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
 dnl being 32-bit/64-bit
-CFLAGS="$CFLAGS -Wall"
-if test CC = icc; then
+CXXFLAGS="$CXXFLAGS -Wall -std=c++11"
+if test CXX = icc; then
     LDFLAGS="$LDFLAGS -lirc -limf"
 fi
 
@@ -41,31 +51,13 @@ AC_ARG_ENABLE(debug,
 AM_CONDITIONAL(PLUTO_DEBUG, test x$debug = xtrue)
 
 if test $debug = "true"; then
-    CFLAGS="$CFLAGS -g"
-fi
-
-glpk="false"
-dnl glpk flag
-AC_ARG_ENABLE(glpk,
-              [  --enable-glpk  enable ILP solving with GLPK], glpk="true")
-
-gurobi="false"
-dnl check for gurobi
-AC_ARG_ENABLE(gurobi,
-              [  --enable-gurobi  enable ILP solving with GUROBI], gurobi="true")
-dnl check for programs
-AC_CHECK_PROG(CC,gcc,gcc)
-AC_PROG_CXX
-AC_PROG_CC_C99
-
-if test $ac_cv_prog_cc_c99 = "no"; then
-  AC_MSG_ERROR([compiler does not support c99])
+    CXXFLAGS="$CXXFLAGS -g"
 fi
 
 AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
 AC_PROG_LN_S
-AC_PROG_LIBTOOL
+
 
 dnl check for some compiler characteristics
 dnl MC_CHECK_GUIDING_DECLS
@@ -86,7 +78,16 @@ AC_CHECK_PROG(MV,mv,mv)
 AC_CHECK_PROG(CAT,cat,cat)
 AC_CHECK_PROG(AR,ar,ar)
 AC_CHECK_PROG(STRIP,strip,strip)
-AC_CHECK_PROG(SED,sed,sed)
+
+glpk="false"
+dnl glpk flag
+AC_ARG_ENABLE(glpk,
+              [  --enable-glpk  enable ILP solving with GLPK], glpk="true")
+
+gurobi="false"
+dnl check for gurobi
+AC_ARG_ENABLE(gurobi,
+              [  --enable-gurobi  enable ILP solving with GUROBI], gurobi="true")
 
 if test $glpk = "true"; then
     dnl check for glpk

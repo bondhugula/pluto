@@ -322,7 +322,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   npar = prog->npar;
 
   FILE *skipfp = fopen("skipdeps.txt", "r");
-  int *skipdeps = malloc(ndeps * sizeof(int));
+  int *skipdeps = (int *)malloc(ndeps * sizeof(int));
   bzero(skipdeps, ndeps * sizeof(int));
 
   /* For debugging (skip deps listed here) */
