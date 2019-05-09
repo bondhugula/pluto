@@ -24,41 +24,41 @@
  * core to the frontend and related matters
  *
  */
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
-#include <assert.h>
-#include <math.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "program.h"
 
-#include "osl/macros.h"
-#include "osl/scop.h"
 #include "osl/body.h"
-#include "osl/relation_list.h"
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
 #include "osl/extensions/pluto_unroll.h"
 #include "osl/extensions/scatnames.h"
+#include "osl/macros.h"
+#include "osl/relation_list.h"
+#include "osl/scop.h"
 
 #include "cloog/cloog.h"
 
 #include "candl/candl.h"
-#include "candl/scop.h"
-#include "candl/options.h"
 #include "candl/dependence.h"
+#include "candl/options.h"
+#include "candl/scop.h"
 
+#include <isl/flow.h>
 #include <isl/id.h>
 #include <isl/map.h>
 #include <isl/mat.h>
 #include <isl/set.h>
 #include <isl/space.h>
-#include <isl/flow.h>
 #include <isl/union_map.h>
 #include <isl/val.h>
 
@@ -208,11 +208,11 @@ PlutoMatrix *osl_access_relation_to_pluto_matrix(osl_relation_p smat) {
 
   int nrows =
       smat->nb_rows == 1 ? smat->nb_rows : smat->nb_rows - 1; // skp id line
-  int ncols = smat->nb_columns - smat->nb_output_dims - 1; //-1: skip 1st col
+  int ncols = smat->nb_columns - smat->nb_output_dims - 1;    //-1: skip 1st col
   mat = pluto_matrix_alloc(nrows, ncols);
 
   // Special case for scalars.
-  if (smat->nb_rows == 1) { 
+  if (smat->nb_rows == 1) {
     for (j = smat->nb_output_dims + 1; j < smat->nb_columns; j++) {
       mat->val[0][j - (smat->nb_output_dims + 1)] = 0;
     }
@@ -781,7 +781,7 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
     }
 
     // start of matrix
-    osl_index = 1; // start of src_stmt_domain_output_dims
+    osl_index = 1;    // start of src_stmt_domain_output_dims
     pl_index = 1 - 1; // -1 for pluto
     for (j = 0; j < s_dom_output_dims; j++)
       cst->val[pl_constraint][pl_index + j] =
@@ -877,10 +877,10 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
     }
 
     for (j = 0; j < t_access->nb_input_dims; j++) { // t_acc_dims==s_acc_dims
-      cst->val[pl_constraint][pl_t_index + j] =
-          osl_int_get_si(in_dep->domain->precision,
-                         in_dep->domain->m[osl_constraint + s_access->nb_rows]
-                                          [osl_t_index + j]);
+      cst->val[pl_constraint][pl_t_index + j] = osl_int_get_si(
+          in_dep->domain->precision,
+          in_dep->domain
+              ->m[osl_constraint + s_access->nb_rows][osl_t_index + j]);
     }
 
     // copy local dimensions - not supported by converter
@@ -2174,34 +2174,109 @@ osl_names_p get_scop_names(osl_scop_p scop) {
   return names;
 }
 
+
+// Compute dependences using ISL.
+// If options->lastwriter is false, then
+//       RAW deps are those from any earlier write to a read
+//       WAW deps are those from any earlier write to a write
+//       WAR deps are those from any earlier read to a write
+//       RAR deps are those from any earlier read to a read
+//  If options->lastwriter is true, then
+//       RAW deps are those from the last write to a read
+//       WAW deps are those from the last write to a write
+//       WAR deps are those from any earlier read not masked by an intermediate
+//       write to a write
+//       RAR deps are those from the last read to a read
+// 
+//  The RAR deps are only computed if options->rar is set.
+static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
+                             isl_union_map *schedule, isl_space *space,
+                             isl_union_map **dep_raw, isl_union_map **dep_war,
+                             isl_union_map **dep_waw, isl_union_map **dep_rar,
+                             isl_union_map **trans_dep_war,
+                             isl_union_map **trans_dep_waw) {
+  isl_union_map *empty = isl_union_map_empty(isl_space_copy(space));
+
+  if (options->lastwriter) {
+    // Compute RAW dependences with last writer (no transitive dependences).
+    isl_union_map_compute_flow(
+        isl_union_map_copy(reads), isl_union_map_copy(writes),
+        isl_union_map_copy(empty), isl_union_map_copy(schedule), dep_raw, NULL,
+        NULL, NULL);
+    // Compute WAW and WAR dependences without transitive dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(writes), isl_union_map_copy(writes),
+        isl_union_map_copy(reads), isl_union_map_copy(schedule), dep_waw,
+        dep_war, NULL, NULL);
+    // Compute WAR dependences with transitive dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(writes), isl_union_map_copy(empty),
+        isl_union_map_copy(reads), isl_union_map_copy(schedule), NULL,
+        trans_dep_war, NULL, NULL);
+    // Compute WAW dependences with transitive dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(writes), isl_union_map_copy(empty),
+        isl_union_map_copy(writes), isl_union_map_copy(schedule), NULL,
+        trans_dep_waw, NULL, NULL);
+    if (options->rar) {
+      // Compute RAR dependences without transitive dependences.
+      isl_union_map_compute_flow(
+          isl_union_map_copy(reads), isl_union_map_copy(reads),
+          isl_union_map_copy(empty), isl_union_map_copy(schedule), dep_rar,
+          NULL, NULL, NULL);
+    }
+  } else {
+    // Without lastwriter, compute transitive dependences.
+    // RAW dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(reads), isl_union_map_copy(empty),
+        isl_union_map_copy(writes), isl_union_map_copy(schedule), NULL, dep_raw,
+        NULL, NULL);
+    // WAR dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(writes), isl_union_map_copy(empty),
+        isl_union_map_copy(reads), isl_union_map_copy(schedule), NULL, dep_war,
+        NULL, NULL);
+    // WAW dependences.
+    isl_union_map_compute_flow(
+        isl_union_map_copy(writes), isl_union_map_copy(empty),
+        isl_union_map_copy(writes), isl_union_map_copy(schedule), NULL, dep_waw,
+        NULL, NULL);
+    if (options->rar) {
+      // RAR dependences.
+      isl_union_map_compute_flow(
+          isl_union_map_copy(reads), isl_union_map_copy(empty),
+          isl_union_map_copy(reads), isl_union_map_copy(schedule), NULL,
+          dep_rar, NULL, NULL);
+    }
+  }
+  isl_union_map_free(empty);
+
+  if (options->isldepcoalesce) {
+    *dep_raw = isl_union_map_coalesce(*dep_raw);
+    *dep_war = isl_union_map_coalesce(*dep_war);
+    *dep_waw = isl_union_map_coalesce(*dep_waw);
+
+    if (options->lastwriter) {
+      *trans_dep_war = isl_union_map_coalesce(*trans_dep_war);
+      *trans_dep_waw = isl_union_map_coalesce(*trans_dep_waw);
+    }
+  }
+}
+
 /* Compute dependences based on the iteration domain and access
  * information in "scop" and put the result in "prog".
- *
- * If options->lastwriter is false, then
- *      RAW deps are those from any earlier write to a read
- *      WAW deps are those from any earlier write to a write
- *      WAR deps are those from any earlier read to a write
- *      RAR deps are those from any earlier read to a read
- * If options->lastwriter is true, then
- *      RAW deps are those from the last write to a read
- *      WAW deps are those from the last write to a write
- *      WAR deps are those from any earlier read not masked by an intermediate
- *      write to a write
- *      RAR deps are those from the last read to a read
- *
- * The RAR deps are only computed if options->rar is set.
  */
 static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                          PlutoOptions *options) {
   int i, racc_num, wacc_num;
   int nstmts = osl_statement_number(scop->statement);
   isl_ctx *ctx;
-  isl_space *dim;
+  isl_space *space;
   isl_space *param_space;
   isl_set *context;
-  isl_union_map *empty;
-  isl_union_map *write;
-  isl_union_map *read;
+  isl_union_map *writes;
+  isl_union_map *reads;
   isl_union_map *schedule;
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war;
   isl_union_map *trans_dep_waw;
@@ -2218,20 +2293,19 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
   osl_names_p names = get_scop_names(scop);
 
-  dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, 0);
+  space = isl_space_set_alloc(ctx, scop->context->nb_parameters, 0);
   if (scop->context->nb_parameters) {
     scop_params = (osl_strings_p)scop->parameters->data;
-    dim = set_names(dim, isl_dim_param, scop_params->string);
+    space = set_names(space, isl_dim_param, scop_params->string);
   }
-  param_space = isl_space_params(isl_space_copy(dim));
+  param_space = isl_space_params(isl_space_copy(space));
   context = osl_relation_to_isl_set(scop->context, param_space);
 
   if (!options->rar)
-    dep_rar = isl_union_map_empty(isl_space_copy(dim));
-  empty = isl_union_map_empty(isl_space_copy(dim));
-  write = isl_union_map_empty(isl_space_copy(dim));
-  read = isl_union_map_empty(isl_space_copy(dim));
-  schedule = isl_union_map_empty(dim);
+    dep_rar = isl_union_map_empty(isl_space_copy(space));
+  writes = isl_union_map_empty(isl_space_copy(space));
+  reads = isl_union_map_empty(isl_space_copy(space));
+  schedule = isl_union_map_empty(space);
 
   if (!options->isldepaccesswise) {
     /* Leads to fewer dependences. Each dependence may not have a unique
@@ -2251,33 +2325,33 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
       snprintf(name, sizeof(name), "S_%d", i);
 
       int niter = osl_statement_get_nb_iterators(stmt);
-      dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
+      space = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
       if (scop->context->nb_parameters) {
         scop_params = (osl_strings_p)scop->parameters->data;
-        dim = set_names(dim, isl_dim_param, scop_params->string);
+        space = set_names(space, isl_dim_param, scop_params->string);
       }
       if (niter) {
         osl_body_p stmt_body =
             osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-        dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
+        space = set_names(space, isl_dim_set, stmt_body->iterators->string);
       }
-      dim = isl_space_set_tuple_name(dim, isl_dim_set, name);
-      dom = osl_relation_list_to_isl_set(stmt->domain, dim);
+      space = isl_space_set_tuple_name(space, isl_dim_set, name);
+      dom = osl_relation_list_to_isl_set(stmt->domain, space);
       dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-      dim = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
+      space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
                             2 * niter + 1);
       if (scop->context->nb_parameters) {
         scop_params = (osl_strings_p)scop->parameters->data;
-        dim = set_names(dim, isl_dim_param, scop_params->string);
+        space = set_names(space, isl_dim_param, scop_params->string);
       }
       if (niter) {
         osl_body_p stmt_body =
             osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-        dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
+        space = set_names(space, isl_dim_in, stmt_body->iterators->string);
       }
-      dim = isl_space_set_tuple_name(dim, isl_dim_in, name);
-      schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
+      space = isl_space_set_tuple_name(space, isl_dim_in, name);
+      schedule_i = osl_scattering_to_isl_map(stmt->scattering, space);
 
       osl_relation_list_p rlist = osl_access_list_filter_read(stmt->access);
       osl_relation_list_p wlist = osl_access_list_filter_write(stmt->access);
@@ -2293,8 +2367,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
       write_i = osl_access_list_to_isl_union_map(wlist, isl_set_copy(dom),
                                                  names->arrays->string);
 
-      read = isl_union_map_union(read, read_i);
-      write = isl_union_map_union(write, write_i);
+      reads = isl_union_map_union(reads, read_i);
+      writes = isl_union_map_union(writes, write_i);
       schedule =
           isl_union_map_union(schedule, isl_union_map_from_map(schedule_i));
 
@@ -2328,10 +2402,10 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         }
 
         int niter = osl_statement_get_nb_iterators(stmt);
-        dim = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
+        space = isl_space_set_alloc(ctx, scop->context->nb_parameters, niter);
         if (scop->context->nb_parameters) {
           scop_params = (osl_strings_p)scop->parameters->data;
-          dim = set_names(dim, isl_dim_param, scop_params->string);
+          space = set_names(space, isl_dim_param, scop_params->string);
 
           osl_strings_free(names->parameters);
           names->parameters = osl_strings_clone(scop_params);
@@ -2339,29 +2413,29 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         if (niter) {
           osl_body_p stmt_body =
               osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-          dim = set_names(dim, isl_dim_set, stmt_body->iterators->string);
+          space = set_names(space, isl_dim_set, stmt_body->iterators->string);
 
           osl_strings_free(names->iterators);
           names->iterators = osl_strings_clone(stmt_body->iterators);
         }
-        dim = isl_space_set_tuple_name(dim, isl_dim_set, name);
-        dom = osl_relation_list_to_isl_set(stmt->domain, dim);
+        space = isl_space_set_tuple_name(space, isl_dim_set, name);
+        dom = osl_relation_list_to_isl_set(stmt->domain, space);
         dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-        dim = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
+        space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
                               2 * niter + 1);
         if (scop->context->nb_parameters) {
           scop_params = (osl_strings_p)scop->parameters->data;
-          dim = set_names(dim, isl_dim_param, scop_params->string);
+          space = set_names(space, isl_dim_param, scop_params->string);
         }
         if (niter) {
           osl_body_p stmt_body =
               osl_generic_lookup(stmt->extension, OSL_URI_BODY);
-          dim = set_names(dim, isl_dim_in, stmt_body->iterators->string);
+          space = set_names(space, isl_dim_in, stmt_body->iterators->string);
         }
-        dim = isl_space_set_tuple_name(dim, isl_dim_in, name);
+        space = isl_space_set_tuple_name(space, isl_dim_in, name);
 
-        schedule_i = osl_scattering_to_isl_map(stmt->scattering, dim);
+        schedule_i = osl_scattering_to_isl_map(stmt->scattering, space);
 
         osl_arrays_p arrays =
             osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
@@ -2373,11 +2447,11 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         if (access->elt->type == OSL_TYPE_READ) {
           read_pos = osl_basic_access_to_isl_union_map(access->elt, dom,
                                                        names->arrays->string);
-          read = isl_union_map_union(read, isl_union_map_from_map(read_pos));
+          reads = isl_union_map_union(reads, isl_union_map_from_map(read_pos));
         } else {
           write_pos = osl_basic_access_to_isl_union_map(access->elt, dom,
                                                         names->arrays->string);
-          write = isl_union_map_union(write, isl_union_map_from_map(write_pos));
+          writes = isl_union_map_union(writes, isl_union_map_from_map(write_pos));
         }
 
         schedule =
@@ -2392,67 +2466,9 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     }
   }
 
-  if (options->lastwriter) {
-    // compute RAW dependences which do not contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(read), isl_union_map_copy(write),
-        isl_union_map_copy(empty), isl_union_map_copy(schedule), &dep_raw, NULL,
-        NULL, NULL);
-    // compute WAW and WAR dependences which do not contain transitive
-    // dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(write), isl_union_map_copy(write),
-        isl_union_map_copy(read), isl_union_map_copy(schedule), &dep_waw,
-        &dep_war, NULL, NULL);
-    // compute WAR dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(write), isl_union_map_copy(empty),
-        isl_union_map_copy(read), isl_union_map_copy(schedule), NULL,
-        &trans_dep_war, NULL, NULL);
-    isl_union_map_compute_flow(
-        isl_union_map_copy(write), isl_union_map_copy(empty),
-        isl_union_map_copy(write), isl_union_map_copy(schedule), NULL,
-        &trans_dep_waw, NULL, NULL);
-    if (options->rar) {
-      // compute RAR dependences which do not contain transitive dependences
-      isl_union_map_compute_flow(
-          isl_union_map_copy(read), isl_union_map_copy(read),
-          isl_union_map_copy(empty), isl_union_map_copy(schedule), &dep_rar,
-          NULL, NULL, NULL);
-    }
-  } else {
-    // compute RAW dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(read), isl_union_map_copy(empty),
-        isl_union_map_copy(write), isl_union_map_copy(schedule), NULL, &dep_raw,
-        NULL, NULL);
-    // compute WAR dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(write), isl_union_map_copy(empty),
-        isl_union_map_copy(read), isl_union_map_copy(schedule), NULL, &dep_war,
-        NULL, NULL);
-    // compute WAW dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(write), isl_union_map_copy(empty),
-        isl_union_map_copy(write), isl_union_map_copy(schedule), NULL, &dep_waw,
-        NULL, NULL);
-    if (options->rar) {
-      // compute RAR dependences which may contain transitive dependences
-      isl_union_map_compute_flow(
-          isl_union_map_copy(read), isl_union_map_copy(empty),
-          isl_union_map_copy(read), isl_union_map_copy(schedule), NULL,
-          &dep_rar, NULL, NULL);
-    }
-  }
-
-  if (options->isldepcoalesce) {
-    assert(0 && "dep coalesce disabled with --pet due to a potential bug");
-    dep_raw = isl_union_map_coalesce(dep_raw);
-    dep_war = isl_union_map_coalesce(dep_war);
-    dep_waw = isl_union_map_coalesce(dep_waw);
-    dep_rar = isl_union_map_coalesce(dep_rar);
-  }
-
+  compute_deps_isl(reads, writes, schedule, space, &dep_raw, &dep_war, &dep_waw,
+                   &dep_rar, &trans_dep_war, &trans_dep_waw);
+  
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
   isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
@@ -2474,11 +2490,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                               OSL_DEPENDENCE_RAR);
 
   if (options->lastwriter) {
-    if (options->isldepcoalesce) {
-      trans_dep_war = isl_union_map_coalesce(trans_dep_war);
-      trans_dep_waw = isl_union_map_coalesce(trans_dep_waw);
-    }
-
     prog->ntransdeps = 0;
     isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ntransdeps);
     isl_union_map_foreach_map(trans_dep_war, &isl_map_count, &prog->ntransdeps);
@@ -2514,9 +2525,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
   isl_union_map_free(dep_waw);
   isl_union_map_free(dep_rar);
 
-  isl_union_map_free(empty);
-  isl_union_map_free(write);
-  isl_union_map_free(read);
+  isl_union_map_free(writes);
+  isl_union_map_free(reads);
   isl_union_map_free(schedule);
   isl_set_free(context);
 
@@ -3904,8 +3914,8 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
       _lcm = lcm(remap->val[k][i], remap->val[i][i]);
       factor1 = _lcm / remap->val[k][i];
       for (j = 0; j < remap->ncols; j++) {
-        remap->val[k][j] = remap->val[k][j] * (factor1) -
-                           remap->val[i][j] * (_lcm / remap->val[i][i]);
+        remap->val[k][j] = remap->val[k][j] * (factor1)-remap->val[i][j] *
+                           (_lcm / remap->val[i][i]);
       }
     }
   }
@@ -4194,7 +4204,8 @@ static void compute_deps_pet(struct pet_scop *pscop,
   isl_union_map *writes;
   isl_union_map *reads;
   isl_union_map *schedule;
-  isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
+  isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war,
+      *trans_dep_waw;
 
   if (!options->silent) {
     printf("[pluto] compute_deps (isl%s)\n",
@@ -4207,6 +4218,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
   reads = isl_union_map_copy(empty);
   writes = isl_union_map_copy(empty);
   schedule = isl_union_map_copy(empty);
+  isl_union_map_free(empty);
 
   isl_union_map *schedules = isl_schedule_get_map(pscop->schedule);
 
@@ -4238,57 +4250,11 @@ static void compute_deps_pet(struct pet_scop *pscop,
     isl_union_map_free(lwrites);
   }
   isl_union_map_free(schedules);
+
+  compute_deps_isl(reads, writes, schedule, space, &dep_raw, &dep_war, &dep_waw,
+                   &dep_rar, &trans_dep_war, &trans_dep_waw);
+
   isl_space_free(space);
-
-  if (options->lastwriter) {
-    // compute RAW dependences which do not contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(reads), isl_union_map_copy(writes),
-        isl_union_map_copy(empty), isl_union_map_copy(schedule), &dep_raw, NULL,
-        NULL, NULL);
-    // compute WAW and WAR dependences which do not contain transitive
-    // dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(writes), isl_union_map_copy(writes),
-        isl_union_map_copy(reads), isl_union_map_copy(schedule), &dep_waw,
-        &dep_war, NULL, NULL);
-    if (options->rar) {
-      // compute RAR dependences which do not contain transitive dependences
-      isl_union_map_compute_flow(
-          isl_union_map_copy(reads), isl_union_map_copy(reads),
-          isl_union_map_copy(empty), isl_union_map_copy(schedule), &dep_rar,
-          NULL, NULL, NULL);
-    }
-  } else {
-    // compute RAW dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(reads), isl_union_map_copy(empty),
-        isl_union_map_copy(writes), isl_union_map_copy(schedule), NULL,
-        &dep_raw, NULL, NULL);
-    // compute WAR dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(writes), isl_union_map_copy(empty),
-        isl_union_map_copy(reads), isl_union_map_copy(schedule), NULL, &dep_war,
-        NULL, NULL);
-    // compute WAW dependences which may contain transitive dependences
-    isl_union_map_compute_flow(
-        isl_union_map_copy(writes), isl_union_map_copy(empty),
-        isl_union_map_copy(writes), isl_union_map_copy(schedule), NULL,
-        &dep_waw, NULL, NULL);
-    if (options->rar) {
-      // compute RAR dependences which may contain transitive dependences
-      isl_union_map_compute_flow(
-          isl_union_map_copy(reads), isl_union_map_copy(empty),
-          isl_union_map_copy(reads), isl_union_map_copy(schedule), NULL,
-          &dep_rar, NULL, NULL);
-    }
-  }
-
-  if (options->isldepcoalesce) {
-    dep_raw = isl_union_map_coalesce(dep_raw);
-    dep_war = isl_union_map_coalesce(dep_war);
-    dep_waw = isl_union_map_coalesce(dep_waw);
-  }
 
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
@@ -4313,7 +4279,6 @@ static void compute_deps_pet(struct pet_scop *pscop,
   isl_union_map_free(dep_war);
   isl_union_map_free(dep_waw);
 
-  isl_union_map_free(empty);
   isl_union_map_free(writes);
   isl_union_map_free(reads);
   isl_union_map_free(schedule);
@@ -4489,12 +4454,10 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
     isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
     isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
-    struct pluto_access_meta_info e_reads = {
-      &stmt->reads, 0, stmt->dim, npar
-    };
-    struct pluto_access_meta_info e_writes = {
-      &stmt->writes, 0, stmt->dim, npar
-    };
+    struct pluto_access_meta_info e_reads = { &stmt->reads, 0, stmt->dim,
+                                              npar };
+    struct pluto_access_meta_info e_writes = { &stmt->writes, 0, stmt->dim,
+                                               npar };
 
     if (stmt->nreads >= 1) {
       stmt->reads =
