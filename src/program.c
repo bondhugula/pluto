@@ -416,7 +416,7 @@ osl_loop_p pluto_get_vector_loop_list(const PlutoProg *prog) {
 }
 
 /*
- * get a list of to-be-parallelized loops frop PlutoProg
+ * Get a list of to-be-parallelized loops frop PlutoProg.
  */
 osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog,
                                         int vloopsfound) {
@@ -957,25 +957,6 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
   // return new domain
   return cst;
 }
-
-/* Get the position of this access given a CandlStmt access matrix
- * (concatenated)
- * ref: starting row for a particular access in concatenated rows of
- * access functions
- * Return the position of this access in the list  */
-/*static int get_access_position(CandlMatrix *accesses, int ref)
-{
-    int num, i;
-
-    num = -1;
-    for (i=0; i<=ref; i++)  {
-        if (accesses->p[i][0] != 0)   {
-            num++;
-        }
-    }
-    assert(num >= 0);
-    return num;
-}*/
 
 /* Read dependences from candl structures */
 static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog) {
@@ -4019,11 +4000,9 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level) {
 
   nstmts = prog->nstmts;
 
-  // pluto_matrix_print(stdout, stmt->trans);
   for (i = 0; i < nstmts; i++) {
     pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, level);
   }
-  // pluto_matrix_print(stdout, stmt->trans);
   stmt->trans->val[level][stmt->trans->ncols - 1] = 1;
 
   pluto_prog_add_hyperplane(prog, level, H_SCALAR);
@@ -4178,7 +4157,6 @@ static int set_tuple_name(__isl_take isl_map *map, void *usr) {
   struct acc_info *info = (struct acc_info *)usr;
   name = malloc(strlen(info->prefix) + 4);
   sprintf(name, "%s%d", info->prefix, info->acc_num);
-  // printf("%s\n", name);
   map = isl_map_set_tuple_name(map, isl_dim_in, name);
   info->acc_num++;
 
