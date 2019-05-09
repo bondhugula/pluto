@@ -159,7 +159,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp) {
     for (j = 0; j < stmt->trans->nrows; j++) {
       fprintf(outfp, "[");
       pluto_affine_function_print(outfp, stmt->trans->val[j], stmt->dim,
-                                  stmt->iterators);
+                                  (const char **)stmt->iterators);
       fprintf(outfp, "]");
     }
     fprintf(outfp, " _NL_DELIMIT_ ");

@@ -505,7 +505,8 @@ void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
   for (stm = scop->statement; stm; stm = stm->next) {
     int niter = stm->domain->nb_columns - scop->context->nb_columns;
     int nb_orig_it = -1;
-    osl_body_p stmt_body = (osl_body_p)osl_generic_lookup(stm->extension, OSL_URI_BODY);
+    osl_body_p stmt_body =
+        (osl_body_p)osl_generic_lookup(stm->extension, OSL_URI_BODY);
     if (stmt_body) {
       nb_orig_it = osl_strings_size(stmt_body->iterators);
       if (nb_orig_it != niter) { // update iterators.
@@ -545,12 +546,12 @@ void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
   }
 
   // generate scatt names
-  osl_strings_p newnames = osl_strings_generate("t", nb_scatt);
+  osl_strings_p newnames = osl_strings_generate((char *)"t", nb_scatt);
   osl_scatnames_p scatt = osl_scatnames_malloc();
   scatt->names = newnames;
 
   // replace the old scatnames with new one
-  osl_generic_remove(&scop->extension, OSL_URI_SCATNAMES);
+  osl_generic_remove(&scop->extension, (char *)OSL_URI_SCATNAMES);
   osl_generic_p gen = osl_generic_shell(scatt, osl_scatnames_interface());
   osl_generic_add(&scop->extension, gen);
 
@@ -1235,7 +1236,8 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop) {
     stmt->nreads = osl_relation_list_count(rlist);
     stmt->reads = (PlutoAccess **)malloc(stmt->nreads * sizeof(PlutoAccess *));
 
-    osl_arrays_p arrays = (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+    osl_arrays_p arrays =
+        (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
 
     int count = 0;
     while (wlist != NULL) {
@@ -1296,7 +1298,8 @@ void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt) {
   fprintf(fp, "%s", acc->name);
   for (i = 0; i < acc->mat->nrows; i++) {
     fprintf(fp, "[");
-    char **vars = (char **)malloc((stmt->dim + npar) * sizeof(char *));
+    const char **vars =
+        (const char **)malloc((stmt->dim + npar) * sizeof(char *));
     for (j = 0; j < stmt->dim; j++) {
       vars[j] = stmt->iterators[j];
     }
@@ -1443,7 +1446,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
     if (stmt->domain->names && stmt->domain->names[stmt->dim + j]) {
       vars[stmt->dim + j] = stmt->domain->names[stmt->dim + j];
     } else {
-      vars[stmt->dim + j] = "p?";
+      vars[stmt->dim + j] = (char *)"p?";
     }
   }
 
@@ -1456,17 +1459,19 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
     super_func = pluto_check_supernode(stmt, j, &div);
     if (super_func) {
       char *tmp;
-      tmp = pluto_affine_function_sprint(super_func, stmt->dim + npar, vars);
+      tmp = pluto_affine_function_sprint(super_func, stmt->dim + npar,
+                                         (const char **)vars);
       free(vars[j]);
       vars[j] = tmp;
       if (is_skewed(super_func, stmt->domain->ncols)) {
-        vars[j] =
-            (char *)realloc(vars[j], 1 + strlen(vars[j]) + 2 + log10(div) + 1 + 1);
+        vars[j] = (char *)realloc(vars[j],
+                                  1 + strlen(vars[j]) + 2 + log10(div) + 1 + 1);
         sprintf(vars[j], "(%s", tmp = strdup(vars[j]));
         free(tmp);
         sprintf(vars[j] + strlen(vars[j]), ")/%d", div);
       } else {
-        vars[j] = (char *)realloc(vars[j], strlen(vars[j]) + 1 + log10(div) + 1 + 1);
+        vars[j] =
+            (char *)realloc(vars[j], strlen(vars[j]) + 1 + log10(div) + 1 + 1);
         sprintf(vars[j] + strlen(vars[j]), "/%d", div);
       }
       free(super_func);
@@ -1474,7 +1479,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
   }
 
   pluto_affine_function_print(fp, stmt->trans->val[level], stmt->dim + npar,
-                              vars);
+                              (const char **)vars);
 
   for (j = 0; j < stmt->dim; j++) {
     free(vars[j]);
@@ -1924,7 +1929,8 @@ struct pluto_extra_dep_info {
  *
  * isl divs are removed; so this is an over-approximation in some cases
  */
-static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap, void *user) {
+static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
+                                      void *user) {
   int j;
   Stmt **stmts;
   Dep *dep;
@@ -2069,8 +2075,8 @@ struct pluto_access_meta_info {
 };
 
 /* Extract a Pluto access function from isl_basic_map */
-static isl_stat isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap,
-                                             void *user) {
+static isl_stat
+isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
   int i;
 
   isl_map *map;
@@ -2112,9 +2118,11 @@ static isl_stat isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap
 }
 
 /* Extract Pluto access functions from isl_map */
-static isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
+static isl_stat isl_map_extract_access_func(__isl_take isl_map *map,
+                                            void *user) {
   /* Extract a PlutoAccess from every isl_basic_map */
-  isl_stat r = isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
+  isl_stat r =
+      isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
 
   isl_map_free(map);
 
@@ -2143,7 +2151,8 @@ osl_names_p get_scop_names(osl_scop_p scop) {
         osl_strings_clone((osl_strings_p)scop->parameters->data);
   }
 
-  osl_arrays_p arrays = (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+  osl_arrays_p arrays =
+      (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
   if (arrays) {
     osl_strings_free(names->arrays);
     names->arrays = osl_arrays_to_strings(arrays);
@@ -2333,7 +2342,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
       osl_relation_list_p rlist = osl_access_list_filter_read(stmt->access);
       osl_relation_list_p wlist = osl_access_list_filter_write(stmt->access);
 
-      osl_arrays_p arrays = (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+      osl_arrays_p arrays =
+          (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
       if (arrays) {
         osl_strings_free(names->arrays);
         names->arrays = osl_arrays_to_strings(arrays);
@@ -2566,7 +2576,8 @@ PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options) {
   prog->options = options;
 
   /* Data variables in the program */
-  osl_arrays_p arrays = (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
+  osl_arrays_p arrays =
+      (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
   if (arrays == NULL) {
     prog->num_data = 0;
     fprintf(stderr, "warning: arrays extension not found\n");
@@ -2939,8 +2950,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
     pluto_matrix_add_row(stmt->trans, time_pos);
     stmt->trans->val[time_pos][pos] = 1;
 
-    stmt->hyp_types =
-        (PlutoHypType *)realloc(stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
+    stmt->hyp_types = (PlutoHypType *)realloc(
+        stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
     for (i = stmt->trans->nrows - 2; i >= time_pos; i--) {
       stmt->hyp_types[i + 1] = stmt->hyp_types[i];
     }
@@ -2948,7 +2959,8 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
   }
 
   /* Update is_orig_loop */
-  stmt->is_orig_loop = (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
+  stmt->is_orig_loop =
+      (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
   for (i = stmt->dim - 2; i >= pos; i--) {
     stmt->is_orig_loop[i + 1] = stmt->is_orig_loop[i];
   }
@@ -3022,7 +3034,8 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog) {
   for (i = pos; i <= stmt->dim - 1; i++) {
     stmt->is_orig_loop[i] = stmt->is_orig_loop[i + 1];
   }
-  stmt->is_orig_loop = (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
+  stmt->is_orig_loop =
+      (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
 
   for (i = 0; i < stmt->nwrites; i++) {
     pluto_matrix_remove_col(stmt->writes[i]->mat, pos);
@@ -3063,7 +3076,8 @@ void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos) {
 
   pluto_matrix_add_row(stmt->trans, pos);
 
-  stmt->hyp_types = (PlutoHypType *)realloc(stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
+  stmt->hyp_types = (PlutoHypType *)realloc(
+      stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
   for (i = stmt->trans->nrows - 2; i >= pos; i--) {
     stmt->hyp_types[i + 1] = stmt->hyp_types[i];
   }
@@ -3282,7 +3296,8 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
 
   stmt->trans = pluto_matrix_dup(trans);
 
-  stmt->hyp_types = (PlutoHypType *)malloc(stmt->trans->nrows * sizeof(PlutoHypType));
+  stmt->hyp_types =
+      (PlutoHypType *)malloc(stmt->trans->nrows * sizeof(PlutoHypType));
   for (i = 0; i < stmt->trans->nrows; i++) {
     stmt->hyp_types[i] = H_LOOP;
   }
@@ -3766,7 +3781,8 @@ void get_parametric_extent(const PlutoConstraints *cst, int pos, int npar,
   if (!strcmp(lbexpr, ubexpr)) {
     *extent = strdup("1");
   } else {
-    *extent = (char *)malloc(strlen(lbexpr) + strlen(ubexpr) + strlen(" -  + 1") + 1);
+    *extent =
+        (char *)malloc(strlen(lbexpr) + strlen(ubexpr) + strlen(" -  + 1") + 1);
     sprintf(*extent, "%s - %s + 1", ubexpr, lbexpr);
   }
   if (p_lbexpr != NULL) {
@@ -4174,7 +4190,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
   isl_union_map *reads;
   isl_union_map *schedule;
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
-  
+
   // These are only going to be computed under lastwriter.
   isl_union_map *trans_dep_war = NULL;
   isl_union_map *trans_dep_waw = NULL;
@@ -4262,7 +4278,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
  * that have been marked as killed through special kill statements */
 static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
   bzero(dead, sizeof(int) * pscop->n_stmt);
-  for (unsigned s = 0; s < pscop->n_stmt; s++) {
+  for (int s = 0; s < pscop->n_stmt; s++) {
     struct pet_stmt *pstmt = pscop->stmts[s];
     if (!pet_stmt_is_kill(pstmt)) {
       continue;
@@ -4279,7 +4295,7 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
 
     const char *killed_name = isl_space_get_tuple_name(acc_space, isl_dim_out);
 
-    for (unsigned j = 0; j < pscop->n_stmt; j++) {
+    for (int j = 0; j < pscop->n_stmt; j++) {
       if (dead[j] == 1)
         continue;
       struct pet_stmt *opstmt = pscop->stmts[j];
@@ -4704,7 +4720,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
   print_options = isl_ast_print_options_alloc(ctx);
 
   std::unordered_map<struct pet_stmt *, char *> stmtTextMap;
-  struct print_stmt_user_info info = {scop, &stmtTextMap};
+  struct print_stmt_user_info info = { scop, &stmtTextMap };
   print_options =
       isl_ast_print_options_set_print_user(print_options, &print_stmt, &info);
   p = isl_ast_node_print(tree, p, print_options);
@@ -4887,7 +4903,8 @@ Stmt *pluto_stmt_dup(const Stmt *stmt) {
   nstmt->nwrites = stmt->nwrites;
 
   nstmt->reads = (PlutoAccess **)malloc(nstmt->nreads * sizeof(PlutoAccess *));
-  nstmt->writes = (PlutoAccess **)malloc(nstmt->nwrites * sizeof(PlutoAccess *));
+  nstmt->writes =
+      (PlutoAccess **)malloc(nstmt->nwrites * sizeof(PlutoAccess *));
 
   for (i = 0; i < stmt->nreads; i++) {
     nstmt->reads[i] = pluto_access_dup(stmt->reads[i]);

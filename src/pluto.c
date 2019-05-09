@@ -1352,9 +1352,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
   for (s = 0; s < band->loop->nstmts; s++) {
     IF_DEBUG(printf("\tf(S%d) = ", band->loop->stmts[s]->id + 1););
-    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s],
-                                         nvar + npar,
-                                         band->loop->stmts[s]->domain->names););
+    IF_DEBUG(pluto_affine_function_print(
+                 stdout, conc_start_faces->val[s], nvar + npar,
+                 (const char **)band->loop->stmts[s]->domain->names););
     IF_DEBUG(printf("\n"););
   }
 
@@ -1508,9 +1508,9 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
           bestsol[npar + 1 + stmt->id * (nvar + 1) + nvar];
 
       IF_DEBUG(printf("\tcone_complement(S%d) = ", stmt->id + 1););
-      IF_DEBUG(pluto_affine_function_print(stdout,
-                                           cone_complement_hyps[j]->val[0],
-                                           nvar, stmt->iterators););
+      IF_DEBUG(
+          pluto_affine_function_print(stdout, cone_complement_hyps[j]->val[0],
+                                      nvar, (const char **)stmt->iterators););
       IF_DEBUG(printf("\n"););
     }
     free(bestsol);

@@ -569,7 +569,7 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
  * vars: names of the ndims variables; if NULL, x0, x1, ... are used
  */
 void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
-                                 char **vars) {
+                                 const char **vars) {
   char *var[ndims];
   int j;
 
@@ -619,7 +619,7 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
 }
 
 /* Returned string should be freed with malloc */
-char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
+char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars) {
   char *var[ndims], *out;
   int j, n;
 

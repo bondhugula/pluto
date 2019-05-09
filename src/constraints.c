@@ -524,8 +524,6 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
 
   PlutoConstraints *newcst;
 
-  // newcst = pluto_constraints_alloc(cst->nrows*cst->nrows/4, cst->ncols);
-
   for (i = 0; i < cst->nrows; i++) {
     if (cst->val[i][pos] != 0)
       break;
