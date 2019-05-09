@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
     { "candldep", no_argument, &options->candldep, 1 },
     { "isldepaccesswise", no_argument, &options->isldepaccesswise, 1 },
     { "isldepstmtwise", no_argument, &options->isldepaccesswise, 0 },
-    { "noisldepcoalesce", no_argument, &options->isldepcoalesce, 0 },
+    { "isldepcoalesce", no_argument, &options->isldepcoalesce, 1 },
     { "readscop", no_argument, &options->readscop, 1 },
     { "pipsolve", no_argument, &options->pipsolve, 1 },
 #ifdef GLPK
