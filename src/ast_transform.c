@@ -19,8 +19,8 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "ast_transform.h"
 #include "pluto.h"

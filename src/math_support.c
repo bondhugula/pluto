@@ -397,7 +397,7 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
 }
 
 /* Eliminate variables from start to end (inclusive); start is 0-indexed
-*/
+ */
 void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   int i;
 
@@ -680,7 +680,7 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
  * Convert an isl affine expression to Pluto function
  */
 isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
-                          void *user) {
+                               void *user) {
   int i, j, npar;
 
   npar = isl_aff_dim(aff, isl_dim_param);

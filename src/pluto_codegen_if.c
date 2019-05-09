@@ -22,22 +22,22 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <cloog/cloog.h>
 
 #include "version.h"
 
-#include "pluto.h"
-#include "math_support.h"
-#include "constraints.h"
-#include "program.h"
 #include "ast_transform.h"
+#include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
+#include "program.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog) {
   int i, first_point_loop;
@@ -374,7 +374,7 @@ int pluto_omp_parallelize(PlutoProg *prog) {
 
       /* Lower and upper scalars for parallel loops yet to be marked */
       /* NOTE: we extract up to 2 degrees of parallelism
-      */
+       */
       if (options->multipar) {
         for (i = num_parallel_loops + 1; i < 2; i++) {
           fprintf(outfp, "lb%d,ub%d,", i + 1, i + 1);

@@ -24,9 +24,9 @@
 #include <glpk.h>
 #endif
 
+#include "math_support.h"
 #include "isl/ctx.h"
 #include "isl/set.h"
-#include "math_support.h"
 
 #define int64 long long int
 

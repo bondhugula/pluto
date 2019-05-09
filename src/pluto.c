@@ -19,22 +19,21 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "ddg.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
-#include "ddg.h"
 #include "version.h"
 
 void pluto_print_colours(int *colour, PlutoProg *prog);
@@ -84,8 +83,9 @@ int dep_satisfaction_update(PlutoProg *prog, int level) {
     if (!dep_is_satisfied(dep)) {
       dep->satisfied = dep_satisfaction_test(dep, prog, level);
       if (dep->satisfied) {
-        IF_MORE_DEBUG(printf(
-            "[pluto] dep_satisfaction_update: dep %d satisfied\n", i + 1););
+        IF_MORE_DEBUG(
+            printf("[pluto] dep_satisfaction_update: dep %d satisfied\n",
+                   i + 1););
         if (!IS_RAR(dep->type))
           num_new_carried++;
         dep->satisfaction_level = level;
@@ -332,9 +332,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       j += stmts[i]->dim_orig + 1;
     }
   }
-  IF_DEBUG(printf(
-      "[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d "
+                  "constraints)\n",
+                  cst->ncols - 1, cst->nrows););
 
   /* Solve the constraints using chosen solvers*/
   if (options->islsolve) {
@@ -756,8 +756,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
   int nvar = prog->nvar;
   int npar = prog->npar;
 
-  IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max "
-                           "solution(s): %d; band depth: %d\n",
+  IF_DEBUG(fprintf(stdout,
+                   "[pluto] find_permutable_hyperplanes: max "
+                   "solution(s): %d; band depth: %d\n",
                    max_sols, band_depth));
 
   assert(max_sols >= 0);
@@ -1327,8 +1328,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   pluto_constraints_free(fcst);
 
   if (!sol) {
-    IF_DEBUG(printf(
-        "[pluto] get_face_with_concurrent_start: no valid 1-d schedules \n"););
+    IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d "
+                    "schedules \n"););
     return NULL;
   }
 
@@ -1376,8 +1377,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
     return NULL;
   }
 
-  IF_DEBUG(printf(
-      "[pluto] faces with concurrent start found for all statements\n"););
+  IF_DEBUG(
+      printf(
+          "[pluto] faces with concurrent start found for all statements\n"););
 
   return conc_start_faces;
 }
@@ -1506,8 +1508,9 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
           bestsol[npar + 1 + stmt->id * (nvar + 1) + nvar];
 
       IF_DEBUG(printf("\tcone_complement(S%d) = ", stmt->id + 1););
-      IF_DEBUG(pluto_affine_function_print(
-          stdout, cone_complement_hyps[j]->val[0], nvar, stmt->iterators););
+      IF_DEBUG(pluto_affine_function_print(stdout,
+                                           cone_complement_hyps[j]->val[0],
+                                           nvar, stmt->iterators););
       IF_DEBUG(printf("\n"););
     }
     free(bestsol);
@@ -1627,7 +1630,8 @@ int pluto_auto_transform(PlutoProg *prog) {
 
   PlutoMatrix **orig_trans =
       (PlutoMatrix **)malloc(nstmts * sizeof(PlutoMatrix *));
-  PlutoHypType **orig_hyp_types = (PlutoHypType **)malloc(nstmts * sizeof(PlutoHypType *));
+  PlutoHypType **orig_hyp_types =
+      (PlutoHypType **)malloc(nstmts * sizeof(PlutoHypType *));
   int orig_num_hyperplanes = prog->num_hyperplanes;
   HyperplaneProperties *orig_hProps = prog->hProps;
 
@@ -1779,8 +1783,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       nsols = find_permutable_hyperplanes(prog, hyp_search_mode, num_sols_left,
                                           depth);
 
-      IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; "
-                               "%d hyperplane(s) found\n",
+      IF_DEBUG(fprintf(stdout,
+                       "[pluto] pluto_auto_transform: band level %d; "
+                       "%d hyperplane(s) found\n",
                        depth, nsols));
       IF_DEBUG2(pluto_transformations_pretty_print(prog));
 

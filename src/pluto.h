@@ -24,9 +24,9 @@
 
 #include "osl/scop.h"
 
-#include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
+#include "math_support.h"
 #include "pluto/libpluto.h"
 
 #include "osl/extensions/dependence.h"
@@ -74,7 +74,7 @@
 
 #define PI_TABLE_SIZE 256
 
-#define CST_WIDTH (npar + 1 + nstmts *(nvar + 1) + 1)
+#define CST_WIDTH (npar + 1 + nstmts * (nvar + 1) + 1)
 
 #define ALLOW_NEGATIVE_COEFF 1
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0
@@ -297,11 +297,7 @@ struct dependence {
 };
 typedef struct dependence Dep;
 
-typedef enum unrollType {
-  NO_UNROLL,
-  UNROLL,
-  UNROLLJAM
-} UnrollType;
+typedef enum unrollType { NO_UNROLL, UNROLL, UNROLLJAM } UnrollType;
 
 /* Properties of the new hyperplanes found. These are common across all
  * statements or apply at a level across all statements

@@ -19,8 +19,8 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "pluto.h"
@@ -136,9 +136,10 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
       char iter[6];
       sprintf(iter, "zT%d", stmt->dim);
 
-      PlutoHypType hyp_type = (stmt->hyp_types[depth + depth - firstD] == H_SCALAR)
-                         ? H_SCALAR
-                         : H_TILE_SPACE_LOOP;
+      PlutoHypType hyp_type =
+          (stmt->hyp_types[depth + depth - firstD] == H_SCALAR)
+              ? H_SCALAR
+              : H_TILE_SPACE_LOOP;
 
       /* 1.2 Specify tile shapes in the original domain */
       if (hyp_type != H_SCALAR) {
@@ -153,16 +154,16 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
 
         for (j = num_domain_supernodes[s] + 1; j < stmt->dim + npar; j++) {
           stmt->domain->val[stmt->domain->nrows - 1][j] =
-              stmt->trans->val[firstD + (depth - firstD) + 1 + (depth - firstD)]
-                              [j];
+              stmt->trans
+                  ->val[firstD + (depth - firstD) + 1 + (depth - firstD)][j];
         }
 
         stmt->domain->val[stmt->domain->nrows - 1][num_domain_supernodes[s]] =
             -tile_sizes[depth - firstD];
 
         stmt->domain->val[stmt->domain->nrows - 1][stmt->domain->ncols - 1] =
-            stmt->trans->val[(depth - firstD) + 1 + depth]
-                            [stmt->dim + prog->npar];
+            stmt->trans
+                ->val[(depth - firstD) + 1 + depth][stmt->dim + prog->npar];
 
         PlutoConstraints *lb =
             pluto_constraints_select_row(stmt->domain, stmt->domain->nrows - 1);
@@ -173,16 +174,16 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
         pluto_constraints_add_inequality(stmt->domain);
         for (j = num_domain_supernodes[s] + 1; j < stmt->dim + npar; j++) {
           stmt->domain->val[stmt->domain->nrows - 1][j] =
-              -stmt->trans->val
-                   [firstD + (depth - firstD) + 1 + (depth - firstD)][j];
+              -stmt->trans
+                   ->val[firstD + (depth - firstD) + 1 + (depth - firstD)][j];
         }
 
         stmt->domain->val[stmt->domain->nrows - 1][num_domain_supernodes[s]] =
             tile_sizes[depth - firstD];
 
         stmt->domain->val[stmt->domain->nrows - 1][stmt->domain->ncols - 1] =
-            -stmt->trans->val[(depth - firstD) + 1 + depth]
-                             [stmt->dim + prog->npar] +
+            -stmt->trans
+                 ->val[(depth - firstD) + 1 + depth][stmt->dim + prog->npar] +
             tile_sizes[depth - firstD] - 1;
 
         PlutoConstraints *ub =
@@ -200,8 +201,8 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
         pluto_stmt_add_hyperplane(stmt, H_SCALAR, depth);
         for (j = 0; j < stmt->dim + npar + 1; j++) {
           stmt->trans->val[depth][j] =
-              stmt->trans->val[firstD + (depth - firstD) + 1 + (depth - firstD)]
-                              [j];
+              stmt->trans
+                  ->val[firstD + (depth - firstD) + 1 + (depth - firstD)][j];
         }
       }
       stmt->num_tiled_loops++;
@@ -505,8 +506,9 @@ void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd) {
     if (hProps[loop].dep_prop == PIPE_PARALLEL ||
         hProps[loop].dep_prop == PARALLEL) {
       j = loop - 1;
-      while (j >= 0 && (hProps[j].dep_prop == PIPE_PARALLEL ||
-                        hProps[j].dep_prop == PARALLEL) &&
+      while (j >= 0 &&
+             (hProps[j].dep_prop == PIPE_PARALLEL ||
+              hProps[j].dep_prop == PARALLEL) &&
              hProps[j].band_num == hProps[loop].band_num &&
              hProps[j].type == H_LOOP) {
         j--;

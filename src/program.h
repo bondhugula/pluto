@@ -19,14 +19,14 @@
  */
 #ifndef _PROGRAM_H
 
-#include "pluto.h"
 #include "constraints.h"
+#include "pluto.h"
 
-#include "clan/clan.h"
 #include "candl/candl.h"
+#include "clan/clan.h"
 
-#include "pet.h"
 #include "osl/scop.h"
+#include "pet.h"
 
 #if defined(__cplusplus)
 extern "C" {

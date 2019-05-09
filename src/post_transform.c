@@ -19,8 +19,8 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "pluto.h"
 #include "post_transform.h"
@@ -157,7 +157,7 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
  * DEPRECATED: Subsumed by intra_tile_optimize_band and not used anymore
  *
  * Vectorize first loop in band that meets criteria
-*/
+ */
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,
                              PlutoProg *prog) {
   unsigned nloops, l;

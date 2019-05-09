@@ -1,15 +1,15 @@
 /* Index set splitting */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "program.h"
 
 PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
@@ -445,7 +445,8 @@ void pluto_iss_dep(PlutoProg *prog) {
       (PlutoConstraints ***)malloc(sizeof(PlutoConstraints **) * ndim);
   for (i = 0; i < ndim; i++) {
     if (num_long_deps[i] >= 1) {
-      long_dep_doms[i] = (PlutoConstraints **)malloc(num_long_deps[i] * sizeof(PlutoConstraints *));
+      long_dep_doms[i] = (PlutoConstraints **)malloc(
+          num_long_deps[i] * sizeof(PlutoConstraints *));
     } else
       long_dep_doms[i] = NULL;
   }

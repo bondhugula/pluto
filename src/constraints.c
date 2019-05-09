@@ -1591,7 +1591,8 @@ void pluto_constraints_remove_dim(PlutoConstraints *cst, int pos) {
     }
   }
   if (cst->names) {
-    cst->names = (char **)realloc(cst->names, (cst->ncols - 2) * sizeof(char *));
+    cst->names =
+        (char **)realloc(cst->names, (cst->ncols - 2) * sizeof(char *));
   }
 
   cst->ncols--;
@@ -1654,7 +1655,8 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
     cst->ncols++;
   }
   if (cst->names)
-    cst->names = (char **)realloc(cst->names, (cst->ncols - 1) * sizeof(char *));
+    cst->names =
+        (char **)realloc(cst->names, (cst->ncols - 1) * sizeof(char *));
 
   for (j = cst->ncols - 2; j >= pos; j--) {
     for (i = 0; i < cst->nrows; i++) {

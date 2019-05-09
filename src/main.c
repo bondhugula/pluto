@@ -19,34 +19,34 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <string.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include "osl/scop.h"
-#include "osl/generic.h"
 #include "osl/extensions/irregular.h"
+#include "osl/generic.h"
+#include "osl/scop.h"
 
-#include "pluto.h"
-#include "transforms.h"
 #include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
+#include "transforms.h"
 #include "version.h"
 
-#include "clan/clan.h"
 #include "candl/candl.h"
 #include "candl/scop.h"
+#include "clan/clan.h"
 
 #include "pet.h"
 
@@ -577,7 +577,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;
-    irreg_ext = (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+    irreg_ext =
+        (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
       irroption = osl_irregular_sprint(irreg_ext); // TODO: test it
     osl_irregular_free(irreg_ext);
@@ -702,11 +703,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     char *cloogFileName;
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      cloogFileName = (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
+      cloogFileName =
+          (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
       strncpy(cloogFileName, bname, strlen(bname) - 2);
       cloogFileName[strlen(bname) - 2] = '\0';
     } else {
-      cloogFileName = (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
+      cloogFileName =
+          (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
       strcpy(cloogFileName, bname);
     }
     strcat(cloogFileName, ".pluto.cloog");

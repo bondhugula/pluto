@@ -19,16 +19,16 @@
  */
 
 #include <assert.h>
-#include <string.h>
 #include <ctype.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "pluto.h"
-#include "constraints.h"
 #include "candl/candl.h"
-#include "program.h"
+#include "constraints.h"
+#include "pluto.h"
 #include "pluto/libpluto.h"
+#include "program.h"
 #include "isl/map.h"
 #include "isl/space.h"
 
@@ -608,8 +608,8 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
 }
 
 /* Pluto_schedule method to get schedule, parallel loops and remapping
-*  all in one function
-*/
+ *  all in one function
+ */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     isl_union_set *domains, isl_union_map *dependences, Ploop ***ploops,
     unsigned *nploops, Remapping **remap, PlutoOptions *options_l) {
