@@ -575,7 +575,7 @@ void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
     osl_pluto_unroll_p pluto_unroll = NULL;
     osl_pluto_unroll_p pluto_unroll_base = NULL;
 
-    char buffer[sizeof(i) * CHAR_BIT + 1] = { 0 };
+    char buffer[sizeof(i) * CHAR_BIT + 1] = {0};
 
     for (i = 0; i < prog->num_hyperplanes; i++) {
       if (hProps[i].unroll == UNROLL || hProps[i].unroll == UNROLLJAM) {
@@ -1365,7 +1365,8 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
  * pos: position of the supernode in the domain
  *
  */
-static int64 *pluto_check_supernode(const Stmt *stmt, unsigned pos, int *tile_size) {
+static int64 *pluto_check_supernode(const Stmt *stmt, unsigned pos,
+                                    int *tile_size) {
   int lb_pos, ub_pos;
   int64 *tile_hyp;
 
@@ -2126,7 +2127,7 @@ static isl_stat isl_map_extract_access_func(__isl_take isl_map *map,
 /* Extract deps from isl union maps into Pluto Deps */
 int extract_deps(Dep **deps, int first, Stmt **stmts,
                  __isl_keep isl_union_map *umap, int type) {
-  struct pluto_extra_dep_info info = { deps, stmts, type, first };
+  struct pluto_extra_dep_info info = {deps, stmts, type, first};
 
   isl_union_map_foreach_map(umap, &map_extract_dep, &info);
 
@@ -4204,10 +4205,10 @@ static void compute_deps_pet(struct pet_scop *pscop,
 
     char name[20];
     sprintf(name, "S_%d_r", stmt->id);
-    struct acc_info rinfo = { name, 0, &reads, &schedule, s_map };
+    struct acc_info rinfo = {name, 0, &reads, &schedule, s_map};
     isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
     sprintf(name, "S_%d_w", stmt->id);
-    struct acc_info winfo = { name, 0, &writes, &schedule, s_map };
+    struct acc_info winfo = {name, 0, &writes, &schedule, s_map};
     isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
 
     isl_map_free(s_map);
@@ -4421,10 +4422,9 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
     isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
     isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
-    struct pluto_access_meta_info e_reads = { &stmt->reads, 0, stmt->dim,
-                                              npar };
-    struct pluto_access_meta_info e_writes = { &stmt->writes, 0, stmt->dim,
-                                               npar };
+    struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
+    struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim,
+                                              npar};
 
     if (stmt->nreads >= 1) {
       stmt->reads =
@@ -4697,7 +4697,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
   print_options = isl_ast_print_options_alloc(ctx);
 
   std::unordered_map<struct pet_stmt *, char *> stmtTextMap;
-  struct print_stmt_user_info info = { scop, &stmtTextMap };
+  struct print_stmt_user_info info = {scop, &stmtTextMap};
   print_options =
       isl_ast_print_options_set_print_user(print_options, &print_stmt, &info);
   p = isl_ast_node_print(tree, p, print_options);

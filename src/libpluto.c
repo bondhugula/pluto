@@ -114,7 +114,7 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
     stmt->iterators[i] = iter;
   }
 
-  struct pluto_extra_stmt_info info = { stmts, id };
+  struct pluto_extra_stmt_info info = {stmts, id};
   r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
 
   pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0,
