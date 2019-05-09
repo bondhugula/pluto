@@ -2174,7 +2174,6 @@ osl_names_p get_scop_names(osl_scop_p scop) {
   return names;
 }
 
-
 // Compute dependences using ISL.
 // If options->lastwriter is false, then
 //       RAW deps are those from any earlier write to a read
@@ -2187,7 +2186,7 @@ osl_names_p get_scop_names(osl_scop_p scop) {
 //       WAR deps are those from any earlier read not masked by an intermediate
 //       write to a write
 //       RAR deps are those from the last read to a read
-// 
+//
 //  The RAR deps are only computed if options->rar is set.
 static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
                              isl_union_map *schedule, isl_space *space,
@@ -2340,7 +2339,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
       dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
       space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
-                            2 * niter + 1);
+                              2 * niter + 1);
       if (scop->context->nb_parameters) {
         scop_params = (osl_strings_p)scop->parameters->data;
         space = set_names(space, isl_dim_param, scop_params->string);
@@ -2423,7 +2422,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
         space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
-                              2 * niter + 1);
+                                2 * niter + 1);
         if (scop->context->nb_parameters) {
           scop_params = (osl_strings_p)scop->parameters->data;
           space = set_names(space, isl_dim_param, scop_params->string);
@@ -2451,7 +2450,8 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
         } else {
           write_pos = osl_basic_access_to_isl_union_map(access->elt, dom,
                                                         names->arrays->string);
-          writes = isl_union_map_union(writes, isl_union_map_from_map(write_pos));
+          writes =
+              isl_union_map_union(writes, isl_union_map_from_map(write_pos));
         }
 
         schedule =
@@ -2468,7 +2468,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
   compute_deps_isl(reads, writes, schedule, space, &dep_raw, &dep_war, &dep_waw,
                    &dep_rar, &trans_dep_war, &trans_dep_waw);
-  
+
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
   isl_union_map_foreach_map(dep_war, &isl_map_count, &prog->ndeps);
