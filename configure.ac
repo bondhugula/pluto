@@ -20,7 +20,8 @@ AC_INIT(pluto, 0.12.0, [udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE()
+dnl pass 'foreign' since we have a README.md instead of README.
+AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
