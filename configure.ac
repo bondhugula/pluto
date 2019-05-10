@@ -51,7 +51,7 @@ AC_ARG_ENABLE(debug,
 
 AM_CONDITIONAL(PLUTO_DEBUG, test x$debug = xtrue)
 
-if test $debug = "true"; then
+if test x$debug = x"true"; then
     CXXFLAGS="$CXXFLAGS -g"
 fi
 
