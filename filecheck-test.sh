@@ -1,11 +1,15 @@
 #!/bin/bash
 
-check_ret_val_emit_status()
-{
+num_succ=0
+num_fail=0
+
+check_ret_val_emit_status() {
 if [ $? -ne 0 ]; then
   echo -e "[\e[31mFailed\e[0m]" " $file"!
+  num_fail=$(($num_fail + 1))
 else
   echo -e "[\e[32mPassed\e[0m]"
+  num_succ=$(($num_succ + 1))
 fi
 }
 
@@ -85,6 +89,8 @@ rm -f test_temp_out.pluto.c
 rm -f test_temp_out.pluto.pluto.cloog
 }
 
-echo
+echo ===========================
+echo -e "$num_succ / $(($num_succ + $num_fail)) tests \e[32mpassed\e[0m"
+echo ===========================
 
 trap cleanup SIGINT exit
