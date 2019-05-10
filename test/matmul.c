@@ -5,21 +5,20 @@
 #define N 2048
 #define K 2048
 
-double A[M][K+13];
-double B[K][N+13];
-double C[M][N+13];
+double A[M][K + 13];
+double B[K][N + 13];
+double C[M][N + 13];
 
-int main()
-{
-    int i, j, k;
-    register double s;
+int main() {
+  int i, j, k;
+  register double s;
 
 #pragma scop
-    for(i=0; i<M; i++)
-        for(j=0; j<N; j++)  
-            for(k=0; k<K; k++)
-                C[i][j] = C[i][j] + A[i][k] * B[k][j];
+  for (i = 0; i < M; i++)
+    for (j = 0; j < N; j++)
+      for (k = 0; k < K; k++)
+        C[i][j] = C[i][j] + A[i][k] * B[k][j];
 #pragma endscop
 
-    return 0;
+  return 0;
 }
