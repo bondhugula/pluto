@@ -15,16 +15,21 @@ PREREQUISITES
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
 running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also 
-be fine if you have GNU utilities. In order to use the development version 
-from Pluto's git repository, automatic build system tools including autoconf, 
-automake, and libtool are needed. LLVM/Clang (2.9 or higher) is needed for the 
-pet submodule. GMP (GNU multi precision arithmetic library) is needed by ISL 
-(one of the included libraries). If it's not already on your system, it can be 
-installed easily with, for eg., 'sudo yum -y install gmp gmp-devel' on a Fedora 
-('sudo apt-get install libgmp3-dev' or something similar on an Ubuntu).  It is 
-also recommended astyle and indent be installed if a user wishes to browse 
-through generated code.
+be fine if you have GNU utilities. 
 
+- In order to use the development version from Pluto's git repository, automatic 
+  build system tools including autoconf, automake, and libtool are needed.  
+
+- LLVM/Clang (2.9 or higher) along with its development/header files is needed 
+  for the pet submodule, and also for Pluto's testing, which uses LLVM 
+  FileCheck. These packages are available in distribution repositories, or could  
+  be installed by download and building LLVM and Clang from sources.
+
+- GMP (GNU multi precision arithmetic library) is needed by ISL (one of the 
+  included libraries).  If it's not already on your system, it can be installed 
+  easily with, for eg., 'sudo yum -y install gmp gmp-devel' on a Fedora ('sudo 
+  apt-get install libgmp3-dev' or something similar on an Ubuntu).  
+  
 Pluto includes all polyhedral libraries that it depends on. See pet/README for 
 pet's pre-requisites. 
 
