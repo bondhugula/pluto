@@ -20,13 +20,13 @@
 #ifndef _MATH_SUPPORT_H
 #define _MATH_SUPPORT_H
 
+#include <gmp.h>
 #include <stdio.h>
 
 #include "isl/aff.h"
 #include "isl/ctx.h"
 #include "isl/mat.h"
 
-#include "gmp.h"
 
 #include "pluto/libpluto.h"
 

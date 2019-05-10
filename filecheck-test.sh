@@ -78,7 +78,7 @@ TESTS="\
 
 # Tests without --pet and without any tiling and parallelization "
 for file in $TESTS; do
-    echo -ne "$file "
+    printf '%-50s ' $file
     ./src/pluto --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
