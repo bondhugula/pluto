@@ -1,4 +1,5 @@
 // CHECK: T(S1): (t, t+i, t+j)
+// TILE-PARALLEL: T(S1): ((t-i)/32+(t+i)/32, (t+i)/32, (t+j)/32, t+i, t+j, t)
 #define N 4000L
 #define T 1000L
 
