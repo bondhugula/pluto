@@ -261,23 +261,19 @@ int gen_unroll_file(PlutoProg *prog) {
  */
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
-  unsigned nloops, l, max_score;
-  Ploop *best_loop;
-
   /* Band has to be the innermost band as well */
   if (!pluto_is_band_innermost(band, num_tiled_levels)) {
     return 0;
   }
 
-  Ploop **loops;
-
-  loops = pluto_get_loops_under(
+  unsigned nloops;
+  Ploop **loops = pluto_get_loops_under(
       band->loop->stmts, band->loop->nstmts,
       band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
 
-  max_score = 0;
-  best_loop = NULL;
-  for (l = 0; l < nloops; l++) {
+  int max_score = 0;
+  Ploop *best_loop = NULL;
+  for (unsigned l = 0; l < nloops; l++) {
     int a, s, t, v, score;
     a = get_num_accesses(loops[l], prog);
     s = get_num_spatial_accesses(loops[l], prog);
