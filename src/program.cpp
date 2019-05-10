@@ -2170,7 +2170,7 @@ osl_names_p get_scop_names(osl_scop_p scop) {
 //  The RAR deps are only computed if options->rar is set.
 static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
                              isl_union_map *schedule,
-                             __isl_take isl_union_map *empty,
+                             isl_union_map *empty,
                              isl_union_map **dep_raw, isl_union_map **dep_war,
                              isl_union_map **dep_waw, isl_union_map **dep_rar,
                              isl_union_map **trans_dep_war,
@@ -2228,7 +2228,6 @@ static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
           dep_rar, NULL, NULL);
     }
   }
-  isl_union_map_free(empty);
 
   if (options->isldepcoalesce) {
     *dep_raw = isl_union_map_coalesce(*dep_raw);
@@ -2249,7 +2248,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                          PlutoOptions *options) {
   int i, racc_num, wacc_num;
   int nstmts = osl_statement_number(scop->statement);
-  isl_ctx *ctx;
   isl_space *space;
   isl_space *param_space;
   isl_set *context;
@@ -2263,7 +2261,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
            options->lastwriter ? " with lastwriter" : "");
   }
 
-  ctx = isl_ctx_alloc();
+  isl_ctx *ctx = isl_ctx_alloc();
   assert(ctx);
 
   osl_names_p names = get_scop_names(scop);
@@ -2506,6 +2504,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
   isl_union_map_free(writes);
   isl_union_map_free(reads);
   isl_union_map_free(schedule);
+  isl_union_map_free(empty);
   isl_set_free(context);
 
   if (names)
@@ -4135,11 +4134,6 @@ static isl_stat set_tuple_name(__isl_take isl_map *map, void *usr) {
 static void compute_deps_pet(struct pet_scop *pscop,
                              isl_map **stmt_wise_schedules, PlutoProg *prog,
                              PlutoOptions *options) {
-  int i;
-  isl_union_map *empty;
-  isl_union_map *writes;
-  isl_union_map *reads;
-  isl_union_map *schedule;
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
   // These are only going to be computed under lastwriter.
@@ -4152,15 +4146,15 @@ static void compute_deps_pet(struct pet_scop *pscop,
   }
 
   isl_space *space = isl_set_get_space(pscop->context);
-  empty = isl_union_map_empty(isl_space_copy(space));
+  isl_union_map *empty = isl_union_map_empty(isl_space_copy(space));
 
-  reads = isl_union_map_copy(empty);
-  writes = isl_union_map_copy(empty);
-  schedule = isl_union_map_copy(empty);
+  isl_union_map *reads = isl_union_map_copy(empty);
+  isl_union_map *writes = isl_union_map_copy(empty);
+  isl_union_map *schedule = isl_union_map_copy(empty);
 
   isl_union_map *schedules = isl_schedule_get_map(pscop->schedule);
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     struct pet_stmt *pstmt = prog->stmts[i]->pstmt;
     Stmt *stmt = prog->stmts[i];
 
@@ -4199,7 +4193,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
   isl_union_map_foreach_map(dep_waw, &isl_map_count, &prog->ndeps);
 
   prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     prog->deps[i] = pluto_dep_alloc();
   }
   prog->ndeps = 0;
@@ -4221,6 +4215,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
   isl_union_map_free(writes);
   isl_union_map_free(reads);
   isl_union_map_free(schedule);
+  isl_union_map_free(empty);
 }
 
 /* Removes certain trivial dead code - in particular, all writes to variables
