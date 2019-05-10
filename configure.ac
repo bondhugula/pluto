@@ -27,13 +27,11 @@ AM_CONFIG_HEADER(config.h)
 
 dnl Determine a C compiler to use
 AC_PROG_CC
+AC_PROG_CC_C99
+
 dnl Determine a C++ compiler to use
 AC_PROG_CXX
-
 AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
-
-AC_PROG_LIBTOOL
-AC_PROG_SED
 
 dnl clan, candl, cloog are all configured with 64-bit data type support
 dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
@@ -42,6 +40,14 @@ CXXFLAGS="$CXXFLAGS -Wall -std=c++11"
 if test CXX = icc; then
     LDFLAGS="$LDFLAGS -lirc -limf"
 fi
+
+CFLAGS="$CFLAGS -Wall"
+
+AC_PROG_LIBTOOL
+AC_PROG_SED
+AC_CHECK_PROG(LD,ld,ld)
+AC_PROG_INSTALL
+AC_PROG_LN_S
 
 debug="false"
 dnl debugging flag
@@ -54,11 +60,6 @@ AM_CONDITIONAL(PLUTO_DEBUG, test x$debug = xtrue)
 if test x$debug = x"true"; then
     CXXFLAGS="$CXXFLAGS -g"
 fi
-
-AC_CHECK_PROG(LD,ld,ld)
-AC_PROG_INSTALL
-AC_PROG_LN_S
-
 
 dnl check for some compiler characteristics
 dnl MC_CHECK_GUIDING_DECLS
