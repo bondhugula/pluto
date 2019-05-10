@@ -705,7 +705,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
       cloogFileName =
           (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
-      strncpy(cloogFileName, bname, strlen(bname) - 2);
+      strcpy(cloogFileName, bname);
       cloogFileName[strlen(bname) - 2] = '\0';
     } else {
       cloogFileName =
