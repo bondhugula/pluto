@@ -1,10 +1,3 @@
-#
-# Pluto README
-#
-# Uday Bondhugula
-# udayb@iisc.ac.in
-#
-
 LICENSE
 
 Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
