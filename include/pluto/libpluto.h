@@ -15,8 +15,8 @@ struct plutoMatrix {
   /* The values */
   int64 **val;
 
-  int nrows;
-  int ncols;
+  unsigned nrows;
+  unsigned ncols;
 
   /* Pre-allocated number of rows */
   int alloc_nrows;
