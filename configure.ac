@@ -79,6 +79,9 @@ AC_CHECK_PROG(CAT,cat,cat)
 AC_CHECK_PROG(AR,ar,ar)
 AC_CHECK_PROG(STRIP,strip,strip)
 
+AC_CHECK_PROG(FILECHECK,FileCheck,yes,no,path = '/usr/lib64/llvm/')
+AS_IF([test x"$FILECHECK" != x"yes"], [AC_MSG_ERROR([Please install LLVM FileCheck before configuring.])])
+
 glpk="false"
 dnl glpk flag
 AC_ARG_ENABLE(glpk,
