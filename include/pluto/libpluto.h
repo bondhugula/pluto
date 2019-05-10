@@ -1,7 +1,7 @@
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
-#include "isl/union_set.h"
 #include "isl/union_map.h"
+#include "isl/union_set.h"
 
 #include "osl/scop.h"
 
