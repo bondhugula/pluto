@@ -70,7 +70,7 @@ TRYING A NEW CODE
 
 - Then, just run 
     
-    ./polycc <C source file> --parallel --tile
+    ./polycc <C source file>
 
   The transformation is also printed out, and test.par.c will have the 
   parallelized code. If you want to see intermediate files, like the 
