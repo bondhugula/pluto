@@ -1,4 +1,16 @@
+//
+// CHECK: T(S1): (t, t+j, t)
+// CHECK: T(S2): (t, t+j, t+i)
+// CHECK: T(S3): (t, t+j, t+i)
+// CHECK: T(S4): (t, t+j+1, t+i+1)
+//
+// After intra-tile optimize
+// CHECK: T(S1): (t, t, t+j)
+// CHECK: T(S2): (t, t+i, t+j)
+// CHECK: T(S3): (t, t+i, t+j)
+// CHECK: T(S4): (t, t+i+1, t+j+1)
 // CHECK: Output written
+//
 #define tmax 128
 #define nx 2048
 #define ny 2048

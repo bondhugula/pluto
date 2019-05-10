@@ -41,9 +41,7 @@ TESTS="\
   test/matmul.c \
   test/costfunc.c \
   test/fdtd-2d.c \
-  test/seq.c \
   test/gemver.c \
-  test/seidel.c \
   test/mvt.c \
   test/mxv.c \
   test/mxv-seq.c \
@@ -66,6 +64,8 @@ TESTS="\
   test/negparam.c \
   test/nodep.c \
   test/noloop.c \
+  test/seidel.c \
+  test/seq.c \
   test/shift.c \
   test/simple.c \
   test/tricky1.c \
