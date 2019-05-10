@@ -83,7 +83,6 @@ int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
                                               int ndim) {
   int nb_ndims_found = 0;
   int row_id = -1;
-  int i = 0;
 
   if (relation == NULL)
     return OSL_UNDEFINED;
@@ -94,7 +93,7 @@ int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
   }
 
   nb_ndims_found = 0;
-  for (i = 0; i < relation->nb_rows; i++) {
+  for (int i = 0; i < relation->nb_rows; i++) {
     if (!osl_int_zero(relation->precision, relation->m[i][ndim])) {
       nb_ndims_found++;
       row_id = i;
@@ -5020,7 +5019,7 @@ void pluto_stmt_transformation_print(const Stmt *stmt) {
   printf("(");
   for (unsigned level = 0; level < stmt->trans->nrows; level++) {
     pluto_stmt_print_hyperplane(stdout, stmt, level);
-    if (level <= stmt->trans->nrows - 2)
+    if ((int)level <= (int)stmt->trans->nrows - 2)
       printf(", ");
   }
   printf(")\n");
