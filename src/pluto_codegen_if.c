@@ -238,7 +238,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   cloogOptions->compilable = 0;
   cloogOptions->esp = 1;
   cloogOptions->strides = 1;
-  cloogOptions->quiet = options->silent;
+  cloogOptions->quiet = !options->debug;
 
   /* Generates better code in general */
   cloogOptions->backtrack = options->cloogbacktrack;
