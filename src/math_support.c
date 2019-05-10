@@ -501,15 +501,15 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat) {
 }
 
 /* Rank of the matrix */
-int pluto_matrix_get_rank(const PlutoMatrix *mat) {
-  int i, j, null, rank;
+unsigned pluto_matrix_get_rank(const PlutoMatrix *mat) {
+  unsigned rank;
 
   PlutoMatrix *re = pluto_matrix_to_row_echelon(pluto_matrix_dup(mat));
 
-  null = 0;
-  for (i = 0; i < re->nrows; i++) {
+  unsigned null = 0;
+  for (unsigned i = 0; i < re->nrows; i++) {
     int sum = 0;
-    for (j = 0; j < re->ncols; j++) {
+    for (unsigned j = 0; j < re->ncols; j++) {
       sum += llabs(re->val[i][j]);
     }
     if (sum == 0)

@@ -158,10 +158,10 @@ struct statement {
   bool *is_orig_loop;
 
   /* Dimensionality of statement's domain */
-  int dim;
+  unsigned dim;
 
   /* Original dimensionality of statement's domain */
-  int dim_orig;
+  unsigned dim_orig;
 
   /* Should you tile even if it's tilable? */
   int tile;

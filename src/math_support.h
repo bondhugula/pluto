@@ -52,7 +52,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp);
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1,
                                   const PlutoMatrix *mat2);
-int pluto_matrix_get_rank(const PlutoMatrix *mat);
+unsigned pluto_matrix_get_rank(const PlutoMatrix *mat);
 
 void pluto_matrix_add_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add_col(PlutoMatrix *mat, int pos);

@@ -956,7 +956,7 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
 
 /* Read dependences from candl structures */
 static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog) {
-  int i, j, ndeps;
+  int i, ndeps;
   int spos, tpos;
   Dep **deps;
   int npar = prog->npar;
@@ -992,14 +992,14 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog) {
         dep->dpolytope, stmts[dep->src]->iterators, 0, 0, stmts[dep->src]->dim);
     /* suffix the destination iterators with a '*/
     char **dnames = (char **)malloc(stmts[dep->dest]->dim * sizeof(char *));
-    for (j = 0; j < stmts[dep->dest]->dim; j++) {
+    for (unsigned j = 0; j < stmts[dep->dest]->dim; j++) {
       dnames[j] = (char *)malloc(strlen(stmts[dep->dest]->iterators[j]) + 2);
       strcpy(dnames[j], stmts[dep->dest]->iterators[j]);
       strcat(dnames[j], "'");
     }
     pluto_constraints_set_names_range(
         dep->dpolytope, dnames, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
-    for (j = 0; j < stmts[dep->dest]->dim; j++) {
+    for (unsigned j = 0; j < stmts[dep->dest]->dim; j++) {
       free(dnames[j]);
     }
     free(dnames);
@@ -1181,9 +1181,9 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop) {
     stmt->id = i;
     stmt->type = ORIG;
 
-    assert(scop_stmt->domain->nb_columns - 1 == stmt->dim + npar + 1);
+    assert(scop_stmt->domain->nb_columns - 1 == (int)stmt->dim + npar + 1);
 
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       stmt->is_orig_loop[j] = true;
     }
 
@@ -1193,12 +1193,12 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop) {
     osl_body_p stmt_body =
         (osl_body_p)osl_generic_lookup(scop_stmt->extension, OSL_URI_BODY);
 
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       stmt->iterators[j] = strdup(stmt_body->iterators->string[j]);
     }
     /* Set names for domain dimensions */
     char **names = (char **)malloc((stmt->domain->ncols - 1) * sizeof(char *));
-    for (k = 0; k < stmt->dim; k++) {
+    for (unsigned k = 0; k < stmt->dim; k++) {
       names[k] = stmt->iterators[k];
     }
     osl_strings_p osl_scop_params = NULL;
@@ -1287,14 +1287,14 @@ void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt) {
     return;
   }
 
-  npar = acc->mat->ncols - stmt->dim - 1;
+  npar = acc->mat->ncols - (int)stmt->dim - 1;
 
   fprintf(fp, "%s", acc->name);
   for (unsigned i = 0; i < acc->mat->nrows; i++) {
     fprintf(fp, "[");
     const char **vars =
         (const char **)malloc((stmt->dim + npar) * sizeof(char *));
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       vars[j] = stmt->iterators[j];
     }
     for (j = 0; j < npar; j++) {
@@ -1339,7 +1339,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
     }
   }
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     printf("Original loop: %d -> %s\n", i,
            stmt->is_orig_loop[i] ? "yes" : "no");
   }
@@ -1429,11 +1429,11 @@ static int is_skewed(int64 *func, int len) {
 void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
   int npar, j;
 
-  npar = stmt->domain->ncols - stmt->dim - 1;
+  npar = stmt->domain->ncols - (int)stmt->dim - 1;
 
   char **vars = (char **)malloc((stmt->dim + npar) * sizeof(char *));
 
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     vars[j] = strdup(stmt->iterators[j]);
   }
   for (j = 0; j < npar; j++) {
@@ -1444,7 +1444,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
     }
   }
 
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     /* Detect if this dimension is an affine function of other dimensions
      * divided by a constant -- useful to print tiled hyperplanes, the
      * dividing constant being the tile size */
@@ -1475,7 +1475,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
   pluto_affine_function_print(fp, stmt->trans->val[level], stmt->dim + npar,
                               (const char **)vars);
 
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     free(vars[j]);
   }
 
@@ -1925,7 +1925,6 @@ struct pluto_extra_dep_info {
  */
 static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
                                       void *user) {
-  int j;
   Stmt **stmts;
   Dep *dep;
   struct pluto_extra_dep_info *info;
@@ -1969,14 +1968,14 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
 
   /* Suffix the destination iterators with a '*/
   char **dnames = (char **)malloc(stmts[dep->dest]->dim * sizeof(char *));
-  for (j = 0; j < stmts[dep->dest]->dim; j++) {
+  for (unsigned j = 0; j < stmts[dep->dest]->dim; j++) {
     dnames[j] = (char *)malloc(strlen(stmts[dep->dest]->iterators[j]) + 2);
     strcpy(dnames[j], stmts[dep->dest]->iterators[j]);
     strcat(dnames[j], "'");
   }
   pluto_constraints_set_names_range(
       dep->dpolytope, dnames, stmts[dep->src]->dim, 0, stmts[dep->dest]->dim);
-  for (j = 0; j < stmts[dep->dest]->dim; j++) {
+  for (unsigned j = 0; j < stmts[dep->dest]->dim; j++) {
     free(dnames[j]);
   }
   free(dnames);
@@ -2063,8 +2062,8 @@ static isl_stat map_extract_dep(__isl_take isl_map *map, void *user) {
 struct pluto_access_meta_info {
   /* Pointer to an array of accesses */
   PlutoAccess ***accs;
-  int index;
-  int stmt_dim;
+  unsigned index;
+  unsigned stmt_dim;
   int npar;
 };
 
@@ -2915,21 +2914,22 @@ void pluto_options_free(PlutoOptions *options) {
 /* pos: position of domain iterator
  * time_pos: position of time iterator; iter: domain iterator; supply -1
  * if you don't want a scattering function row added for it */
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
-                        PlutoHypType hyp_type, PlutoProg *prog) {
+void pluto_stmt_add_dim(Stmt *stmt, unsigned pos, int time_pos,
+                        const char *iter, PlutoHypType hyp_type,
+                        PlutoProg *prog) {
   int i, npar;
 
-  npar = stmt->domain->ncols - stmt->dim - 1;
+  npar = stmt->domain->ncols - (int)stmt->dim - 1;
 
   assert(pos <= stmt->dim);
   assert(time_pos <= (int)stmt->trans->nrows);
-  assert(stmt->dim + npar + 1 == (int)stmt->domain->ncols);
+  assert(stmt->dim + npar + 1 == stmt->domain->ncols);
 
   pluto_constraints_add_dim(stmt->domain, pos, NULL);
   stmt->dim++;
   stmt->iterators =
       (char **)realloc(stmt->iterators, stmt->dim * sizeof(char *));
-  for (i = stmt->dim - 2; i >= pos; i--) {
+  for (i = (int)stmt->dim - 2; i >= (int)pos; i--) {
     stmt->iterators[i + 1] = stmt->iterators[i];
   }
   stmt->iterators[pos] = strdup(iter);
@@ -2953,7 +2953,7 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
   /* Update is_orig_loop */
   stmt->is_orig_loop =
       (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
-  for (i = stmt->dim - 2; i >= pos; i--) {
+  for (i = (int)stmt->dim - 2; i >= (int)pos; i--) {
     stmt->is_orig_loop[i + 1] = stmt->is_orig_loop[i];
   }
   stmt->is_orig_loop[pos] = true;
@@ -3000,20 +3000,18 @@ void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
 
 /* Warning: use it only to knock off a dummy dimension (unrelated to
  * anything else */
-void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog) {
-  int i, npar;
-
-  npar = stmt->domain->ncols - stmt->dim - 1;
+void pluto_stmt_remove_dim(Stmt *stmt, unsigned pos, PlutoProg *prog) {
+  int npar = stmt->domain->ncols - (int)stmt->dim - 1;
 
   assert(pos <= stmt->dim);
-  assert(stmt->dim + npar + 1 == (int)stmt->domain->ncols);
+  assert(stmt->dim + npar + 1 == stmt->domain->ncols);
 
   pluto_constraints_remove_dim(stmt->domain, pos);
   stmt->dim--;
 
   if (stmt->iterators != NULL) {
     free(stmt->iterators[pos]);
-    for (i = pos; i <= stmt->dim - 1; i++) {
+    for (int i = pos; i <= (int)stmt->dim - 1; i++) {
       stmt->iterators[i] = stmt->iterators[i + 1];
     }
     stmt->iterators =
@@ -3023,22 +3021,22 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog) {
   pluto_matrix_remove_col(stmt->trans, pos);
 
   /* Update is_orig_loop */
-  for (i = pos; i <= stmt->dim - 1; i++) {
+  for (int i = pos; i <= (int)stmt->dim - 1; i++) {
     stmt->is_orig_loop[i] = stmt->is_orig_loop[i + 1];
   }
   stmt->is_orig_loop =
       (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
 
-  for (i = 0; i < stmt->nwrites; i++) {
+  for (int i = 0; i < stmt->nwrites; i++) {
     pluto_matrix_remove_col(stmt->writes[i]->mat, pos);
   }
 
-  for (i = 0; i < stmt->nreads; i++) {
+  for (int i = 0; i < stmt->nreads; i++) {
     pluto_matrix_remove_col(stmt->reads[i]->mat, pos);
   }
 
   /* Update deps */
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     if (prog->deps[i]->src == stmt->id) {
       pluto_constraints_remove_dim(prog->deps[i]->dpolytope, pos);
     }
@@ -3048,7 +3046,7 @@ void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog) {
     }
   }
 
-  for (i = 0; i < prog->ntransdeps; i++) {
+  for (int i = 0; i < prog->ntransdeps; i++) {
     assert(prog->transdeps[i] != NULL);
     if (prog->transdeps[i]->src == stmt->id) {
       pluto_constraints_remove_dim(prog->transdeps[i]->dpolytope, pos);
@@ -3104,15 +3102,13 @@ void pluto_prog_add_hyperplane(PlutoProg *prog, int pos,
 Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain,
                         const PlutoMatrix *trans, char **iterators,
                         const char *text, PlutoStmtType type) {
-  int i;
-
   Stmt *stmt = pluto_stmt_alloc(dim, domain, trans);
 
   stmt->type = type;
 
   stmt->text = strdup(text);
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     stmt->iterators[i] = strdup(iterators[i]);
   }
 
@@ -3171,7 +3167,7 @@ void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt) {
 
   stmt->id = prog->nstmts;
 
-  prog->nvar = PLMAX(prog->nvar, stmt->dim);
+  prog->nvar = PLMAX(prog->nvar, (int)stmt->dim);
   prog->stmts[prog->nstmts] = stmt;
   prog->nstmts++;
 
@@ -3204,7 +3200,7 @@ void pluto_add_stmt(PlutoProg *prog, const PlutoConstraints *domain,
    */
   stmt->intra_stmt_dep_cst = NULL;
 
-  prog->nvar = PLMAX(prog->nvar, stmt->dim);
+  prog->nvar = PLMAX(prog->nvar, (int)stmt->dim);
 
   prog->stmts[nstmts] = stmt;
   prog->nstmts++;
@@ -3265,7 +3261,7 @@ Dep *pluto_dep_dup(Dep *d) {
  * Only very essential information is needed to allocate; rest can be
  * populated as needed
  */
-Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
+Stmt *pluto_stmt_alloc(unsigned dim, const PlutoConstraints *domain,
                        const PlutoMatrix *trans) {
   /* Have to provide a transformation */
   assert(trans != NULL);
@@ -3311,7 +3307,7 @@ Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
   if (dim >= 1) {
     stmt->is_orig_loop = (bool *)malloc(dim * sizeof(bool));
     stmt->iterators = (char **)malloc(sizeof(char *) * dim);
-    for (int i = 0; i < stmt->dim; i++) {
+    for (unsigned i = 0; i < stmt->dim; i++) {
       stmt->iterators[i] = NULL;
     }
   } else {
@@ -3342,8 +3338,6 @@ void pluto_access_free(PlutoAccess *acc) {
 }
 
 void pluto_stmt_free(Stmt *stmt) {
-  int i, j;
-
   pluto_constraints_free(stmt->domain);
 
   pluto_matrix_free(stmt->trans);
@@ -3354,7 +3348,7 @@ void pluto_stmt_free(Stmt *stmt) {
     free(stmt->text);
   }
 
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     if (stmt->iterators[j] != NULL) {
       free(stmt->iterators[j]);
     }
@@ -3370,13 +3364,13 @@ void pluto_stmt_free(Stmt *stmt) {
   PlutoAccess **reads = stmt->reads;
 
   if (writes != NULL) {
-    for (i = 0; i < stmt->nwrites; i++) {
+    for (int i = 0; i < stmt->nwrites; i++) {
       pluto_access_free(writes[i]);
     }
     free(writes);
   }
   if (reads != NULL) {
-    for (i = 0; i < stmt->nreads; i++) {
+    for (int i = 0; i < stmt->nreads; i++) {
       pluto_access_free(reads[i]);
     }
     free(reads);
@@ -3400,13 +3394,7 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt) {
 
   pluto_constraints_intersect(newdom, sched);
 
-  // IF_DEBUG(printf("New pre-domain is \n"););
-  // IF_DEBUG(pluto_constraints_print(stdout, newdom););
-
   pluto_constraints_project_out(newdom, stmt->trans->nrows, stmt->dim);
-
-  // IF_DEBUG(printf("New domain is \n"););
-  // IF_DEBUG(pluto_constraints_print(stdout, newdom););
 
   pluto_constraints_free(sched);
 
@@ -3772,16 +3760,14 @@ void get_parametric_extent(const PlutoConstraints *cst, int pos, int npar,
 
 /* Get Alpha matrix (A matrix - INRIA transformation representation */
 PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog) {
-  int r, c;
-
   PlutoMatrix *a;
   a = pluto_matrix_alloc(stmt->dim, stmt->dim);
 
-  r = 0;
+  unsigned r = 0;
   for (unsigned i = 0; i < stmt->trans->nrows; i++) {
     if (stmt->hyp_types[i] == H_LOOP ||
         stmt->hyp_types[i] == H_TILE_SPACE_LOOP) {
-      for (c = 0; c < stmt->dim; c++) {
+      for (unsigned c = 0; c < stmt->dim; c++) {
         a->val[r][c] = stmt->trans->val[i][c];
       }
       r++;
@@ -3796,11 +3782,9 @@ PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog) {
 }
 
 int pluto_is_hyperplane_scalar(const Stmt *stmt, int level) {
-  int j;
-
   assert(level <= (int)stmt->trans->nrows - 1);
 
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     if (stmt->trans->val[level][j] != 0)
       return 0;
   }
@@ -3822,7 +3806,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   trans = stmt->trans;
   remap = pluto_matrix_dup(trans);
 
-  npar = stmt->domain->ncols - stmt->dim - 1;
+  npar = stmt->domain->ncols - (int)stmt->dim - 1;
 
   *divs = (int *)malloc(sizeof(int) * (stmt->dim + npar + 1));
 
@@ -3833,14 +3817,13 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   }
 
   /* Bring the stmt iterators to the left */
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     pluto_matrix_move_col(remap, remap->nrows + i, i);
   }
 
   assert(stmt->dim <= remap->nrows);
 
-  for (i = 0; i < stmt->dim; i++) {
-    // pluto_matrix_print(stdout, remap);
+  for (unsigned i = 0; i < stmt->dim; i++) {
     if (remap->val[i][i] == 0) {
       unsigned k;
       for (k = i + 1; k < remap->nrows; k++) {
@@ -3872,7 +3855,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   }
 
   /* Solve upper triangular system now */
-  for (i = stmt->dim - 1; i >= 0; i--) {
+  for (i = (int)stmt->dim - 1; i >= 0; i--) {
     assert(remap->val[i][i] != 0);
     for (int k = i - 1; k >= 0; k--) {
       if (remap->val[k][i] == 0)
@@ -3887,11 +3870,11 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   }
 
   assert(remap->nrows >= stmt->dim);
-  for (i = (int)remap->nrows - 1; i >= stmt->dim; i--) {
+  for (i = (int)remap->nrows - 1; i >= (int)stmt->dim; i--) {
     pluto_matrix_remove_row(remap, remap->nrows - 1);
   }
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     assert(remap->val[i][i] != 0);
     if (remap->val[i][i] <= -1) {
       pluto_matrix_negate_row(remap, i);
@@ -3899,11 +3882,11 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
     (*divs)[i] = llabs(remap->val[i][i]);
   }
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     pluto_matrix_remove_col(remap, 0);
   }
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     pluto_matrix_negate_row(remap, i);
   }
 
@@ -3930,7 +3913,7 @@ PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc,
   PlutoMatrix *remap, *newacc;
   int npar, *remap_divs;
 
-  npar = stmt->domain->ncols - stmt->dim - 1;
+  npar = stmt->domain->ncols - (int)stmt->dim - 1;
   *divs = (int *)malloc(sizeof(int) * acc->nrows);
 
   remap = pluto_stmt_get_remapping(stmt, &remap_divs);
@@ -4063,11 +4046,9 @@ int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog) {
  * statements
  */
 int pluto_get_max_ind_hyps(const PlutoProg *prog) {
-  int max, i;
+  unsigned max = 0;
 
-  max = 0;
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     max = PLMAX(max, pluto_stmt_get_num_ind_hyps(prog->stmts[i]));
   }
 
@@ -4095,9 +4076,7 @@ int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt) {
   return isols;
 }
 
-int pluto_stmt_get_num_ind_hyps(const Stmt *stmt) {
-  int isols;
-
+unsigned pluto_stmt_get_num_ind_hyps(const Stmt *stmt) {
   PlutoMatrix *tprime = pluto_matrix_dup(stmt->trans);
 
   /* Ignore padding dimensions, params, and constant part */
@@ -4105,7 +4084,7 @@ int pluto_stmt_get_num_ind_hyps(const Stmt *stmt) {
     pluto_matrix_remove_col(tprime, stmt->dim_orig);
   }
 
-  isols = pluto_matrix_get_rank(tprime);
+  unsigned isols = pluto_matrix_get_rank(tprime);
   pluto_matrix_free(tprime);
 
   return isols;
@@ -4115,9 +4094,7 @@ int pluto_stmt_get_num_ind_hyps(const Stmt *stmt) {
  * Are all transformations full column-ranked?
  */
 int pluto_transformations_full_ranked(PlutoProg *prog) {
-  int i;
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     if (pluto_stmt_get_num_ind_hyps(prog->stmts[i]) <
         prog->stmts[i]->dim_orig) {
       return 0;
@@ -4379,7 +4356,7 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
     stmt->id = t;
     stmt->type = ORIG;
 
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       stmt->is_orig_loop[j] = true;
     }
 
@@ -4388,7 +4365,7 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
 
     /* Store the iterator names*/
     isl_space *dspace = isl_set_get_space(pstmt->domain);
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       stmt->iterators[j] =
           strdup(isl_space_get_dim_name(dspace, isl_dim_set, j));
     }
@@ -4861,14 +4838,12 @@ osl_relation_p get_identity_schedule(int dim, int npar) {
  * Return clone of a statement
  */
 Stmt *pluto_stmt_dup(const Stmt *stmt) {
-  int i;
-
   Stmt *nstmt = pluto_stmt_alloc(stmt->dim, stmt->domain, stmt->trans);
 
   nstmt->dim_orig = stmt->dim_orig;
   nstmt->type = stmt->type;
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     nstmt->iterators[i] = strdup(stmt->iterators[i]);
     nstmt->is_orig_loop[i] = stmt->is_orig_loop[i];
   }
@@ -4882,11 +4857,11 @@ Stmt *pluto_stmt_dup(const Stmt *stmt) {
   nstmt->writes =
       (PlutoAccess **)malloc(nstmt->nwrites * sizeof(PlutoAccess *));
 
-  for (i = 0; i < stmt->nreads; i++) {
+  for (int i = 0; i < stmt->nreads; i++) {
     nstmt->reads[i] = pluto_access_dup(stmt->reads[i]);
   }
 
-  for (i = 0; i < stmt->nwrites; i++) {
+  for (int i = 0; i < stmt->nwrites; i++) {
     nstmt->writes[i] = pluto_access_dup(stmt->reads[i]);
   }
 
@@ -4926,7 +4901,7 @@ void pluto_remove_stmt(PlutoProg *prog, int stmt_id) {
       (Stmt **)realloc(prog->stmts, ((prog->nstmts) * sizeof(Stmt *)));
 
   for (i = 0; i < prog->nstmts; i++) {
-    prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+    prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 }
 
