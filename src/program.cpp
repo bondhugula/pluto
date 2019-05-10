@@ -2169,13 +2169,12 @@ osl_names_p get_scop_names(osl_scop_p scop) {
 //
 //  The RAR deps are only computed if options->rar is set.
 static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
-                             isl_union_map *schedule, isl_space *space,
+                             isl_union_map *schedule,
+                             __isl_take isl_union_map *empty,
                              isl_union_map **dep_raw, isl_union_map **dep_war,
                              isl_union_map **dep_waw, isl_union_map **dep_rar,
                              isl_union_map **trans_dep_war,
                              isl_union_map **trans_dep_waw) {
-  isl_union_map *empty = isl_union_map_empty(isl_space_copy(space));
-
   if (options->lastwriter) {
     // Compute RAW dependences with last writer (no transitive dependences).
     isl_union_map_compute_flow(
@@ -2254,9 +2253,6 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
   isl_space *space;
   isl_space *param_space;
   isl_set *context;
-  isl_union_map *writes;
-  isl_union_map *reads;
-  isl_union_map *schedule;
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar, *trans_dep_war;
   isl_union_map *trans_dep_waw;
   osl_statement_p stmt;
@@ -2282,9 +2278,10 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
 
   if (!options->rar)
     dep_rar = isl_union_map_empty(isl_space_copy(space));
-  writes = isl_union_map_empty(isl_space_copy(space));
-  reads = isl_union_map_empty(isl_space_copy(space));
-  schedule = isl_union_map_empty(space);
+  isl_union_map *writes = isl_union_map_empty(isl_space_copy(space));
+  isl_union_map *reads = isl_union_map_empty(isl_space_copy(space));
+  isl_union_map *schedule = isl_union_map_empty(isl_space_copy(space));
+  isl_union_map *empty = isl_union_map_empty(space);
 
   if (!options->isldepaccesswise) {
     /* Leads to fewer dependences. Each dependence may not have a unique
@@ -2447,7 +2444,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     }
   }
 
-  compute_deps_isl(reads, writes, schedule, space, &dep_raw, &dep_war, &dep_waw,
+  compute_deps_isl(reads, writes, schedule, empty, &dep_raw, &dep_war, &dep_waw,
                    &dep_rar, &trans_dep_war, &trans_dep_waw);
 
   prog->ndeps = 0;
@@ -4160,7 +4157,6 @@ static void compute_deps_pet(struct pet_scop *pscop,
   reads = isl_union_map_copy(empty);
   writes = isl_union_map_copy(empty);
   schedule = isl_union_map_copy(empty);
-  isl_union_map_free(empty);
 
   isl_union_map *schedules = isl_schedule_get_map(pscop->schedule);
 
@@ -4192,11 +4188,10 @@ static void compute_deps_pet(struct pet_scop *pscop,
     isl_union_map_free(lwrites);
   }
   isl_union_map_free(schedules);
-
-  compute_deps_isl(reads, writes, schedule, space, &dep_raw, &dep_war, &dep_waw,
-                   &dep_rar, &trans_dep_war, &trans_dep_waw);
-
   isl_space_free(space);
+
+  compute_deps_isl(reads, writes, schedule, empty, &dep_raw, &dep_war, &dep_waw,
+                   &dep_rar, &trans_dep_war, &trans_dep_waw);
 
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
