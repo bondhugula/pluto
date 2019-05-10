@@ -76,12 +76,10 @@ fi
 # put the original skeleton around the transformed code
 @SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
-
-if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
-    indent -kr -br -ce -l125 $OUTFILE
+if [ "$INDENT" == 1 ] && [ -x /usr/bin/clang-format ]; then
+    clang-format --style=LLVM -i $OUTFILE
 fi
 }
-
 
 run "$*"
 WORK=1
