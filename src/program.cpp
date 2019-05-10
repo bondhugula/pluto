@@ -4274,8 +4274,10 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
 }
 
 /* Read statement info from pet structures (nvar: max domain dim) */
-static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
-                                 isl_map **stmt_wise_schedules, int *nstmts) {
+static Stmt **pet_to_pluto_stmts(
+    struct pet_scop *pscop, isl_map **stmt_wise_schedules,
+    const std::unordered_map<struct pet_stmt *, char *> &stmtTextMap,
+    int *nstmts) {
   int i, j, s, t;
   Stmt **stmts;
   int nvar, npar, max_sched_rows;
@@ -4327,10 +4329,8 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
   max_sched_rows = 0;
 
   for (s = 0, t = 0; s < pscop->n_stmt; s++) {
-    if (dead[s]) {
-      free(pscop->stmts[s]->text);
+    if (dead[s])
       continue;
-    }
     struct pet_stmt *pstmt = pscop->stmts[s];
     PlutoConstraints *domain = isl_set_to_pluto_constraints(pstmt->domain);
 
@@ -4375,20 +4375,15 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop,
                                       stmt->dim);
     pluto_constraints_set_names_range(stmt->domain, params, stmt->dim, 0, npar);
 
-    /*
-     * Copy the body of the statement found by print_user. Remove
-     * the newline character at the end to make it compatible to ClooG
-     * format.
-     */
-    if (pstmt->text) {
-      int len = (strlen(pstmt->text));
-      stmt->text = (char *)malloc(len + 1);
-      strcpy(stmt->text, pstmt->text);
-      stmt->text[len - 1] = '\0';
-      free(pstmt->text);
-      pstmt->text = NULL;
-    } else
+    // Copy the body of the statement found by print_user.
+    const auto &entry = stmtTextMap.find(pstmt);
+    if (entry != stmtTextMap.end()) {
+      stmt->text = strdup(entry->second);
+      // The string from the ISL printer has a trailing new line; wipe that out.
+      stmt->text[strlen(stmt->text) - 1] = '\0';
+    } else {
       stmt->text = strdup("/* kill statement */");
+    }
 
     isl_space *space = isl_set_get_space(pscop->context);
     isl_union_map *reads = pet_stmt_collect_accesses(
@@ -4563,9 +4558,9 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
   return isl_ast_node_set_annotation(node, id);
 }
 
-// Will be completed in the next commit.
 struct print_stmt_user_info {
   struct pet_scop *scop;
+  // A map to hold source text corresponding to the statement.
   std::unordered_map<struct pet_stmt *, char *> *stmtTextMap;
 };
 
@@ -4588,6 +4583,7 @@ print_stmt(__isl_take isl_printer *p,
   struct pet_stmt *pstmt;
   struct print_stmt_user_info *info = (struct print_stmt_user_info *)user;
   struct pet_scop *scop = info->scop;
+  auto *stmtTextMap = info->stmtTextMap;
 
   /* Printer just for the stmt text */
   isl_printer *p_l;
@@ -4606,9 +4602,7 @@ print_stmt(__isl_take isl_printer *p,
    * AST */
   p = pet_stmt_print_body(pstmt, p, ref2expr);
   p_l = pet_stmt_print_body(pstmt, p_l, ref2expr);
-  assert(pstmt->text == NULL);
-  pstmt->text = isl_printer_get_str(p_l);
-  // (*stmtTextMap)[pstmt] = isl_printer_get_str(p_l);
+  (*stmtTextMap)[pstmt] = isl_printer_get_str(p_l);
   isl_printer_free(p_l);
 
   isl_ast_print_options_free(print_options);
@@ -4650,10 +4644,10 @@ collect_non_kill_domains(struct pet_scop *scop,
   return domain;
 }
 
-/* Code generate the scop 'scop' and print the corresponding C code to 'p'.
- */
-static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
-                                                   __isl_take isl_printer *p) {
+// Code generate the scop 'scop' and print the corresponding C code to 'p'.
+static __isl_give isl_printer *construct_stmt_body(
+    struct pet_scop *scop, __isl_take isl_printer *p,
+    std::unordered_map<struct pet_stmt *, char *> *stmtTextMap) {
   isl_ctx *ctx = isl_printer_get_ctx(p);
   isl_union_set *domain_set;
   isl_ast_build *build;
@@ -4672,8 +4666,7 @@ static __isl_give isl_printer *construct_stmt_body(struct pet_scop *scop,
 
   print_options = isl_ast_print_options_alloc(ctx);
 
-  std::unordered_map<struct pet_stmt *, char *> stmtTextMap;
-  struct print_stmt_user_info info = {scop, &stmtTextMap};
+  struct print_stmt_user_info info = {scop, stmtTextMap};
   print_options =
       isl_ast_print_options_set_print_user(print_options, &print_stmt, &info);
   p = isl_ast_node_print(tree, p, print_options);
@@ -4764,10 +4757,17 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   }
 
   isl_printer *p = isl_printer_to_str(ctx);
-  p = construct_stmt_body(pscop, p);
+  // A map to hold source text corresponding to statements.
+  std::unordered_map<struct pet_stmt *, char *> stmtTextMap;
+  p = construct_stmt_body(pscop, p, &stmtTextMap);
   isl_printer_free(p);
 
-  prog->stmts = pet_to_pluto_stmts(pscop, NULL, &prog->nstmts);
+  prog->stmts = pet_to_pluto_stmts(pscop, NULL, stmtTextMap, &prog->nstmts);
+
+  // Free the source strings.
+  for (const auto &entry : stmtTextMap) {
+    free(entry.second);
+  }
 
   /* Compute dependences */
   compute_deps_pet(pscop, NULL, prog, options);
