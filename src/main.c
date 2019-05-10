@@ -558,6 +558,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (!scop || !scop->statement) {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
+        osl_scop_free(scop);
         pluto_options_free(options);
         return 8;
       }
