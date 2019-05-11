@@ -6716,7 +6716,7 @@ void init_copy_level(PlutoProg *prog, Ploop **loops, int nloops,
 
 void pluto_dynschedule_common_codegen(PlutoProg *prog, FILE *sigmafp,
                                       FILE *outfp, FILE *headerfp) {
-  int nloops = 0;
+  unsigned nloops = 0;
   Ploop **loops = pluto_get_dom_parallel_loops(prog, &nloops);
   /* Loops should be in the increasing order of their depths */
   qsort(loops, nloops, sizeof(Ploop *), pluto_loop_compar);
@@ -9295,10 +9295,7 @@ int pluto_sharedmem_data_dist_codegen(PlutoProg *prog, Ploop **loops,
 int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp,
                                   FILE *outfp) {
 
-  int nloops = 0;
-  int l;
-
-  // Stmt ****ref_count_update_stmts;
+  unsigned nloops = 0;
 
   Ploop **loops = pluto_get_dom_parallel_loops(prog, &nloops);
   /* Loops should be in the increasing order of their depths */
@@ -9316,7 +9313,7 @@ int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp,
 
   pluto_dist_gen_intial_code(nloops, loops, copy_level, prog, headerfp);
 
-  for (l = 0; l < nloops; l++) {
+  for (unsigned l = 0; l < nloops; l++) {
     Ploop *loop = loops[l];
 
     gen_data_tile_alloc_cloog_code(prog, l, loop->stmts, loop->nstmts,
@@ -9434,7 +9431,7 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
 
   pluto_add_distmem_decls(prog, headerfp);
 
-  int nbands = 0;
+  unsigned nbands = 0;
   int *comm_place_levels;
   pluto_get_dom_parallel_bands(prog, &nbands, &comm_place_levels);
 

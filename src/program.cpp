@@ -960,8 +960,6 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
  * Note: dep1's target statement should be same as dep2's source
  */
 Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog) {
-  int i;
-
   assert(dep1->dest == dep2->src);
 
   Stmt *s1 = prog->stmts[dep1->src];
@@ -971,10 +969,10 @@ Dep *pluto_dep_compose(Dep *dep1, Dep *dep2, PlutoProg *prog) {
   PlutoConstraints *d1 = pluto_constraints_dup(dep1->dpolytope);
   PlutoConstraints *d2 = pluto_constraints_dup(dep2->dpolytope);
 
-  for (i = 0; i < s3->dim; i++) {
+  for (unsigned i = 0; i < s3->dim; i++) {
     pluto_constraints_add_dim(d1, s1->dim + s2->dim, NULL);
   }
-  for (i = 0; i < s1->dim; i++) {
+  for (unsigned i = 0; i < s1->dim; i++) {
     pluto_constraints_add_dim(d2, 0, NULL);
   }
 
@@ -3477,11 +3475,10 @@ Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain,
 }
 
 /* Statement that has the same transformed domain up to 'level' */
-Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level, const char *text,
+Stmt *create_helper_stmt(const Stmt *anchor_stmt, unsigned level, const char *text,
                          PlutoStmtType type, int ploop_num) {
-  int i, npar;
+  int npar;
 
-  assert(level >= 0);
   assert(level <= anchor_stmt->trans->nrows);
 
   PlutoConstraints *newdom = pluto_get_new_domain(anchor_stmt);
@@ -3495,8 +3492,8 @@ Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level, const char *text,
   PlutoMatrix *newtrans = pluto_matrix_alloc(level, newdom->ncols);
 
   char **iterators = (char **)malloc(sizeof(char *) * level);
-  for (i = 0; i < level; i++) {
-    char *tmpstr = malloc(5);
+  for (unsigned i = 0; i < level; i++) {
+    char *tmpstr = (char *)malloc(5);
     sprintf(tmpstr, "t%d", i + 1);
     iterators[i] = tmpstr;
   }
@@ -3508,11 +3505,11 @@ Stmt *create_helper_stmt(const Stmt *anchor_stmt, int level, const char *text,
   newstmt->ploop_id = ploop_num;
 
   pluto_matrix_set(newstmt->trans, 0);
-  for (i = 0; i < newstmt->trans->nrows; i++) {
+  for (unsigned i = 0; i < newstmt->trans->nrows; i++) {
     newstmt->trans->val[i][i] = 1;
   }
 
-  for (i = 0; i < level; i++) {
+  for (unsigned i = 0; i < level; i++) {
     free(iterators[i]);
   }
   free(iterators);
@@ -3844,8 +3841,8 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt) {
   if (stmt->domain->names) {
     /* Set names for the new domain */
     char **iterators = (char **)malloc(sizeof(char *) * stmt->trans->nrows);
-    for (i = 0; i < stmt->trans->nrows; i++) {
-      char *tmpstr = malloc(5);
+    for (unsigned i = 0; i < stmt->trans->nrows; i++) {
+      char *tmpstr = (char *)malloc(5);
       sprintf(tmpstr, "t%d", i + 1);
       iterators[i] = tmpstr;
     }
@@ -3857,7 +3854,7 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt) {
                                       stmt->trans->nrows, stmt->dim,
                                       stmt->domain->ncols - stmt->dim - 1);
 
-    for (i = 0; i < stmt->trans->nrows; i++) {
+    for (unsigned i = 0; i < stmt->trans->nrows; i++) {
       free(iterators[i]);
     }
     free(iterators);
@@ -4777,7 +4774,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
                               OSL_DEPENDENCE_WAW);
   if (options->lastwriter && options->distmem) {
     prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
-    for (i = 0; i < prog->ntransdeps; i++) {
+    for (int i = 0; i < prog->ntransdeps; i++) {
       prog->transdeps[i] = pluto_dep_alloc();
     }
     prog->ntransdeps = 0;

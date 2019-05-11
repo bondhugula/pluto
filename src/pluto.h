@@ -718,7 +718,7 @@ int generate_declarations(PlutoProg *prog, FILE *outfp);
 int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
                          FILE *cloogfp, FILE *outfp);
 void pluto_mark_vec_stmts(FILE *cloogfp, PlutoProg *prog);
-Stmt *create_helper_stmt(const Stmt *stmt, int level, const char *text,
+Stmt *create_helper_stmt(const Stmt *stmt, unsigned level, const char *text,
                          PlutoStmtType type, int ploop_num);
 void pluto_add_given_stmt(PlutoProg *prog, Stmt *stmt);
 Stmt *pluto_create_stmt(int dim, const PlutoConstraints *domain,
@@ -865,7 +865,7 @@ void restore_data_hyperplane(Array *arr, int row);
 
 int pluto_shared_memory_data_dist(PlutoProg *prog, FILE *headerfp, FILE *outfp);
 int pluto_sharedmem_data_dist_codegen(PlutoProg *prog, Ploop **loops,
-                                      int nloops, int copy_level[nloops],
+                                      int nloops, int *copy_level,
                                       FILE *outfp);
 
 int pluto_dist_get_innermost_loop(const Stmt *stmt, const PlutoProg *prog);
@@ -899,11 +899,11 @@ void generate_sigma_common(struct stmt_access_pair **wacc_stmts, int naccs,
                            int *copy_level, PlutoProg *prog, int loop_num,
                            int *pi_mappings, int isRemoteOnly, int *broadcast,
                            int *num_dest_loops,
-                           PlutoConstraints *tdpoly_list[prog->ndeps],
-                           int dep_loop_num_list[prog->ndeps],
-                           PlutoMatrix *trans[prog->ndeps],
-                           char **iters[prog->ndeps],
-                           char *indices[prog->ndeps]);
+                           PlutoConstraints **tdpoly_list,
+                           int *dep_loop_num_list,
+                           PlutoMatrix **trans,
+                           char ***iters,
+                           char **indices);
 
 int pluto_dist_read_tile_sizes(int *tile_sizes, int num_tile_dims);
 
