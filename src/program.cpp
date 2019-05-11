@@ -4229,18 +4229,17 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
     }
     dead[s] = 1;
     isl_space *space = isl_set_get_space(pscop->context);
-    isl_union_map *writes = pet_stmt_collect_accesses(
-        pstmt, pet_expr_access_killed, 0, isl_space_copy(space));
+    isl_union_map *writes_s = pet_stmt_collect_accesses(
+        pstmt, pet_expr_access_killed, 0, space);
 
-    if (isl_union_map_n_map(writes) != 1) {
-      isl_union_map_free(writes);
+    if (isl_union_map_n_map(writes_s) != 1) {
+      isl_union_map_free(writes_s);
       continue;
     }
 
-    isl_map *write_s = isl_map_from_union_map(writes);
+    isl_map *write_s = isl_map_from_union_map(writes_s);
     isl_space *acc_space_s = isl_map_get_space(write_s);
     const char *killed_name = isl_space_get_tuple_name(acc_space_s, isl_dim_out);
-    isl_space_free(acc_space_s);
     isl_map_free(write_s);
 
     // Mark any other writes to the same variable name dead.
@@ -4265,6 +4264,7 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
       isl_space_free(acc_space);
       isl_map_free(write);
     }
+    isl_space_free(acc_space_s);
   }
 }
 
