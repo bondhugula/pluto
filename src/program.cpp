@@ -2926,7 +2926,7 @@ void pluto_stmt_add_dim(Stmt *stmt, unsigned pos, int time_pos,
   stmt->dim++;
   stmt->iterators =
       (char **)realloc(stmt->iterators, stmt->dim * sizeof(char *));
-  for (i = (int)stmt->dim - 2; i >= (int)pos; i--) {
+  for (i = stmt->dim - 2; i >= (int)pos; i--) {
     stmt->iterators[i + 1] = stmt->iterators[i];
   }
   stmt->iterators[pos] = strdup(iter);
@@ -2950,7 +2950,7 @@ void pluto_stmt_add_dim(Stmt *stmt, unsigned pos, int time_pos,
   /* Update is_orig_loop */
   stmt->is_orig_loop =
       (bool *)realloc(stmt->is_orig_loop, sizeof(bool) * stmt->dim);
-  for (i = (int)stmt->dim - 2; i >= (int)pos; i--) {
+  for (i = stmt->dim - 2; i >= (int)pos; i--) {
     stmt->is_orig_loop[i + 1] = stmt->is_orig_loop[i];
   }
   stmt->is_orig_loop[pos] = true;
@@ -3063,7 +3063,7 @@ void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, unsigned pos) {
 
   stmt->hyp_types = (PlutoHypType *)realloc(
       stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
-  for (int i = (int)stmt->trans->nrows - 2; i >= (int)pos; i--) {
+  for (int i = stmt->trans->nrows - 2; i >= (int)pos; i--) {
     stmt->hyp_types[i + 1] = stmt->hyp_types[i];
   }
   stmt->hyp_types[pos] = type;
@@ -3852,7 +3852,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   }
 
   /* Solve upper triangular system now */
-  for (i = (int)stmt->dim - 1; i >= 0; i--) {
+  for (i = stmt->dim - 1; i >= 0; i--) {
     assert(remap->val[i][i] != 0);
     for (int k = i - 1; k >= 0; k--) {
       if (remap->val[k][i] == 0)
@@ -3867,7 +3867,7 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
   }
 
   assert(remap->nrows >= stmt->dim);
-  for (i = (int)remap->nrows - 1; i >= (int)stmt->dim; i--) {
+  for (i = remap->nrows - 1; i >= (int)stmt->dim; i--) {
     pluto_matrix_remove_row(remap, remap->nrows - 1);
   }
 

@@ -151,14 +151,14 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, unsigned nrows,
   free(cst->is_eq);
 
   if (cst->names) {
-    for (int i = (int)ncols - 1; i < (int)cst->ncols - 1; i++) {
+    for (int i = ncols - 1; i < (int)cst->ncols - 1; i++) {
       free(cst->names[i]);
     }
   }
 
   if (cst->names) {
     cst->names = (char **)realloc(cst->names, (ncols - 1) * sizeof(char *));
-    for (int i = (int)cst->ncols - 1; i < (int)ncols - 1; i++) {
+    for (int i = cst->ncols - 1; i < (int)ncols - 1; i++) {
       cst->names[i] = NULL;
     }
   }
