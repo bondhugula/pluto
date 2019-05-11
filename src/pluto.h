@@ -681,7 +681,6 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
-void pluto_detect_scalar_dimensions(PlutoProg *prog);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 

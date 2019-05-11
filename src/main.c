@@ -735,11 +735,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       return 10;
     }
 
-    if (options->moredebug) {
-      printf("After scalar dimension detection (final transformations)\n");
-      pluto_transformations_pretty_print(prog);
-    }
-
     /* Generate .cloog file */
     pluto_gen_cloog_file(cloogfp, prog);
     /* Add the <irregular> tag from clan, if any */
@@ -750,10 +745,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
     }
     rewind(cloogfp);
-
-    /* Very important: Dont change the order of calls to print_dynsched_file
-     * between pluto_gen_cloog_file() and pluto_*_codegen()
-     */
 
     /* Generate code using Cloog and add necessary stuff before/after code */
     t_start = rtclock();
