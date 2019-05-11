@@ -1,5 +1,5 @@
 // Hyperplane i+j is parallel.
-// CHECK: T(S2): (i+j, i, 1)
+// CHECK: T(S2): (1, i+j, i)
 #pragma scop
 for (i = 0; i < 2 * n; i++) {
   c[i] = 0;

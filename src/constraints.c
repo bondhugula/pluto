@@ -98,8 +98,6 @@ void pluto_constraints_zero(PlutoConstraints *cst) {
 }
 
 void pluto_constraints_free(PlutoConstraints *cst) {
-  int i;
-
   if (cst == NULL)
     return;
 
@@ -107,7 +105,7 @@ void pluto_constraints_free(PlutoConstraints *cst) {
   free(cst->val);
   free(cst->is_eq);
   if (cst->names) {
-    for (i = 0; i < cst->ncols - 1; i++) {
+    for (int i = 0; i < (int)cst->ncols - 1; i++) {
       free(cst->names[i]);
     }
     free(cst->names);
@@ -133,21 +131,16 @@ void pluto_constraints_resize(PlutoConstraints *cst, int nrows, int ncols) {
  * Not just change the allocated size, but also increase/reduce the number
  * of constraints/dimensions to match nrows and ncols
  */
-void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows,
-                                     int ncols) {
-  int i, j;
-  PlutoConstraints *newCst;
-
-  assert(nrows >= 0 && ncols >= 0);
-
-  newCst = pluto_constraints_alloc(PLMAX(nrows, cst->alloc_nrows),
-                                   PLMAX(ncols, cst->alloc_ncols));
+void pluto_constraints_resize_single(PlutoConstraints *cst, unsigned nrows,
+                                     unsigned ncols) {
+  PlutoConstraints *newCst = pluto_constraints_alloc(
+      PLMAX(nrows, cst->alloc_nrows), PLMAX(ncols, cst->alloc_ncols));
 
   newCst->nrows = nrows;
   newCst->ncols = ncols;
 
-  for (i = 0; i < PLMIN(newCst->nrows, cst->nrows); i++) {
-    for (j = 0; j < PLMIN(newCst->ncols, cst->ncols); j++) {
+  for (unsigned i = 0; i < PLMIN(newCst->nrows, cst->nrows); i++) {
+    for (unsigned j = 0; j < PLMIN(newCst->ncols, cst->ncols); j++) {
       newCst->val[i][j] = cst->val[i][j];
     }
     newCst->is_eq[i] = cst->is_eq[i];
@@ -158,14 +151,14 @@ void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows,
   free(cst->is_eq);
 
   if (cst->names) {
-    for (i = ncols - 1; i < cst->ncols - 1; i++) {
+    for (int i = (int)ncols - 1; i < (int)cst->ncols - 1; i++) {
       free(cst->names[i]);
     }
   }
 
   if (cst->names) {
     cst->names = (char **)realloc(cst->names, (ncols - 1) * sizeof(char *));
-    for (i = cst->ncols - 1; i < ncols - 1; i++) {
+    for (int i = (int)cst->ncols - 1; i < (int)ncols - 1; i++) {
       cst->names[i] = NULL;
     }
   }
@@ -263,7 +256,7 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom,
   /* First idom->ncols equalities */
   for (i = 0; i < idom->ncols; i++) {
     farkas->is_eq[i] = 1;
-    for (j = 0; j < phi->ncols - 1; j++) {
+    for (j = 0; j < (int)phi->ncols - 1; j++) {
       farkas->val[i][j] = phi->val[i][j];
     }
     for (j = 0; j < idom->nrows; j++) {
@@ -310,9 +303,8 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1,
     cst1->nrows = cst1->nrows + cst2->nrows;
   }
 
-  int i;
-  for (i = 0; i < cst2->nrows; i++) {
-    memcpy(cst1->val[cst1->nrows - cst2->nrows + i], cst2->val[i],
+  for (int i = 0; i < cst2->nrows; i++) {
+    memcpy(cst1->val[(int)cst1->nrows - (int)cst2->nrows + i], cst2->val[i],
            cst1->ncols * sizeof(int64));
   }
 
@@ -394,7 +386,6 @@ static int row_compar(const void *e1, const void *e2) {
  * will decrease
  */
 void pluto_constraints_simplify(PlutoConstraints *const cst) {
-  int i, j, p;
   int64 _gcd;
 
   if (cst->nrows == 0) {
@@ -408,7 +399,8 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
   bzero(is_redun, cst->nrows * sizeof(int));
 
   /* Normalize cst - will help find redundancy */
-  for (i = 0; i < cst->nrows; i++) {
+  for (unsigned i = 0; i < cst->nrows; i++) {
+    unsigned j;
     for (j = 0; j < cst->ncols; j++) {
       if (cst->val[i][j] != 0)
         break;
@@ -429,7 +421,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
 
   struct row_info **rows;
   rows = (struct row_info **)malloc(cst->nrows * sizeof(struct row_info *));
-  for (i = 0; i < cst->nrows; i++) {
+  for (unsigned i = 0; i < cst->nrows; i++) {
     rows[i] = (struct row_info *)malloc(sizeof(struct row_info));
     rows[i]->row = cst->val[i];
     rows[i]->is_eq = cst->is_eq[i];
@@ -437,7 +429,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
   }
   qsort(rows, cst->nrows, sizeof(struct row_info *), row_compar);
 
-  for (i = 0; i < cst->nrows; i++) {
+  for (unsigned i = 0; i < cst->nrows; i++) {
     cst->val[i] = rows[i]->row;
     cst->is_eq[i] = rows[i]->is_eq;
     free(rows[i]);
@@ -445,7 +437,8 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
   free(rows);
 
   is_redun[0] = 0;
-  for (i = 1; i < cst->nrows; i++) {
+  for (unsigned i = 1; i < cst->nrows; i++) {
+    unsigned j;
     for (j = 0; j < cst->ncols; j++) {
       if (cst->val[i][j] != 0)
         break;
@@ -469,14 +462,9 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
       is_redun[i] = 0;
   }
 
-  p = 0;
-  for (i = 0; i < cst->nrows; i++) {
+  unsigned p = 0;
+  for (unsigned i = 0; i < cst->nrows; i++) {
     if (!is_redun[i]) {
-      /*
-      for (j=0; j<cst->ncols; j++)    {
-          tmpcst->val[p][j] = cst->val[i][j];
-      }
-      */
       memcpy(tmpcst->val[p], cst->val[i], cst->ncols * sizeof(int64));
       tmpcst->is_eq[p] = cst->is_eq[i];
       p++;
@@ -504,16 +492,15 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
  * cst will be resized if necessary
  */
 void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
-  int i, j, k, l, p, q;
   int64 lb, ub, nb;
   int *bound;
 
   // At least one variable
   assert(cst->ncols >= 2);
   assert(pos >= 0);
-  assert(pos <= cst->ncols - 2);
+  assert(pos <= (int)cst->ncols - 2);
 
-  for (i = 0; i < cst->nrows; i++) {
+  for (unsigned i = 0; i < cst->nrows; i++) {
     if (cst->is_eq[i]) {
       PlutoConstraints *tmpcst =
           pluto_constraints_to_pure_inequalities_single(cst);
@@ -525,6 +512,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
 
   PlutoConstraints *newcst;
 
+  unsigned i;
   for (i = 0; i < cst->nrows; i++) {
     if (cst->val[i][pos] != 0)
       break;
@@ -541,7 +529,7 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
     nb = 0;
 
     /* Variable does appear */
-    for (j = 0; j < cst->nrows; j++) {
+    for (unsigned j = 0; j < cst->nrows; j++) {
       if (cst->val[j][pos] == 0) {
         bound[j] = NB;
         nb++;
@@ -559,13 +547,13 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
     pluto_constraints_zero(newcst);
     newcst->nrows = 0;
 
-    p = 0;
-    for (j = 0; j < cst->nrows; j++) {
+    unsigned p = 0;
+    for (unsigned j = 0; j < cst->nrows; j++) {
       if (bound[j] == UB) {
-        for (k = 0; k < cst->nrows; k++) {
+        for (unsigned k = 0; k < cst->nrows; k++) {
           if (bound[k] == LB) {
-            q = 0;
-            for (l = 0; l < cst->ncols; l++) {
+            unsigned q = 0;
+            for (unsigned l = 0; l < cst->ncols; l++) {
               if (l != pos) {
                 newcst->val[p][q] =
                     cst->val[j][l] * (lcm(cst->val[k][pos], -cst->val[j][pos]) /
@@ -579,8 +567,8 @@ void fourier_motzkin_eliminate(PlutoConstraints *cst, int pos) {
           }
         }
       } else if (bound[j] == NB) {
-        q = 0;
-        for (l = 0; l < cst->ncols; l++) {
+        unsigned q = 0;
+        for (unsigned l = 0; l < cst->ncols; l++) {
           if (l != pos) {
             newcst->val[p][q] = cst->val[j][l];
             q++;
