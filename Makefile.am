@@ -59,7 +59,7 @@ test_libpluto: src/test_libpluto.c
 
 test: PHONY
 	
-PHONY: polycc src/pluto
+PHONY: polycc
 	./test.sh
 
 test-alt: polycc src/pluto
