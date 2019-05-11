@@ -37,7 +37,7 @@ void generate_pi(FILE *outfp, FILE *headerfp, int outer_dist_loop_level,
 
   assert(inner_dist_loop_level >= 0);
 
-  int j, num_inner_loops = 0;
+  unsigned j, num_inner_loops = 0;
   Ploop **inner_loops = NULL;
   if (!options->dynschedule) {
     inner_loops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth,
@@ -466,7 +466,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts, int naccs,
     // printf("Compute sigma\n");
 
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(sigma, param, sigma->npar);
       pluto_prog_add_param(is_receiver, param, is_receiver->npar);
@@ -486,7 +486,7 @@ void generate_sigma_dep_split(struct stmt_access_pair **wacc_stmts, int naccs,
 
     if (options->fop_unicast_runtime && !broadcast_of_partition[partition_id]) {
       for (i = 0; i < src_copy_level; i++) {
-        char param[6];
+        char param[13];
         sprintf(param, "ts%d", i + 1);
         pluto_prog_add_param(sigma_check, param, sigma_check->npar);
       }
@@ -861,15 +861,15 @@ void generate_sigma_common(struct stmt_access_pair **wacc_stmts, int naccs,
       IF_MORE_DEBUG(printf("Tile space dep poly (dest, src, npar, 1)\n"););
       IF_MORE_DEBUG(pluto_constraints_print(stdout, tdpoly););
 
-      iters[i] = malloc(dest_copy_level * sizeof(char *));
-      indices[i] = malloc(512);
+      iters[i] = (char **)malloc(dest_copy_level * sizeof(char *));
+      indices[i] = (char *)malloc(512);
       strcpy(indices[i], "");
 
       for (j = 0; j < dest_copy_level + prog->npar; j++) {
         if (j >= 1)
           sprintf(indices[i] + strlen(indices[i]), ", ");
         if (j <= dest_copy_level - 1) {
-          iters[i][j] = malloc(5);
+          iters[i][j] = (char *)malloc(13);
           sprintf(iters[i][j], "d%d", j + 1);
           sprintf(indices[i] + strlen(indices[i]), "%s", iters[i][j]);
         } else
@@ -971,7 +971,7 @@ void generate_tau_common(struct stmt_access_pair **racc_stmts, int naccs,
       if (j >= 1)
         sprintf(indices[i] + strlen(indices[i]), ", ");
       if (j <= src_copy_level - 1) {
-        iters[i][j] = malloc(5);
+        iters[i][j] = (char *)malloc(13);
         sprintf(iters[i][j], "d%d", j + 1);
         sprintf(indices[i] + strlen(indices[i]), "%s", iters[i][j]);
       } else
@@ -1248,7 +1248,7 @@ void generate_incoming_common(Stmt **loop_stmts, int nstmts, int *copy_level,
       if (j >= 1)
         sprintf(indices[i] + strlen(indices[i]), ", ");
       if (j <= src_copy_level - 1) {
-        iters[i][j] = malloc(5);
+        iters[i][j] = (char *)malloc(13);
         sprintf(iters[i][j], "d%d", j + 1);
         sprintf(indices[i] + strlen(indices[i]), "%s", iters[i][j]);
       } else
@@ -1275,7 +1275,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
   if (options->distmem) {
     is_receiver = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(is_receiver, param, is_receiver->npar);
     }
@@ -1285,7 +1285,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
 
     count_remote_dep_tasks = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(count_remote_dep_tasks, param,
                            count_remote_dep_tasks->npar);
@@ -1297,7 +1297,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
 
     remote_update_dep_tasks = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[14];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(remote_update_dep_tasks, param,
                            remote_update_dep_tasks->npar);
@@ -1313,7 +1313,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
   if (options->dynschedule) {
     count_local_dep_tasks = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(count_local_dep_tasks, param,
                            count_local_dep_tasks->npar);
@@ -1325,7 +1325,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
 
     local_update_dep_tasks = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(local_update_dep_tasks, param,
                            local_update_dep_tasks->npar);
@@ -1340,7 +1340,7 @@ void generate_outgoing(Stmt **loop_stmts, int nstmts, int *copy_level,
   if (options->dynschedule_graph) {
     add_outgoing_edges = pluto_prog_alloc();
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(add_outgoing_edges, param, add_outgoing_edges->npar);
     }
@@ -1860,7 +1860,7 @@ void generate_incoming(Stmt **loop_stmts, int nstmts, int *copy_level,
   if (options->distmem) {
     count_remote_src_tasks = pluto_prog_alloc();
     for (i = 0; i < dest_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(count_remote_src_tasks, param,
                            count_remote_src_tasks->npar);
@@ -1874,7 +1874,7 @@ void generate_incoming(Stmt **loop_stmts, int nstmts, int *copy_level,
   PlutoProg *count_local_src_tasks = NULL;
   count_local_src_tasks = pluto_prog_alloc();
   for (i = 0; i < dest_copy_level; i++) {
-    char param[6];
+    char param[13];
     sprintf(param, "ts%d", i + 1);
     pluto_prog_add_param(count_local_src_tasks, param,
                          count_local_src_tasks->npar);
@@ -2089,7 +2089,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts, int naccs,
     // printf("Compute sigma\n");
 
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(sigma, param, sigma->npar);
     }
@@ -2097,12 +2097,6 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts, int naccs,
     for (i = 0; i < prog->npar; i++) {
       pluto_prog_add_param(sigma, prog->params[i], sigma->npar);
     }
-
-#if 0
-    for (i=0;i<src_copy_level; i++) {
-        pluto_prog_add_hyperplane(sigma,0,H_LOOP);
-    }
-#endif
   }
 
   PlutoProg *is_receiver = NULL;
@@ -2110,7 +2104,7 @@ void generate_sigma(struct stmt_access_pair **wacc_stmts, int naccs,
     is_receiver = pluto_prog_alloc();
 
     for (i = 0; i < src_copy_level; i++) {
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(is_receiver, param, is_receiver->npar);
     }
@@ -2387,7 +2381,7 @@ void generate_tau(struct stmt_access_pair **racc_stmts, int naccs,
   // printf("Compute tau\n");
 
   for (i = 0; i < dest_copy_level; i++) {
-    char param[6];
+    char param[13];
     sprintf(param, "ts%d", i + 1);
     pluto_prog_add_param(count_sending_tasks, param, count_sending_tasks->npar);
   }
@@ -2396,12 +2390,6 @@ void generate_tau(struct stmt_access_pair **racc_stmts, int naccs,
     pluto_prog_add_param(count_sending_tasks, prog->params[i],
                          count_sending_tasks->npar);
   }
-
-#if 0
-    for (i=0;i<src_copy_level; i++) {
-        pluto_prog_add_hyperplane(count_sending_tasks,0,H_LOOP);
-    }
-#endif
 
   int num_src_loops;
   PlutoConstraints *tdpoly_list[prog->ndeps];

@@ -706,12 +706,12 @@ PlutoConstraints *pluto_get_new_domain(const Stmt *stmt);
 
 PlutoConstraints *pluto_get_new_arr_domain(const Array *arr,
                                            PlutoConstraints *domain,
-                                           int copy_level);
+                                           unsigned copy_level);
 
 PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
                                             const PlutoConstraints *dom,
                                             const PlutoAccess *acc,
-                                            int copy_level,
+                                            unsigned copy_level,
                                             const PlutoProg *prog);
 
 int generate_declarations(PlutoProg *prog, FILE *outfp);

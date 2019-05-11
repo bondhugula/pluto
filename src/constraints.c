@@ -2042,7 +2042,7 @@ int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos,
   return retval;
 }
 
-void print_polylib_visual_sets_internal(char *str, int k,
+void print_polylib_visual_sets_internal(const char *str, int k,
                                         PlutoConstraints *cst) {
   int i, j, first = 0;
   char name[100];
@@ -2106,7 +2106,7 @@ void print_polylib_visual_sets_internal(char *str, int k,
     print_polylib_visual_sets_internal(str, k + 1, cst->next);
 }
 
-void print_polylib_visual_sets_internal_new(char *str, int k,
+void print_polylib_visual_sets_internal_new(const char *str, int k,
                                             PlutoConstraints *cst) {
 
   int i, j, first = 0;
@@ -2165,12 +2165,12 @@ void print_polylib_visual_sets_internal_new(char *str, int k,
     print_polylib_visual_sets_internal(str, k + 1, cst->next);
 }
 
-void print_polylib_visual_sets_new(char *name, PlutoConstraints *cst) {
+void print_polylib_visual_sets_new(const char *name, PlutoConstraints *cst) {
   print_polylib_visual_sets_internal_new(name, 0, cst);
   return;
 }
 
-void print_polylib_visual_sets(char *name, PlutoConstraints *cst) {
+void print_polylib_visual_sets(const char *name, PlutoConstraints *cst) {
   print_polylib_visual_sets_internal(name, 0, cst);
   return;
 }

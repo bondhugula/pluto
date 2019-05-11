@@ -289,7 +289,7 @@ char *reconstruct_access(PlutoAccess *acc) {
 
   for (i = 0; i < ndims; i++) {
     strcat(access, "[");
-    char tmp[5];
+    char tmp[13];
     sprintf(tmp, "d%d", i + 1);
     strcat(access, tmp);
     strcat(access, "]");
@@ -1235,7 +1235,7 @@ Stmt **gen_read_in_code_old(struct stmt_access_pair **racc_stmts, int num_accs,
 
   /* Add dimensions that actually scan the data space */
   for (i = 0; i < acc_nrows; i++) {
-    char iter[5];
+    char iter[13];
     sprintf(iter, "d%d", i + 1);
     pluto_stmt_add_dim(init_stmt, init_stmt->dim, init_stmt->trans->nrows, iter,
                        H_LOOP, prog);
@@ -1386,7 +1386,7 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
   char **iters;
   iters = malloc(acc_nrows * sizeof(char *));
   for (i = 0; i < acc_nrows; i++) {
-    iters[i] = malloc(5);
+    iters[i] = malloc(13);
     sprintf(iters[i], "d%d", i + 1);
   }
 
@@ -1444,7 +1444,7 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
 
   /* Add dimensions that actually scan the data space */
   for (i = 0; i < acc_nrows; i++) {
-    char iter[5];
+    char iter[13];
     sprintf(iter, "d%d", i + 1);
     pluto_stmt_add_dim(lw_copy_stmt, lw_copy_stmt->dim,
                        lw_copy_stmt->trans->nrows, iter, H_LOOP, prog);
@@ -1548,7 +1548,7 @@ Stmt **gen_write_out_code(struct stmt_access_pair **wacc_stmts, int num_accs,
 
   /* Add dimensions that actually scan the data space */
   for (i = 0; i < acc_nrows; i++) {
-    char iter[5];
+    char iter[13];
     sprintf(iter, "d%d", i + 1);
     pluto_stmt_add_dim(lw_copyback_stmt, lw_copyback_stmt->dim,
                        lw_copyback_stmt->trans->nrows, iter, H_LOOP, prog);
@@ -1731,7 +1731,7 @@ void generate_pack_or_unpack(FILE *packfp, PlutoProg *prog,
   }
 
   for (i = 0; i < src_copy_level; i++) {
-    char param[6];
+    char param[13];
     sprintf(param, "ts%d", i + 1);
     pluto_prog_add_param(pack, param, pack->npar);
   }
@@ -2328,8 +2328,7 @@ void data_tile_prog_add_parm(PlutoProg *data_tile_prog, PlutoProg *prog,
   int i;
 
   for (i = 0; i < src_copy_level; i++) {
-    char param[6];
-
+    char param[14];
     sprintf(param, "ts%d", i + 1);
     pluto_prog_add_param(data_tile_prog, param, data_tile_prog->npar);
   }
@@ -4684,7 +4683,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts,
   char **iters;
   iters = malloc(acc_nrows * sizeof(char *));
   for (i = 0; i < acc_nrows; i++) {
-    iters[i] = malloc(5);
+    iters[i] = (char *)malloc(12);
     sprintf(iters[i], "d%d", i + 1);
   }
 
@@ -4955,7 +4954,7 @@ Stmt **gen_comm_code_opt_fop(int data_id, struct stmt_access_pair **wacc_stmts,
           char **dest_iters;
           dest_iters = malloc(dest_copy_level * sizeof(char *));
           for (i = 0; i < dest_copy_level; i++) {
-            dest_iters[i] = malloc(5);
+            dest_iters[i] = malloc(13);
             sprintf(dest_iters[i], "t%d", i + src_copy_level + 1);
           }
 
@@ -5628,7 +5627,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id,
   char **iters;
   iters = malloc(acc_nrows * sizeof(char *));
   for (i = 0; i < acc_nrows; i++) {
-    iters[i] = malloc(5);
+    iters[i] = malloc(12);
     sprintf(iters[i], "d%d", i + 1);
   }
 
@@ -5912,7 +5911,7 @@ Stmt **gen_comm_code_opt_foifi(int data_id,
       char **dest_iters;
       dest_iters = malloc(dest_copy_level * sizeof(char *));
       for (i = 0; i < dest_copy_level; i++) {
-        dest_iters[i] = malloc(5);
+        dest_iters[i] = malloc(12);
         sprintf(dest_iters[i], "t%d", i + src_copy_level + 1);
       }
 
@@ -6287,7 +6286,7 @@ Stmt **gen_comm_code_opt(int data_id, struct stmt_access_pair **wacc_stmts,
   char **iters;
   iters = malloc(acc_nrows * sizeof(char *));
   for (i = 0; i < acc_nrows; i++) {
-    iters[i] = malloc(5);
+    iters[i] = (char *)malloc(12);
     sprintf(iters[i], "d%d", i + 1);
   }
 
@@ -6664,12 +6663,12 @@ void init_copy_level(PlutoProg *prog, Ploop **loops, int nloops,
       }
 #endif
       if (options->distmem) {
-        int i, num_inner_loops = 0;
+        unsigned num_inner_loops = 0;
         Ploop **inner_loops =
             pluto_get_loops_under(loops[l]->stmts, loops[l]->nstmts,
                                   loops[l]->depth, prog, &num_inner_loops);
         int is_distribution_set = 0;
-        for (i = 0; i < num_inner_loops; i++) {
+        for (unsigned i = 0; i < num_inner_loops; i++) {
           if (inner_loops[i]->depth <= inner_dist_loop_level) {
             if (!pluto_loop_is_parallel(prog, inner_loops[i])) {
               if (options->dynschedule) {
@@ -7852,7 +7851,7 @@ int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp,
 #define max(x,y)    ((x) > (y)? (x) : (y))\n\
 #define min(x,y)    ((x) < (y)? (x) : (y))\n\n");
 
-  int nloops = 0;
+  unsigned nloops = 0;
   Ploop **loops = pluto_get_dom_parallel_loops(prog, &nloops);
   /* Loops should be in the increasing order of their depths */
   qsort(loops, nloops, sizeof(Ploop *), pluto_loop_compar);
@@ -8150,7 +8149,7 @@ void gen_comm_vol_code(struct stmt_access_pair **wacc_stmts, int num_accs,
 
   char *iters[acc_nrows];
   for (i = 0; i < acc_nrows; i++) {
-    iters[i] = malloc(10);
+    iters[i] = malloc(12);
     sprintf(iters[i], "d%d", i + 1);
   }
 
@@ -8177,7 +8176,7 @@ void gen_comm_vol_code(struct stmt_access_pair **wacc_stmts, int num_accs,
     for (i = 0; i < src_copy_level; i++) {
       //			if(is_scalar_dim[loop_num][i]) continue;
 
-      char param[6];
+      char param[13];
       sprintf(param, "ts%d", i + 1);
       pluto_prog_add_param(sigma, param, sigma->npar);
     }
@@ -8185,7 +8184,7 @@ void gen_comm_vol_code(struct stmt_access_pair **wacc_stmts, int num_accs,
     for (i = 0; i < copy_level[l]; i++) {
       //			if(is_scalar_dim[l][i]) continue;
 
-      char param[6];
+      char param[13];
       sprintf(param, "td%d", i + 1);
       pluto_prog_add_param(sigma, param, sigma->npar);
     }
@@ -8299,7 +8298,7 @@ void gen_edge_wgt_func_code(struct stmt_access_pair **wacc_stmts, int naccs,
 
     //		if(is_scalar_dim[loop_num][i]) continue;
 
-    char param[6];
+    char param[13];
     sprintf(param, "ts%d", i + 1);
     pluto_prog_add_param(sigma, param, sigma->npar);
   }
@@ -9435,7 +9434,7 @@ int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
   int *comm_place_levels;
   pluto_get_dom_parallel_bands(prog, &nbands, &comm_place_levels);
 
-  int nloops = 0;
+  unsigned nloops = 0;
   Ploop **loops = pluto_get_dom_parallel_loops(prog, &nloops);
   /* Loops should be in the increasing order of their depths */
   qsort(loops, nloops, sizeof(Ploop *), pluto_loop_compar);

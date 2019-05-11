@@ -179,8 +179,8 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
                                        int dest_offset, int src_offset,
                                        int num);
 
-void print_polylib_visual_sets(char *name, PlutoConstraints *cst);
-void print_polylib_visual_sets_new(char *name, PlutoConstraints *cst);
+void print_polylib_visual_sets(const char *name, PlutoConstraints *cst);
+void print_polylib_visual_sets_new(const char *name, PlutoConstraints *cst);
 
 __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
                                                    isl_ctx *ctx);

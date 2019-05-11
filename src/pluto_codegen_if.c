@@ -416,7 +416,7 @@ char *replacestr(char *string, char *sub, char *replace) {
   while ((pos1 = strstr(pos, sub))) {
     int len = (pos1 - pos);
     strncat(result, pos, len);
-    strncat(result, replace, strlen(replace));
+    strcat(result, replace);
     pos = (pos1 + strlen(sub));
   }
   if (pos != (string + strlen(string)))
@@ -839,10 +839,10 @@ int generate_declarations(PlutoProg *prog, FILE *outfp) {
   free(prog->vec_decls);
   prog->num_decl_indices = 0;
 
-  char *suffix = malloc((options->scopnum + 1) * sizeof(char));
+  char *suffix = (char *)malloc((options->scopnum + 1) * sizeof(char));
   suffix[0] = '\0';
   for (j = 0; j < options->scopnum; j++) {
-    strncat(suffix, "_", 1);
+    strcat(suffix, "_");
   }
 
   /* Insert "dynsched" specific code
@@ -1117,7 +1117,7 @@ int pluto_omp_parallelize(PlutoProg *prog) {
   char *suffix = malloc((options->scopnum + 1) * sizeof(char));
   suffix[0] = '\0';
   for (j = 0; j < options->scopnum; j++) {
-    strncat(suffix, "_", 1);
+    strcat(suffix, "_");
   }
 
   /* IMPORTANT: Note that by the time this function is called, pipelined

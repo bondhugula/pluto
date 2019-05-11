@@ -3788,19 +3788,18 @@ void pluto_stmt_free(Stmt *stmt) {
 /* Get transformed array domain */
 PlutoConstraints *pluto_get_new_arr_domain(const Array *arr,
                                            PlutoConstraints *domain,
-                                           int copy_level) {
-  int i;
+                                           unsigned copy_level) {
   PlutoConstraints *sched;
 
   print_polylib_visual_sets("old", domain);
   PlutoConstraints *newdom = pluto_constraints_dup(domain);
-  for (i = 0; i < arr->trans_orig->nrows; i++) {
+  for (unsigned i = 0; i < arr->trans_orig->nrows; i++) {
     pluto_constraints_add_dim(newdom, copy_level, NULL);
   }
 
   sched = pluto_arr_get_schedule(arr);
 
-  for (i = 0; i < copy_level; ++i) {
+  for (unsigned i = 0; i < copy_level; ++i) {
     pluto_constraints_add_dim(sched, 0, NULL);
   }
 

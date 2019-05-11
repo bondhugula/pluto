@@ -131,10 +131,10 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   int *stmts;
   assert(root != NULL);
 
-  char *suffix = malloc((options->scopnum + 1) * sizeof(char));
+  char *suffix = (char *)malloc((options->scopnum + 1) * sizeof(char));
   suffix[0] = '\0';
   for (j = 0; j < options->scopnum; j++) {
-    strncat(suffix, "_", 1);
+    strcat(suffix, "_");
   }
 
   FILE *pidefs = NULL;
@@ -454,16 +454,16 @@ void pluto_mark_parallel_dynschedule(struct clast_stmt *root,
     pidefs = fopen("pi_defs.h", "a");
   }
 
-  char *suffix = malloc((options->scopnum + 1) * sizeof(char));
+  char *suffix = (char *)malloc((options->scopnum + 1) * sizeof(char));
   suffix[0] = '\0';
   for (j = 0; j < options->scopnum; j++) {
-    strncat(suffix, "_", 1);
+    strcat(suffix, "_");
   }
 
   /* OMP parallelize the all_tasks statements */
   j = 0;
   while (j < prog->nstmts) {
-    char iter[5];
+    char iter[12];
     int depth = 0;
     Stmt *stmt = NULL;
     for (; j < prog->nstmts; j++) {
@@ -558,10 +558,10 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
   int *stmts;
   assert(root != NULL);
 
-  char *suffix = malloc((options->scopnum + 1) * sizeof(char));
+  char *suffix = (char *)malloc((options->scopnum + 1) * sizeof(char));
   suffix[0] = '\0';
   for (j = 0; j < options->scopnum; j++) {
-    strncat(suffix, "_", 1);
+    strcat(suffix, "_");
   }
 
   Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);

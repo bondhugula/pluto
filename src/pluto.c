@@ -2294,12 +2294,12 @@ PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src,
 PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
                                             const PlutoConstraints *domain,
                                             const PlutoAccess *acc,
-                                            int copy_level,
+                                            unsigned copy_level,
                                             const PlutoProg *prog) {
   int i, k, npar, *divs;
 
   assert(acc->mat != NULL);
-  assert(copy_level >= 0 && copy_level <= stmt->trans->nrows);
+  assert(copy_level <= stmt->trans->nrows);
 
   npar = prog->npar;
 

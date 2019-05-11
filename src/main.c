@@ -877,11 +877,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       bname = basename(basec);
 
       if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-        outFileName = malloc(strlen(bname) - 2 + strlen(".pluto.c") + 1);
+        outFileName = (char *)malloc(strlen(bname) - 2 + strlen(".pluto.c") + 1);
         strncpy(outFileName, bname, strlen(bname) - 2);
         outFileName[strlen(bname) - 2] = '\0';
       } else {
-        outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+        outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
         strcpy(outFileName, bname);
       }
       strcat(outFileName, ".pluto.c");
@@ -889,15 +889,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       basec = strdup(options->out_file);
       bname = basename(basec);
 
-      outFileName = malloc(strlen(options->out_file) + 1);
+      outFileName = (char *)malloc(strlen(options->out_file) + 1);
       strcpy(outFileName, options->out_file);
     }
 
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      headerFileName = malloc(strlen(bname) - 2 + strlen(".h") + 1);
-      cloogFileName = malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
+      headerFileName = (char *)malloc(strlen(bname) - 2 + strlen(".h") + 1);
+      cloogFileName = (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
       dynschedFileName =
-          malloc(strlen(bname) - 2 + strlen(".pluto.append.c") + 1);
+          (char *)malloc(strlen(bname) - 2 + strlen(".pluto.append.c") + 1);
       strncpy(headerFileName, bname, strlen(bname) - 2);
       strncpy(cloogFileName, bname, strlen(bname) - 2);
       strncpy(dynschedFileName, bname, strlen(bname) - 2);
@@ -905,9 +905,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       cloogFileName[strlen(bname) - 2] = '\0';
       dynschedFileName[strlen(bname) - 2] = '\0';
     } else {
-      headerFileName = malloc(strlen(bname) + strlen(".h") + 1);
-      cloogFileName = malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
-      dynschedFileName = malloc(strlen(bname) + strlen(".pluto.append.c") + 1);
+      headerFileName = (char *)malloc(strlen(bname) + strlen(".h") + 1);
+      cloogFileName = (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
+      dynschedFileName = (char *)malloc(strlen(bname) + strlen(".pluto.append.c") + 1);
       strcpy(headerFileName, bname);
       strcpy(cloogFileName, bname);
       strcpy(dynschedFileName, bname);
