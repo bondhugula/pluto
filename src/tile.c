@@ -366,7 +366,7 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
   for (i = 0; i < prog->nstmts; i++) {
     curr = stmts[i]->trans->nrows;
     for (j = curr; j < max; j++) {
-      pluto_sink_transformation(stmts[i], stmts[i]->trans->nrows, prog);
+      pluto_sink_transformation(stmts[i], stmts[i]->trans->nrows);
     }
   }
 

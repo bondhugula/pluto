@@ -28,9 +28,10 @@
 #include "transforms.h"
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int i, *divs;
+  int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
-  assert(depth <= newacc->ncols - 1);
+  assert(depth <= (int)newacc->ncols - 1);
+  unsigned i;
   for (i = 0; i < newacc->nrows; i++) {
     if (newacc->val[i][depth] != 0)
       break;
@@ -43,15 +44,15 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
 
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int i, *divs;
+  int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
-  assert(depth <= newacc->ncols - 1);
+  assert(depth <= (int)newacc->ncols - 1);
 
   /* Scalars */
   if (newacc->nrows == 0)
     return 0;
 
-  for (i = 0; i < newacc->nrows - 1; i++) {
+  for (int i = 0; i < (int)newacc->nrows - 1; i++) {
     /* No spatial reuse when the func is varying at a non-innermost dim */
     if (newacc->val[i][depth] != 0) {
       pluto_matrix_free(newacc);
