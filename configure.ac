@@ -42,7 +42,7 @@ dnl Determine a C compiler to use
 AC_PROG_CC
 AC_PROG_CC_C99
 if test X$user_set_cflags != Xyes; then
-  CFLAGS="-Wall -Wextra"
+  CFLAGS="-Wall"
 fi
 
 AC_PROG_LIBTOOL
