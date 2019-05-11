@@ -180,28 +180,19 @@ static double rtclock() {
 
 int main(int argc, char *argv[]) {
   int i;
-
-  double t_start, t_c, t_d, t_t, t_all, t_start_all;
-
-  t_c = 0.0;
-
-  t_start_all = rtclock();
-
   int option;
   int option_index = 0;
-
   int nolastwriter = 0;
-
   char *srcFileName;
-
   FILE *cloogfp, *outfp;
-
   struct pet_scop *pscop;
 
   if (argc <= 1) {
     usage_message();
     return 1;
   }
+
+  double t_start_all = rtclock();
 
   options = pluto_options_alloc();
 
@@ -495,8 +486,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   osl_scop_p scop = NULL;
   char *irroption = NULL;
 
+  double t_d;
+
   /* Extract polyhedral representation from input program */
   if (options->pet) {
+    // Extract using PET.
     isl_ctx *pctx = isl_ctx_alloc_with_pet_options();
     pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
@@ -508,7 +502,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       isl_ctx_free(pctx);
       return 12;
     }
-    t_start = rtclock();
+    double t_start = rtclock();
     prog = pet_to_pluto_prog(pscop, pctx, options);
     t_d = rtclock() - t_start;
 
@@ -521,18 +515,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       fclose(srcfp);
     }
   } else {
+    // Extract polyhedral representation using Clan.
     FILE *src_fp;
-    /* Extract polyhedral representation from clan scop */
-    if (!strcmp(srcFileName, "stdin")) { // read from stdin
+    if (!strcmp(srcFileName, "stdin")) { 
+      // Read from stdin.
       src_fp = stdin;
       osl_interface_p registry = osl_interface_get_default_registry();
-      t_start = rtclock();
+      double t_start = rtclock();
       scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
       t_d = rtclock() - t_start;
-    } else { // read from regular file
-
+    } else { 
+      // Read from regular file.
       src_fp = fopen(srcFileName, "r");
-
       if (!src_fp) {
         fprintf(stderr, "pluto: error opening source file: '%s'\n",
                 srcFileName);
@@ -540,16 +534,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 6;
       }
 
-      /* Extract polyhedral representation from input program */
       clan_options_p clanOptions = clan_options_malloc();
 
       if (options->readscop) {
         osl_interface_p registry = osl_interface_get_default_registry();
-        t_start = rtclock();
+        double t_start = rtclock();
         scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
         t_d = rtclock() - t_start;
       } else {
-        t_start = rtclock();
+        double t_start = rtclock();
         scop = clan_scop_extract(src_fp, clanOptions);
         t_d = rtclock() - t_start;
       }
@@ -579,7 +572,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     irreg_ext =
         (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
-      irroption = osl_irregular_sprint(irreg_ext); // TODO: test it
+      // TODO: test it
+      irroption = osl_irregular_sprint(irreg_ext); 
     osl_irregular_free(irreg_ext);
   }
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
@@ -601,12 +595,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_iss_dep(prog);
   }
 
-  t_start = rtclock();
+  double t_start = rtclock();
   /* Auto transformation */
   if (!options->identity) {
     pluto_auto_transform(prog);
   }
-  t_t = rtclock() - t_start;
+  double t_t = rtclock() - t_start;
 
   pluto_compute_dep_directions(prog);
   pluto_compute_dep_satisfaction(prog);
@@ -662,11 +656,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_detect_mark_unrollable_loops(prog);
   }
 
+  double t_c = 0.0;
+
   if (!options->pet && !strcmp(srcFileName, "stdin")) {
     // input stdin == output stdout
     pluto_populate_scop(scop, prog, options);
     osl_scop_print(stdout, scop);
-  } else { // do the usual Pluto stuff
+  } else { 
+    // Do the usual Pluto stuff.
 
     /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
     /* Since meta info about loops is printed to be processed by scripts - if
@@ -762,8 +759,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     fclose(cloogfp);
     fclose(outfp);
   }
+  osl_scop_free(scop);
 
-  t_all = rtclock() - t_start_all;
+  double t_all = rtclock() - t_start_all;
 
   if (options->time && !options->silent) {
     printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence "
@@ -791,8 +789,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
   pluto_prog_free(prog);
   pluto_options_free(options);
-
-  osl_scop_free(scop);
 
   return 0;
 }
