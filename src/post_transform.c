@@ -19,8 +19,8 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "pluto.h"
 #include "post_transform.h"
@@ -153,58 +153,6 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
   return 0;
 }
 
-/*
- * DEPRECATED: Subsumed by intra_tile_optimize_band and not used anymore
- *
- * Vectorize first loop in band that meets criteria
-*/
-int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,
-                             PlutoProg *prog) {
-  unsigned nloops, l;
-
-  /* Band has to be the innermost band as well */
-  if (!pluto_is_band_innermost(band, num_tiling_levels))
-    return 0;
-
-  Ploop **loops;
-
-  loops = pluto_get_loops_under(
-      band->loop->stmts, band->loop->nstmts,
-      band->loop->depth + num_tiling_levels * band->width, prog, &nloops);
-
-  for (l = 0; l < nloops; l++) {
-    if (pluto_loop_is_vectorizable(loops[l], prog))
-      break;
-  }
-
-  if (l < nloops) {
-    pluto_make_innermost_loop(loops[l], prog);
-    IF_DEBUG(printf("[Pluto] Loop to be vectorized: "););
-    IF_DEBUG(pluto_loop_print(loops[l]););
-    pluto_loops_free(loops, nloops);
-    return 1;
-  }
-
-  pluto_loops_free(loops, nloops);
-  return 0;
-}
-
-/*
- * DEPRECATED: Subsumed by pluto_intra_tile_optimize and not used anymore
- */
-int pluto_pre_vectorize(PlutoProg *prog) {
-  unsigned nbands, i;
-  Band **bands;
-  bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-  int retval = 0;
-  for (i = 0; i < nbands; i++) {
-    retval |= pluto_pre_vectorize_band(bands[i], 0, prog);
-  }
-  if (retval)
-    pluto_transformations_pretty_print(prog);
-  pluto_bands_free(bands, nbands);
-  return 0;
-}
 
 /* Detect upto two loops to register tile (unroll-jam) */
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
@@ -313,23 +261,19 @@ int gen_unroll_file(PlutoProg *prog) {
  */
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
-  unsigned nloops, l, max_score;
-  Ploop *best_loop;
-
   /* Band has to be the innermost band as well */
   if (!pluto_is_band_innermost(band, num_tiled_levels)) {
     return 0;
   }
 
-  Ploop **loops;
-
-  loops = pluto_get_loops_under(
+  unsigned nloops;
+  Ploop **loops = pluto_get_loops_under(
       band->loop->stmts, band->loop->nstmts,
       band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
 
-  max_score = 0;
-  best_loop = NULL;
-  for (l = 0; l < nloops; l++) {
+  int max_score = 0;
+  Ploop *best_loop = NULL;
+  for (unsigned l = 0; l < nloops; l++) {
     int a, s, t, v, score;
     a = get_num_accesses(loops[l], prog);
     s = get_num_spatial_accesses(loops[l], prog);

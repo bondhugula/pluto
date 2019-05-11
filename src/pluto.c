@@ -19,22 +19,22 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 #include <sys/time.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "ddg.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
-#include "ddg.h"
 #include "version.h"
 
 void pluto_print_colours(int *colour, PlutoProg *prog);
@@ -52,10 +52,9 @@ int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 int pluto_diamond_tile(PlutoProg *prog);
 
 static double rtclock() {
-  struct timezone Tzp;
   struct timeval Tp;
   int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -84,8 +83,9 @@ int dep_satisfaction_update(PlutoProg *prog, int level) {
     if (!dep_is_satisfied(dep)) {
       dep->satisfied = dep_satisfaction_test(dep, prog, level);
       if (dep->satisfied) {
-        IF_MORE_DEBUG(printf(
-            "[pluto] dep_satisfaction_update: dep %d satisfied\n", i + 1););
+        IF_MORE_DEBUG(
+            printf("[pluto] dep_satisfaction_update: dep %d satisfied\n",
+                   i + 1););
         if (!IS_RAR(dep->type))
           num_new_carried++;
         dep->satisfaction_level = level;
@@ -332,9 +332,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       j += stmts[i]->dim_orig + 1;
     }
   }
-  IF_DEBUG(printf(
-      "[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d "
+                  "constraints)\n",
+                  cst->ncols - 1, cst->nrows););
 
   /* Solve the constraints using chosen solvers*/
   if (options->islsolve) {
@@ -756,8 +756,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
   int nvar = prog->nvar;
   int npar = prog->npar;
 
-  IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max "
-                           "solution(s): %d; band depth: %d\n",
+  IF_DEBUG(fprintf(stdout,
+                   "[pluto] find_permutable_hyperplanes: max "
+                   "solution(s): %d; band depth: %d\n",
                    max_sols, band_depth));
 
   assert(max_sols >= 0);
@@ -1231,7 +1232,7 @@ void normalize_domains(PlutoProg *prog) {
 
   /* Avoid the need for bounding function coefficients to take negative
    * values */
-  bool *neg = malloc(sizeof(bool) * npar);
+  bool *neg = (bool *)malloc(sizeof(bool) * npar);
   for (k = 0; k < prog->ndeps; k++) {
     Dep *dep = prog->deps[k];
     PlutoConstraints *dpoly = dep->dpolytope;
@@ -1328,8 +1329,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   pluto_constraints_free(fcst);
 
   if (!sol) {
-    IF_DEBUG(printf(
-        "[pluto] get_face_with_concurrent_start: no valid 1-d schedules \n"););
+    IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d "
+                    "schedules \n"););
     return NULL;
   }
 
@@ -1352,9 +1353,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
   for (s = 0; s < band->loop->nstmts; s++) {
     IF_DEBUG(printf("\tf(S%d) = ", band->loop->stmts[s]->id + 1););
-    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s],
-                                         nvar + npar,
-                                         band->loop->stmts[s]->domain->names););
+    IF_DEBUG(pluto_affine_function_print(
+                 stdout, conc_start_faces->val[s], nvar + npar,
+                 (const char **)band->loop->stmts[s]->domain->names););
     IF_DEBUG(printf("\n"););
   }
 
@@ -1377,8 +1378,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
     return NULL;
   }
 
-  IF_DEBUG(printf(
-      "[pluto] faces with concurrent start found for all statements\n"););
+  IF_DEBUG(
+      printf(
+          "[pluto] faces with concurrent start found for all statements\n"););
 
   return conc_start_faces;
 }
@@ -1507,8 +1509,9 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
           bestsol[npar + 1 + stmt->id * (nvar + 1) + nvar];
 
       IF_DEBUG(printf("\tcone_complement(S%d) = ", stmt->id + 1););
-      IF_DEBUG(pluto_affine_function_print(
-          stdout, cone_complement_hyps[j]->val[0], nvar, stmt->iterators););
+      IF_DEBUG(
+          pluto_affine_function_print(stdout, cone_complement_hyps[j]->val[0],
+                                      nvar, (const char **)stmt->iterators););
       IF_DEBUG(printf("\n"););
     }
     free(bestsol);
@@ -1664,8 +1667,10 @@ int pluto_auto_transform(PlutoProg *prog) {
   if (nstmts == 0)
     return 0;
 
-  PlutoMatrix **orig_trans = malloc(nstmts * sizeof(PlutoMatrix *));
-  PlutoHypType **orig_hyp_types = malloc(nstmts * sizeof(PlutoHypType *));
+  PlutoMatrix **orig_trans =
+      (PlutoMatrix **)malloc(nstmts * sizeof(PlutoMatrix *));
+  PlutoHypType **orig_hyp_types =
+      (PlutoHypType **)malloc(nstmts * sizeof(PlutoHypType *));
   int orig_num_hyperplanes = prog->num_hyperplanes;
   HyperplaneProperties *orig_hProps = prog->hProps;
 
@@ -1845,8 +1850,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       nsols = find_permutable_hyperplanes(prog, hyp_search_mode, num_sols_left,
                                           depth);
 
-      IF_DEBUG(fprintf(stdout, "[pluto] pluto_auto_transform: band level %d; "
-                               "%d hyperplane(s) found\n",
+      IF_DEBUG(fprintf(stdout,
+                       "[pluto] pluto_auto_transform: band level %d; "
+                       "%d hyperplane(s) found\n",
                        depth, nsols));
       IF_DEBUG2(pluto_transformations_pretty_print(prog));
 

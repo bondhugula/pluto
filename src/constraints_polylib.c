@@ -1,18 +1,18 @@
 /*
  * Polylib interface for PlutoConstraints
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "math_support.h"
 #include "constraints.h"
-#include "pluto.h"
 #include "constraints_polylib.h"
+#include "math_support.h"
+#include "pluto.h"
 
 #include "polylib/polylib64.h"
 

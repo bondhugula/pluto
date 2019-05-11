@@ -18,23 +18,23 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 
 #include <sys/time.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 #include "program.h"
 
+#include "candl/candl.h"
 #include <isl/constraint.h>
 #include <isl/mat.h>
 #include <isl/set.h>
-#include "candl/candl.h"
 
 #if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);
@@ -539,8 +539,8 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
             stmt2 = sccs[scc2].vertices[j];
             if (dim2 <= stmts[stmt2]->dim_orig) {
               stmt2_offset = npar + 1 + (nvar + 1) * stmt2;
-              inter_scc_cst->val[row_offset + stmt2_offset + dim2]
-                                [CST_WIDTH - 1] = -1;
+              inter_scc_cst
+                  ->val[row_offset + stmt2_offset + dim2][CST_WIDTH - 1] = -1;
               inter_scc_cst->is_eq[row_offset + stmt2_offset + dim2] = 0;
             }
           }
@@ -565,8 +565,8 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
               IF_DEBUG(printf("Adding Parallelism preventing edge"););
               IF_DEBUG(printf("%d to %d in fcg \n", scc1_fcg_offset + dim1,
                               scc2_fcg_offset + dim2););
-              par_preventing_adj_mat->val[scc1_fcg_offset + dim1]
-                                         [scc2_fcg_offset + dim2] = 1;
+              par_preventing_adj_mat
+                  ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 1;
             }
             free(sol);
           }
@@ -576,8 +576,8 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
             stmt2 = sccs[scc2].vertices[j];
             if (dim2 <= stmts[stmt2]->dim_orig) {
               stmt2_offset = npar + 1 + (nvar + 1) * stmt2;
-              inter_scc_cst->val[row_offset + stmt2_offset + dim2]
-                                [CST_WIDTH - 1] = 0;
+              inter_scc_cst
+                  ->val[row_offset + stmt2_offset + dim2][CST_WIDTH - 1] = 0;
               inter_scc_cst->is_eq[row_offset + stmt2_offset + dim2] = 1;
             }
           }
@@ -587,8 +587,8 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
           stmt1 = sccs[scc1].vertices[i];
           if (dim1 <= stmts[stmt1]->dim_orig) {
             stmt1_offset = npar + 1 + (nvar + 1) * stmt1;
-            inter_scc_cst->val[row_offset + stmt1_offset + dim1]
-                              [CST_WIDTH - 1] = 0;
+            inter_scc_cst
+                ->val[row_offset + stmt1_offset + dim1][CST_WIDTH - 1] = 0;
             inter_scc_cst->is_eq[row_offset + stmt1_offset + dim1] = -1;
           }
         }
@@ -841,8 +841,8 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph *fcg, int *colour,
           } else {
             if (options->fuse == TYPED_FUSE) {
               if (!is_lp_solution_parallel(sol, prog->npar)) {
-                par_preventing_adj_mat->val[fcg_scc_offset + j]
-                                           [fcg_scc_offset + j] = 1;
+                par_preventing_adj_mat
+                    ->val[fcg_scc_offset + j][fcg_scc_offset + j] = 1;
 
               } else {
                 sccs[i].is_parallel = 1;
@@ -913,10 +913,10 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2,
             fcg->adj->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 0;
             fcg->adj->val[scc2_fcg_offset + dim2][scc1_fcg_offset + dim1] = 0;
             if (options->fuse == TYPED_FUSE) {
-              par_preventing_adj_mat->val[scc1_fcg_offset + dim1]
-                                         [scc2_fcg_offset + dim2] = 0;
-              par_preventing_adj_mat->val[scc2_fcg_offset + dim2]
-                                         [scc1_fcg_offset + dim1] = 0;
+              par_preventing_adj_mat
+                  ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 0;
+              par_preventing_adj_mat
+                  ->val[scc2_fcg_offset + dim2][scc1_fcg_offset + dim1] = 0;
             }
           }
         }
@@ -1152,9 +1152,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   IF_DEBUG(printf("FCG \n"););
   IF_DEBUG(pluto_matrix_print(stdout, fcg->adj));
 
-  IF_DEBUG(printf(
-      "[Pluto] Build FCG: Total number of LP calls in building the FCG: %ld\n",
-      prog->num_lp_calls););
+  IF_DEBUG(printf("[Pluto] Build FCG: Total number of LP calls in building the "
+                  "FCG: %ld\n",
+                  prog->num_lp_calls););
   return fcg;
 }
 
@@ -2308,9 +2308,9 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
               for (j = prev_scc; j >= 0; j--) {
                 if (ddg_sccs_direct_connected(ddg, prog, j, i)) {
 
-                  IF_DEBUG(printf(
-                      "[colour_fcg_scc_based]:Cutting between SCC %d and %d\n",
-                      i, j););
+                  IF_DEBUG(printf("[colour_fcg_scc_based]:Cutting between SCC "
+                                  "%d and %d\n",
+                                  i, j););
                   cut_between_sccs(prog, ddg, j, i);
                   break;
                 }
@@ -2540,8 +2540,9 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring(
                                    npar + 1 + stmt_id * (nvar + 1) + k, 1);
         } else {
           pluto_constraints_add_equality(coeffcst);
-          coeffcst->val[coeffcst->nrows - 1]
-                       [npar + 1 + stmt_id * (nvar + 1) + k] = 1;
+          coeffcst
+              ->val[coeffcst->nrows - 1][npar + 1 + stmt_id * (nvar + 1) + k] =
+              1;
         }
       }
     }

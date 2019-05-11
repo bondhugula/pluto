@@ -19,16 +19,16 @@
  */
 
 #include <assert.h>
-#include <string.h>
 #include <ctype.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "pluto.h"
-#include "constraints.h"
 #include "candl/candl.h"
-#include "program.h"
+#include "constraints.h"
+#include "pluto.h"
 #include "pluto/libpluto.h"
+#include "program.h"
 #include "isl/map.h"
 #include "isl/space.h"
 
@@ -37,10 +37,9 @@
 PlutoOptions *options;
 
 static double rtclock() {
-  struct timezone Tzp;
   struct timeval Tp;
   int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -56,7 +55,7 @@ struct pluto_extra_stmt_info {
   int index;
 };
 
-static int extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
+static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   Stmt **stmts;
   Stmt *stmt;
   PlutoConstraints *bcst;
@@ -76,12 +75,12 @@ static int extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   }
 
   isl_basic_set_free(bset);
-  return 0;
+  return isl_stat_ok;
 }
 
 /* Used by libpluto interface */
-static int extract_stmt(__isl_take isl_set *set, void *user) {
-  int r;
+static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
+  isl_stat r;
   Stmt **stmts;
   int id, i;
 
@@ -109,19 +108,19 @@ static int extract_stmt(__isl_take isl_set *set, void *user) {
   stmt->id = id;
 
   for (i = 0; i < stmt->dim; i++) {
-    char *iter = malloc(13);
+    char *iter = (char *)malloc(13);
     sprintf(iter, "i%d", i);
     stmt->iterators[i] = iter;
   }
 
-  struct pluto_extra_stmt_info info = { stmts, id };
+  struct pluto_extra_stmt_info info = {stmts, id};
   r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
 
   pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0,
                                     stmt->dim);
 
   for (i = 0; i < npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     stmt->domain->names[stmt->dim + i] = param;
   }
@@ -239,7 +238,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }
@@ -417,7 +416,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(13);
+    char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }
@@ -608,8 +607,8 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
 }
 
 /* Pluto_schedule method to get schedule, parallel loops and remapping
-*  all in one function
-*/
+ *  all in one function
+ */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     isl_union_set *domains, isl_union_map *dependences, Ploop ***ploops,
     unsigned *nploops, Remapping **remap, PlutoOptions *options_l) {
@@ -655,7 +654,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     prog->npar = 0;
 
   for (i = 0; i < prog->npar; i++) {
-    char *param = malloc(11);
+    char *param = (char *)malloc(11);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
   }

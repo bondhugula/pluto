@@ -1,7 +1,7 @@
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
-#include "isl/union_set.h"
 #include "isl/union_map.h"
+#include "isl/union_set.h"
 
 #include "osl/scop.h"
 
@@ -15,8 +15,8 @@ struct plutoMatrix {
   /* The values */
   int64 **val;
 
-  int nrows;
-  int ncols;
+  unsigned nrows;
+  unsigned ncols;
 
   /* Pre-allocated number of rows */
   int alloc_nrows;

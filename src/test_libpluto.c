@@ -1,6 +1,6 @@
 #include "pluto/libpluto.h"
-#include "isl/union_set.h"
 #include "isl/union_map.h"
+#include "isl/union_set.h"
 
 PlutoOptions *options;
 
@@ -95,7 +95,7 @@ void crash_negative_dep_vector() {
       ctx, " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 < i1 <= R - 1; }");
   isl_union_map *deps =
       isl_union_map_read_from_str(ctx, "[R, T] -> {"
-                                  /* crashes with this dependence */
+                                       /* crashes with this dependence */
                                        "S_0[i0, i1] -> S_0[i0 - 1, i1 - 1] : 1 "
                                        "<= i0 <= T and 1 <= i1 <= R - 2; }");
   /* does not crash with this dependence */

@@ -1,6 +1,8 @@
 #ifndef _DDG_H_
 #define _DDG_H_
 
+#include <stdbool.h>
+
 #include "math_support.h"
 
 /* Vertex of a graph */
@@ -44,7 +46,7 @@ struct scc {
    * when used with SCC based clustering heuristic */
   int fcg_scc_offset;
 
-  /* Set to true if the scc is couloured with current colour else false */
+  /* Set to true if the scc is coloured with current colour else false */
   bool is_scc_coloured;
 
   /* Set to true if there is a parallel hyperplane has already been found for
@@ -78,6 +80,10 @@ struct graph {
 };
 typedef struct graph Graph;
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 Graph *graph_alloc(int nVertices);
 void graph_free(Graph *g);
 void graph_print_sccs(Graph *g);
@@ -94,4 +100,9 @@ int *get_ssc_topological_order(Graph *ddg);
 void compute_scc_vertices(Graph *ddg);
 void print_scc_vertices(int j, Graph *g);
 void free_scc_vertices(Graph *ddg);
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

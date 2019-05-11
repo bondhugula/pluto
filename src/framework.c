@@ -19,14 +19,14 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 #include "program.h"
 
@@ -323,7 +323,7 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   npar = prog->npar;
 
   FILE *skipfp = fopen("skipdeps.txt", "r");
-  int *skipdeps = malloc(ndeps * sizeof(int));
+  int *skipdeps = (int *)malloc(ndeps * sizeof(int));
   bzero(skipdeps, ndeps * sizeof(int));
 
   /* For debugging (skip deps listed here) */
@@ -1123,8 +1123,9 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
      */
     if (ub >= 10) {
       for (i = 0; i < cst->ncols - npar - 1 - 1; i++) {
-        IF_DEBUG2(printf(
-            "Adding upper bound %d for transformation coefficients\n", ub););
+        IF_DEBUG2(
+            printf("Adding upper bound %d for transformation coefficients\n",
+                   ub););
         pluto_constraints_add_ub(cst, npar + 1 + i, ub);
       }
     }

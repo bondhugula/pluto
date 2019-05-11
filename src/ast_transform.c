@@ -19,12 +19,12 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "ast_transform.h"
 #include "pluto.h"
 #include "program.h"
-#include "ast_transform.h"
 
 #include "cloog/cloog.h"
 
@@ -153,7 +153,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     struct clast_for **loops;
     sprintf(iter, "t%d%s", ploops[i]->depth + 1, suffix);
     sprintf(iter, "t%d", ploops[i]->depth + 1);
-    int *stmtids = malloc(ploops[i]->nstmts * sizeof(int));
+    int *stmtids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
     int max_depth = 0;
     for (j = 0; j < ploops[i]->nstmts; j++) {
       Stmt *stmt = ploops[i]->stmts[j];
@@ -578,12 +578,12 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
     IF_DEBUG(pluto_loop_print(ploops[i]););
     char iter[13];
     sprintf(iter, "t%d%s", ploops[i]->depth + 1, suffix);
-    int *stmtids = malloc(ploops[i]->nstmts * sizeof(int));
+    int *stmtids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
     for (j = 0; j < ploops[i]->nstmts; j++) {
       stmtids[j] = ploops[i]->stmts[j]->id + 1;
     }
 
-    ClastFilter filter = { iter, stmtids, ploops[i]->nstmts, subset };
+    ClastFilter filter = {iter, stmtids, (int)ploops[i]->nstmts, subset};
     clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
     /* There should be at least one */

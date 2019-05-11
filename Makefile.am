@@ -57,7 +57,12 @@ pclean:
 test_libpluto: src/test_libpluto.c
 	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
 
-test: polycc src/pluto
+test: PHONY
+	
+PHONY: polycc src/pluto
+	./filecheck-test.sh
+
+test-alt: polycc src/pluto
 	./test.sh --silent --notile --noparallel
 	./test.sh --silent --cloogsh --nocloogbacktrack
 	./test.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack

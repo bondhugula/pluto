@@ -24,9 +24,9 @@
 
 #include "osl/scop.h"
 
-#include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
+#include "math_support.h"
 #include "pluto/libpluto.h"
 
 #include "osl/extensions/dependence.h"
@@ -74,7 +74,7 @@
 
 #define PI_TABLE_SIZE 256
 
-#define CST_WIDTH (npar + 1 + nstmts *(nvar + 1) + 1)
+#define CST_WIDTH (npar + 1 + nstmts * (nvar + 1) + 1)
 
 #define ALLOW_NEGATIVE_COEFF 1
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0
@@ -163,10 +163,10 @@ struct statement {
   bool *is_orig_loop;
 
   /* Dimensionality of statement's domain */
-  int dim;
+  unsigned dim;
 
   /* Original dimensionality of statement's domain */
-  int dim_orig;
+  unsigned dim_orig;
 
   /* Should you tile even if it's tilable? */
   int tile;
@@ -405,11 +405,7 @@ struct dependence {
 };
 typedef struct dependence Dep;
 
-typedef enum unrollType {
-  NO_UNROLL,
-  UNROLL,
-  UNROLLJAM
-} UnrollType;
+typedef enum unrollType { NO_UNROLL, UNROLL, UNROLLJAM } UnrollType;
 
 /* Properties of the new hyperplanes found. These are common across all
  * statements or apply at a level across all statements
@@ -496,10 +492,11 @@ struct plutoProg {
   /* Param context */
   PlutoConstraints *context;
 
+  // Declarations to be emitted.
+  char *decls;
+
   /* Codegen context */
   PlutoConstraints *codegen_context;
-
-  char *decls;
 
   PlutoAccess **orig_accesses;
   int num_accesses;
@@ -558,6 +555,10 @@ struct pluto_dep_list {
   struct pluto_dep_list *next;
 };
 typedef struct pluto_dep_list PlutoDepList;
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
@@ -814,7 +815,6 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
-int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
@@ -927,4 +927,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
 void introduce_skew(PlutoProg *prog);
 #endif
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

@@ -19,10 +19,10 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include "program.h"
-#include "pluto.h"
-#include "constraints.h"
 #include "transforms.h"
+#include "constraints.h"
+#include "pluto.h"
+#include "program.h"
 
 #include "assert.h"
 
@@ -105,7 +105,8 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog) {
 
   pluto_matrix_add_row(stmt->trans, pos);
 
-  stmt->hyp_types = realloc(stmt->hyp_types, sizeof(int) * stmt->trans->nrows);
+  stmt->hyp_types = (PlutoHypType *)realloc(
+      stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
   for (i = stmt->trans->nrows - 2; i >= pos; i--) {
     stmt->hyp_types[i + 1] = stmt->hyp_types[i];
   }

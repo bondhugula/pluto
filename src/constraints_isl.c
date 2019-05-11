@@ -2,18 +2,19 @@
  * ISL-based operations for Pluto constraints, etc.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 
+#include "isl/ctx.h"
 #include "isl/map.h"
 #include "isl/set.h"
 #include "isl/space.h"
@@ -135,8 +136,8 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
   return set;
 }
 
-static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
-                                         void *usr) {
+static isl_stat extract_basic_set_constraints(__isl_take isl_basic_set *bset,
+                                              void *usr) {
   PlutoConstraints **cst = (PlutoConstraints **)usr;
 
   PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
@@ -151,7 +152,7 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
     pluto_constraints_free(bcst);
   }
 
-  return 0;
+  return isl_stat_ok;
 }
 
 /* Convert an isl_set to PlutoConstraints */
@@ -335,9 +336,9 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   isl_basic_set *bset, *all_positive;
   isl_set *domain, *all_positive_set, *lexmin;
 
-  IF_DEBUG2(printf(
-      "[pluto] pluto_constraints_lexmin_isl (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables, %d "
+                   "constraints)\n",
+                   cst->ncols - 1, cst->nrows););
 
   ctx = isl_ctx_alloc();
   bset = isl_basic_set_from_pluto_constraints(ctx, cst);
@@ -421,18 +422,16 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
   return func;
 }
 
-static int basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
-  int *count = user;
+static isl_stat basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
+  int *count = (int *)user;
 
   *count += 1;
   isl_basic_map_free(bmap);
-  return 0;
+  return isl_stat_ok;
 }
 
-int isl_map_count(__isl_take isl_map *map, void *user) {
-  int r;
-
-  r = isl_map_foreach_basic_map(map, &basic_map_count, user);
+isl_stat isl_map_count(__isl_take isl_map *map, void *user) {
+  isl_stat r = isl_map_foreach_basic_map(map, &basic_map_count, user);
   isl_map_free(map);
   return r;
 }

@@ -19,34 +19,33 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <string.h>
 #include <getopt.h>
 #include <libgen.h>
-
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include "osl/scop.h"
-#include "osl/generic.h"
 #include "osl/extensions/irregular.h"
+#include "osl/generic.h"
+#include "osl/scop.h"
 
-#include "pluto.h"
-#include "transforms.h"
 #include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
+#include "transforms.h"
 #include "version.h"
 
-#include "clan/clan.h"
 #include "candl/candl.h"
 #include "candl/scop.h"
+#include "clan/clan.h"
 
 #include "pet.h"
 
@@ -221,10 +220,9 @@ void usage_message(void) {
 }
 
 static double rtclock() {
-  struct timezone Tzp;
   struct timeval Tp;
   int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -262,111 +260,115 @@ int main(int argc, char *argv[]) {
   options = pluto_options_alloc();
 
   const struct option pluto_options[] = {
-    { "fast-lin-ind-check", no_argument, &options->flic, 1 },
-    { "flic", no_argument, &options->flic, 1 },
-    { "tile", no_argument, &options->tile, 1 },
-    { "notile", no_argument, &options->tile, 0 },
-    { "noparallel", no_argument, &options->parallel, 0 },
-    { "intratileopt", no_argument, &options->intratileopt, 1 },
-    { "nointratileopt", no_argument, &options->intratileopt, 0 },
-    { "pet", no_argument, &options->pet, 1 },
-    { "dynschedule", no_argument, &options->dynschedule, 1 },
-    { "dataflow", no_argument, &options->dynschedule, 1 },
-    { "dynschedule_graph", no_argument, &options->dynschedule_graph, 1 },
-    { "dynschedule_graph_old", no_argument, &options->dynschedule_graph_old, 1 },
-    { "dyn_trans_deps_tasks", no_argument, &options->dyn_trans_deps_tasks, 1 },
-    { "diamond-tile", no_argument, &options->diamondtile, 1 },
-    { "nodiamond-tile", no_argument, &options->diamondtile, 0 },
-    { "full-diamond-tile", no_argument, &options->fulldiamondtile, 1 },
-    { "debug", no_argument, &options->debug, true },
-    { "moredebug", no_argument, &options->moredebug, true },
-    { "rar", no_argument, &options->rar, 1 },
-    { "identity", no_argument, &options->identity, 1 },
-    { "nofuse", no_argument, &options->fuse, NO_FUSE },
-    { "maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE },
-    { "smartfuse", no_argument, &options->fuse, SMART_FUSE },
-    { "typedfuse", no_argument, &options->fuse, TYPED_FUSE },
-    { "hybridfuse", no_argument, &options->hybridcut, 1 },
-    { "delayedcut", no_argument, &options->delayed_cut, 1 },
-    { "parallel", no_argument, &options->parallel, 1 },
-    { "parallelize", no_argument, &options->parallel, 1 },
-    { "innerpar", no_argument, &options->innerpar, 1 },
-    { "iss", no_argument, &options->iss, 1 },
-    { "distmem", no_argument, &options->distmem, 1 },
-    { "no_multi_level_distribution",      no_argument,
-      &options->multi_level_distribution, 0 },
-    { "multi_level_distribution",         no_argument,
-      &options->multi_level_distribution, 1 },
-    { "commopt", no_argument, &options->commopt, 1 },
-    { "commopt_fop", no_argument, &options->commopt_fop, 1 },
-    { "fop_unicast_runtime", no_argument, &options->fop_unicast_runtime, 1 },
-    { "commopt_foifi", no_argument, &options->commopt_foifi, 1 },
-    { "nocommopt", no_argument, &options->commopt, 0 },
-    { "timereport", no_argument, &options->timereport, 1 },
-    { "variables_not_global", no_argument, &options->variables_not_global, 1 },
-    { "mpiomp", no_argument, &options->mpiomp, 1 },
-    { "blockcyclic", no_argument, &options->blockcyclic, 1 },
-    { "unroll", no_argument, &options->unroll, 1 },
-    { "nounroll", no_argument, &options->unroll, 0 },
-    { "bee", no_argument, &options->bee, 1 },
-    { "ufactor", required_argument, 0, 'u' },
-    { "prevector", no_argument, &options->prevector, 1 },
-    { "noprevector", no_argument, &options->prevector, 0 },
-    { "codegen-context", required_argument, 0, 'c' },
-    { "coeff-bound", required_argument, 0, 'C' },
-    { "cloogf", required_argument, 0, 'F' },
-    { "cloogl", required_argument, 0, 'L' },
-    { "cloogsh", no_argument, &options->cloogsh, 1 },
-    { "nocloogbacktrack", no_argument, &options->cloogbacktrack, 0 },
-    { "cyclesize", required_argument, 0, 'S' },
-    { "forceparallel", required_argument, 0, 'p' },
-    { "ft", required_argument, 0, 'f' },
-    { "lt", required_argument, 0, 'l' },
-    { "multipar", no_argument, &options->multipar, 1 },
-    { "l2tile", no_argument, &options->l2tile, 1 },
-    { "version", no_argument, 0, 'v' },
-    { "help", no_argument, 0, 'h' },
-    { "indent", no_argument, 0, 'i' },
-    { "silent", no_argument, &options->silent, 1 },
-    { "lastwriter", no_argument, &options->lastwriter, 1 },
-    { "nolastwriter", no_argument, &nolastwriter, 1 },
-    { "nodepbound", no_argument, &options->nodepbound, 1 },
-    { "scalpriv", no_argument, &options->scalpriv, 1 },
-    { "isldep", no_argument, &options->isldep, 1 },
-    { "candldep", no_argument, &options->candldep, 1 },
-    { "isldepaccesswise", no_argument, &options->isldepaccesswise, 1 },
-    { "isldepstmtwise", no_argument, &options->isldepaccesswise, 0 },
-    { "noisldepcoalesce", no_argument, &options->isldepcoalesce, 0 },
-    { "readscop", no_argument, &options->readscop, 1 },
-    { "pipsolve", no_argument, &options->pipsolve, 1 },
+    {"fast-lin-ind-check", no_argument, &options->flic, 1},
+    {"flic", no_argument, &options->flic, 1},
+    {"tile", no_argument, &options->tile, 1},
+    {"notile", no_argument, &options->tile, 0},
+    {"noparallel", no_argument, &options->parallel, 0},
+    {"intratileopt", no_argument, &options->intratileopt, 1},
+    {"nointratileopt", no_argument, &options->intratileopt, 0},
+    {"pet", no_argument, &options->pet, 1},
+    {"dynschedule", no_argument, &options->dynschedule, 1},
+    {"dataflow", no_argument, &options->dynschedule, 1},
+    {"dynschedule_graph", no_argument, &options->dynschedule_graph, 1},
+    {"dynschedule_graph_old", no_argument, &options->dynschedule_graph_old, 1},
+    {"dyn_trans_deps_tasks", no_argument, &options->dyn_trans_deps_tasks, 1},
+    {"diamond-tile", no_argument, &options->diamondtile, 1},
+    {"nodiamond-tile", no_argument, &options->diamondtile, 0},
+    {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
+    {"debug", no_argument, &options->debug, true},
+    {"moredebug", no_argument, &options->moredebug, true},
+    {"rar", no_argument, &options->rar, 1},
+    {"identity", no_argument, &options->identity, 1},
+    {"nofuse", no_argument, &options->fuse, NO_FUSE},
+    {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
+    {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
+    {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+    {"hybridfuse", no_argument, &options->hybridcut, 1},
+    {"delayedcut", no_argument, &options->delayed_cut, 1},
+    {"parallel", no_argument, &options->parallel, 1},
+    {"parallelize", no_argument, &options->parallel, 1},
+    {"innerpar", no_argument, &options->innerpar, 1},
+    {"iss", no_argument, &options->iss, 1},
+    {"distmem", no_argument, &options->distmem, 1},
+    {"no_multi_level_distribution", no_argument,
+     &options->multi_level_distribution, 0},
+    {"multi_level_distribution", no_argument,
+     &options->multi_level_distribution, 1},
+    {"commopt", no_argument, &options->commopt, 1},
+    {"commopt_fop", no_argument, &options->commopt_fop, 1},
+    {"fop_unicast_runtime", no_argument, &options->fop_unicast_runtime, 1},
+    {"commopt_foifi", no_argument, &options->commopt_foifi, 1},
+    {"nocommopt", no_argument, &options->commopt, 0},
+    {"timereport", no_argument, &options->timereport, 1},
+    {"variables_not_global", no_argument, &options->variables_not_global, 1},
+    {"mpiomp", no_argument, &options->mpiomp, 1},
+    {"blockcyclic", no_argument, &options->blockcyclic, 1},
+    {"unroll", no_argument, &options->unroll, 1},
+    {"nounroll", no_argument, &options->unroll, 0},
+    {"bee", no_argument, &options->bee, 1},
+    {"ufactor", required_argument, 0, 'u'},
+    {"prevector", no_argument, &options->prevector, 1},
+    {"noprevector", no_argument, &options->prevector, 0},
+    {"codegen-context", required_argument, 0, 'c'},
+    {"coeff-bound", required_argument, 0, 'C'},
+    {"cloogf", required_argument, 0, 'F'},
+    {"cloogl", required_argument, 0, 'L'},
+    {"cloogsh", no_argument, &options->cloogsh, 1},
+    {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+    {"cyclesize", required_argument, 0, 'S'},
+    {"forceparallel", required_argument, 0, 'p'},
+    {"ft", required_argument, 0, 'f'},
+    {"lt", required_argument, 0, 'l'},
+    {"multipar", no_argument, &options->multipar, 1},
+    {"l2tile", no_argument, &options->l2tile, 1},
+    {"version", no_argument, 0, 'v'},
+    {"help", no_argument, 0, 'h'},
+    {"indent", no_argument, 0, 'i'},
+    {"silent", no_argument, &options->silent, 1},
+    {"lastwriter", no_argument, &options->lastwriter, 1},
+    {"nolastwriter", no_argument, &nolastwriter, 1},
+    {"nodepbound", no_argument, &options->nodepbound, 1},
+    {"scalpriv", no_argument, &options->scalpriv, 1},
+    {"isldep", no_argument, &options->isldep, 1},
+    {"candldep", no_argument, &options->candldep, 1},
+    {"isldepaccesswise", no_argument, &options->isldepaccesswise, 1},
+    {"isldepstmtwise", no_argument, &options->isldepaccesswise, 0},
+    {"isldepcoalesce", no_argument, &options->isldepcoalesce, 1},
+    {"readscop", no_argument, &options->readscop, 1},
+    {"pipsolve", no_argument, &options->pipsolve, 1},
+    {"readscop", no_argument, &options->readscop, 1},
+    {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
-    { "glpk", no_argument, &options->glpk, 1 },
+    {"glpk", no_argument, &options->glpk, 1},
 #endif
 #ifdef GUROBI
-    { "gurobi", no_argument, &options->gurobi, 1 },
+    {"gurobi", no_argument, &options->gurobi, 1},
 #endif
 #if defined GLPK || defined GUROBI
-    { "lp", no_argument, &options->lp, 1 },
-    { "dfp", no_argument, &options->dfp, 1 },
-    { "ilp", no_argument, &options->ilp, 1 },
-    { "lpcolor", no_argument, &options->lpcolour, 1 },
-    { "clusterscc", no_argument, &options->scc_cluster, 1 },
+    {"lp", no_argument, &options->lp, 1},
+    {"dfp", no_argument, &options->dfp, 1},
+    {"ilp", no_argument, &options->ilp, 1},
+    {"lpcolor", no_argument, &options->lpcolour, 1},
+    {"clusterscc", no_argument, &options->scc_cluster, 1},
 #endif
-    { "islsolve", no_argument, &options->islsolve, 1 },
-    { "fusesends", no_argument, &options->fusesends, 1 },
-    { "data_dist", no_argument, &options->data_dist, 1 },
-    { "verify_output", no_argument, &options->verify_output, 1 },
-    { "data_tile_opt", no_argument, &options->data_tile_opt, 1 },
-    { "nodata_tile_opt", no_argument, &options->data_tile_opt, 0 },
-    { "identity_data_dist", no_argument, &options->identity_data_dist, 1 },
-    { "global_opt", no_argument, &options->global_opt, 1 },
-    { "noglobal_opt", no_argument, &options->global_opt, 0 },
-    { "compute_pi", no_argument, &options->compute_pi, 1 },
-    { "donot_compute_pi", no_argument, &options->compute_pi, 0 },
-    { "num_tiles_per_dim", required_argument, 0, 'T' },
-    { "num_parts", required_argument, 0, 'U' },
-    { "time", no_argument, &options->time, 1 },
-    { 0, 0, 0, 0 }
+    {"islsolve", no_argument, &options->islsolve, 1},
+    {"fusesends", no_argument, &options->fusesends, 1},
+    {"data_dist", no_argument, &options->data_dist, 1},
+    {"verify_output", no_argument, &options->verify_output, 1},
+    {"data_tile_opt", no_argument, &options->data_tile_opt, 1},
+    {"nodata_tile_opt", no_argument, &options->data_tile_opt, 0},
+    {"identity_data_dist", no_argument, &options->identity_data_dist, 1},
+    {"global_opt", no_argument, &options->global_opt, 1},
+    {"noglobal_opt", no_argument, &options->global_opt, 0},
+    {"compute_pi", no_argument, &options->compute_pi, 1},
+    {"donot_compute_pi", no_argument, &options->compute_pi, 0},
+    {"num_tiles_per_dim", required_argument, 0, 'T'},
+    {"num_parts", required_argument, 0, 'U'},
+    {"time", no_argument, &options->time, 1},
+    {"islsolve", no_argument, &options->islsolve, 1},
+    {"time", no_argument, &options->time, 1},
+    {0, 0, 0, 0}
   };
 
   /* Read command-line options */
@@ -460,7 +462,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   if (optind <= argc - 1) {
-    srcFileName = alloca(strlen(argv[optind]) + 1);
+    srcFileName = (char *)alloca(strlen(argv[optind]) + 1);
     strcpy(srcFileName, argv[optind]);
   } else {
     /* No non-option argument was specified */
@@ -740,6 +742,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (!scop || !scop->statement) {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
+        osl_scop_free(scop);
         pluto_options_free(options);
         return 8;
       }
@@ -757,7 +760,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;
-    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+    irreg_ext =
+        (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
       irroption = osl_irregular_sprint(irreg_ext); // TODO: test it
     osl_irregular_free(irreg_ext);
@@ -1145,13 +1149,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       bname = basename(basec);
 
       /* max size when tiled.* */
-      outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+      outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
 
       if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
         memcpy(outFileName, bname, strlen(bname) - 2);
         outFileName[strlen(bname) - 2] = '\0';
       } else {
-        outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+        outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
         strcpy(outFileName, bname);
       }
       strcat(outFileName, ".pluto.c");
@@ -1159,16 +1163,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       basec = strdup(options->out_file);
       bname = basename(basec);
 
-      outFileName = malloc(strlen(options->out_file) + 1);
+      outFileName = (char *)malloc(strlen(options->out_file) + 1);
       strcpy(outFileName, options->out_file);
     }
 
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      cloogFileName = malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
-      strncpy(cloogFileName, bname, strlen(bname) - 2);
+      cloogFileName =
+          (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
+      strcpy(cloogFileName, bname);
       cloogFileName[strlen(bname) - 2] = '\0';
     } else {
-      cloogFileName = malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
+      cloogFileName =
+          (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
       strcpy(cloogFileName, bname);
     }
     strcat(cloogFileName, ".pluto.cloog");

@@ -1,6 +1,3 @@
-# Mon 05 May 2008 04:45:39 PM EDT
-# Uday Bondhugula
-
 OVERVIEW
 
 PLUTO is an automatic parallelization tool that is based on the 

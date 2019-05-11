@@ -19,14 +19,14 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 
 #include "isl/val.h"
 #include "isl/val_gmp.h"
@@ -397,7 +397,7 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
 }
 
 /* Eliminate variables from start to end (inclusive); start is 0-indexed
-*/
+ */
 void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   int i;
 
@@ -406,14 +406,14 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   }
 }
 
-inline int64 lcm(int64 a, int64 b) {
+int64 lcm(int64 a, int64 b) {
   if (a * b == 0)
     return 0;
   return (a * b) / gcd(a, b);
 }
 
 /* Assuming both args are not zero */
-inline int64 gcd(int64 a, int64 b) {
+int64 gcd(int64 a, int64 b) {
   a = llabs(a);
   b = llabs(b);
 
@@ -443,7 +443,7 @@ int64 *min_lexical(int64 *a, int64 *b, int64 num) {
 
 /* Free returned string with free */
 char *concat(const char *prefix, const char *suffix) {
-  char *concat = malloc(strlen(prefix) + strlen(suffix) + 1);
+  char *concat = (char *)malloc(strlen(prefix) + strlen(suffix) + 1);
   sprintf(concat, "%s%s", prefix, suffix);
   return concat;
 }
@@ -501,15 +501,15 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat) {
 }
 
 /* Rank of the matrix */
-int pluto_matrix_get_rank(const PlutoMatrix *mat) {
-  int i, j, null, rank;
+unsigned pluto_matrix_get_rank(const PlutoMatrix *mat) {
+  unsigned rank;
 
   PlutoMatrix *re = pluto_matrix_to_row_echelon(pluto_matrix_dup(mat));
 
-  null = 0;
-  for (i = 0; i < re->nrows; i++) {
+  unsigned null = 0;
+  for (unsigned i = 0; i < re->nrows; i++) {
     int sum = 0;
-    for (j = 0; j < re->ncols; j++) {
+    for (unsigned j = 0; j < re->ncols; j++) {
       sum += llabs(re->val[i][j]);
     }
     if (sum == 0)
@@ -569,7 +569,7 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
  * vars: names of the ndims variables; if NULL, x0, x1, ... are used
  */
 void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
-                                 char **vars) {
+                                 const char **vars) {
   char *var[ndims];
   int j;
 
@@ -577,7 +577,7 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -619,20 +619,20 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
 }
 
 /* Returned string should be freed with malloc */
-char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
+char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars) {
   char *var[ndims], *out;
   int j, n;
 
   /* max 5 chars for var, 3 for coefficient + 1 if ndims is 0 + 1 null char */
   n = 9 * ndims + 1 + 1;
-  out = malloc(n);
+  out = (char *)malloc(n);
   *out = '\0';
 
   for (j = 0; j < ndims; j++) {
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -679,8 +679,8 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
 /*
  * Convert an isl affine expression to Pluto function
  */
-int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
-                          void *user) {
+isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
+                               void *user) {
   int i, j, npar;
 
   npar = isl_aff_dim(aff, isl_dim_param);
@@ -700,7 +700,7 @@ int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
       isl_val_free(v);
       isl_set_free(set);
       isl_aff_free(aff);
-      return 0;
+      return isl_stat_ok;
     }
     isl_val_free(v);
   }
@@ -722,7 +722,7 @@ int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
   isl_set_free(set);
   isl_aff_free(aff);
 
-  return 0;
+  return isl_stat_ok;
 }
 
 /*
