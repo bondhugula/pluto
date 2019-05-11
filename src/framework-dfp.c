@@ -2012,7 +2012,9 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
   return min;
 }
 
-int *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour, int *num) {
+unsigned *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
+                              int *num, int *discarded_list,
+                              int num_discarded) {
   int i, j, num_col_dims, max_dim, scc_offset, v;
   int *colourable_dims;
   Graph *fcg;
@@ -2025,7 +2027,8 @@ int *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour, int *num) {
 
   for (i = 0; i < max_dim; i++) {
     v = scc_offset + i;
-    if (colour[v] != 0 || is_adjecent(fcg, v, v))
+    if (colour[v] != 0 || is_adjecent(fcg, v, v) ||
+        is_discarded(v, discarded_list, num_discarded))
       continue;
     if (colourable_dims == NULL) {
       colourable_dims = (int *)malloc(max_dim * sizeof(int));
@@ -2042,6 +2045,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list,
                                     int *colour) {
   int i, v, max_dim, scc_offset, min_scc;
+  unsigned *colourable_dims;
   int num;
   Scc *sccs;
 
@@ -2049,10 +2053,12 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
-    convex_successors = get_convex_successors(scc_id, prog, &num);
-    colourable_dims = get_colourable_dims(scc_id, prog, &num_dims, colour);
-    get_common_dims();
-    return colourable vertex();
+    /* convex_successors = get_convex_successors(scc_id, prog, &num); */
+    colourable_dims = get_colourable_dims(scc_id, prog, &num, colour,
+                                          discarded_list, num_discarded);
+
+    /* get_common_dims(); */
+    /* return colourable vertex(); */
 
     min_scc = get_min_convex_successor(scc_id, prog);
     if (min_scc == -1 ||
@@ -2148,7 +2154,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   disc_list = (int *)malloc(max_dim * sizeof(int));
   num_discarded = 0;
   do {
-    v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list);
+    v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list,
+                                        colour);
     printf("Colouring vertex %d for colouring \n", v);
     if (v == -1)
       return false;
