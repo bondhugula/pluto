@@ -5,6 +5,8 @@
 # transformed_kernel and output_file can be the same
 #
 
+CC=gcc
+
 MAXLINES=`wc -l $1 | awk '{print $1}'`
 
 # Get the FIRST scop and return all the lines above it
@@ -19,10 +21,16 @@ sed -n '/\#pragma[[:space:]]endscop/,$p' $1 | awk '{if(NR>1)print}' > .tail
 
 cat .head > __tmp
 
+<<<<<<< HEAD
 # The gcc preprocessor inserts some useless comments like "# 1 "<built-in>"
 # preprocessor doesn't like pragma's in #defines and so it was not put in from pluto
 # when '--bee' was used - instead we will add it here
 # '##' indicates preprocessors directives inserted by pluto (dynamic scheduler) - replace with #
+=======
+# The gcc preprocessor inserts some comments like "# 1 "<built-in>"
+# The preprocessor doesn't like pragma's in #defines and so it was not put in
+# from pluto when '--bee' was used - instead we will add it here.
+>>>>>>> origin/master
 
 # Put all the include statements in a  file
 cat $2 | grep "^#include" > .includes
@@ -44,14 +52,15 @@ if ! grep -q "#define ceild(n,d)" __tmp
 	echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
 fi
 
-gcc -E -P -CC .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
+# Run the preprocessor
+$CC -E -P .body.c | grep -v "^# " | sed -e 's/__bee_schedule/#pragma schedule/' |  \
 sed -e 's/__omp_par_for_guided/\n#pragma omp parallel for schedule(guided,1)\n/' | \
 sed -e 's/##/#/' | sed -e 's/_NL_DELIMIT_/\n/' >> __tmp
 
 cat .tail >> __tmp
 
-# Checks to see if the openmp header has already been inserted into the file
-# If not, it inserts it.
+# Checks to see if the OpenMP header has already been inserted into the file
+# If not, insert it.
 if grep -q "#include <omp.h>" __tmp
 	then
 	# Remove the existing omp.h include
