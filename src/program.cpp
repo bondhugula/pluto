@@ -4219,7 +4219,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
 }
 
 /* Removes certain trivial dead code - in particular, all writes to variables
- * that have been marked as killed through special kill statements */
+ * that have been marked as killed through special kill statements. */
 static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
   bzero(dead, sizeof(int) * pscop->n_stmt);
   for (int s = 0; s < pscop->n_stmt; s++) {
@@ -4243,6 +4243,7 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
     isl_map_free(write_s);
 
     // Mark any other writes to the same variable name dead.
+    // This is a HACK to get rid of old IV init's and increments.
     for (int j = 0; j < pscop->n_stmt; j++) {
       if (dead[j] == 1)
         continue;
