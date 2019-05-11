@@ -93,7 +93,7 @@ rm -f test_temp_out.pluto.pluto.cloog
 }
 
 echo ===========================
-echo -e "$num_succ / $(($num_succ + $num_fail)) tests \e[32mpassed\e[0m"
+echo -e "$num_succ / $(($num_succ + $num_fail)) tests \e[32mPASSED\e[0m"
 echo ===========================
 
 trap cleanup SIGINT exit
