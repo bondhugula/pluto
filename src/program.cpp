@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unordered_map>
+#include <vector>
 
 #include "constraints.h"
 #include "math_support.h"
@@ -4220,14 +4221,15 @@ static void compute_deps_pet(struct pet_scop *pscop,
 
 /* Removes certain trivial dead code - in particular, all writes to variables
  * that have been marked as killed through special kill statements. */
-static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
-  bzero(dead, sizeof(int) * pscop->n_stmt);
+static void mark_trivial_dead_code(struct pet_scop *pscop,
+                                   std::vector<bool> *dead) {
+  dead->resize(pscop->n_stmt, false);
   for (int s = 0; s < pscop->n_stmt; s++) {
     struct pet_stmt *pstmt = pscop->stmts[s];
     if (!pet_stmt_is_kill(pstmt)) {
       continue;
     }
-    dead[s] = 1;
+    (*dead)[s] = true;
     isl_space *space = isl_set_get_space(pscop->context);
     isl_union_map *writes_s = pet_stmt_collect_accesses(
         pstmt, pet_expr_access_killed, 0, space);
@@ -4245,7 +4247,7 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
     // Mark any other writes to the same variable name dead.
     // This is a HACK to get rid of old IV init's and increments.
     for (int j = 0; j < pscop->n_stmt; j++) {
-      if (dead[j] == 1)
+      if ((*dead)[j])
         continue;
       struct pet_stmt *opstmt = pscop->stmts[j];
       isl_space *space = isl_set_get_space(pscop->context);
@@ -4261,7 +4263,7 @@ static void remove_trivial_dead_code(struct pet_scop *pscop, int *dead) {
 
       const char *name = isl_space_get_tuple_name(acc_space, isl_dim_out);
       if (!strcmp(name, killed_name))
-        dead[j] = 1;
+        (*dead)[j] = true;
       isl_space_free(acc_space);
       isl_map_free(write);
     }
@@ -4286,8 +4288,8 @@ static Stmt **pet_to_pluto_stmts(
 
   /* This takes cares of marking trivial statements such as original iterator
    * assignments and increments as dead code */
-  int dead[pscop->n_stmt];
-  remove_trivial_dead_code(pscop, dead);
+  std::vector<bool> dead;
+  mark_trivial_dead_code(pscop, &dead);
 
   if (*nstmts == 0)
     return NULL;
