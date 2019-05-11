@@ -154,7 +154,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     sprintf(iter, "t%d%s", ploops[i]->depth + 1, suffix);
     sprintf(iter, "t%d", ploops[i]->depth + 1);
     int *stmtids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
-    int max_depth = 0;
+    unsigned max_depth = 0;
     for (j = 0; j < ploops[i]->nstmts; j++) {
       Stmt *stmt = ploops[i]->stmts[j];
       if (options->distmem)
@@ -401,7 +401,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
       } else {
         for (j = 0; j < nloops; j++) {
           loops[j]->parallel = CLAST_PARALLEL_NOT;
-          char *private_vars = malloc(strlen("lbv,ubv") + 6 * max_depth +
+          char *private_vars = (char *)malloc(strlen("lbv,ubv") + 6 * max_depth +
                                       2 * sizeof(suffix) + 1);
           sprintf(private_vars, "lbv%s,ubv%s", suffix, suffix);
           if (options->parallel) {

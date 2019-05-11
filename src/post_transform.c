@@ -28,9 +28,10 @@
 #include "transforms.h"
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int i, *divs;
+  int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
-  assert(depth <= newacc->ncols - 1);
+  assert(depth <= (int)newacc->ncols - 1);
+  unsigned i;
   for (i = 0; i < newacc->nrows; i++) {
     if (newacc->val[i][depth] != 0)
       break;
@@ -43,15 +44,15 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
 
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int i, *divs;
+  int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
-  assert(depth <= newacc->ncols - 1);
+  assert(depth <= (int)newacc->ncols - 1);
 
   /* Scalars */
   if (newacc->nrows == 0)
     return 0;
 
-  for (i = 0; i < newacc->nrows - 1; i++) {
+  for (int i = 0; i < (int)newacc->nrows - 1; i++) {
     /* No spatial reuse when the func is varying at a non-innermost dim */
     if (newacc->val[i][depth] != 0) {
       pluto_matrix_free(newacc);
@@ -73,46 +74,40 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   return 0;
 }
 
-int get_num_invariant_accesses(Ploop *loop, PlutoProg *prog) {
-  int i, j, ni;
-
+unsigned get_num_invariant_accesses(Ploop *loop) {
   /* All statements under the loop, all accesses for the statement */
-  ni = 0;
-  for (i = 0; i < loop->nstmts; i++) {
+  unsigned ni = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
-    for (j = 0; j < stmt->nreads; j++) {
+    for (int j = 0; j < stmt->nreads; j++) {
       ni += is_invariant(stmt, stmt->reads[j], loop->depth);
     }
-    for (j = 0; j < stmt->nwrites; j++) {
+    for (int j = 0; j < stmt->nwrites; j++) {
       ni += is_invariant(stmt, stmt->writes[j], loop->depth);
     }
   }
   return ni;
 }
 
-int get_num_spatial_accesses(Ploop *loop, PlutoProg *prog) {
-  int i, j, ns;
-
+unsigned get_num_spatial_accesses(Ploop *loop) {
   /* All statements under the loop, all accesses for the statement */
-  ns = 0;
-  for (i = 0; i < loop->nstmts; i++) {
+  unsigned ns = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
-    for (j = 0; j < stmt->nreads; j++) {
+    for (int j = 0; j < stmt->nreads; j++) {
       ns += has_spatial_reuse(stmt, stmt->reads[j], loop->depth);
     }
-    for (j = 0; j < stmt->nwrites; j++) {
+    for (int j = 0; j < stmt->nwrites; j++) {
       ns += has_spatial_reuse(stmt, stmt->writes[j], loop->depth);
     }
   }
   return ns;
 }
 
-int get_num_accesses(Ploop *loop, PlutoProg *prog) {
-  int i, ns;
-
+unsigned get_num_accesses(Ploop *loop) {
   /* All statements under the loop, all accesses for the statement */
-  ns = 0;
-  for (i = 0; i < loop->nstmts; i++) {
+  unsigned ns = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
     ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
   }
 
@@ -133,17 +128,15 @@ int getDeepestNonScalarLoop(PlutoProg *prog) {
 
 /* Check if loop is amenable to straightforward vectorization */
 int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
-  int s, t, a;
-
   /* LIMITATION: it is possible (rarely) that a loop is not parallel at this
    * position, but, once made innermost, is parallel. We aren't checking
    * if it would be parallel at its new position
    */
   if (!pluto_loop_is_parallel(prog, loop))
     return 0;
-  a = get_num_accesses(loop, prog);
-  s = get_num_spatial_accesses(loop, prog);
-  t = get_num_invariant_accesses(loop, prog);
+  unsigned a = get_num_accesses(loop);
+  unsigned s = get_num_spatial_accesses(loop);
+  unsigned t = get_num_invariant_accesses(loop);
   /* Vectorize only if each access has either spatial or temporal
    * reuse */
   /* if accesses haven't been provided, a would be 0 */
@@ -275,9 +268,9 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   Ploop *best_loop = NULL;
   for (unsigned l = 0; l < nloops; l++) {
     int a, s, t, v, score;
-    a = get_num_accesses(loops[l], prog);
-    s = get_num_spatial_accesses(loops[l], prog);
-    t = get_num_invariant_accesses(loops[l], prog);
+    a = get_num_accesses(loops[l]);
+    s = get_num_spatial_accesses(loops[l]);
+    t = get_num_invariant_accesses(loops[l]);
     v = pluto_loop_is_vectorizable(loops[l], prog);
     /*
      * Penalize accesses which will have neither spatial nor temporal

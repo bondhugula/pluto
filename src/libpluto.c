@@ -52,21 +52,16 @@ static double rtclock() {
  */
 struct pluto_extra_stmt_info {
   Stmt **stmts;
-  int index;
+  unsigned index;
 };
 
 static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
-  Stmt **stmts;
-  Stmt *stmt;
-  PlutoConstraints *bcst;
-  struct pluto_extra_stmt_info *info;
+  struct pluto_extra_stmt_info *info = (struct pluto_extra_stmt_info *)user;
 
-  info = (struct pluto_extra_stmt_info *)user;
+  Stmt **stmts = info->stmts;
+  Stmt *stmt = stmts[info->index];
 
-  stmts = info->stmts;
-  stmt = stmts[info->index];
-
-  bcst = isl_basic_set_to_pluto_constraints(bset);
+  PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
   if (stmt->domain) {
     stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
     pluto_constraints_free(bcst);
@@ -80,11 +75,7 @@ static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
 
 /* Used by libpluto interface */
 static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
-  isl_stat r;
-  Stmt **stmts;
-  int id, i;
-
-  stmts = (Stmt **)user;
+  Stmt **stmts = (Stmt **)user;
 
   int dim = isl_set_dim(set, isl_dim_all);
   int npar = isl_set_dim(set, isl_dim_param);
@@ -99,7 +90,7 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
   assert(name[0] == 'S');
   assert(name[1] == '_');
   assert(isdigit(name[2]));
-  id = atoi(isl_set_get_tuple_name(set) + 2);
+  unsigned id = atoi(isl_set_get_tuple_name(set) + 2);
 
   stmts[id] = pluto_stmt_alloc(dim - npar, NULL, trans);
 
@@ -107,19 +98,19 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
   stmt->type = ORIG;
   stmt->id = id;
 
-  for (i = 0; i < stmt->dim; i++) {
+  for (unsigned i = 0; i < stmt->dim; i++) {
     char *iter = (char *)malloc(13);
     sprintf(iter, "i%d", i);
     stmt->iterators[i] = iter;
   }
 
   struct pluto_extra_stmt_info info = {stmts, id};
-  r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
+  isl_stat r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
 
   pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0,
                                     stmt->dim);
 
-  for (i = 0; i < npar; i++) {
+  for (int i = 0; i < npar; i++) {
     char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     stmt->domain->names[stmt->dim + i] = param;
@@ -127,8 +118,7 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
 
   pluto_matrix_free(trans);
 
-  int j;
-  for (j = 0; j < stmt->dim; j++) {
+  for (unsigned j = 0; j < stmt->dim; j++) {
     stmt->is_orig_loop[j] = true;
   }
 
@@ -140,7 +130,6 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
 /* Used by libpluto interface */
 static int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts) {
   isl_union_set_foreach_set(domains, &extract_stmt, stmts);
-
   return 0;
 }
 
@@ -151,25 +140,23 @@ static int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts) {
  * (space/dimensionality-wise)
  */
 PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog) {
-  int del, r, c, j, snodes, nrows;
-  PlutoConstraints *domain;
-
   PlutoConstraints *sched = pluto_stmt_get_schedule(stmt);
 
-  domain = stmt->domain;
-  snodes = stmt->dim - stmt->dim_orig;
+  PlutoConstraints *domain = stmt->domain;
+  unsigned snodes = stmt->dim - stmt->dim_orig;
 
   while (domain != NULL) {
-    del = 0;
-    nrows = domain->nrows;
-    for (r = 0; r < nrows; r++) {
+    unsigned del = 0;
+    unsigned nrows = domain->nrows;
+    for (unsigned r = 0; r < nrows; r++) {
+      unsigned c;
       for (c = 0; c < snodes; c++) {
         if (domain->val[r - del][c] != 0)
           break;
       }
       if (c < snodes) {
         PlutoConstraints *cut = pluto_constraints_select_row(domain, r - del);
-        for (j = 0; j < stmt->trans->nrows; j++) {
+        for (unsigned j = 0; j < stmt->trans->nrows; j++) {
           pluto_constraints_add_dim(cut, 0, NULL);
         }
         pluto_constraints_add(sched, cut);
@@ -180,7 +167,7 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog) {
     domain = domain->next;
   }
 
-  for (c = 0; c < snodes; c++) {
+  for (unsigned c = 0; c < snodes; c++) {
     pluto_stmt_remove_dim(stmt, 0, prog);
   }
   return sched;
@@ -193,17 +180,12 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog) {
 __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
                                          isl_union_map *dependences,
                                          PlutoOptions *options_l) {
-  int i, j, retval;
+  int i;
   unsigned nbands, n_ibands;
-  isl_ctx *ctx;
-  isl_space *space;
   double t_t, t_all, t_start;
 
-  ctx = isl_union_set_get_ctx(domains);
-  space = isl_union_set_get_space(domains);
-
-  // isl_union_set_dump(domains);
-  // isl_union_map_dump(dependences);
+  isl_ctx *ctx = isl_union_set_get_ctx(domains);
+  isl_space *space = isl_union_set_get_space(domains);
 
   PlutoProg *prog = pluto_prog_alloc();
   prog->options = options_l;
@@ -227,7 +209,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   extract_stmts(domains, prog->stmts);
 
   for (i = 0; i < prog->nstmts; i++) {
-    prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+    prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 
   if (prog->nstmts >= 1) {
@@ -255,7 +237,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   IF_DEBUG(pluto_prog_print(stdout, prog););
 
   t_start = rtclock();
-  retval = pluto_auto_transform(prog);
+  int retval = pluto_auto_transform(prog);
   t_t = rtclock() - t_start;
 
   if (retval) {
@@ -345,7 +327,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
     map = isl_map_from_basic_map(bmap);
 
     /* Copy ids of the original parameter dimensions  */
-    for (j = 0; j < isl_space_dim(space, isl_dim_param); j++) {
+    for (int j = 0, e = isl_space_dim(space, isl_dim_param); j < e; j++) {
       isl_id *id = isl_space_get_dim_id(space, isl_dim_param, j);
       map = isl_map_set_dim_id(map, isl_dim_param, j, id);
     }
@@ -374,14 +356,11 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
                                isl_union_map *dependences,
                                PlutoOptions *options_l) {
 
-  unsigned i, nbands, n_ibands;
+  unsigned nbands, n_ibands;
   int retval;
   isl_space *space;
 
   space = isl_union_set_get_space(domains);
-
-  // isl_union_set_dump(domains);
-  // isl_union_map_dump(dependences);
 
   PlutoProg *prog = pluto_prog_alloc();
   prog->options = options_l;
@@ -398,14 +377,14 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
     prog->stmts = NULL;
   }
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     prog->stmts[i] = NULL;
   }
 
   extract_stmts(domains, prog->stmts);
 
-  for (i = 0; i < prog->nstmts; i++) {
-    prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+  for (int i = 0; i < prog->nstmts; i++) {
+    prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 
   if (prog->nstmts >= 1) {
@@ -415,7 +394,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
   } else
     prog->npar = 0;
 
-  for (i = 0; i < prog->npar; i++) {
+  for (int i = 0; i < prog->npar; i++) {
     char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
@@ -425,7 +404,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
   isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
 
   prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     prog->deps[i] = pluto_dep_alloc();
   }
   extract_deps(prog->deps, 0, prog->stmts, dependences, OSL_DEPENDENCE_RAW);
@@ -477,7 +456,7 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
       (PlutoMatrix **)malloc(sizeof(PlutoMatrix *) * prog->nstmts);
   remapping->stmt_divs = (int **)malloc(sizeof(int *) * prog->nstmts);
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     remapping->stmt_inv_matrices[i] =
         pluto_stmt_get_remapping(prog->stmts[i], &remapping->stmt_divs[i]);
   }
@@ -612,7 +591,7 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     isl_union_set *domains, isl_union_map *dependences, Ploop ***ploops,
     unsigned *nploops, Remapping **remap, PlutoOptions *options_l) {
-  unsigned i, j, nbands, n_ibands;
+  unsigned nbands, n_ibands;
   int retval;
   isl_ctx *ctx;
   isl_space *space;
@@ -636,14 +615,14 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     prog->stmts = NULL;
   }
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     prog->stmts[i] = NULL;
   }
 
   extract_stmts(domains, prog->stmts);
 
-  for (i = 0; i < prog->nstmts; i++) {
-    prog->nvar = PLMAX(prog->nvar, prog->stmts[i]->dim);
+  for (int i = 0; i < prog->nstmts; i++) {
+    prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 
   if (prog->nstmts >= 1) {
@@ -653,7 +632,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
   } else
     prog->npar = 0;
 
-  for (i = 0; i < prog->npar; i++) {
+  for (int i = 0; i < prog->npar; i++) {
     char *param = (char *)malloc(11);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
@@ -663,7 +642,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
   isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
 
   prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     prog->deps[i] = pluto_dep_alloc();
   }
   extract_deps(prog->deps, 0, prog->stmts, dependences, OSL_DEPENDENCE_RAW);
@@ -753,7 +732,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
 
   *remap = remapping;
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     remapping->stmt_inv_matrices[i] =
         pluto_stmt_get_remapping(prog->stmts[i], &remapping->stmt_divs[i]);
     if (!options->silent) {
@@ -764,7 +743,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
 
   /* Construct isl_union_map for pluto schedules */
   isl_union_map *schedules = isl_union_map_empty(isl_space_copy(space));
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     isl_basic_map *bmap;
     isl_map *map;
     Stmt *stmt = prog->stmts[i];
@@ -781,7 +760,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     map = isl_map_from_basic_map(bmap);
 
     /* Copy ids of the original parameter dimensions  */
-    for (j = 0; j < isl_space_dim(space, isl_dim_param); j++) {
+    for (int j = 0; j < isl_space_dim(space, isl_dim_param); j++) {
       isl_id *id = isl_space_get_dim_id(space, isl_dim_param, j);
       map = isl_map_set_dim_id(map, isl_dim_param, j, id);
     }

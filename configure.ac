@@ -25,23 +25,25 @@ AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
-dnl Determine a C compiler to use
-AC_PROG_CC
-AC_PROG_CC_C99
-
+if test -n "${CXXFLAGS}"; then
+  user_set_cxxflags=yes
+fi
 dnl Determine a C++ compiler to use
 AC_PROG_CXX
 AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
-
-dnl clan, candl, cloog are all configured with 64-bit data type support
-dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
-dnl being 32-bit/64-bit
-CXXFLAGS="$CXXFLAGS -Wall -std=c++11"
-if test CXX = icc; then
-    LDFLAGS="$LDFLAGS -lirc -limf"
+if test X$user_set_cxxflags != Xyes; then
+  CXXFLAGS="-Wall -std=c++11"
 fi
 
-CFLAGS="$CFLAGS -Wall"
+if test -n "${CFLAGS}"; then
+  user_set_cflags=yes
+fi
+dnl Determine a C compiler to use
+AC_PROG_CC
+AC_PROG_CC_C99
+if test X$user_set_cflags != Xyes; then
+  CFLAGS="-Wall"
+fi
 
 AC_PROG_LIBTOOL
 AC_PROG_SED
@@ -58,7 +60,8 @@ AC_ARG_ENABLE(debug,
 AM_CONDITIONAL(PLUTO_DEBUG, test x$debug = xtrue)
 
 if test x$debug = x"true"; then
-    CXXFLAGS="$CXXFLAGS -g"
+    CXXFLAGS="$CXXFLAGS -g -O0"
+    CFLAGS="$CFLAGS -g -O0"
 fi
 
 dnl check for some compiler characteristics
@@ -157,15 +160,18 @@ if test $ARCHGIVEN = "true"; then
 fi
 
 if test "$poly_cv_gmpfatal" = "yes"; then
-    AC_MSG_ERROR([GMP not found])
-    else
-        AC_CHECK_DECLS(mp_get_memory_functions,[],[
-                                                AC_LIBOBJ(mp_get_memory_functions)
-                                                ],[#include <gmp.h>
-                                                   ])
-        fi
+  AC_MSG_ERROR([GMP not found])
+else
+  AC_CHECK_DECLS(mp_get_memory_functions,[],[
+                                          AC_LIBOBJ(mp_get_memory_functions)
+                                          ],[#include <gmp.h>
+                                             ])
+fi
 
 
+dnl clan, candl, piplib, cloog are all configured with 64-bit data type support
+dnl NOTE: configuring these 64-bit data type support has nothing to do with arch
+dnl being 32-bit/64-bit
 
 dnl Configuring PipLib (long long int is 64 bits)
 echo ""

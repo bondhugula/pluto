@@ -44,7 +44,7 @@ pluto_SOURCES = \
 
 if PLUTO_DEBUG
 OPT_FLAGS = 
-DEBUG_FLAGS = -g
+DEBUG_FLAGS = -g -O0
 else
 OPT_FLAGS = -O3 -funroll-loops -fopenmp
 DEBUG_FLAGS =

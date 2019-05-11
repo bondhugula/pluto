@@ -71,8 +71,8 @@ PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
 PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
-void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows,
-                                     int ncols);
+void pluto_constraints_resize_single(PlutoConstraints *cst, unsigned nrows,
+                                     unsigned ncols);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest,
                                          const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest,
@@ -80,8 +80,8 @@ PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest,
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup_single(const PlutoConstraints *src);
 
-void fourier_motzkin_eliminate(PlutoConstraints *, int n);
-void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, int pos);
+void fourier_motzkin_eliminate(PlutoConstraints *, unsigned n);
+void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, unsigned pos);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst,
                                              PlutoMatrix *pmat);
@@ -104,7 +104,7 @@ void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
                                const char *name);
-void pluto_constraints_remove_row(PlutoConstraints *, int);
+void pluto_constraints_remove_row(PlutoConstraints *, unsigned);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 
 void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64 lb);

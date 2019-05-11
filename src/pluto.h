@@ -598,7 +598,7 @@ void pluto_constraints_list_replace(PlutoConstraintsList *list,
 typedef struct band {
   /* Root loop of this band */
   Ploop *loop;
-  int width;
+  unsigned width;
   /* Not used yet */
   struct band **children;
 } Band;

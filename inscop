@@ -21,17 +21,10 @@ sed -n '/\#pragma[[:space:]]endscop/,$p' $1 | awk '{if(NR>1)print}' > .tail
 
 cat .head > __tmp
 
-<<<<<<< HEAD
-# The gcc preprocessor inserts some useless comments like "# 1 "<built-in>"
-# preprocessor doesn't like pragma's in #defines and so it was not put in from pluto
-# when '--bee' was used - instead we will add it here
-# '##' indicates preprocessors directives inserted by pluto (dynamic scheduler) - replace with #
-=======
 # The gcc preprocessor inserts some comments like "# 1 "<built-in>"
 # The preprocessor doesn't like pragma's in #defines and so it was not put in
 # from pluto when '--bee' was used - instead we will add it here.
->>>>>>> origin/master
-
+# '##' indicates preprocessors directives inserted by pluto (dynamic scheduler) - replace with #
 # Put all the include statements in a  file
 cat $2 | grep "^#include" > .includes
 
@@ -45,11 +38,11 @@ cat .includes > .head
 # If we haven't, put them in the head
 if ! grep -q "#define ceild(n,d)" __tmp
 	then
-	echo "#include <math.h>" >> .head
-	echo "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))" >> .head
-	echo "#define floord(n,d) floor(((double)(n))/((double)(d)))" >> .head
-	echo "#define max(x,y)    ((x) > (y)? (x) : (y))" >> .head
-	echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
+    echo "#include <math.h>" >> .head
+    echo "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))" >> .head
+    echo "#define floord(n,d) floor(((double)(n))/((double)(d)))" >> .head
+    echo "#define max(x,y)    ((x) > (y)? (x) : (y))" >> .head
+    echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
 fi
 
 # Run the preprocessor
