@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Tests based on LLVM FileCheck.
+#
 
 num_succ=0
 num_fail=0
@@ -21,14 +24,14 @@ TESTS="\
   "
 # Tests with pet with tiling and parallelization disabled
 for file in $TESTS; do
-  echo -ne "$file "
+  printf '%-50s ' $file
   ./src/pluto $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
   check_ret_val_emit_status
 done
 
-# Tests with pet
+# Tests with pet.
 for file in $TESTS; do
-    echo -ne "$file with --tile --parallel "
+    printf '%-50s ' "$file with --tile --parallel"
     ./src/pluto $file --pet -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
