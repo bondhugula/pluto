@@ -14,9 +14,11 @@ be fine if you have GNU utilities.
   build system tools including autoconf, automake, and libtool are needed.  
 
 - LLVM/Clang (2.9 or higher) along with its development/header files is needed 
-  for the pet submodule, and also for Pluto's testing, which uses LLVM 
-  FileCheck. These packages are available in distribution repositories, or could  
-  be installed by download and building LLVM and Clang from sources.
+  for the pet submodule. These packages are available in distribution 
+  repositories, or could be installed by building LLVM and Clang from sources.
+
+- LLVM FileCheck is used for Pluto's test suite. (On a Fedora, this is part of 
+  the 'llvm' package.)
 
 - GMP (GNU multi precision arithmetic library) is needed by ISL (one of the 
   included libraries).  If it's not already on your system, it can be installed 
