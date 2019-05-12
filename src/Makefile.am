@@ -2,11 +2,9 @@
 #
 # Copyright (C) Uday Bondhugula 2007
 #
-
 SUBDIRS = 
 
 MAINTAINERCLEANFILES = Makefile.in
-
 
 if EXTERNAL_ISL
 # ISL_INCLUDE, ISL_LIBADD were already defined
@@ -17,18 +15,32 @@ endif
 
 bin_PROGRAMS = pluto
 
-pluto_SOURCES = constraints.c constraints_polylib.c constraints_isl.c math_support.c gurobi-plugin.c ddg.c transforms.c pluto.c post_transform.c framework.c framework-dfp.c pluto_codegen_if.c polyloop.c ast_transform.c iss.c main.c constraints.h math_support.h pluto.h program.c program.h tile.c unit_tests.c
+pluto_SOURCES = \
+		ast_transform.c \
+		constraints.c \
+		constraints.h \
+	       	constraints_polylib.c \
+		constraints_isl.c \
+		ddg.c \
+		framework.c \
+		framework-dfp.c \
+		gurobi-plugin.c \
+		iss.c \
+		main.c \
+		math_support.c \
+		math_support.h \
+		pluto.c \
+		pluto_codegen_if.c \
+		pluto.h \
+		polyloop.c \
+		post_transform.c \
+		program.cpp \
+		program.h \
+		tile.c \
+		transforms.c \
+		unit_tests.c 
 
-nodist_EXTRA_pluto_SOURCES = dummy.cc
-
-if PLUTO_DEBUG
-OPT_FLAGS = -O3 -funroll-loops -fopenmp
-else
-OPT_FLAGS = 
-DEBUG_FLAGS = -g
-endif
-
-pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
+pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
    -I../include \
    -I../piplib/include \
@@ -39,6 +51,8 @@ pluto_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) -funroll-loops -fopenmp \
    -I../openscop/include \
    -I../candl/include \
    -I../polylib/include
+# To avoid same name object from being created with libtool and without it.
+pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
 
 pluto_LDFLAGS = -static -fopenmp
 pluto_LDADD =  \
@@ -55,8 +69,28 @@ pluto_LDADD =  \
 lib_LTLIBRARIES = libpluto.la
 
 # libpluto doesn't use polylib-based functions
-libpluto_la_SOURCES = constraints.c constraints_isl.c math_support.c ddg.c transforms.c pluto.c post_transform.c framework.c framework-dfp.c polyloop.c iss.c libpluto.c libpluto_dummy.c constraints.h math_support.h pluto.h program.c program.h tile.c
-libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
+libpluto_la_SOURCES = \
+		      constraints.c \
+		      constraints.h \
+		      constraints_isl.c \
+		      ddg.c \
+		      framework.c \
+		      framework-dfp.c \
+		      iss.c \
+		      libpluto.c \
+		      libpluto_dummy.c \
+		      math_support.c \
+		      math_support.h \
+		      pluto.c \
+		      pluto.h \
+		      polyloop.c \
+		      post_transform.c \
+		      program.cpp \
+		      program.h \
+		      tile.c \
+		      transforms.c
+
+libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
@@ -66,6 +100,8 @@ libpluto_la_CPPFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -I../candl/include \
    -I../cloog-isl/include \
    $(ISL_INCLUDE)
+# To avoid same name object from being created with libtool and without it.
+libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
 
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
@@ -76,4 +112,4 @@ libpluto_la_LIBADD = \
    ../candl/libcandl.la \
    $(ISL_LIBADD) \
    -lm -lgomp
-libpluto_la_LDFLAGS = -version-info 1:0:1
+libpluto_la_LDFLAGS = -version-info 2:0:0

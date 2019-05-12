@@ -24,9 +24,9 @@
 #ifdef GUROBI
 #include "constraints.h"
 #include "pluto.h"
-#include <math.h>
 #include <assert.h>
 #include <gurobi_c.h>
+#include <math.h>
 
 /* The file provides an interface to solve Pluto's constraints with Gurobi as
  * the (I)LP solver. The file contains routines that creates a (I)LP problem
@@ -61,9 +61,8 @@ double *get_gurobi_objective_from_pluto_matrix(PlutoMatrix *obj) {
 
 /* Constructs constraints for gurobi problem from pluto_constraints.
  * Assumes that there are no rows or cols in the input model lp */
-void
-set_gurobi_constraints_from_pluto_constraints(GRBmodel *lp,
-                                              const PlutoConstraints *cst) {
+void set_gurobi_constraints_from_pluto_constraints(
+    GRBmodel *lp, const PlutoConstraints *cst) {
   int i, j, k, nrows, ncols;
   int *index;
   double *value, rhs;

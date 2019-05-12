@@ -19,10 +19,10 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include "program.h"
-#include "pluto.h"
-#include "constraints.h"
 #include "transforms.h"
+#include "constraints.h"
+#include "pluto.h"
+#include "program.h"
 
 #include "assert.h"
 
@@ -50,27 +50,23 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
   pluto_constraints_add_inequality(domain);
   domain->val[domain->nrows - 1][0] = -factor;
   assert(stmt->trans->ncols == domain->ncols);
-  int i;
-  for (i = 1; i < stmt->trans->ncols - 1; i++) {
+  for (int i = 1; i < (int)stmt->trans->ncols - 1; i++) {
     domain->val[domain->nrows - 1][i] = stmt->trans->val[dim + 1][i];
   }
 
   pluto_constraints_add_inequality(domain);
   domain->val[domain->nrows - 1][0] = factor;
   assert(stmt->trans->ncols == domain->ncols);
-  for (i = 1; i < stmt->trans->ncols - 1; i++) {
+  for (int i = 1; i < (int)stmt->trans->ncols - 1; i++) {
     domain->val[domain->nrows - 1][i] = -stmt->trans->val[dim + 1][i];
   }
   domain->val[domain->nrows - 1][stmt->trans->ncols] += factor;
 }
 
 /* Interchange loops for a stmt */
-void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2,
-                                 PlutoProg *prog) {
-  int j, tmp;
-
-  for (j = 0; j < stmt->trans->ncols; j++) {
-    tmp = stmt->trans->val[level1][j];
+void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
+  for (unsigned j = 0; j < stmt->trans->ncols; j++) {
+    int64 tmp = stmt->trans->val[level1][j];
     stmt->trans->val[level1][j] = stmt->trans->val[level2][j];
     stmt->trans->val[level2][j] = tmp;
   }
@@ -84,7 +80,7 @@ void pluto_interchange(PlutoProg *prog, int level1, int level2) {
   int nstmts = prog->nstmts;
 
   for (k = 0; k < nstmts; k++) {
-    pluto_stmt_loop_interchange(stmts[k], level1, level2, prog);
+    pluto_stmt_loop_interchange(stmts[k], level1, level2);
   }
 
   hTmp = prog->hProps[level1];
@@ -92,10 +88,8 @@ void pluto_interchange(PlutoProg *prog, int level1, int level2) {
   prog->hProps[level2] = hTmp;
 }
 
-void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog) {
-  int i, npar;
-
-  npar = stmt->domain->ncols - stmt->dim - 1;
+void pluto_sink_transformation(Stmt *stmt, unsigned pos) {
+  int npar = stmt->domain->ncols - stmt->dim - 1;
 
   assert(pos <= stmt->trans->nrows);
   assert(stmt->dim + npar + 1 == stmt->domain->ncols);
@@ -105,8 +99,9 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog) {
 
   pluto_matrix_add_row(stmt->trans, pos);
 
-  stmt->hyp_types = realloc(stmt->hyp_types, sizeof(int) * stmt->trans->nrows);
-  for (i = stmt->trans->nrows - 2; i >= pos; i--) {
+  stmt->hyp_types = (PlutoHypType *)realloc(
+      stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
+  for (int i = stmt->trans->nrows - 2; i >= (int)pos; i--) {
     stmt->hyp_types[i + 1] = stmt->hyp_types[i];
   }
   stmt->hyp_types[pos] = H_SCALAR;
@@ -114,11 +109,11 @@ void pluto_sink_transformation(Stmt *stmt, int pos, PlutoProg *prog) {
 
 /* Make loop the innermost loop; all loops below move up by one */
 void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog) {
-  int i, d, last_depth;
-
-  last_depth = prog->num_hyperplanes - 1;
-  for (i = 0; i < loop->nstmts; i++) {
+  assert(prog->num_hyperplanes >= 1);
+  unsigned last_depth = prog->num_hyperplanes - 1;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
+    unsigned d;
     for (d = loop->depth; d < stmt->trans->nrows; d++) {
       if (pluto_is_hyperplane_scalar(stmt, d)) {
         break;
@@ -127,10 +122,10 @@ void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog) {
     last_depth = PLMIN(last_depth, d - 1);
   }
 
-  for (i = 0; i < loop->nstmts; i++) {
+  for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
-    for (d = loop->depth; d < last_depth; d++) {
-      pluto_stmt_loop_interchange(stmt, d, d + 1, prog);
+    for (unsigned d = loop->depth; d < last_depth; d++) {
+      pluto_stmt_loop_interchange(stmt, d, d + 1);
     }
   }
 }

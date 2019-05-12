@@ -24,8 +24,8 @@
  * mode
  *
  */
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "constraints.h"
 #include "program.h"

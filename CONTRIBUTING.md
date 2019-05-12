@@ -1,7 +1,7 @@
 
-- Pluto now uses C99; it originally used ANSI C / C89 and so a lot of the 
-  existing code is still in that form. The old code is typically updated when it 
-  is touched.
+- Pluto now uses C99 and C++11; it originally used ANSI C / C89 and so a lot of 
+  the existing code is still in that form. The old code is typically updated 
+  when it is touched.
 
 - The LLVM coding style is used. Automatic formatting for this can be done
   using clang-format:

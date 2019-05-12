@@ -29,7 +29,7 @@
 #include "program.h"
 
 Ploop *pluto_loop_alloc() {
-  Ploop *loop = malloc(sizeof(Ploop));
+  Ploop *loop = (Ploop *)malloc(sizeof(Ploop));
   loop->nstmts = 0;
   loop->depth = -1;
   loop->stmts = NULL;
@@ -57,7 +57,7 @@ Ploop *pluto_loop_dup(Ploop *l) {
   loop = pluto_loop_alloc();
   loop->depth = l->depth;
   loop->nstmts = l->nstmts;
-  loop->stmts = malloc(loop->nstmts * sizeof(Stmt *));
+  loop->stmts = (Stmt **)malloc(loop->nstmts * sizeof(Stmt *));
   memcpy(loop->stmts, l->stmts, l->nstmts * sizeof(Stmt *));
   return loop;
 }
@@ -86,7 +86,7 @@ Ploop **pluto_loops_cat(Ploop **dest, int num1, Ploop **src, int num2) {
   if (num1 == 0 && num2 == 0) {
     return dest;
   }
-  dest = realloc(dest, (num1 + num2) * sizeof(Ploop *));
+  dest = (Ploop **)realloc(dest, (num1 + num2) * sizeof(Ploop *));
   memcpy(dest + num1, src, num2 * sizeof(Ploop *));
   return dest;
 }
@@ -146,7 +146,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
     unsigned num_inner, loop_nstmts, i;
     Ploop **inner_loops, *this_loop;
     this_loop = pluto_loop_alloc();
-    this_loop->stmts = malloc(nstmts * sizeof(Stmt *));
+    this_loop->stmts = (Stmt **)malloc(nstmts * sizeof(Stmt *));
 
     loop_nstmts = 0;
     for (i = 0; i < nstmts; i++) {
@@ -455,7 +455,7 @@ Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops) {
   *nploops = 0;
   for (i = 0; i < num; i++) {
     if (pluto_loop_is_parallel(prog, loops[i])) {
-      ploops = realloc(ploops, (*nploops + 1) * sizeof(Ploop *));
+      ploops = (Ploop **)realloc(ploops, (*nploops + 1) * sizeof(Ploop *));
       ploops[*nploops] = pluto_loop_dup(loops[i]);
       (*nploops)++;
     }
@@ -519,7 +519,7 @@ Ploop **pluto_get_outermost_loops(const PlutoProg *prog, int *ndploops) {
 /* Band support */
 
 Band *pluto_band_alloc(Ploop *loop, int width) {
-  Band *band = malloc(sizeof(Band));
+  Band *band = (Band *)malloc(sizeof(Band));
   band->width = width;
   band->loop = pluto_loop_dup(loop);
   band->children = NULL;
@@ -555,7 +555,7 @@ Band *pluto_band_dup(Band *b) { return pluto_band_alloc(b->loop, b->width); }
 Band **pluto_bands_cat(Band ***dest, int num1, Band **src, int num2) {
   if (num1 == 0 && num2 == 0)
     return *dest;
-  *dest = realloc(*dest, (num1 + num2) * sizeof(Band *));
+  *dest = (Band **)realloc(*dest, (num1 + num2) * sizeof(Band *));
   memcpy((*dest) + num1, src, num2 * sizeof(Band *));
   return *dest;
 }
@@ -762,7 +762,7 @@ Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands,
     int comm_placement_level;
     Band *band = pluto_get_parallel_band(loops[i], prog, &comm_placement_level);
     if (band != NULL) {
-      bands = realloc(bands, (nb + 1) * sizeof(Band *));
+      bands = (Band **)realloc(bands, (nb + 1) * sizeof(Band *));
       (*comm_placement_levels)[nb] = comm_placement_level;
       bands[nb++] = band;
     }
@@ -796,7 +796,7 @@ Band **pluto_get_outermost_permutable_bands(PlutoProg *prog,
   for (i = 0; i < num; i++) {
     Band *band = pluto_get_permutable_band(loops[i], prog);
     if (band != NULL) {
-      bands = realloc(bands, (nbands + 1) * sizeof(Band *));
+      bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
       bands[nbands++] = band;
     }
   }
@@ -873,7 +873,7 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
   for (i = 0; i < num; i++) {
     Band *band = pluto_get_permutable_band(loops[i], prog);
     if (band != NULL && pluto_is_band_innermost(band, 0)) {
-      bands = realloc(bands, (nbands + 1) * sizeof(Band *));
+      bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
       bands[nbands] = band;
       nbands++;
     } else

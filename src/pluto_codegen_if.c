@@ -22,22 +22,22 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <cloog/cloog.h>
 
 #include "version.h"
 
-#include "pluto.h"
-#include "math_support.h"
-#include "constraints.h"
-#include "program.h"
 #include "ast_transform.h"
+#include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
+#include "program.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog) {
   int i, first_point_loop;
@@ -159,7 +159,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp) {
     for (j = 0; j < stmt->trans->nrows; j++) {
       fprintf(outfp, "[");
       pluto_affine_function_print(outfp, stmt->trans->val[j], stmt->dim,
-                                  stmt->iterators);
+                                  (const char **)stmt->iterators);
       fprintf(outfp, "]");
     }
     fprintf(outfp, " _NL_DELIMIT_ ");
@@ -225,8 +225,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   state = cloog_state_malloc();
   cloogOptions = cloog_options_malloc(state);
 
-  cloogOptions->fs = malloc(nstmts * sizeof(int));
-  cloogOptions->ls = malloc(nstmts * sizeof(int));
+  cloogOptions->fs = (int *)malloc(nstmts * sizeof(int));
+  cloogOptions->ls = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->fs_ls_size = nstmts;
 
   for (i = 0; i < nstmts; i++) {
@@ -238,7 +238,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   cloogOptions->compilable = 0;
   cloogOptions->esp = 1;
   cloogOptions->strides = 1;
-  cloogOptions->quiet = options->silent;
+  cloogOptions->quiet = !options->debug;
 
   /* Generates better code in general */
   cloogOptions->backtrack = options->cloogbacktrack;
@@ -374,7 +374,7 @@ int pluto_omp_parallelize(PlutoProg *prog) {
 
       /* Lower and upper scalars for parallel loops yet to be marked */
       /* NOTE: we extract up to 2 degrees of parallelism
-      */
+       */
       if (options->multipar) {
         for (i = num_parallel_loops + 1; i < 2; i++) {
           fprintf(outfp, "lb%d,ub%d,", i + 1, i + 1);

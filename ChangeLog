@@ -1,3 +1,15 @@
+Until present
+
+- Coding style set to LLVM style; all sources in src/ and include/
+  auto-formatted to that
+- Code modernized for compilation with C++ compilers; language changed to C99
+  and C++11 for all future development
+- 'pet' branch merged into master
+- Submodules pet, cloog-isl, isl, clan, candl, openscop - all updated to
+  their most recent releases or git master tips
+- --tile and --parallel enabled by default
+- Diamond tiling enabled by default
+
 version 0.11.4
 
 date: Wed Oct 28 20:30:13 IST 2015

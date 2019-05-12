@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <strings.h>
 #include <sys/time.h>
 
 #include "constraints.h"
@@ -43,7 +43,7 @@ bool *innermost_dep_satisfaction_dims(PlutoProg *prog,
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
                 PlutoProg *prog);
 
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, unsigned level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
@@ -52,10 +52,9 @@ int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 int pluto_diamond_tile(PlutoProg *prog);
 
 static double rtclock() {
-  struct timezone Tzp;
   struct timeval Tp;
   int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -217,7 +216,7 @@ int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps) {
  */
 static PlutoConstraints *
 get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog) {
-  int i, npar, nstmts, nvar, s;
+  int i, npar, nstmts, nvar;
   PlutoConstraints *cst;
 
   npar = prog->npar;
@@ -231,7 +230,7 @@ get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog) {
     pluto_constraints_add_lb(cst, i, 0);
   }
   /* Lower bound for transformation coefficients */
-  for (s = 0; s < nstmts; s++) {
+  for (int s = 0; s < nstmts; s++) {
     for (i = 0; i < nvar; i++) {
       /* Set this to -4 (is enough) */
       IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding "
@@ -252,19 +251,18 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
                                        const PlutoProg *prog) {
   int npar = prog->npar;
   int nvar = prog->nvar;
-  int i, j, k;
-
   PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols - 1);
   pluto_matrix_set(obj, 0);
 
   /* u */
-  for (j = 0; j < npar; j++) {
+  for (int j = 0; j < npar; j++) {
     obj->val[0][j] = 5 * 5 * nvar * prog->nstmts;
   }
   /* w */
   obj->val[0][npar] = 5 * nvar * prog->nstmts;
 
-  for (i = 0, j = npar + 1; i < prog->nstmts; i++) {
+  for (int i = 0, j = npar + 1; i < prog->nstmts; i++) {
+    unsigned k;
     for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
       obj->val[0][k] = (nvar + 2) * (prog->stmts[i]->dim_orig - (k - j));
     }
@@ -283,7 +281,7 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
  */
 int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   Stmt **stmts;
-  int i, j, k;
+  int i, j;
   int nstmts, nvar, npar, del_count;
   int64 *sol, *fsol;
   PlutoConstraints *newcst;
@@ -295,7 +293,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   npar = prog->npar;
   sol = NULL;
 
-  assert(cst->ncols - 1 == CST_WIDTH - 1);
+  assert((int)cst->ncols - 1 == CST_WIDTH - 1);
 
   /* Remove redundant variables - that don't appear in your outer loops */
   int redun[npar + 1 + nstmts * (nvar + 1) + 1];
@@ -313,7 +311,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
   del_count = 0;
   newcst = pluto_constraints_dup(cst);
-  for (j = 0; j < cst->ncols - 1; j++) {
+  for (j = 0; j < (int)cst->ncols - 1; j++) {
     if (redun[j]) {
       pluto_constraints_remove_dim(newcst, j - del_count);
       del_count++;
@@ -324,9 +322,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
    * hyperplane order is preserved (no strong reason to do this) */
   /* We do not need to permute in case of pluto-lp-dfp */
   if (!options->dfp) {
-    j = npar + 1;
+    unsigned j = npar + 1;
     for (i = 0; i < nstmts; i++) {
-      for (k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
+      for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
         pluto_constraints_interchange_cols(
             newcst, k, j + (stmts[i]->dim_orig - 1 - (k - j)));
       }
@@ -402,9 +400,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     int64 tmp;
     /* Permute the solution in line with the permuted cst */
     if (!options->dfp) {
-      j = npar + 1;
+      unsigned j = npar + 1;
       for (i = 0; i < nstmts; i++) {
-        for (k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
+        for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
           k1 = k;
           k2 = j + (stmts[i]->dim_orig - 1 - (k - j));
           tmp = sol[k1];
@@ -419,7 +417,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
     /* Fill the soln with zeros for the redundant variables */
     q = 0;
-    for (j = 0; j < cst->ncols - 1; j++) {
+    for (j = 0; j < (int)cst->ncols - 1; j++) {
       fsol[j] = redun[j] ? 0 : sol[q++];
     }
     free(sol);
@@ -618,7 +616,7 @@ void cut_smart(PlutoProg *prog, Graph *ddg) {
   /* Cut between SCCs that are far away */
   for (i = 0; i < ddg->num_sccs - 1; i++) {
     for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
-      if (prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
+      if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (ddg_sccs_direct_connected(ddg, prog, i, j)) {
           // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
           num_new_carried += cut_between_sccs(prog, ddg, i, j);
@@ -649,7 +647,7 @@ void cut_conservative(PlutoProg *prog, Graph *ddg) {
   /* Cut between SCCs that are far away */
   for (i = 0; i < ddg->num_sccs - 1; i++) {
     for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
-      if (prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
+      if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (cut_between_sccs(prog, ddg, i, j)) {
           return;
         }
@@ -854,9 +852,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
  * dimension (beta row or node splitter)
  */
 int get_loop_type(Stmt *stmt, int level) {
-  int j;
-
-  for (j = 0; j < stmt->trans->ncols - 1; j++) {
+  for (int j = 0; j < (int)stmt->trans->ncols - 1; j++) {
     if (stmt->trans->val[level][j] > 0) {
       return H_LOOP;
     }
@@ -906,7 +902,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth) {
       }
       fscanf(cutFp, "%d", &tile);
       for (j = 0; j < grpCount[i]; j++)
-        for (k = 0; k < stmts[stmtGrp[i][j]]->dim_orig; k++)
+        for (unsigned k = 0; k < stmts[stmtGrp[i][j]]->dim_orig; k++)
           stmts[stmtGrp[i][j]]->tile = tile;
     }
 
@@ -935,7 +931,8 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth) {
     return true;
   } else {
     FILE *precut = fopen(".precut", "r");
-    int ignore, rows, cols, tile, tiling_depth;
+    int ignore, rows, tile, tiling_depth;
+    unsigned cols;
 
     if (precut) {
       /* Num of statements */
@@ -1035,11 +1032,9 @@ void pluto_compute_dep_directions(PlutoProg *prog) {
 }
 
 void pluto_detect_hyperplane_types_stmtwise(PlutoProg *prog) {
-  int s, i;
-
-  for (s = 0; s < prog->nstmts; s++) {
+  for (int s = 0; s < prog->nstmts; s++) {
     Stmt *stmt = prog->stmts[s];
-    for (i = 0; i < stmt->trans->nrows; i++) {
+    for (unsigned i = 0; i < stmt->trans->nrows; i++) {
       stmt->hyp_types[i] =
           pluto_is_hyperplane_loop(stmt, i) ? H_LOOP : H_SCALAR;
     }
@@ -1125,9 +1120,8 @@ void pluto_print_dep_directions(PlutoProg *prog) {
 
 /*
  * 1. Pad statement domains to maximum domain depth to make it easier to
- *construct
- * scheduling constraints. These will be removed before the actual ILP
- * runs, and just before pluto_auto_transform returns
+ * construct scheduling constraints. These will be removed before the actual ILP
+ * runs, and just before pluto_auto_transform returns.
  *
  * 2. Pre-process dependence domains to allow a single affine bounding
  * expression to be constructed. Fix this implementation (too brittle).
@@ -1160,10 +1154,10 @@ void normalize_domains(PlutoProg *prog) {
     pluto_constraints_set_names(context, prog->params);
     for (i = 0; i < prog->nstmts; i++) {
       PlutoConstraints *copy = pluto_constraints_dup(prog->stmts[i]->domain);
-      for (j = 0; j < prog->stmts[i]->dim_orig; j++) {
+      for (unsigned j = 0; j < prog->stmts[i]->dim_orig; j++) {
         fourier_motzkin_eliminate(copy, 0);
       }
-      assert(copy->ncols == npar + 1);
+      assert((int)copy->ncols == npar + 1);
       count += copy->nrows;
 
       if (count <= prog->nstmts * npar) {
@@ -1183,7 +1177,7 @@ void normalize_domains(PlutoProg *prog) {
       PlutoConstraints *bounding_poly =
           pluto_constraints_dup(prog->deps[i]->dpolytope);
 
-      for (k = 0; k < context->nrows; k++) {
+      for (unsigned k = 0; k < context->nrows; k++) {
         pluto_constraints_add_inequality(bounding_poly);
 
         /* Already initialized to zero */
@@ -1206,9 +1200,7 @@ void normalize_domains(PlutoProg *prog) {
   /* Add padding dimensions to statement domains */
   for (i = 0; i < prog->nstmts; i++) {
     Stmt *stmt = prog->stmts[i];
-    int orig_depth = stmt->dim_orig;
-    assert(orig_depth == stmt->dim);
-    for (j = orig_depth; j < nvar; j++) {
+    for (j = stmt->dim; j < nvar; j++) {
       pluto_sink_statement(stmt, stmt->dim, 0, prog);
     }
   }
@@ -1217,7 +1209,8 @@ void normalize_domains(PlutoProg *prog) {
     Dep *dep = prog->deps[i];
     int src_dim = prog->stmts[dep->src]->dim;
     int target_dim = prog->stmts[dep->dest]->dim;
-    assert(dep->dpolytope->ncols == src_dim + target_dim + prog->npar + 1);
+    assert(dep->dpolytope->ncols ==
+           (unsigned)src_dim + target_dim + prog->npar + 1);
   }
 
   /* Normalize rows of dependence polyhedra */
@@ -1225,14 +1218,14 @@ void normalize_domains(PlutoProg *prog) {
     /* Normalize by gcd */
     PlutoConstraints *dpoly = prog->deps[k]->dpolytope;
 
-    for (i = 0; i < dpoly->nrows; i++) {
+    for (unsigned i = 0; i < dpoly->nrows; i++) {
       pluto_constraints_normalize_row(dpoly, i);
     }
   }
 
   /* Avoid the need for bounding function coefficients to take negative
    * values */
-  bool *neg = malloc(sizeof(bool) * npar);
+  bool *neg = (bool *)malloc(sizeof(bool) * npar);
   for (k = 0; k < prog->ndeps; k++) {
     Dep *dep = prog->deps[k];
     PlutoConstraints *dpoly = dep->dpolytope;
@@ -1245,7 +1238,7 @@ void normalize_domains(PlutoProg *prog) {
     for (j = 2 * nvar; j < 2 * nvar + npar; j++) {
       int min = dpoly->val[0][j];
       int max = dpoly->val[0][j];
-      for (i = 1; i < dpoly->nrows; i++) {
+      for (unsigned i = 1; i < dpoly->nrows; i++) {
         min = PLMIN(dpoly->val[i][j], min);
         max = PLMAX(dpoly->val[i][j], max);
       }
@@ -1294,7 +1287,7 @@ void denormalize_domains(PlutoProg *prog) {
     assert(stmt->domain->ncols == stmt->dim + npar + 1);
     assert(stmt->trans->ncols == stmt->dim + npar + 1);
 
-    for (j = 0; j < stmt->dim; j++) {
+    for (unsigned j = 0; j < stmt->dim; j++) {
       stmt->is_orig_loop[j] = 1;
     }
   }
@@ -1309,7 +1302,7 @@ void denormalize_domains(PlutoProg *prog) {
  */
 PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   PlutoConstraints *bcst;
-  int s, _s, j, nz, nvar, npar;
+  int j, nz, nvar, npar;
   PlutoMatrix *conc_start_faces;
 
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start for band\n\t"););
@@ -1337,10 +1330,10 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   conc_start_faces = pluto_matrix_alloc(band->loop->nstmts, nvar + npar + 1);
   pluto_matrix_set(conc_start_faces, 0);
 
-  for (s = 0, _s = 0; s < prog->nstmts; s++) {
+  for (int s = 0, _s = 0; s < prog->nstmts; s++) {
     if (!pluto_stmt_is_member_of(s, band->loop->stmts, band->loop->nstmts))
       continue;
-    assert(_s <= band->loop->nstmts - 1);
+    assert(_s <= (int)band->loop->nstmts - 1);
     for (j = 0; j < nvar; j++) {
       conc_start_faces->val[_s][j] = sol[npar + 1 + s * (nvar + 1) + j];
     }
@@ -1351,16 +1344,17 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   free(sol);
 
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
-  for (s = 0; s < band->loop->nstmts; s++) {
+  for (unsigned s = 0; s < band->loop->nstmts; s++) {
     IF_DEBUG(printf("\tf(S%d) = ", band->loop->stmts[s]->id + 1););
-    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s],
-                                         nvar + npar,
-                                         band->loop->stmts[s]->domain->names););
+    IF_DEBUG(pluto_affine_function_print(
+                 stdout, conc_start_faces->val[s], nvar + npar,
+                 (const char **)band->loop->stmts[s]->domain->names););
     IF_DEBUG(printf("\n"););
   }
 
   /* 1-d schedule should be parallel to an iteration space boundary
    * FIXME: assuming canonical boundaries */
+  unsigned s;
   for (s = 0; s < band->loop->nstmts; s++) {
     nz = 0;
     for (j = 0; j < nvar; j++) {
@@ -1400,10 +1394,11 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
  * cone_complement_hyps will set to the cone complement hyperplanes found
  * for statements in the band
  */
-int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
-                                    int evict_pos, int cone_complement_pos,
-                                    PlutoConstraints *basecst, PlutoProg *prog,
-                                    PlutoMatrix **cone_complement_hyps) {
+static int
+find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
+                                unsigned evict_pos, int cone_complement_pos,
+                                PlutoConstraints *basecst, PlutoProg *prog,
+                                PlutoMatrix **cone_complement_hyps) {
   int i, s, j, k, lambda_k, nstmts, nvar, npar;
   int64 *bestsol;
   PlutoConstraints *con_start_cst, *lastcst;
@@ -1453,7 +1448,8 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
         // Full dimensional concurrent start */
         lambda_k = 0;
         /* Just for the band depth hyperplanes */
-        for (k = band->loop->depth; k < band->loop->depth + band->width; k++) {
+        for (unsigned k = band->loop->depth;
+             k < band->loop->depth + band->width; k++) {
           if (k != evict_pos && stmt->hyp_types[k] != H_SCALAR) {
             lastcst->val[lastcst->nrows - 1][stmt_offset2 + lambda_k + 1] =
                 stmt->trans->val[k][j];
@@ -1509,9 +1505,9 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
           bestsol[npar + 1 + stmt->id * (nvar + 1) + nvar];
 
       IF_DEBUG(printf("\tcone_complement(S%d) = ", stmt->id + 1););
-      IF_DEBUG(pluto_affine_function_print(stdout,
-                                           cone_complement_hyps[j]->val[0],
-                                           nvar, stmt->iterators););
+      IF_DEBUG(
+          pluto_affine_function_print(stdout, cone_complement_hyps[j]->val[0],
+                                      nvar, (const char **)stmt->iterators););
       IF_DEBUG(printf("\n"););
     }
     free(bestsol);
@@ -1525,9 +1521,7 @@ int find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
  * face allowing concurrent start
  */
 int is_concurrent_start_face(Band *band, PlutoMatrix *conc_start_faces, int d) {
-  int s;
-
-  for (s = 0; s < band->loop->nstmts; s++) {
+  for (unsigned s = 0; s < band->loop->nstmts; s++) {
     if (pluto_vector_is_parallel(band->loop->stmts[s]->trans, d,
                                  conc_start_faces, s)) {
       return 1;
@@ -1541,10 +1535,9 @@ int is_concurrent_start_face(Band *band, PlutoMatrix *conc_start_faces, int d) {
  * that will be evicted; if there is none, return
  * the last hyperplane
  */
-int find_hyperplane_to_be_evicted(Band *band, PlutoMatrix *conc_start_faces,
-                                  PlutoProg *prog) {
-  int d;
-  for (d = band->loop->depth; d < band->loop->depth + band->width - 1; d++) {
+int find_hyperplane_to_be_evicted(Band *band, PlutoMatrix *conc_start_faces) {
+  for (int d = band->loop->depth;
+       d < (int)band->loop->depth + (int)band->width - 1; d++) {
     if (is_concurrent_start_face(band, conc_start_faces, d))
       return d;
   }
@@ -1630,8 +1623,10 @@ int pluto_auto_transform(PlutoProg *prog) {
   if (nstmts == 0)
     return 0;
 
-  PlutoMatrix **orig_trans = malloc(nstmts * sizeof(PlutoMatrix *));
-  PlutoHypType **orig_hyp_types = malloc(nstmts * sizeof(PlutoHypType *));
+  PlutoMatrix **orig_trans =
+      (PlutoMatrix **)malloc(nstmts * sizeof(PlutoMatrix *));
+  PlutoHypType **orig_hyp_types =
+      (PlutoHypType **)malloc(nstmts * sizeof(PlutoHypType *));
   int orig_num_hyperplanes = prog->num_hyperplanes;
   HyperplaneProperties *orig_hProps = prog->hProps;
 
@@ -1659,7 +1654,7 @@ int pluto_auto_transform(PlutoProg *prog) {
    * statement */
   num_ind_sols_req = 0;
   for (i = 0; i < nstmts; i++) {
-    num_ind_sols_req = PLMAX(num_ind_sols_req, stmts[i]->dim);
+    num_ind_sols_req = PLMAX((unsigned)num_ind_sols_req, stmts[i]->dim);
   }
 
   depth = 0;
@@ -1774,9 +1769,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       for (s = 0; s < nstmts; s++) {
         /* Num linearly independent hyperplanes remaining to be
          * found for a statement; take max across all */
-        num_sols_left =
-            PLMAX(num_sols_left,
-                  stmts[s]->dim_orig - pluto_stmt_get_num_ind_hyps(stmts[s]));
+        num_sols_left = PLMAX(num_sols_left,
+                              (int)stmts[s]->dim_orig -
+                                  (int)pluto_stmt_get_num_ind_hyps(stmts[s]));
       }
       /* Progress in the EAGER mode is made every time a solution is found;
        * thus, the maximum number of linearly independent solutions
@@ -2022,7 +2017,7 @@ static int get_max_orig_dim_in_scc(PlutoProg *prog, int scc_id) {
   for (i = 0; i < prog->nstmts; i++) {
     Stmt *stmt = prog->stmts[i];
     if (stmt->scc_id == scc_id) {
-      max = PLMAX(max, stmt->dim_orig);
+      max = PLMAX(max, (int)stmt->dim_orig);
     }
   }
 
@@ -2118,18 +2113,16 @@ void ddg_compute_scc(PlutoProg *prog) {
  * Number of rows == num sched functions (each row for one hyperplane)
  */
 PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt) {
-  int i;
-
   PlutoMatrix *sched, *trans;
   PlutoConstraints *schedcst;
 
   trans = stmt->trans;
   sched = pluto_matrix_dup(trans);
 
-  for (i = 0; i < sched->nrows; i++) {
+  for (int i = 0; i < (int)sched->nrows; i++) {
     pluto_matrix_negate_row(sched, sched->nrows - 1 - i);
     pluto_matrix_add_col(sched, 0);
-    sched->val[trans->nrows - 1 - i][0] = 1;
+    sched->val[(int)trans->nrows - 1 - i][0] = 1;
   }
 
   schedcst = pluto_constraints_from_equalities(sched);
@@ -2141,18 +2134,16 @@ PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt) {
 
 /* Update a dependence with a new constraint added to the statement domain */
 void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
-  int i, c;
-
   Stmt **stmts = prog->stmts;
 
   assert(cst->ncols == stmt->domain->ncols);
 
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     Dep *dep = prog->deps[i];
     if (stmts[dep->src] == stmt) {
       PlutoConstraints *cst_l = pluto_constraints_dup(cst);
       Stmt *tstmt = stmts[dep->dest];
-      for (c = 0; c < tstmt->dim; c++) {
+      for (unsigned c = 0; c < tstmt->dim; c++) {
         pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
       }
       pluto_constraints_add(dep->dpolytope, cst_l);
@@ -2161,7 +2152,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
     if (stmts[dep->dest] == stmt) {
       PlutoConstraints *cst_l = pluto_constraints_dup(cst);
       Stmt *sstmt = stmts[dep->src];
-      for (c = 0; c < sstmt->dim; c++) {
+      for (unsigned c = 0; c < sstmt->dim; c++) {
         pluto_constraints_add_dim(cst_l, 0, NULL);
       }
       pluto_constraints_add(dep->dpolytope, cst_l);
@@ -2169,12 +2160,12 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
     }
   }
 
-  for (i = 0; i < prog->ntransdeps; i++) {
+  for (int i = 0; i < prog->ntransdeps; i++) {
     Dep *dep = prog->transdeps[i];
     if (stmts[dep->src] == stmt) {
       PlutoConstraints *cst_l = pluto_constraints_dup(cst);
       Stmt *tstmt = stmts[dep->dest];
-      for (c = 0; c < tstmt->dim; c++) {
+      for (unsigned c = 0; c < tstmt->dim; c++) {
         pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
       }
       pluto_constraints_add(dep->dpolytope, cst_l);
@@ -2183,7 +2174,7 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
     if (stmts[dep->dest] == stmt) {
       PlutoConstraints *cst_l = pluto_constraints_dup(cst);
       Stmt *sstmt = stmts[dep->src];
-      for (c = 0; c < sstmt->dim; c++) {
+      for (unsigned c = 0; c < sstmt->dim; c++) {
         pluto_constraints_add_dim(cst_l, 0, NULL);
       }
       pluto_constraints_add(dep->dpolytope, cst_l);
@@ -2210,12 +2201,11 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
  * Diamond Tiling
  */
 int pluto_diamond_tile(PlutoProg *prog) {
-  int b, d, conc_start_enabled, conc_start_enabled_band;
   unsigned nbands;
 
   IF_DEBUG(printf("[pluto] pluto_diamond_tile\n"));
 
-  conc_start_enabled = 0;
+  int conc_start_enabled = 0;
 
   /* Get the permutability constraints since a call to
    * detect_transformation_properties with update dep satisfaction levels
@@ -2229,11 +2219,11 @@ int pluto_diamond_tile(PlutoProg *prog) {
 
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
-  for (b = 0; b < nbands; b++) {
+  for (unsigned b = 0; b < nbands; b++) {
     PlutoMatrix **cone_complement_hyps;
     Band *band = bands[b];
     int evict_pos;
-    int i, first_loop_hyp, cone_complement_pos, s;
+    int first_loop_hyp, cone_complement_pos;
     unsigned ni;
 
     /* Band should not have outer parallelism */
@@ -2242,7 +2232,9 @@ int pluto_diamond_tile(PlutoProg *prog) {
 
     /* Band should have inner parallelism */
     Ploop **iloops = pluto_get_loops_immediately_inner(band->loop, prog, &ni);
+    unsigned i;
     for (i = 0; i < ni; i++) {
+      unsigned s;
       for (s = 0; s < band->loop->nstmts; s++) {
         if (!pluto_loop_is_parallel_for_stmt(prog, iloops[i],
                                              band->loop->stmts[s]))
@@ -2272,7 +2264,9 @@ int pluto_diamond_tile(PlutoProg *prog) {
 
     /* face with concurrent start shouldn't be normal to all hyperplanes
      * of all statements in this band */
+    unsigned s;
     for (s = 0; s < band->loop->nstmts; s++) {
+      unsigned d;
       for (d = band->loop->depth; d < band->loop->depth + band->width; d++) {
         if (!pluto_vector_is_normal(band->loop->stmts[s]->trans, d,
                                     conc_start_faces, s))
@@ -2288,7 +2282,7 @@ int pluto_diamond_tile(PlutoProg *prog) {
 
     cone_complement_hyps =
         (PlutoMatrix **)malloc(band->loop->nstmts * sizeof(PlutoMatrix *));
-    for (i = 0; i < band->loop->nstmts; i++) {
+    for (unsigned i = 0; i < band->loop->nstmts; i++) {
       cone_complement_hyps[i] = NULL;
     }
 
@@ -2298,7 +2292,7 @@ int pluto_diamond_tile(PlutoProg *prog) {
      * hyperplane
      * Concurrent start pertains to the first band alone
      */
-    evict_pos = find_hyperplane_to_be_evicted(band, conc_start_faces, prog);
+    evict_pos = find_hyperplane_to_be_evicted(band, conc_start_faces);
 
     /* If we haven't yet found the cone_complement_pos, just
      * choose the first one as the cone_complement_pos */
@@ -2308,7 +2302,7 @@ int pluto_diamond_tile(PlutoProg *prog) {
      * choose the next one as cone_complement_pos */
     if (evict_pos == first_loop_hyp)
       cone_complement_pos++;
-    conc_start_enabled_band = find_cone_complement_hyperplane(
+    int conc_start_enabled_band = find_cone_complement_hyperplane(
         band, conc_start_faces, evict_pos, cone_complement_pos, basecst, prog,
         cone_complement_hyps);
     pluto_matrix_free(conc_start_faces);
@@ -2336,7 +2330,7 @@ int pluto_diamond_tile(PlutoProg *prog) {
 
     conc_start_enabled |= conc_start_enabled_band;
 
-    for (i = 0; i < band->loop->nstmts; i++) {
+    for (unsigned i = 0; i < band->loop->nstmts; i++) {
       pluto_matrix_free(cone_complement_hyps[i]);
     }
     free(cone_complement_hyps);

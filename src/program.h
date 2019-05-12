@@ -19,16 +19,20 @@
  */
 #ifndef _PROGRAM_H
 
-#include "pluto.h"
 #include "constraints.h"
+#include "pluto.h"
 
-#include "clan/clan.h"
 #include "candl/candl.h"
+#include "clan/clan.h"
 
-#include "pet.h"
 #include "osl/scop.h"
+#include "pet.h"
 
-Stmt *pluto_stmt_alloc(int dim, const PlutoConstraints *domain,
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+Stmt *pluto_stmt_alloc(unsigned dim, const PlutoConstraints *domain,
                        const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
 Stmt *pluto_stmt_dup(const Stmt *src);
@@ -56,9 +60,9 @@ void pluto_add_stmt_to_end(PlutoProg *prog, const PlutoConstraints *domain,
                            char **iterators, const char *text, int level,
                            PlutoStmtType type);
 
-void pluto_stmt_add_dim(Stmt *stmt, int pos, int time_pos, const char *iter,
-                        PlutoHypType type, PlutoProg *prog);
-void pluto_stmt_remove_dim(Stmt *stmt, int pos, PlutoProg *prog);
+void pluto_stmt_add_dim(Stmt *stmt, unsigned pos, int time_pos,
+                        const char *iter, PlutoHypType type, PlutoProg *prog);
+void pluto_stmt_remove_dim(Stmt *stmt, unsigned pos, PlutoProg *prog);
 void pluto_prog_add_hyperplane(PlutoProg *prog, int pos, PlutoHypType type);
 
 int get_const_bound_difference(const PlutoConstraints *cst, int depth);
@@ -83,17 +87,16 @@ int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
 int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
-void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, int pos);
+void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, unsigned pos);
 PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc,
                                        int **divs);
 
 int extract_deps(Dep **deps, int first, Stmt **stmts,
                  __isl_keep isl_union_map *umap, int type);
-int isl_map_count(__isl_take isl_map *map, void *user);
 
 int pluto_get_max_ind_hyps(const PlutoProg *prog);
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog);
-int pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
+unsigned pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
 int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
@@ -117,5 +120,9 @@ Dep *pluto_dep_dup(Dep *d);
 void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

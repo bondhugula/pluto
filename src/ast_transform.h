@@ -1,5 +1,5 @@
-#include "pluto.h"
 #include "cloog/cloog.h"
+#include "pluto.h"
 
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                          CloogOptions *options);

@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -171,10 +170,9 @@ void usage_message(void) {
 }
 
 static double rtclock() {
-  struct timezone Tzp;
   struct timeval Tp;
   int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -182,22 +180,11 @@ static double rtclock() {
 
 int main(int argc, char *argv[]) {
   int i;
-
-  double t_start, t_c, t_d, t_t, t_all, t_start_all;
-
-  t_c = 0.0;
-
-  t_start_all = rtclock();
-
   int option;
   int option_index = 0;
-
   int nolastwriter = 0;
-
   char *srcFileName;
-
   FILE *cloogfp, *outfp;
-
   struct pet_scop *pscop;
 
   if (argc <= 1) {
@@ -205,83 +192,85 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  double t_start_all = rtclock();
+
   options = pluto_options_alloc();
 
   const struct option pluto_options[] = {
-    { "fast-lin-ind-check", no_argument, &options->flic, 1 },
-    { "flic", no_argument, &options->flic, 1 },
-    { "tile", no_argument, &options->tile, 1 },
-    { "notile", no_argument, &options->tile, 0 },
-    { "noparallel", no_argument, &options->parallel, 0 },
-    { "intratileopt", no_argument, &options->intratileopt, 1 },
-    { "nointratileopt", no_argument, &options->intratileopt, 0 },
-    { "pet", no_argument, &options->pet, 1 },
-    { "diamond-tile", no_argument, &options->diamondtile, 1 },
-    { "nodiamond-tile", no_argument, &options->diamondtile, 0 },
-    { "full-diamond-tile", no_argument, &options->fulldiamondtile, 1 },
-    { "debug", no_argument, &options->debug, true },
-    { "moredebug", no_argument, &options->moredebug, true },
-    { "rar", no_argument, &options->rar, 1 },
-    { "identity", no_argument, &options->identity, 1 },
-    { "nofuse", no_argument, &options->fuse, NO_FUSE },
-    { "maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE },
-    { "smartfuse", no_argument, &options->fuse, SMART_FUSE },
-    { "typedfuse", no_argument, &options->fuse, TYPED_FUSE },
-    { "hybridfuse", no_argument, &options->hybridcut, 1 },
-    { "delayedcut", no_argument, &options->delayed_cut, 1 },
-    { "parallel", no_argument, &options->parallel, 1 },
-    { "parallelize", no_argument, &options->parallel, 1 },
-    { "innerpar", no_argument, &options->innerpar, 1 },
-    { "iss", no_argument, &options->iss, 1 },
-    { "unroll", no_argument, &options->unroll, 1 },
-    { "nounroll", no_argument, &options->unroll, 0 },
-    { "bee", no_argument, &options->bee, 1 },
-    { "ufactor", required_argument, 0, 'u' },
-    { "prevector", no_argument, &options->prevector, 1 },
-    { "noprevector", no_argument, &options->prevector, 0 },
-    { "codegen-context", required_argument, 0, 'c' },
-    { "coeff-bound", required_argument, 0, 'C' },
-    { "cloogf", required_argument, 0, 'F' },
-    { "cloogl", required_argument, 0, 'L' },
-    { "cloogsh", no_argument, &options->cloogsh, 1 },
-    { "nocloogbacktrack", no_argument, &options->cloogbacktrack, 0 },
-    { "cyclesize", required_argument, 0, 'S' },
-    { "forceparallel", required_argument, 0, 'p' },
-    { "ft", required_argument, 0, 'f' },
-    { "lt", required_argument, 0, 'l' },
-    { "multipar", no_argument, &options->multipar, 1 },
-    { "l2tile", no_argument, &options->l2tile, 1 },
-    { "version", no_argument, 0, 'v' },
-    { "help", no_argument, 0, 'h' },
-    { "indent", no_argument, 0, 'i' },
-    { "silent", no_argument, &options->silent, 1 },
-    { "lastwriter", no_argument, &options->lastwriter, 1 },
-    { "nolastwriter", no_argument, &nolastwriter, 1 },
-    { "nodepbound", no_argument, &options->nodepbound, 1 },
-    { "scalpriv", no_argument, &options->scalpriv, 1 },
-    { "isldep", no_argument, &options->isldep, 1 },
-    { "candldep", no_argument, &options->candldep, 1 },
-    { "isldepaccesswise", no_argument, &options->isldepaccesswise, 1 },
-    { "isldepstmtwise", no_argument, &options->isldepaccesswise, 0 },
-    { "noisldepcoalesce", no_argument, &options->isldepcoalesce, 0 },
-    { "readscop", no_argument, &options->readscop, 1 },
-    { "pipsolve", no_argument, &options->pipsolve, 1 },
+    {"fast-lin-ind-check", no_argument, &options->flic, 1},
+    {"flic", no_argument, &options->flic, 1},
+    {"tile", no_argument, &options->tile, 1},
+    {"notile", no_argument, &options->tile, 0},
+    {"noparallel", no_argument, &options->parallel, 0},
+    {"intratileopt", no_argument, &options->intratileopt, 1},
+    {"nointratileopt", no_argument, &options->intratileopt, 0},
+    {"pet", no_argument, &options->pet, 1},
+    {"diamond-tile", no_argument, &options->diamondtile, 1},
+    {"nodiamond-tile", no_argument, &options->diamondtile, 0},
+    {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
+    {"debug", no_argument, &options->debug, true},
+    {"moredebug", no_argument, &options->moredebug, true},
+    {"rar", no_argument, &options->rar, 1},
+    {"identity", no_argument, &options->identity, 1},
+    {"nofuse", no_argument, &options->fuse, NO_FUSE},
+    {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
+    {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
+    {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+    {"hybridfuse", no_argument, &options->hybridcut, 1},
+    {"delayedcut", no_argument, &options->delayed_cut, 1},
+    {"parallel", no_argument, &options->parallel, 1},
+    {"parallelize", no_argument, &options->parallel, 1},
+    {"innerpar", no_argument, &options->innerpar, 1},
+    {"iss", no_argument, &options->iss, 1},
+    {"unroll", no_argument, &options->unroll, 1},
+    {"nounroll", no_argument, &options->unroll, 0},
+    {"bee", no_argument, &options->bee, 1},
+    {"ufactor", required_argument, 0, 'u'},
+    {"prevector", no_argument, &options->prevector, 1},
+    {"noprevector", no_argument, &options->prevector, 0},
+    {"codegen-context", required_argument, 0, 'c'},
+    {"coeff-bound", required_argument, 0, 'C'},
+    {"cloogf", required_argument, 0, 'F'},
+    {"cloogl", required_argument, 0, 'L'},
+    {"cloogsh", no_argument, &options->cloogsh, 1},
+    {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+    {"cyclesize", required_argument, 0, 'S'},
+    {"forceparallel", required_argument, 0, 'p'},
+    {"ft", required_argument, 0, 'f'},
+    {"lt", required_argument, 0, 'l'},
+    {"multipar", no_argument, &options->multipar, 1},
+    {"l2tile", no_argument, &options->l2tile, 1},
+    {"version", no_argument, 0, 'v'},
+    {"help", no_argument, 0, 'h'},
+    {"indent", no_argument, 0, 'i'},
+    {"silent", no_argument, &options->silent, 1},
+    {"lastwriter", no_argument, &options->lastwriter, 1},
+    {"nolastwriter", no_argument, &nolastwriter, 1},
+    {"nodepbound", no_argument, &options->nodepbound, 1},
+    {"scalpriv", no_argument, &options->scalpriv, 1},
+    {"isldep", no_argument, &options->isldep, 1},
+    {"candldep", no_argument, &options->candldep, 1},
+    {"isldepaccesswise", no_argument, &options->isldepaccesswise, 1},
+    {"isldepstmtwise", no_argument, &options->isldepaccesswise, 0},
+    {"isldepcoalesce", no_argument, &options->isldepcoalesce, 1},
+    {"readscop", no_argument, &options->readscop, 1},
+    {"pipsolve", no_argument, &options->pipsolve, 1},
 #ifdef GLPK
-    { "glpk", no_argument, &options->glpk, 1 },
+    {"glpk", no_argument, &options->glpk, 1},
 #endif
 #ifdef GUROBI
-    { "gurobi", no_argument, &options->gurobi, 1 },
+    {"gurobi", no_argument, &options->gurobi, 1},
 #endif
 #if defined GLPK || defined GUROBI
-    { "lp", no_argument, &options->lp, 1 },
-    { "dfp", no_argument, &options->dfp, 1 },
-    { "ilp", no_argument, &options->ilp, 1 },
-    { "lpcolor", no_argument, &options->lpcolour, 1 },
-    { "clusterscc", no_argument, &options->scc_cluster, 1 },
+    {"lp", no_argument, &options->lp, 1},
+    {"dfp", no_argument, &options->dfp, 1},
+    {"ilp", no_argument, &options->ilp, 1},
+    {"lpcolor", no_argument, &options->lpcolour, 1},
+    {"clusterscc", no_argument, &options->scc_cluster, 1},
 #endif
-    { "islsolve", no_argument, &options->islsolve, 1 },
-    { "time", no_argument, &options->time, 1 },
-    { 0, 0, 0, 0 }
+    {"islsolve", no_argument, &options->islsolve, 1},
+    {"time", no_argument, &options->time, 1},
+    {0, 0, 0, 0}
   };
 
   /* Read command-line options */
@@ -366,7 +355,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   if (optind <= argc - 1) {
-    srcFileName = alloca(strlen(argv[optind]) + 1);
+    srcFileName = (char *)alloca(strlen(argv[optind]) + 1);
     strcpy(srcFileName, argv[optind]);
   } else {
     /* No non-option argument was specified */
@@ -502,8 +491,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   osl_scop_p scop = NULL;
   char *irroption = NULL;
 
+  double t_d;
+
   /* Extract polyhedral representation from input program */
   if (options->pet) {
+    // Extract using PET.
     isl_ctx *pctx = isl_ctx_alloc_with_pet_options();
     pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
@@ -515,7 +507,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       isl_ctx_free(pctx);
       return 12;
     }
-    t_start = rtclock();
+    double t_start = rtclock();
     prog = pet_to_pluto_prog(pscop, pctx, options);
     t_d = rtclock() - t_start;
 
@@ -528,18 +520,18 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       fclose(srcfp);
     }
   } else {
+    // Extract polyhedral representation using Clan.
     FILE *src_fp;
-    /* Extract polyhedral representation from clan scop */
-    if (!strcmp(srcFileName, "stdin")) { // read from stdin
+    if (!strcmp(srcFileName, "stdin")) {
+      // Read from stdin.
       src_fp = stdin;
       osl_interface_p registry = osl_interface_get_default_registry();
-      t_start = rtclock();
+      double t_start = rtclock();
       scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
       t_d = rtclock() - t_start;
-    } else { // read from regular file
-
+    } else {
+      // Read from regular file.
       src_fp = fopen(srcFileName, "r");
-
       if (!src_fp) {
         fprintf(stderr, "pluto: error opening source file: '%s'\n",
                 srcFileName);
@@ -547,16 +539,15 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         return 6;
       }
 
-      /* Extract polyhedral representation from input program */
       clan_options_p clanOptions = clan_options_malloc();
 
       if (options->readscop) {
         osl_interface_p registry = osl_interface_get_default_registry();
-        t_start = rtclock();
+        double t_start = rtclock();
         scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
         t_d = rtclock() - t_start;
       } else {
-        t_start = rtclock();
+        double t_start = rtclock();
         scop = clan_scop_extract(src_fp, clanOptions);
         t_d = rtclock() - t_start;
       }
@@ -565,6 +556,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (!scop || !scop->statement) {
         fprintf(stderr, "Error extracting polyhedra from source file: \'%s'\n",
                 srcFileName);
+        osl_scop_free(scop);
         pluto_options_free(options);
         return 8;
       }
@@ -582,9 +574,11 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;
-    irreg_ext = osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
+    irreg_ext =
+        (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
-      irroption = osl_irregular_sprint(irreg_ext); // TODO: test it
+      // TODO: test it
+      irroption = osl_irregular_sprint(irreg_ext);
     osl_irregular_free(irreg_ext);
   }
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
@@ -606,12 +600,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_iss_dep(prog);
   }
 
-  t_start = rtclock();
+  double t_start = rtclock();
   /* Auto transformation */
   if (!options->identity) {
     pluto_auto_transform(prog);
   }
-  t_t = rtclock() - t_start;
+  double t_t = rtclock() - t_start;
 
   pluto_compute_dep_directions(prog);
   pluto_compute_dep_satisfaction(prog);
@@ -667,11 +661,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_detect_mark_unrollable_loops(prog);
   }
 
+  double t_c = 0.0;
+
   if (!options->pet && !strcmp(srcFileName, "stdin")) {
     // input stdin == output stdout
     pluto_populate_scop(scop, prog, options);
     osl_scop_print(stdout, scop);
-  } else { // do the usual Pluto stuff
+  } else {
+    // Do the usual Pluto stuff.
 
     /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */
     /* Since meta info about loops is printed to be processed by scripts - if
@@ -687,13 +684,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       bname = basename(basec);
 
       /* max size when tiled.* */
-      outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+      outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
 
       if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
         memcpy(outFileName, bname, strlen(bname) - 2);
         outFileName[strlen(bname) - 2] = '\0';
       } else {
-        outFileName = malloc(strlen(bname) + strlen(".pluto.c") + 1);
+        outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
         strcpy(outFileName, bname);
       }
       strcat(outFileName, ".pluto.c");
@@ -701,17 +698,19 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       basec = strdup(options->out_file);
       bname = basename(basec);
 
-      outFileName = malloc(strlen(options->out_file) + 1);
+      outFileName = (char *)malloc(strlen(options->out_file) + 1);
       strcpy(outFileName, options->out_file);
     }
 
     char *cloogFileName;
     if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      cloogFileName = malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
-      strncpy(cloogFileName, bname, strlen(bname) - 2);
+      cloogFileName =
+          (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
+      strcpy(cloogFileName, bname);
       cloogFileName[strlen(bname) - 2] = '\0';
     } else {
-      cloogFileName = malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
+      cloogFileName =
+          (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
       strcpy(cloogFileName, bname);
     }
     strcat(cloogFileName, ".pluto.cloog");
@@ -738,11 +737,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       return 10;
     }
 
-    if (options->moredebug) {
-      printf("After scalar dimension detection (final transformations)\n");
-      pluto_transformations_pretty_print(prog);
-    }
-
     /* Generate .cloog file */
     pluto_gen_cloog_file(cloogfp, prog);
     /* Add the <irregular> tag from clan, if any */
@@ -753,10 +747,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
     }
     rewind(cloogfp);
-
-    /* Very important: Dont change the order of calls to print_dynsched_file
-     * between pluto_gen_cloog_file() and pluto_*_codegen()
-     */
 
     /* Generate code using Cloog and add necessary stuff before/after code */
     t_start = rtclock();
@@ -774,8 +764,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     fclose(cloogfp);
     fclose(outfp);
   }
+  osl_scop_free(scop);
 
-  t_all = rtclock() - t_start_all;
+  double t_all = rtclock() - t_start_all;
 
   if (options->time && !options->silent) {
     printf("\n[pluto] Timing statistics\n[pluto] SCoP extraction + dependence "
@@ -803,8 +794,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
   pluto_prog_free(prog);
   pluto_options_free(options);
-
-  osl_scop_free(scop);
 
   return 0;
 }

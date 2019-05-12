@@ -1,29 +1,28 @@
 /*
  * Polylib interface for PlutoConstraints
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "math_support.h"
 #include "constraints.h"
-#include "pluto.h"
 #include "constraints_polylib.h"
+#include "math_support.h"
+#include "pluto.h"
 
 #include "polylib/polylib64.h"
 
 Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat) {
-  int r, c;
   Matrix *polymat;
 
   polymat = Matrix_Alloc(mat->nrows, mat->ncols);
 
-  for (r = 0; r < mat->nrows; r++) {
-    for (c = 0; c < mat->ncols; c++) {
+  for (unsigned r = 0; r < mat->nrows; r++) {
+    for (unsigned c = 0; c < mat->ncols; c++) {
       polymat->p[r][c] = mat->val[r][c];
     }
   }
@@ -32,13 +31,10 @@ Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat) {
 }
 
 PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat) {
-  PlutoMatrix *mat;
-  int r, c;
+  PlutoMatrix *mat = pluto_matrix_alloc(pmat->NbRows, pmat->NbColumns);
 
-  mat = pluto_matrix_alloc(pmat->NbRows, pmat->NbColumns);
-
-  for (r = 0; r < mat->nrows; r++) {
-    for (c = 0; c < mat->ncols; c++) {
+  for (unsigned r = 0; r < mat->nrows; r++) {
+    for (unsigned c = 0; c < mat->ncols; c++) {
       mat->val[r][c] = pmat->p[r][c];
     }
   }
@@ -169,15 +165,14 @@ PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
 
 /* Converts polylib matrix to pluto constraints */
 PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat) {
-  int i, j;
   PlutoConstraints *cst;
 
   cst = pluto_constraints_alloc(polymat->NbRows, polymat->NbColumns - 1);
   cst->nrows = polymat->NbRows;
 
-  for (i = 0; i < cst->nrows; i++) {
+  for (unsigned i = 0; i < cst->nrows; i++) {
     cst->is_eq[i] = (polymat->p[i][0] == 0) ? 1 : 0;
-    for (j = 0; j < cst->ncols; j++) {
+    for (unsigned j = 0; j < cst->ncols; j++) {
       cst->val[i][j] = polymat->p[i][j + 1];
     }
   }

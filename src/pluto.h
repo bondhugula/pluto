@@ -159,10 +159,10 @@ struct statement {
   bool *is_orig_loop;
 
   /* Dimensionality of statement's domain */
-  int dim;
+  unsigned dim;
 
   /* Original dimensionality of statement's domain */
-  int dim_orig;
+  unsigned dim_orig;
 
   /* Should you tile even if it's tilable? */
   int tile;
@@ -378,6 +378,7 @@ struct plutoProg {
   /* Param context */
   PlutoConstraints *context;
 
+  // Declarations to be emitted.
   char *decls;
 
   /* Codegen context */
@@ -433,6 +434,10 @@ struct pluto_dep_list {
 };
 typedef struct pluto_dep_list PlutoDepList;
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
 void pluto_deps_list_free(PlutoDepList *deplist);
@@ -471,7 +476,7 @@ void pluto_constraints_list_replace(PlutoConstraintsList *list,
 typedef struct band {
   /* Root loop of this band */
   Ploop *loop;
-  int width;
+  unsigned width;
   /* Not used yet */
   struct band **children;
 } Band;
@@ -524,7 +529,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int,
                             int, int);
-DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
+DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, unsigned level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
@@ -665,7 +670,6 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
-int pluto_pre_vectorize_band(Band *band, int is_tiled, PlutoProg *prog);
 int pluto_is_band_innermost(const Band *band, int is_tiled);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
@@ -680,7 +684,6 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
-void pluto_detect_scalar_dimensions(PlutoProg *prog);
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 
@@ -702,4 +705,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
 bool introduce_skew(PlutoProg *prog);
 #endif
+
+#if defined(__cplusplus)
+}
+#endif
+
 #endif

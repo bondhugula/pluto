@@ -54,17 +54,22 @@ binit:
 pclean:
 	$(MAKE) -C src clean
 
-test_libpluto: src/test_libpluto.c
-	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
+test_libpluto: test/test_libpluto.c
+	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
-test: polycc src/pluto
-	./test.sh --silent --notile --noparallel
-	./test.sh --silent --cloogsh --nocloogbacktrack
-	./test.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --nodiamond-tile --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter
-	./test.sh --silent --nofuse --cloogsh --nocloogbacktrack
-	./test.sh --silent --maxfuse --cloogsh --nocloogbacktrack
-	./test.sh --silent --nofuse
-	./test.sh --silent --iss
+test: PHONY
+	
+PHONY: polycc
+	./test.sh
+
+test-alt: polycc src/pluto
+	./test-alt.sh --silent --notile --noparallel
+	./test-alt.sh --silent --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter --nodiamond-tile --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter
+	./test-alt.sh --silent --nofuse --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --maxfuse --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --nofuse
+	./test-alt.sh --silent --iss
