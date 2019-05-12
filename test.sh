@@ -86,6 +86,11 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# Test libpluto
+printf '%-50s ' test_libpluto
+./test_libpluto | FileCheck test/libpluto.out
+check_ret_val_emit_status
+
 cleanup()
 {
 rm -f test_temp_out.pluto.c

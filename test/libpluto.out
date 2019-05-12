@@ -1,0 +1,23 @@
+// CHECK-LABEL: *** TEST CASE 1 ***
+// CHECK: T(S1): (i0, 0, 0)
+// CHECK: T(S2): (i0, 1, i1)
+// CHECK: T(S3): (i0, 2, 0)
+
+
+// CHECK-LABEL: *** TEST CASE 2 ***
+// CHECK: T(S1): (i0, 1024i0)
+// CHECK: T(S2): (i0, 1024i0+i1)
+
+// CHECK-LABEL: *** TEST CASE 3 ***
+// CHECK: T(S1): (i0-i1, i0+i1)
+
+// CHECK-LABEL: *** TEST CASE 4 ***
+// Disabled failing test case
+// xCHECK: T(S0)
+
+// CHECK-LABEL: *** TEST CASE 5 ***
+// CHECK: T(S1): (i0, i1, 0)
+// CHECK: T(S2): (i0+1, i1+1, 1)
+
+// CHECK-LABEL: *** TEST CASE 6
+// CHECK: T(S1): (i0, i1+i2, i1)
