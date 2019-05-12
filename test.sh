@@ -91,6 +91,12 @@ printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
 
+# Unit tests
+printf '%-50s ' unit_tests
+./unit_tests < test/unit_tests.in | FileCheck test/unit_tests.in
+check_ret_val_emit_status
+
+
 # TODO: add tests that check the generated code for certain things (like stmt
 # body source esp. while using --pet).
 

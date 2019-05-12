@@ -57,6 +57,9 @@ pclean:
 test_libpluto: test/test_libpluto.c
 	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
+unit_tests: test/unit_tests.c
+	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include -I src -lpluto -o unit_tests
+
 test: PHONY
 	
 PHONY: polycc
