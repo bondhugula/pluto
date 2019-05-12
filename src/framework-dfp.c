@@ -2015,8 +2015,8 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
 unsigned *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
                               int *num, int *discarded_list,
                               int num_discarded) {
-  int i, j, num_col_dims, max_dim, scc_offset, v;
-  int *colourable_dims;
+  int i, num_col_dims, max_dim, scc_offset, v;
+  unsigned *colourable_dims;
   Graph *fcg;
 
   fcg = prog->fcg;
@@ -2031,7 +2031,7 @@ unsigned *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
         is_discarded(v, discarded_list, num_discarded))
       continue;
     if (colourable_dims == NULL) {
-      colourable_dims = (int *)malloc(max_dim * sizeof(int));
+      colourable_dims = (unsigned *)malloc(max_dim * sizeof(int));
     }
     colourable_dims[num_col_dims] = i;
     num_col_dims++;
