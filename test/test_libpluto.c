@@ -4,6 +4,14 @@
 
 PlutoOptions *options;
 
+/*
+ * Each test case should name statements S_0, S_1, ...
+ */
+
+// CHECK-LABEL: *** TEST CASE 1 ***
+// CHECK: T(S1): (i0, 0, 0)
+// CHECK: T(S2): (i0, 1, i1)
+// CHECK: T(S3): (i0, 2, 0)
 void test1() {
   isl_ctx *ctx = isl_ctx_alloc();
   isl_union_set *domains;
@@ -39,9 +47,9 @@ void test1() {
   isl_ctx_free(ctx);
 }
 
-/*
- * Each test case should name statements S_0, S_1, ...
- */
+// CHECK-LABEL: *** TEST CASE 2 ***
+// CHECK: T(S1): (i0, 1024i0)
+// CHECK: T(S2): (i0, 1024i0+i1)
 int test2() {
   printf("\n\n*** TEST CASE 2 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
@@ -83,34 +91,8 @@ int test2() {
   return 0;
 }
 
-void test4() {
-  printf("\n\n*** TEST CASE 4 ***\n\n");
-
-  isl_ctx *ctx = isl_ctx_alloc();
-
-  isl_union_set *domains = isl_union_set_read_from_str(
-      ctx, " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 < i1 <= R - 1; }");
-  // Dependence (1, -1)
-  isl_union_map *deps =
-      isl_union_map_read_from_str(ctx, "[R, T] -> {"
-                                       "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 1 "
-                                       "<= i0 <= T and 1 <= i1 <= R - 2; }");
-  isl_union_map *schedule = pluto_schedule(domains, deps, options);
-
-  isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  printer = isl_printer_print_union_map(printer, schedule);
-  printf("\n");
-  isl_printer_free(printer);
-
-  // Check if the schedule can be applied to the domain.
-  domains = isl_union_set_apply(domains, schedule);
-
-  isl_union_set_free(domains);
-  isl_union_map_free(deps);
-
-  isl_ctx_free(ctx);
-}
-
+// CHECK-LABEL: *** TEST CASE 3 ***
+// CHECK: T(S1): (i0-i1, i0+i1)
 void test_diamond_tiling() {
   printf("\n\n*** TEST CASE 3 ***\n\n");
 
@@ -140,6 +122,39 @@ void test_diamond_tiling() {
   isl_ctx_free(ctx);
 }
 
+// CHECK-LABEL: *** TEST CASE 4 ***
+// CHECK: T(S1): (i0+i1, i0)
+void test4() {
+  printf("\n\n*** TEST CASE 4 ***\n\n");
+
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  isl_union_set *domains = isl_union_set_read_from_str(
+      ctx, " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 < i1 <= R - 1; }");
+  // Dependence (1, -1)
+  isl_union_map *deps =
+      isl_union_map_read_from_str(ctx, "[R, T] -> {"
+                                       "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 1 "
+                                       "<= i0 <= T and 1 <= i1 <= R - 2; }");
+  isl_union_map *schedule = pluto_schedule(domains, deps, options);
+
+  isl_printer *printer = isl_printer_to_file(ctx, stdout);
+  printer = isl_printer_print_union_map(printer, schedule);
+  printf("\n");
+  isl_printer_free(printer);
+
+  // Check if the schedule can be applied to the domain.
+  domains = isl_union_set_apply(domains, schedule);
+
+  isl_union_set_free(domains);
+  isl_union_map_free(deps);
+
+  isl_ctx_free(ctx);
+}
+
+// CHECK-LABEL: *** TEST CASE 5 ***
+// CHECK: T(S1): (i0, i1, 0)
+// CHECK: T(S2): (i0+1, i1+1, 1)
 void test5() {
   printf("\n\n*** TEST CASE 5 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
@@ -170,6 +185,8 @@ void test5() {
   isl_ctx_free(ctx);
 }
 
+// CHECK-LABEL: *** TEST CASE 6
+// CHECK: T(S1): (i0, i1+i2, i1)
 void test6_diamond_tiling_with_scalar_dimension() {
   printf("\n\n*** TEST CASE 6\n\n");
   isl_ctx *ctx = isl_ctx_alloc();

@@ -88,7 +88,7 @@ done
 
 # Test libpluto
 printf '%-50s ' test_libpluto
-./test_libpluto | FileCheck test/libpluto.out
+./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
 
 cleanup()
