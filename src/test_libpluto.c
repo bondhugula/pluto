@@ -26,7 +26,7 @@ void test1() {
   isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
   isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  isl_printer_print_union_map(printer, schedule);
+  printer = isl_printer_print_union_map(printer, schedule);
   printf("\n");
   isl_printer_free(printer);
 
@@ -66,7 +66,7 @@ int test2() {
 
   if (schedule) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
-    isl_printer_print_union_map(printer, schedule);
+    printer = isl_printer_print_union_map(printer, schedule);
     printf("\n");
     isl_printer_free(printer);
 
@@ -83,11 +83,7 @@ int test2() {
   return 0;
 }
 
-
-/*
-   Crashes when dependece vector is in the 3rd quadrant (-1, -1).
-*/
-void crash_negative_dep_vector() {
+void test4() {
   printf("\n\n*** TEST CASE 4 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -96,18 +92,14 @@ void crash_negative_dep_vector() {
       ctx, " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 < i1 <= R - 1; }");
   isl_union_map *deps =
       isl_union_map_read_from_str(ctx, "[R, T] -> {"
-                                       /* crashes with this dependence */
-                                       "S_0[i0, i1] -> S_0[i0 - 1, i1 - 1] : 1 "
+                                       "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 1 "
                                        "<= i0 <= T and 1 <= i1 <= R - 2; }");
-  /* does not crash with this dependence */
-  //"S_0[i0, i1] -> S_0[i0 - 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2;
-  //}");
-
   isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
   isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  isl_printer_print_union_map(printer, schedule);
+  printer = isl_printer_print_union_map(printer, schedule);
   printf("\n");
+  isl_printer_free(printer);
 
   // Check if the schedule can be applied to the domain.
   domains = isl_union_set_apply(domains, schedule);
@@ -134,7 +126,7 @@ void test_diamond_tiling() {
   isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
   isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  isl_printer_print_union_map(printer, schedule);
+  printer = isl_printer_print_union_map(printer, schedule);
   printf("\n");
   isl_printer_free(printer);
 
@@ -164,7 +156,7 @@ void test5() {
   isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
   isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  isl_printer_print_union_map(printer, schedule);
+  printer = isl_printer_print_union_map(printer, schedule);
   printf("\n");
   isl_printer_free(printer);
 
@@ -193,7 +185,7 @@ void test6_diamond_tiling_with_scalar_dimension() {
   isl_union_map *schedule = pluto_schedule(domains, deps, options);
 
   isl_printer *printer = isl_printer_to_file(ctx, stdout);
-  isl_printer_print_union_map(printer, schedule);
+  printer = isl_printer_print_union_map(printer, schedule);
   printf("\n");
   isl_printer_free(printer);
 
@@ -219,7 +211,7 @@ int main() {
   test1();
   test2();
   test_diamond_tiling();
-  crash_negative_dep_vector();
+  test4();
   test5();
   test6_diamond_tiling_with_scalar_dimension();
 
