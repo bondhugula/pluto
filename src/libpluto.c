@@ -16,6 +16,8 @@
  * A copy of the GNU Lesser General Public Licence can be found in the file
  * `LICENSE.LGPL2' in the top-level directory of this distribution.
  *
+ * This file is part of libpluto.
+ *
  */
 
 #include <assert.h>
