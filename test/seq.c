@@ -1,3 +1,4 @@
+// CHECK: T(S1): (i, j)
 // CHECK: Output written
 #pragma scop
 for (i = 0; i < N; i++) {
