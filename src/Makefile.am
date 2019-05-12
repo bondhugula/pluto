@@ -112,4 +112,4 @@ libpluto_la_LIBADD = \
    ../candl/libcandl.la \
    $(ISL_LIBADD) \
    -lm -lgomp
-libpluto_la_LDFLAGS = -version-info 1:0:1
+libpluto_la_LDFLAGS = -version-info 2:0:0

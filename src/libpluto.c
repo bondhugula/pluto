@@ -853,16 +853,15 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 
 void pluto_get_remapping_str(const char *domains_str,
                              const char *dependences_str,
-                             Remapping **remapping_ptr, PlutoOptions *options) {
+                             PlutoOptions *options,
+                             Remapping *remapping) {
 
   isl_ctx *ctx = isl_ctx_alloc();
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
   isl_union_map *dependences =
       isl_union_map_read_from_str(ctx, dependences_str);
 
-  assert(remapping_ptr != NULL);
-  Remapping *remapping = pluto_get_remapping(domains, dependences, options);
-  *remapping_ptr = remapping;
+  *remapping = *pluto_get_remapping(domains, dependences, options);
 };
 
 void pluto_remapping_free(Remapping *remapping) {
