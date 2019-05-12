@@ -17,11 +17,14 @@ bin_PROGRAMS = pluto
 
 pluto_SOURCES = \
 		ast_transform.c \
+		ast_transform.h \
 		constraints.c \
 		constraints.h \
 	       	constraints_polylib.c \
+	       	constraints_polylib.h \
 		constraints_isl.c \
 		ddg.c \
+		ddg.h \
 		framework.c \
 		framework-dfp.c \
 		gurobi-plugin.c \
@@ -35,11 +38,13 @@ pluto_SOURCES = \
 		pluto.h \
 		polyloop.c \
 		post_transform.c \
+		post_transform.h \
 		program.cpp \
 		program.h \
 		tile.c \
 		transforms.c \
-		unit_tests.c 
+		transforms.h \
+		version.h
 
 pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
