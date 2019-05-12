@@ -1805,8 +1805,6 @@ void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
                                         int col2) {
   int r, tmp;
 
-  // assert(cst->next == NULL);
-
   for (r = 0; r < cst->nrows; r++) {
     tmp = cst->val[r][col1];
     cst->val[r][col1] = cst->val[r][col2];
@@ -1962,11 +1960,9 @@ int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos,
 
   pluto_constraints_project_out_single(cst, 0, pos);
   pluto_constraints_project_out_single(cst, 1, cst->ncols - 2);
-  // pluto_constraints_project_out_single_isl(cst, 0, pos);
-  // pluto_constraints_project_out_single_isl(cst, 1, cst->ncols-2);
 
   retval = 0;
-  *ub = LONG_LONG_INT_MAX;
+  *ub = LLONG_MAX;
   for (i = 0; i < cst->nrows; i++) {
     if (cst->is_eq[i]) {
       *ub = cst->val[i][cst->ncols - 1];
@@ -2126,7 +2122,6 @@ void print_polylib_visual_sets(char *name, PlutoConstraints *cst) {
 PlutoDepList *pluto_dep_list_alloc(Dep *dep) {
   PlutoDepList *list = (PlutoDepList *)malloc(sizeof(PlutoDepList));
   assert(dep != NULL);
-  // list->dep = pluto_dependence_dup(dep, dep->dpolytope);
   list->dep = dep;
   list->next = NULL;
   return list;

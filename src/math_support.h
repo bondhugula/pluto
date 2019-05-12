@@ -32,8 +32,6 @@
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
 #define PLABS(a) ((a >= 0) ? (a) : (-a))
 
-#define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
