@@ -24,7 +24,6 @@
 #include <stdio.h>
 
 #include "isl/aff.h"
-#include "isl/ctx.h"
 #include "isl/mat.h"
 
 #include "pluto/libpluto.h"
