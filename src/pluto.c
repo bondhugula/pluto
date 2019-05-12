@@ -1209,7 +1209,8 @@ void normalize_domains(PlutoProg *prog) {
     Dep *dep = prog->deps[i];
     int src_dim = prog->stmts[dep->src]->dim;
     int target_dim = prog->stmts[dep->dest]->dim;
-    assert(dep->dpolytope->ncols == (unsigned)src_dim + target_dim + prog->npar + 1);
+    assert(dep->dpolytope->ncols ==
+           (unsigned)src_dim + target_dim + prog->npar + 1);
   }
 
   /* Normalize rows of dependence polyhedra */
@@ -1447,7 +1448,8 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
         // Full dimensional concurrent start */
         lambda_k = 0;
         /* Just for the band depth hyperplanes */
-        for (unsigned k = band->loop->depth; k < band->loop->depth + band->width; k++) {
+        for (unsigned k = band->loop->depth;
+             k < band->loop->depth + band->width; k++) {
           if (k != evict_pos && stmt->hyp_types[k] != H_SCALAR) {
             lastcst->val[lastcst->nrows - 1][stmt_offset2 + lambda_k + 1] =
                 stmt->trans->val[k][j];
@@ -1756,9 +1758,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       for (s = 0; s < nstmts; s++) {
         /* Num linearly independent hyperplanes remaining to be
          * found for a statement; take max across all */
-        num_sols_left =
-            PLMAX(num_sols_left,
-                  (int)stmts[s]->dim_orig - (int)pluto_stmt_get_num_ind_hyps(stmts[s]));
+        num_sols_left = PLMAX(num_sols_left,
+                              (int)stmts[s]->dim_orig -
+                                  (int)pluto_stmt_get_num_ind_hyps(stmts[s]));
       }
       /* Progress in the EAGER mode is made every time a solution is found;
        * thus, the maximum number of linearly independent solutions

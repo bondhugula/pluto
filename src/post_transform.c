@@ -146,7 +146,6 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
   return 0;
 }
 
-
 /* Detect upto two loops to register tile (unroll-jam) */
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
   int bandStart, bandEnd;

@@ -2170,8 +2170,7 @@ osl_names_p get_scop_names(osl_scop_p scop) {
 //
 //  The RAR deps are only computed if options->rar is set.
 static void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
-                             isl_union_map *schedule,
-                             isl_union_map *empty,
+                             isl_union_map *schedule, isl_union_map *empty,
                              isl_union_map **dep_raw, isl_union_map **dep_war,
                              isl_union_map **dep_waw, isl_union_map **dep_rar,
                              isl_union_map **trans_dep_war,
@@ -4231,8 +4230,8 @@ static void mark_trivial_dead_code(struct pet_scop *pscop,
     }
     (*dead)[s] = true;
     isl_space *space = isl_set_get_space(pscop->context);
-    isl_union_map *writes_s = pet_stmt_collect_accesses(
-        pstmt, pet_expr_access_killed, 0, space);
+    isl_union_map *writes_s =
+        pet_stmt_collect_accesses(pstmt, pet_expr_access_killed, 0, space);
 
     if (isl_union_map_n_map(writes_s) != 1) {
       isl_union_map_free(writes_s);
@@ -4241,7 +4240,8 @@ static void mark_trivial_dead_code(struct pet_scop *pscop,
 
     isl_map *write_s = isl_map_from_union_map(writes_s);
     isl_space *acc_space_s = isl_map_get_space(write_s);
-    const char *killed_name = isl_space_get_tuple_name(acc_space_s, isl_dim_out);
+    const char *killed_name =
+        isl_space_get_tuple_name(acc_space_s, isl_dim_out);
     isl_map_free(write_s);
 
     // Mark any other writes to the same variable name dead.

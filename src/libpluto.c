@@ -35,7 +35,6 @@
 #include "pluto/libpluto.h"
 #include "program.h"
 
-
 PlutoOptions *options;
 
 static double rtclock() {

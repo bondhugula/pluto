@@ -27,7 +27,6 @@
 #include "isl/ctx.h"
 #include "isl/mat.h"
 
-
 #include "pluto/libpluto.h"
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
