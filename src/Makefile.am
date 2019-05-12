@@ -40,14 +40,6 @@ pluto_SOURCES = \
 		transforms.c \
 		unit_tests.c 
 
-if PLUTO_DEBUG
-OPT_FLAGS = 
-DEBUG_FLAGS = -g -O0
-else
-OPT_FLAGS = -O3 -funroll-loops -fopenmp
-DEBUG_FLAGS =
-endif
-
 pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
    -I../include \
