@@ -60,9 +60,15 @@ test_libpluto: test/test_libpluto.c
 unit_tests: test/unit_tests.c
 	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include -I src -lpluto -o unit_tests
 
+src/pluto: force
+	$(MAKE) $(MFLAGS) -C src pluto
+
+force:
+	true
+
 test: PHONY
 	
-PHONY: polycc
+PHONY: polycc src/pluto test_libpluto unit_tests
 	./test.sh
 
 test-alt: polycc src/pluto
