@@ -315,7 +315,6 @@ PlutoConstraints *get_scc_permutability_constraints(int scc_id,
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   int nstmts, nvar, npar, ndeps, total_cst_rows;
-  PlutoConstraints *globcst;
   Dep **deps;
 
   nstmts = prog->nstmts;

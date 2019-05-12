@@ -3228,3 +3228,49 @@ void pluto_data_dist_identity_trans(PlutoProg *prog) {
     }
   }
 }
+
+char *pluto_dist_get_ptr_dim_stride_malloc(Array *arr, int curr_dim,
+                                           PlutoProg *prog) {
+  char *stride = (char *)malloc(256 * sizeof(char));
+  stride[0] = '\0';
+
+  sprintf(stride + strlen(stride), "(");
+  int i, first = 1;
+
+  for (i = curr_dim + 1; i <= arr->last_tile_dim; ++i) {
+    if (first)
+      sprintf(stride + strlen(stride), "%s_size_%d", arr->text, i);
+    else
+      sprintf(stride + strlen(stride), " * %s_size_%d", arr->text, i);
+
+    first = 0;
+  }
+
+  sprintf(stride + strlen(stride), ")");
+
+  return stride;
+}
+
+char *pluto_dist_get_ptr_dim_stride(Array *arr, int curr_dim, PlutoProg *prog) {
+  char *stride = (char *)malloc(256 * sizeof(char));
+  stride[0] = '\0';
+
+  sprintf(stride + strlen(stride), "(");
+  int i, first = 1;
+
+  for (i = curr_dim + 1; i < arr->dim_orig; ++i) {
+    if (arr->tiled_hyperplane[i].is_tiled) {
+      if (first)
+        sprintf(stride + strlen(stride), " %s_size_%d ", arr->text,
+                arr->tiled_hyperplane[i].tiled_dim);
+      else
+        sprintf(stride + strlen(stride), " * %s_size_%d ", arr->text,
+                arr->tiled_hyperplane[i].tiled_dim);
+
+      first = 0;
+    }
+  }
+  sprintf(stride + strlen(stride), ")");
+
+  return stride;
+}

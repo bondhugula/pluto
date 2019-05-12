@@ -329,52 +329,6 @@ char *pluto_dist_get_tile_dim_stride(Array *arr, int curr_dim,
   return stride;
 }
 
-char *pluto_dist_get_ptr_dim_stride_malloc(Array *arr, int curr_dim,
-                                           PlutoProg *prog) {
-  char *stride = (char *)malloc(256 * sizeof(char));
-  stride[0] = '\0';
-
-  sprintf(stride + strlen(stride), "(");
-  int i, first = 1;
-
-  for (i = curr_dim + 1; i <= arr->last_tile_dim; ++i) {
-    if (first)
-      sprintf(stride + strlen(stride), "%s_size_%d", arr->text, i);
-    else
-      sprintf(stride + strlen(stride), " * %s_size_%d", arr->text, i);
-
-    first = 0;
-  }
-
-  sprintf(stride + strlen(stride), ")");
-
-  return stride;
-}
-
-char *pluto_dist_get_ptr_dim_stride(Array *arr, int curr_dim, PlutoProg *prog) {
-  char *stride = (char *)malloc(256 * sizeof(char));
-  stride[0] = '\0';
-
-  sprintf(stride + strlen(stride), "(");
-  int i, first = 1;
-
-  for (i = curr_dim + 1; i < arr->dim_orig; ++i) {
-    if (arr->tiled_hyperplane[i].is_tiled) {
-      if (first)
-        sprintf(stride + strlen(stride), " %s_size_%d ", arr->text,
-                arr->tiled_hyperplane[i].tiled_dim);
-      else
-        sprintf(stride + strlen(stride), " * %s_size_%d ", arr->text,
-                arr->tiled_hyperplane[i].tiled_dim);
-
-      first = 0;
-    }
-  }
-  sprintf(stride + strlen(stride), ")");
-
-  return stride;
-}
-
 int pluto_dist_get_innermost_loop(const Stmt *stmt, const PlutoProg *prog) {
 
   PlutoMatrix *trans = stmt->trans;
@@ -724,8 +678,6 @@ char *pluto_dist_modify_stmt_text(char *stmt_text, int use_strides,
 
     strcpy(iter[arr->dim_orig + arr->npar], "1");
 
-    //		assert(arr->trans->nrows == arr->dim);
-
     // change access according to the transfer function
     if (use_strides) {
       sprintf(new_stmt_text + strlen(new_stmt_text), "[");
@@ -825,7 +777,7 @@ int generate_declarations(PlutoProg *prog, FILE *outfp) {
 
   prog->num_decl_indices = 0;
   prog->decl_indices = (char **)malloc(1024 * sizeof(char *));
-  prog->vec_decls = malloc(5 * 1024);
+  prog->vec_decls = (char *)malloc(5 * 1024);
   prog->vec_decls[0] = 0;
 
   /* Generate statement macros */
