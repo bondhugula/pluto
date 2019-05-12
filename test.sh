@@ -91,6 +91,9 @@ printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
 
+# TODO: add tests that check the generated code for certain things (like stmt
+# body source esp. while using --pet).
+
 cleanup()
 {
 rm -f test_temp_out.pluto.c
