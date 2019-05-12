@@ -28,6 +28,8 @@ pluto_SOURCES = \
 		framework.c \
 		framework-dfp.c \
 		gurobi-plugin.c \
+		isl_support.c \
+		isl_support.h \
 		iss.c \
 		main.c \
 		math_support.c \
@@ -82,6 +84,8 @@ libpluto_la_SOURCES = \
 		      ddg.c \
 		      framework.c \
 		      framework-dfp.c \
+		      isl_support.c \
+		      isl_support.h \
 		      iss.c \
 		      libpluto.c \
 		      libpluto_dummy.c \
