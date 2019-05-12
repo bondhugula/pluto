@@ -29,6 +29,7 @@ pluto_SOURCES = \
 		main.c \
 		math_support.c \
 		math_support.h \
+		pet_to_pluto.cpp \
 		pluto.c \
 		pluto_codegen_if.c \
 		pluto.h \
