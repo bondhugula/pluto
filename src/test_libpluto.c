@@ -90,6 +90,7 @@ void test4() {
 
   isl_union_set *domains = isl_union_set_read_from_str(
       ctx, " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 < i1 <= R - 1; }");
+  // Dependence (1, -1)
   isl_union_map *deps =
       isl_union_map_read_from_str(ctx, "[R, T] -> {"
                                        "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 1 "
