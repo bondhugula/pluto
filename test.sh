@@ -93,7 +93,9 @@ check_ret_val_emit_status
 
 # Unit tests
 printf '%-50s ' unit_tests
-./unit_tests < test/unit_tests.in | FileCheck test/unit_tests.in
+# Filter out all "// " comments from unit_tests.in when sending input to
+# 'unit_tests'.
+cat test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck test/unit_tests.in
 check_ret_val_emit_status
 
 
