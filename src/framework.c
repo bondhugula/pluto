@@ -58,7 +58,7 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
 /* Builds validity and bounding function constraints for a dependence */
 static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   PlutoConstraints *cst, *tiling_valid_cst, *bounding_func_cst;
-  int nstmts, nvar, npar, src_stmt, dest_stmt, j, k, r;
+  int nstmts, nvar, npar, src_stmt, dest_stmt, j, r;
   int src_offset, dest_offset;
   PlutoMatrix *phi;
   Stmt **stmts;
@@ -1314,7 +1314,7 @@ DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, unsigned level) 
 void populate_scaling_csr_matrices_for_pluto_program(int ***index,
                                                      double ***val, int nrows,
                                                      PlutoProg *prog) {
-  int i, j, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
+  int i, num_ccs, num_rows, stmt_offset, nstmts, cc_id;
   Stmt **stmts;
 
   nstmts = prog->nstmts;
