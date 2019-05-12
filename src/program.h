@@ -32,6 +32,14 @@
 extern "C" {
 #endif
 
+struct pluto_access_meta_info {
+  /* Pointer to an array of accesses */
+  PlutoAccess ***accs;
+  unsigned index;
+  unsigned stmt_dim;
+  int npar;
+};
+
 Stmt *pluto_stmt_alloc(unsigned dim, const PlutoConstraints *domain,
                        const PlutoMatrix *mat);
 void pluto_stmt_free(Stmt *stmt);
@@ -127,6 +135,17 @@ void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
 Array *pluto_get_corrs_array(char *arr_name, const PlutoProg *prog);
+
+void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
+                             isl_union_map *schedule, isl_union_map *empty,
+                             isl_union_map **dep_raw, isl_union_map **dep_war,
+                             isl_union_map **dep_waw, isl_union_map **dep_rar,
+                             isl_union_map **trans_dep_war,
+                             isl_union_map **trans_dep_waw);
+
+isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
+
+int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 
 #if defined(__cplusplus)
 }

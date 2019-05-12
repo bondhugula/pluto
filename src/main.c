@@ -703,14 +703,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   } else {
     // Extract polyhedral representation using Clan.
     FILE *src_fp;
-    if (!strcmp(srcFileName, "stdin")) { 
+    if (!strcmp(srcFileName, "stdin")) {
       // Read from stdin.
       src_fp = stdin;
       osl_interface_p registry = osl_interface_get_default_registry();
       double t_start = rtclock();
       scop = osl_scop_pread(src_fp, registry, PLUTO_OSL_PRECISION);
       t_d = rtclock() - t_start;
-    } else { 
+    } else {
       // Read from regular file.
       src_fp = fopen(srcFileName, "r");
       if (!src_fp) {
@@ -759,7 +759,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         (osl_irregular_p)osl_generic_lookup(scop->extension, OSL_URI_IRREGULAR);
     if (irreg_ext != NULL)
       // TODO: test it
-      irroption = osl_irregular_sprint(irreg_ext); 
+      irroption = osl_irregular_sprint(irreg_ext);
     osl_irregular_free(irreg_ext);
   }
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
@@ -852,7 +852,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     // input stdin == output stdout
     pluto_populate_scop(scop, prog, options);
     osl_scop_print(stdout, scop);
-  } else { 
+  } else {
     // Do the usual Pluto stuff.
 
     /* NO MORE TRANSFORMATIONS BEYOND THIS POINT */

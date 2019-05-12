@@ -932,7 +932,8 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
 
         /* Upper bound */
         pluto_constraints_add_inequality(stmt->domain);
-        for (unsigned j = num_domain_supernodes[s] + 1; j < stmt->dim + npar; j++) {
+        for (unsigned j = num_domain_supernodes[s] + 1; j < stmt->dim + npar;
+             j++) {
           stmt->domain->val[stmt->domain->nrows - 1][j] =
               -stmt->trans
                    ->val[firstD + (depth - firstD) + 1 + (depth - firstD)][j];
@@ -1162,8 +1163,8 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
 
   loop_depths[0] = band->loop->depth;
   nloops = 1;
-  for (unsigned depth = band->loop->depth + 1; depth < band->loop->depth + band->width;
-       depth++) {
+  for (unsigned depth = band->loop->depth + 1;
+       depth < band->loop->depth + band->width; depth++) {
     unsigned j;
     for (j = 0; j < band->loop->nstmts; j++) {
       if (pluto_is_hyperplane_scalar(band->loop->stmts[j], depth))

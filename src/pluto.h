@@ -661,7 +661,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool lin_ind_mode,
 
 void detect_hyperplane_type(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int,
                             int, int);
-DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, int level);
+DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, unsigned level);
 
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);

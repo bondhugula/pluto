@@ -101,7 +101,7 @@ void pluto_sink_transformation(Stmt *stmt, unsigned pos) {
 
   stmt->hyp_types = (PlutoHypType *)realloc(
       stmt->hyp_types, sizeof(PlutoHypType) * stmt->trans->nrows);
-  for (int i = (int)stmt->trans->nrows - 2; i >= (int)pos; i--) {
+  for (int i = stmt->trans->nrows - 2; i >= (int)pos; i--) {
     stmt->hyp_types[i + 1] = stmt->hyp_types[i];
   }
   stmt->hyp_types[pos] = H_SCALAR;

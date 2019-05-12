@@ -77,14 +77,20 @@ dnl set SOURCE_DIR to current directory
 SOURCE_DIR=`pwd`
 AC_SUBST(SOURCE_DIR)
 
-AC_CHECK_PROG(CP,cp,cp)
-AC_CHECK_PROG(RM,rm,rm -f)
-AC_CHECK_PROG(MV,mv,mv)
-AC_CHECK_PROG(CAT,cat,cat)
-AC_CHECK_PROG(AR,ar,ar)
-AC_CHECK_PROG(STRIP,strip,strip)
+dnl Offer --with-clang-prefix
+AC_ARG_WITH(clang-prefix,
+    AC_HELP_STRING([--with-clang-prefix=DIR], [DIR location of clang install]),
+    [
+        CLANG_PREFIX="$withval";
+        external_clang=true
+    ],
+    [external_clang=false]
+)
 
-AC_CHECK_PROG(FILECHECK,FileCheck,yes,no,path = '/usr/lib64/llvm/')
+AM_CONDITIONAL(EXTERNAL_CLANG, test x$external_clang = xtrue)
+
+dnl TODO: check for FileCheck at other places.
+AC_CHECK_PROG(FILECHECK,FileCheck,yes,no,path = "$CLANG_PREFIX/bin:$PATH:/usr/lib64/llvm")
 AS_IF([test x"$FILECHECK" != x"yes"], [AC_MSG_ERROR([Please install LLVM FileCheck before configuring.])])
 
 glpk="false"
@@ -279,18 +285,6 @@ configureopts="--with-gmp=system \
  ./configure ${configureopts} ${archopts}
 )
 fi
-
-dnl Offer --with-clang-prefix
-AC_ARG_WITH(clang-prefix,
-    AC_HELP_STRING([--with-clang-prefix=DIR], [DIR location of clang install]),
-    [
-        CLANG_PREFIX="$withval";
-        external_clang=true
-    ],
-    [external_clang=false]
-)
-
-AM_CONDITIONAL(EXTERNAL_CLANG, test x$external_clang = xtrue)
 
 dnl Configure PET
 echo -e "\n=========================="

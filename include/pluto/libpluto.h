@@ -1,3 +1,24 @@
+/******************************************************************************
+ *               libpluto -  A library version of Pluto                       *
+ ******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2012 Uday Bondhugula                                         *
+ *                                                                            *
+ * This library is free software; you can redistribute it and/or              *
+ * modify it under the terms of the GNU Lesser General Public                 *
+ * License version 2.1 as published by the Free Software Foundation.          *
+ *                                                                            *
+ * This library is distributed in the hope that it will be useful,            *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU          *
+ * Lesser General Public License for more details.                            *
+ *                                                                            *
+ * A copy of the GNU Lesser General Public Licence can be found in the file
+ * `LICENSE.LGPL2' in the top-level directory of this distribution.
+ *
+ * This file is part of libpluto.
+ *
+ */
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
 #include "isl/union_map.h"
@@ -325,8 +346,8 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 void pluto_remapping_free(Remapping *);
 
 void pluto_get_remapping_str(const char *domains_str,
-                             const char *dependences_str,
-                             Remapping **remapping_ptr, PlutoOptions *options);
+                             const char *dependences_str, PlutoOptions *options,
+                             Remapping *remapping);
 
 /*
 Free the string stored in schedules_str_buffer_ptr
