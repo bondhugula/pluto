@@ -54,8 +54,8 @@ binit:
 pclean:
 	$(MAKE) -C src clean
 
-test_libpluto: src/test_libpluto.c
-	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
+test_libpluto: test/test_libpluto.c
+	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
 test: PHONY
 	
