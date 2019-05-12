@@ -82,6 +82,7 @@ libpluto_la_SOURCES = \
 		      constraints.h \
 		      constraints_isl.c \
 		      ddg.c \
+		      ddg.h \
 		      framework.c \
 		      framework-dfp.c \
 		      isl_support.c \
@@ -95,10 +96,12 @@ libpluto_la_SOURCES = \
 		      pluto.h \
 		      polyloop.c \
 		      post_transform.c \
+		      post_transform.h \
 		      program.cpp \
 		      program.h \
 		      tile.c \
-		      transforms.c
+		      transforms.c \
+		      transforms.h
 
 libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
