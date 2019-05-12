@@ -43,7 +43,7 @@ bool *innermost_dep_satisfaction_dims(PlutoProg *prog,
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
                 PlutoProg *prog);
 
-bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, int level);
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, unsigned level);
 
 int get_num_unsatisfied_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
