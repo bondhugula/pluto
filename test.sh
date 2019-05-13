@@ -91,6 +91,14 @@ printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
 
+# Unit tests
+printf '%-50s ' unit_tests
+# Filter out all "// " comments from unit_tests.in when sending input to
+# 'unit_tests'.
+cat test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck test/unit_tests.in
+check_ret_val_emit_status
+
+
 # TODO: add tests that check the generated code for certain things (like stmt
 # body source esp. while using --pet).
 

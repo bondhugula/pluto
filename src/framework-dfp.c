@@ -3314,7 +3314,7 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
-  int i, j, k, num_sccs, nvar, npar, nstmts, level, ndeps;
+  int i, j, num_sccs, nvar, npar, nstmts, level, ndeps;
   int initial_cuts, nrows, stmt_offset;
   Graph *orig_ddg;
   int64 *sol;
@@ -3423,18 +3423,17 @@ bool introduce_skew(PlutoProg *prog) {
 
       if (!sol) {
         /* The loop nest is not tileable */
-        free(skew_dims);
         break;
       }
 
       /* Set the Appropriate coeffs in the transformation matrix */
-      for (j = 0; j < nstmts; j++) {
+      for (int j = 0; j < nstmts; j++) {
         stmt_offset = npar + 1 + j * (nvar + 1);
-        for (k = 0; k < nvar; k++) {
+        for (int k = 0; k < nvar; k++) {
           stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
         }
         /* No parametric Shifts */
-        for (k = nvar; k < nvar + npar; k++) {
+        for (int k = nvar; k < nvar + npar; k++) {
           stmts[j]->trans->val[level][k] = 0;
         }
         /* The constant Shift */
@@ -3456,6 +3455,7 @@ bool introduce_skew(PlutoProg *prog) {
       free(src_dims);
       src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
     }
+    free(skew_dims);
     free(src_dims);
     level = initial_cuts;
   }
