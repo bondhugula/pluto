@@ -2024,12 +2024,14 @@ bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour, int *num,
   scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
   colourable_dims = (bool *)malloc(max_dim * sizeof(bool));
   bzero(colourable_dims, max_dim * sizeof(bool));
+  printf("Num vertices discarded till now %d\n", num_discarded);
 
   for (i = 0; i < max_dim; i++) {
     v = scc_offset + i;
     if (colour[v] != 0 || is_adjecent(fcg, v, v) ||
-        is_discarded(v, discarded_list, num_discarded))
+        is_discarded(v, discarded_list, num_discarded)) {
       continue;
+    }
     colourable_dims[i] = 1;
     num_col_dims++;
   }
@@ -2096,12 +2098,19 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
-    colourable_dims = get_colourable_dims(scc_id, prog, &num_dims, colour,
+    colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
                                           discarded_list, num_discarded);
     /* If there are no colourable dimensions, then the current scc cannot be
      * coloured */
     if (num_dims == 0) {
+      printf("No colourable dims\n");
       return -1;
+    }
+    for (i = 0; i < max_dim; i++) {
+      if (colourable_dims[i])
+        printf("Dimension %d of Scc %d is colourable\n", i, scc_id);
+      else
+        printf("Dimension %d of Scc %d is not colourable\n", i, scc_id);
     }
     convex_successors =
         get_convex_successors(scc_id, prog, &num_convex_successors);
@@ -2111,7 +2120,9 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
       for (i = 0; i < max_dim; i++) {
         if (colourable_dims[i]) {
           free(colourable_dims);
-          return i;
+          printf("No convex successors. Returning vertex %d for colouring\n",
+                 i);
+          return scc_offset + i;
         }
       }
     }
@@ -2122,13 +2133,14 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
       for (i = 0; i < max_dim; i++) {
         if (colourable_dims[i]) {
           free(colourable_dims);
-          return i;
+          return scc_offset + i;
         }
       }
     }
     int dim = get_colouring_dim(common_dims, max_dim);
+    printf("Returning vertex %d for colouring\n", dim);
     free(common_dims);
-    return dim;
+    return scc_offset + dim;
   }
   /* min_scc = get_min_convex_successor(scc_id, prog); */
   /* if (min_scc == -1 || */
@@ -2233,7 +2245,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   do {
     v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list,
                                         colour, current_colour);
-    printf("Colouring vertex %d for colouring \n", v);
+    printf("Trying vertex %d for colouring \n", v);
     if (v == -1)
       return false;
     assert(v != -1);
