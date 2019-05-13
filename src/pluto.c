@@ -1746,7 +1746,13 @@ int pluto_auto_transform(PlutoProg *prog) {
     }
     /* if there are any unsatisfied deps, they have to be
      * distributed at the inner most level */
+    pluto_dep_satisfaction_reset(prog);
+    for (i = 0; i < prog->num_hyperplanes; i++) {
+      dep_satisfaction_update(prog, i);
+    }
     if (!deps_satisfaction_check(prog)) {
+      ddg_update(prog->ddg, prog);
+      ddg_compute_scc(prog);
       cut_all_sccs(prog, prog->ddg);
     }
 
