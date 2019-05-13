@@ -2795,7 +2795,7 @@ void reset_scc_colouring(Graph *ddg) {
  * Colouring is done on a per SCC basis. Natural number ordering of the
  * scc ids is used to ensure convexity. */
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
-  int i, j, num_coloured_dims, max_colours;
+  int num_coloured_dims, max_colours;
   Stmt **stmts;
   Graph *ddg;
   double t_start;
@@ -2804,13 +2804,13 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   stmts = prog->stmts;
 
   if (options->fuse == TYPED_FUSE && options->scc_cluster) {
-    for (i = 0; i < prog->ddg->num_sccs; i++) {
+    for (int i = 0; i < prog->ddg->num_sccs; i++) {
       prog->ddg->sccs[i].has_parallel_hyperplane = 0;
     }
   }
 
-  for (i = 1; i <= max_colours; i++) {
-    for (j = 0; j < prog->ddg->num_sccs; j++) {
+  for (int i = 1; i <= max_colours; i++) {
+    for (int j = 0; j < prog->ddg->num_sccs; j++) {
       prog->ddg->sccs[j].is_scc_coloured = false;
     }
     if (options->lpcolour && !options->scc_cluster) {
@@ -2841,7 +2841,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
 
     prog->coloured_dims += num_coloured_dims;
     t_start = rtclock();
-    for (j = 0; j < num_coloured_dims; j++) {
+    for (int j = 0; j < num_coloured_dims; j++) {
       dep_satisfaction_update(prog,
                               stmts[0]->trans->nrows - num_coloured_dims + j);
     }
@@ -2852,7 +2852,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     ddg = prog->ddg;
 
     if (options->lpcolour) {
-      for (j = 0; j < ddg->num_sccs; j++) {
+      for (int j = 0; j < ddg->num_sccs; j++) {
         if (ddg->sccs[j].sol != NULL) {
           free(ddg->sccs[j].sol);
           ddg->sccs[j].sol = NULL;
@@ -2882,14 +2882,6 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     IF_DEBUG2(pluto_compute_dep_satisfaction(prog););
     IF_DEBUG2(pluto_print_dep_directions(prog););
   }
-#if 0
-    /* This can be delayed further. Introduce this cut after diamond tiling */
-  /* All dimensions have been coloured but still there are some deps that
-   * need to be satisfied at the innermost level by distribution.  */
-  if (i == max_colours + 1 && !deps_satisfaction_check(prog)) {
-    cut_all_sccs(prog, prog->ddg);
-  }
-#endif
 
   IF_DEBUG(printf("[Pluto] Colouring Successful\n"););
   IF_DEBUG(pluto_print_colours(colour, prog););
@@ -2901,7 +2893,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   if (options->lpcolour) {
     pluto_matrix_free(dep_dist_mat);
   }
-  for (i = 0; i < ddg->num_sccs; i++) {
+  for (int i = 0; i < ddg->num_sccs; i++) {
     free(ddg->sccs[i].vertices);
   }
   return;

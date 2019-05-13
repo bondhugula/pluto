@@ -1692,20 +1692,20 @@ int pluto_auto_transform(PlutoProg *prog) {
 
     nVertices = 0;
     if (options->scc_cluster) {
-      for (i = 0; i < ddg->num_sccs; i++) {
+      for (int i = 0; i < ddg->num_sccs; i++) {
         ddg->sccs[i].fcg_scc_offset = nVertices;
         ddg->sccs[i].is_scc_coloured = false;
         nVertices += ddg->sccs[i].max_dim;
       }
     } else {
-      for (i = 0; i < nstmts; i++) {
+      for (int i = 0; i < nstmts; i++) {
         ddg->vertices[i].fcg_stmt_offset = nVertices;
         nVertices += stmts[i]->dim_orig;
       }
     }
 
     colour = (int *)malloc(nVertices * sizeof(int));
-    for (i = 0; i < nVertices; i++) {
+    for (int i = 0; i < nVertices; i++) {
       colour[i] = 0;
     }
 
@@ -1725,7 +1725,7 @@ int pluto_auto_transform(PlutoProg *prog) {
     prog->total_coloured_stmts = (int *)malloc(nvar * sizeof(int));
     prog->scaled_dims = (int *)malloc(nvar * sizeof(int));
     prog->coloured_dims = 0;
-    for (i = 0; i < nvar; i++) {
+    for (int i = 0; i < nvar; i++) {
       prog->total_coloured_stmts[i] = 0;
       prog->scaled_dims[i] = 0;
     }
@@ -1747,7 +1747,7 @@ int pluto_auto_transform(PlutoProg *prog) {
     /* if there are any unsatisfied deps, they have to be
      * distributed at the inner most level */
     pluto_dep_satisfaction_reset(prog);
-    for (i = 0; i < prog->num_hyperplanes; i++) {
+    for (int i = 0; i < prog->num_hyperplanes; i++) {
       dep_satisfaction_update(prog, i);
     }
     if (!deps_satisfaction_check(prog)) {
