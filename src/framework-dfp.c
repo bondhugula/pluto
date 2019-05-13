@@ -3248,7 +3248,7 @@ bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
  */
 bool *innermost_dep_satisfaction_dims(PlutoProg *prog,
                                       bool *tile_preventing_deps) {
-  int i, j, ndeps, loop_dims;
+  int ndeps, loop_dims;
   Dep *dep;
   bool *sat_dim;
   HyperplaneProperties *hProps;
@@ -3258,20 +3258,20 @@ bool *innermost_dep_satisfaction_dims(PlutoProg *prog,
   ndeps = prog->ndeps;
   hProps = prog->hProps;
 
-  for (i = 0; i < ndeps; i++) {
+  for (int i = 0; i < ndeps; i++) {
     dep = prog->deps[i];
     loop_dims = 0;
     if (!tile_preventing_deps[i]) {
       continue;
     }
-    for (j = 0; j < prog->num_hyperplanes; j++) {
+    for (int j = 0; j < prog->num_hyperplanes; j++) {
       if (j == dep->satisfaction_level) {
+        sat_dim[loop_dims] = 1;
         break;
       } else if (hProps[j].type == H_LOOP) {
         loop_dims++;
       }
     }
-    sat_dim[loop_dims] = 1;
   }
   return sat_dim;
 }
@@ -3282,7 +3282,7 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
                                           int scc_id, PlutoProg *prog,
                                           int level,
                                           PlutoConstraints *skewCst) {
-  int i, j, nvar, npar, nstmts;
+  int nvar, npar, nstmts;
   Stmt **stmts;
   /* PlutoConstraints *skewCst, *boundcst; */
 
@@ -3293,8 +3293,8 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
 
   assert(skewCst->ncols == CST_WIDTH);
 
-  for (i = 0; i < nstmts; i++) {
-    for (j = 0; j < stmts[i]->dim_orig; j++) {
+  for (int i = 0; i < nstmts; i++) {
+    for (int j = 0; j < stmts[i]->dim_orig; j++) {
       if (src_dims[j] && stmts[i]->scc_id == scc_id) {
         pluto_constraints_add_lb(skewCst, npar + 1 + i * (nvar + 1) + j, 1);
       } else {
@@ -3314,7 +3314,7 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
-  int i, j, num_sccs, nvar, npar, nstmts, level, ndeps;
+  int j, num_sccs, nvar, npar, nstmts, level, ndeps;
   int initial_cuts, nrows, stmt_offset;
   Graph *orig_ddg;
   int64 *sol;
@@ -3352,12 +3352,13 @@ bool introduce_skew(PlutoProg *prog) {
   orig_ddg = prog->ddg;
   prog->ddg = newDDG;
 
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     tile_preventing_deps[i] = 0;
   }
 
   initial_cuts = 0;
-  for (level = 0; level < prog->num_hyperplanes; level++) {
+  level = 0;
+  for (; level < prog->num_hyperplanes; level++) {
     if (hProps[level].type == H_LOOP) {
       break;
     }
@@ -3383,7 +3384,7 @@ bool introduce_skew(PlutoProg *prog) {
   skewingCst->ncols = CST_WIDTH;
   pluto_constraints_add(skewingCst, basecst);
   dep_satisfaction_update(prog, level);
-  for (i = 0; i < num_sccs; i++) {
+  for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
     /* dep_satisfaction_update(prog,level); */
     /* if (!constant_deps_in_scc(i, level, const_dep_check_cst, prog)) { */
