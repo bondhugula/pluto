@@ -3246,8 +3246,7 @@ bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
 
 /* Returns the dimensions at which tiling preventing dependences are satisfied
  */
-bool *innermost_dep_satisfaction_dims(PlutoProg *prog,
-                                      bool *tile_preventing_deps) {
+bool *get_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps) {
   int ndeps, loop_dims;
   Dep *dep;
   bool *sat_dim;
@@ -3394,7 +3393,7 @@ bool introduce_skew(PlutoProg *prog) {
     /*     continue; */
     /* } */
     skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
-    src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
+    src_dims = get_dep_satisfaction_dims(prog, tile_preventing_deps);
     level++;
 
     for (; level < prog->num_hyperplanes; level++) {
@@ -3455,7 +3454,7 @@ bool introduce_skew(PlutoProg *prog) {
 
       skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level + 1);
       free(src_dims);
-      src_dims = innermost_dep_satisfaction_dims(prog, tile_preventing_deps);
+      src_dims = get_dep_satisfaction_dims(prog, tile_preventing_deps);
     }
     free(skew_dims);
     free(src_dims);
