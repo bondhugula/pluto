@@ -1890,9 +1890,6 @@ int pluto_auto_transform(PlutoProg *prog) {
   if (options->dfp) {
 #if defined GLPK || defined GUROBI
     ddg = prog->ddg;
-    for (i = 0; i < ddg->num_sccs; i++) {
-      free(ddg->sccs[i].vertices);
-    }
     graph_free(prog->fcg);
 #endif
   }
