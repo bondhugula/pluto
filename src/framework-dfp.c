@@ -3446,6 +3446,7 @@ bool introduce_skew(PlutoProg *prog) {
       pluto_compute_dep_directions(prog);
 
       free(skew_dims);
+      skew_dims = NULL;
 
       if (level >= prog->num_hyperplanes - 1) {
         continue;
