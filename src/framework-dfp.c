@@ -2088,7 +2088,7 @@ int *get_common_dims(int scc_id, int *convex_successors,
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list,
                                     int *colour, int current_colour) {
-  int i, v, max_dim, scc_offset, min_scc;
+  int i, v, max_dim, scc_offset;
   bool *colourable_dims;
   int *convex_successors, *common_dims;
   int num_convex_successors, num_dims;
