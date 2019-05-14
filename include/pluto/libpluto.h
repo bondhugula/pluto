@@ -21,10 +21,13 @@
  */
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
+
 #include "isl/union_map.h"
 #include "isl/union_set.h"
 
 #include "osl/scop.h"
+
+#include "pluto/matrix.h"
 
 #if defined(__cplusplus)
 extern "C" {

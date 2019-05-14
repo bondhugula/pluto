@@ -24,23 +24,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "pluto/matrix.h"
+
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
 #define PLABS(a) ((a >= 0) ? (a) : (-a))
-
-/* A matrix */
-struct plutoMatrix {
-  /* The values */
-  int64_t **val;
-
-  unsigned nrows;
-  unsigned ncols;
-
-  /* Pre-allocated number of rows */
-  int alloc_nrows;
-  int alloc_ncols;
-};
-typedef struct plutoMatrix PlutoMatrix;
 
 #if defined(__cplusplus)
 extern "C" {
