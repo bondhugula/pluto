@@ -2110,20 +2110,14 @@ int *get_convex_preds_from_convex_successors(int min_scc_id, int scc_id,
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list,
                                     int *colour, int current_colour) {
-  int max_dim, scc_offset;
-  bool *colourable_dims;
-  int *convex_successors, *common_dims;
-  int num_convex_successors, num_dims;
-  Scc *sccs;
-  Graph *fcg;
-
-  sccs = prog->ddg->sccs;
-  max_dim = sccs[scc_id].max_dim;
-  scc_offset = sccs[scc_id].fcg_scc_offset;
-  fcg = prog->fcg;
+  Scc *sccs = prog->ddg->sccs;
+  Graph *fcg = prog->fcg;
+  int max_dim = sccs[scc_id].max_dim;
+  int scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
-    colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
-                                          discarded_list, num_discarded);
+    int num_dims;
+    bool *colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
+                                                discarded_list, num_discarded);
     /* If there are no colourable dimensions, then the current scc cannot be
      * coloured */
     if (num_dims == 0) {
@@ -2138,7 +2132,8 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
             printf("Dimension %d of Scc %d is not colourable\n", i, scc_id););
       }
     }
-    convex_successors =
+    int num_convex_successors;
+    int *convex_successors =
         get_convex_successors(scc_id, prog, &num_convex_successors);
     if (num_convex_successors == 0) {
       /* There is atleast one colourable dimension. Hence the following return
@@ -2180,7 +2175,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         &num_preds);
 
     /* Get common dims among the predecessors of the min scc */
-    common_dims =
+    int *common_dims =
         get_common_dims(min_scc_id, pred_list, num_preds, succ_colourable_dims,
                         succ_dims, colour, current_colour, prog);
 
