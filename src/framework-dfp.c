@@ -2088,7 +2088,7 @@ int *get_common_dims(int scc_id, int *convex_successors,
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list,
                                     int *colour, int current_colour) {
-  int i, v, max_dim, scc_offset;
+  int max_dim, scc_offset;
   bool *colourable_dims;
   int *convex_successors, *common_dims;
   int num_convex_successors, num_dims;
@@ -2098,7 +2098,6 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
-    printf("Greedy heuristic for colouring\n");
     colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
                                           discarded_list, num_discarded);
     /* If there are no colourable dimensions, then the current scc cannot be
@@ -2139,50 +2138,14 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         }
       }
     }
-    printf("Common dims\n");
-    for (int i = 0; i < max_dim; i++) {
-      printf("Dim %d: %d\n", i, common_dims[i]);
-    }
     int dim = get_colouring_dim(common_dims, max_dim);
     printf("Returning vertex %d for colouring\n", dim);
     free(common_dims);
     return scc_offset + dim;
   }
-  /* min_scc = get_min_convex_successor(scc_id, prog); */
-  /* if (min_scc == -1 || */
-  /*     !ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc)) { */
-  /*   printf("[FCG Colouring]: No Convex Successor for Scc %d\n", scc_id); */
-  /* } else { */
-  /*   printf("Min Convex Successor of SCC %d: %d\n", scc_id, min_scc); */
-  /*   assert(ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc)); */
-  /*   v = get_min_vertex_from_lp_sol(scc_id, min_scc, prog, num_discarded, */
-  /*                                  discarded_list); */
-  /*   #<{(| If the returned value is -1 then it might be due to fact that the
-   */
-  /*    * vertex that is chosen for colouring at the current level is adjecent
-   * to */
-  /*    * a vertex that can be coloured with next level. In such a case, the cut
-   */
-  /*    * can be introduced either before colouring the current vertex or after
-   */
-  /*    * colouring the current vertex. We choose the later (no particular
-   * reason */
-  /*    * to do this). For choosing with former, return v==-1 whenever there is
-   */
-  /*    * no predecessor for the current SCC |)}># */
-  /*   if (v != -1) { */
-  /*     printf("Returning vertex %d for colouring \n", v); */
-  /*     return v; */
-  /*   } */
-  /*   printf("Min vertex found to be -1, switching to brute force search\n");
-   */
-  /* } */
-  /* } */
-  /* This case applies for sccs with no convex successors or when lp solution
-   * guided colouring does not find a suitable vertex for colouring */
-  printf("No greedy heuristic used\n");
-  for (i = 0; i < max_dim; i++) {
-    v = scc_offset + i;
+
+  for (int i = 0; i < max_dim; i++) {
+    int v = scc_offset + i;
     if (!is_discarded(v, discarded_list, num_discarded)) {
       return v;
     }
