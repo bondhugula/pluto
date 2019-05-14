@@ -33,8 +33,6 @@
 extern "C" {
 #endif
 
-#define int64 long long int
-
 struct plutoOptions {
 
   /* To tile or not? */
