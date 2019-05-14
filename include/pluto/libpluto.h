@@ -48,19 +48,17 @@ struct plutoOptions {
   /* Extract scop information from libpet*/
   int pet;
 
-  /* dynamic scheduling
-   * using Synthesized Runtime Interface */
+  /* Dynamic scheduling using Synthesized Runtime Interface. */
   int dynschedule;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using Intel TBB Flow Graph scheduler */
+  /* Dynamic scheduling - previous technique of building the entire task graph
+   * in memory using Intel TBB Flow Graph scheduler */
   int dynschedule_graph;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using a custom DAG scheduler */
-  // no longer maintained
+  // Dynamic scheduling - previous technique of building the entire task graph
+  // in memory using a custom DAG scheduler.
+  // No longer maintained
+  // TODO: remove this!
   int dynschedule_graph_old;
 
   /* consider transitive dependences between tasks */
@@ -248,8 +246,7 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
 
 /*
  * Structure to hold Remapping information
- * Consists of number of statements, Remapping pluto matrix
- * and divs.
+ * Consists of number of statements, Remapping pluto matrix and divs.
  */
 struct remapping {
   unsigned nstmts;
