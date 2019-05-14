@@ -15,6 +15,7 @@
 #include "math_support.h"
 #include "pluto.h"
 
+#include "isl/aff.h"
 #include "isl/ctx.h"
 #include "isl/map.h"
 #include "isl/set.h"
@@ -328,9 +329,9 @@ int isl_basic_map_to_pluto_constraints_func_arg(__isl_take isl_basic_map *bmap,
 
 /* Use isl to solve these constraints (solves just for the first element if
  * it's a list of constraints */
-int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
+int64_t *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   int i;
-  int64 *sol;
+  int64_t *sol;
   isl_ctx *ctx;
   isl_basic_set *bset, *all_positive;
   isl_set *domain, *all_positive_set, *lexmin;
@@ -358,7 +359,7 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   }
 
   int num_dimensions = isl_set_n_dim(lexmin);
-  sol = (int64 *)malloc((num_dimensions) * sizeof(int64));
+  sol = (int64_t *)malloc((num_dimensions) * sizeof(int64_t));
 
   // As the set is non parametric, there is only a single point in the set.
   // This point is the lexicographic minimum of the set.

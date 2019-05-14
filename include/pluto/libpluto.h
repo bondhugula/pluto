@@ -31,19 +31,6 @@ extern "C" {
 #endif
 
 #define int64 long long int
-/* A matrix */
-struct plutoMatrix {
-  /* The values */
-  int64 **val;
-
-  unsigned nrows;
-  unsigned ncols;
-
-  /* Pre-allocated number of rows */
-  int alloc_nrows;
-  int alloc_ncols;
-};
-typedef struct plutoMatrix PlutoMatrix;
 
 struct plutoOptions {
 

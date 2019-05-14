@@ -223,7 +223,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
     pluto_constraints_add(cst, indcst);
   }
 
-  int64 *sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+  int64_t *sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
 
   pluto_constraints_free(cst);
   pluto_constraints_free(nz);
@@ -243,7 +243,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
     pluto_constraints_set_names_range(h, dom0->names, 0, 0, ndim);
     pluto_constraints_set_names_range(h, dom0->names, ndim, 2 * ndim, npar);
 
-    PLUTO_MESSAGE(printf("[iss] m = %lld\n", sol[0]););
+    PLUTO_MESSAGE(printf("[iss] m = %ld\n", sol[0]););
     PLUTO_MESSAGE(printf("[iss] h (cut) is "););
     PLUTO_MESSAGE(pluto_constraints_compact_print(stdout, h););
     free(sol);
@@ -270,7 +270,7 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
   dpolyc->val[dpolyc->nrows - 1][1 + dim] = 1;
   dpolyc->val[dpolyc->nrows - 1][1 + ndim + dim] = -1;
 
-  int64 lb, ub;
+  int64_t lb, ub;
   int retval1, retval2;
 
   retval1 = pluto_constraints_get_const_lb(dpolyc, 0, &lb);

@@ -1361,10 +1361,10 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
  * pos: position of the supernode in the domain
  *
  */
-static int64 *pluto_check_supernode(const Stmt *stmt, unsigned pos,
+static int64_t *pluto_check_supernode(const Stmt *stmt, unsigned pos,
                                     int *tile_size) {
   int lb_pos, ub_pos;
-  int64 *tile_hyp;
+  int64_t *tile_hyp;
 
   PlutoConstraints *dom = stmt->domain;
 
@@ -1395,7 +1395,7 @@ static int64 *pluto_check_supernode(const Stmt *stmt, unsigned pos,
   if (c < (int)dom->ncols - 1)
     return NULL;
 
-  tile_hyp = (int64 *)malloc(dom->ncols * sizeof(int64));
+  tile_hyp = (int64_t *)malloc(dom->ncols * sizeof(int64_t));
 
   for (unsigned c = 0; c < dom->ncols; c++) {
     if (c == pos)
@@ -1407,7 +1407,7 @@ static int64 *pluto_check_supernode(const Stmt *stmt, unsigned pos,
   return tile_hyp;
 }
 
-static int is_skewed(int64 *func, int len) {
+static int is_skewed(int64_t *func, int len) {
   int count, i;
 
   count = 0;
@@ -1446,7 +1446,7 @@ void pluto_stmt_print_hyperplane(FILE *fp, const Stmt *stmt, int level) {
      * divided by a constant -- useful to print tiled hyperplanes, the
      * dividing constant being the tile size */
     int div;
-    int64 *super_func;
+    int64_t *super_func;
     super_func = pluto_check_supernode(stmt, j, &div);
     if (super_func) {
       char *tmp;
@@ -3550,11 +3550,11 @@ char *get_expr(PlutoConstraints *cst, int pos, const char **params,
       if (cst->val[pos][c] != 0) {
         if (bound_type == MINF) {
           sprintf(expr + strlen(expr),
-                  (cst->val[pos][c] >= 1) ? "+%lld*%s" : "%lld*%s",
+                  (cst->val[pos][c] >= 1) ? "+%ld*%s" : "%ld*%s",
                   cst->val[pos][c], params[c - 1]);
         } else {
           sprintf(expr + strlen(expr),
-                  (cst->val[pos][c] <= -1) ? "+%lld*%s" : "%lld*%s",
+                  (cst->val[pos][c] <= -1) ? "+%ld*%s" : "%ld*%s",
                   -cst->val[pos][c], params[c - 1]);
         }
       }
@@ -3562,18 +3562,18 @@ char *get_expr(PlutoConstraints *cst, int pos, const char **params,
 
     if (cst->val[pos][c] != 0) {
       if (bound_type == MINF) {
-        sprintf(expr + strlen(expr), (cst->val[pos][c] >= 1) ? "+%lld" : "%lld",
+        sprintf(expr + strlen(expr), (cst->val[pos][c] >= 1) ? "+%ld" : "%ld",
                 cst->val[pos][c]);
       } else {
         sprintf(expr + strlen(expr),
-                (cst->val[pos][c] <= -1) ? "+%lld" : "%lld", -cst->val[pos][c]);
+                (cst->val[pos][c] <= -1) ? "+%ld" : "%ld", -cst->val[pos][c]);
       }
     }
 
     /* If it's being divided by 1, make it better by not putting
      * floor/ceil. */
     if (llabs(cst->val[pos][0]) != 1) {
-      sprintf(expr + strlen(expr), ")/(float)%lld)",
+      sprintf(expr + strlen(expr), ")/(float)%ld)",
               (bound_type == MINF) ? -cst->val[pos][0] : cst->val[pos][0]);
     }
   }

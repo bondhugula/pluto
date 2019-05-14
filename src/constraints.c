@@ -39,7 +39,7 @@
 #define LB 1
 #define NB 2
 
-PipMatrix *pip_matrix_populate(int64 **cst, int nrows, int ncols);
+PipMatrix *pip_matrix_populate(int64_t **cst, int nrows, int ncols);
 
 /*
  * Allocate with a max size of max_rows and max_cols;
@@ -56,9 +56,9 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols) {
   cst = (PlutoConstraints *)malloc(sizeof(PlutoConstraints));
 
   size_t size =
-      ((size_t)PLMAX(1, max_rows)) * PLMAX(1, max_cols) * sizeof(int64);
+      ((size_t)PLMAX(1, max_rows)) * PLMAX(1, max_cols) * sizeof(int64_t);
 
-  cst->buf = (int64 *)malloc(size);
+  cst->buf = (int64_t *)malloc(size);
 
   if (cst->buf == NULL) {
     fprintf(stderr,
@@ -72,7 +72,7 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols) {
   cst->is_eq = (int *)malloc(max_rows * sizeof(int));
   bzero(cst->is_eq, max_rows * sizeof(int));
 
-  cst->val = (int64 **)malloc(max_rows * sizeof(int64 *));
+  cst->val = (int64_t **)malloc(max_rows * sizeof(int64_t *));
 
   int i;
   for (i = 0; i < max_rows; i++) {
@@ -93,7 +93,7 @@ PlutoConstraints *pluto_constraints_alloc(int max_rows, int max_cols) {
 /* Initialize entire *allocated* constraints to zero; everything is also
  * initialized to inequality >= 0 */
 void pluto_constraints_zero(PlutoConstraints *cst) {
-  bzero(cst->buf, cst->alloc_ncols * cst->alloc_nrows * sizeof(int64));
+  bzero(cst->buf, cst->alloc_ncols * cst->alloc_nrows * sizeof(int64_t));
   bzero(cst->is_eq, cst->alloc_nrows * sizeof(int));
 }
 
@@ -303,7 +303,7 @@ PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1,
 
   for (int i = 0; i < (int)cst2->nrows; i++) {
     memcpy(cst1->val[(int)cst1->nrows - (int)cst2->nrows + i], cst2->val[i],
-           cst1->ncols * sizeof(int64));
+           cst1->ncols * sizeof(int64_t));
   }
 
   memcpy(&cst1->is_eq[cst1->nrows - cst2->nrows], cst2->is_eq,
@@ -326,7 +326,7 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
 
   for (int i = 0; i < (int)cst2->nrows; i++) {
     memcpy(cst1->val[(int)cst1->nrows - (int)cst2->nrows + i], cst2->val[i],
-           cst1->ncols * sizeof(int64));
+           cst1->ncols * sizeof(int64_t));
   }
 
   memcpy(&cst1->is_eq[cst1->nrows - cst2->nrows], cst2->is_eq,
@@ -340,14 +340,14 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
 
 /* Temporary structure to compare two rows */
 struct row_info {
-  int64 *row;
+  int64_t *row;
   short is_eq;
   int ncols;
 };
 
 static int row_compar(const void *e1, const void *e2) {
   int i, ncols;
-  int64 *row1, *row2;
+  int64_t *row1, *row2;
   struct row_info *u1, *u2;
 
   u1 = *(struct row_info **)e1;
@@ -373,7 +373,7 @@ static int row_compar(const void *e1, const void *e2) {
   }
 
   /* memcmp is inefficient compared to what's above when compiled with gcc */
-  /* return memcmp(row1, row2, ncols*sizeof(int64)); */
+  /* return memcmp(row1, row2, ncols*sizeof(int64_t)); */
 }
 
 /*
@@ -382,7 +382,7 @@ static int row_compar(const void *e1, const void *e2) {
  * will decrease
  */
 void pluto_constraints_simplify(PlutoConstraints *const cst) {
-  int64 _gcd;
+  int64_t _gcd;
 
   if (cst->nrows == 0) {
     return;
@@ -461,7 +461,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
   unsigned p = 0;
   for (unsigned i = 0; i < cst->nrows; i++) {
     if (!is_redun[i]) {
-      memcpy(tmpcst->val[p], cst->val[i], cst->ncols * sizeof(int64));
+      memcpy(tmpcst->val[p], cst->val[i], cst->ncols * sizeof(int64_t));
       tmpcst->is_eq[p] = cst->is_eq[i];
       p++;
     }
@@ -488,7 +488,7 @@ void pluto_constraints_simplify(PlutoConstraints *const cst) {
  * cst will be resized if necessary
  */
 void fourier_motzkin_eliminate(PlutoConstraints *cst, unsigned pos) {
-  int64 lb, ub, nb;
+  int64_t lb, ub, nb;
   int *bound;
 
   // At least one variable
@@ -628,7 +628,7 @@ PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest,
   dest->ncols = src->ncols;
 
   for (unsigned i = 0; i < dest->nrows; i++) {
-    memcpy(dest->val[i], src->val[i], src->ncols * sizeof(int64));
+    memcpy(dest->val[i], src->val[i], src->ncols * sizeof(int64_t));
   }
 
   memcpy(dest->is_eq, src->is_eq, dest->nrows * sizeof(int));
@@ -678,7 +678,7 @@ static void pluto_constraints_print_single(FILE *fp,
 
   for (unsigned i = 0; i < cst->nrows; i++) {
     for (unsigned j = 0; j < cst->ncols; j++) {
-      fprintf(fp, "% 3lld ", cst->val[i][j]);
+      fprintf(fp, "% 3ld ", cst->val[i][j]);
     }
     fprintf(fp, "\t %s 0\n", cst->is_eq[i] ? "==" : ">=");
   }
@@ -701,7 +701,7 @@ pluto_constraints_print_polylib_without_num(FILE *fp,
   for (unsigned i = 0; i < cst->nrows; i++) {
     fprintf(fp, "%s ", cst->is_eq[i] ? "0" : "1");
     for (unsigned j = 0; j < cst->ncols; j++) {
-      fprintf(fp, "%lld ", cst->val[i][j]);
+      fprintf(fp, "%ld ", cst->val[i][j]);
     }
     fprintf(fp, "\n");
   }
@@ -808,7 +808,7 @@ PlutoConstraints *pluto_constraints_read(FILE *fp) {
     fscanf(fp, "%d ", &ineq);
     cst->is_eq[i] = ineq ^ 1;
     for (unsigned j = 0; j < cst->ncols; j++) {
-      fscanf(fp, "%lld", &cst->val[i][j]);
+      fscanf(fp, "%ld", &cst->val[i][j]);
     }
   }
 
@@ -854,7 +854,7 @@ void pluto_constraints_compact_print_single(FILE *fp,
         if (cst->val[i][j] == 0 && !first)
           fprintf(fp, " ");
         else
-          fprintf(fp, "%s%lld ", (cst->val[i][j] >= 0 && !first) ? "+" : "",
+          fprintf(fp, "%s%ld ", (cst->val[i][j] >= 0 && !first) ? "+" : "",
                   cst->val[i][j]);
       } else {
         char var[6];
@@ -872,10 +872,10 @@ void pluto_constraints_compact_print_single(FILE *fp,
           fprintf(fp, "-%s", var);
           first = 0;
         } else if (cst->val[i][j] >= 2) {
-          fprintf(fp, "%s%lld%s", first ? "" : "+", cst->val[i][j], var);
+          fprintf(fp, "%s%ld%s", first ? "" : "+", cst->val[i][j], var);
           first = 0;
         } else if (cst->val[i][j] <= -2) {
-          fprintf(fp, "%lld%s", cst->val[i][j], var);
+          fprintf(fp, "%ld%s", cst->val[i][j], var);
           first = 0;
         }
       }
@@ -919,7 +919,7 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst) {
         if (cst->val[i][j] == 0 && !first)
           fprintf(fp, "     ");
         else
-          fprintf(fp, "%s%lld ", (cst->val[i][j] >= 0) ? "+" : "",
+          fprintf(fp, "%s%ld ", (cst->val[i][j] >= 0) ? "+" : "",
                   cst->val[i][j]);
       } else {
         char var[6];
@@ -936,10 +936,10 @@ void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst) {
           fprintf(fp, "-%s ", var);
           first = 0;
         } else if (cst->val[i][j] >= 2) {
-          fprintf(fp, "+%lld%s ", cst->val[i][j], var);
+          fprintf(fp, "+%ld%s ", cst->val[i][j], var);
           first = 0;
         } else if (cst->val[i][j] <= -2) {
-          fprintf(fp, "%lld%s ", cst->val[i][j], var);
+          fprintf(fp, "%ld%s ", cst->val[i][j], var);
           first = 0;
         } else
           fprintf(fp, "      ");
@@ -973,7 +973,7 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst) {
         /* Not supported in CPLEX format */
         assert(!first || cst->val[i][j] >= 0);
         if (!first)
-          fprintf(fp, "%s %lld\n", cst->is_eq[i] ? "=" : ">=", -cst->val[i][j]);
+          fprintf(fp, "%s %ld\n", cst->is_eq[i] ? "=" : ">=", -cst->val[i][j]);
       } else {
         char var[6];
         if (cst->names)
@@ -988,10 +988,10 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst) {
           fprintf(fp, "-%s ", var);
           first = 0;
         } else if (cst->val[i][j] >= 2) {
-          fprintf(fp, "+%lld%s ", cst->val[i][j], var);
+          fprintf(fp, "+%ld%s ", cst->val[i][j], var);
           first = 0;
         } else if (cst->val[i][j] <= -2) {
-          fprintf(fp, "%lld%s ", cst->val[i][j], var);
+          fprintf(fp, "%ld%s ", cst->val[i][j], var);
           first = 0;
         } else
           fprintf(fp, "    ");
@@ -1022,13 +1022,13 @@ PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst,
 
 /* Use PIP to solve these constraints (solves for the first element
  * if it's a list of constraints) */
-int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
+int64_t *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
   int bignum, i;
   PipMatrix *domain, *context;
   PipQuast *solution;
   PipOptions *pipOptions;
   PipList *listPtr;
-  int64 *sol;
+  int64_t *sol;
   PlutoMatrix *pipmat;
 
   IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables, %d "
@@ -1062,7 +1062,7 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
 
   sol = NULL;
   if (listPtr != NULL) {
-    sol = (int64 *)malloc((pipmat->ncols - 2) * sizeof(int64));
+    sol = (int64_t *)malloc((pipmat->ncols - 2) * sizeof(int64_t));
 
     for (i = 0; i < pipmat->ncols - 2; i++) {
       /* This is just a lexmin and not a parametrix lexmin and so each
@@ -1070,7 +1070,7 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
 #ifdef PIP_WIDTH_MP
       sol[i] = mpz_get_si(*listPtr->vector->the_vector);
 #else
-      sol[i] = (int64)*listPtr->vector->the_vector;
+      sol[i] = (int64_t)*listPtr->vector->the_vector;
 #endif
       listPtr = listPtr->next;
     }
@@ -1086,7 +1086,7 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
 }
 
 /* Solve these constraints for lexmin solution */
-int64 *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar) {
+int64_t *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar) {
   if (options->islsolve) {
     return pluto_constraints_lexmin_isl(cst, negvar);
   } else {
@@ -1161,16 +1161,16 @@ double *get_lp_solution_from_glpk_problem(glp_prob *lp) {
 
 /* Retrives ilp solution from the input glpk problem.
  * Assumes that the optimal solution exists and has been found*/
-int64 *get_ilp_solution_from_glpk_problem(glp_prob *lp) {
+int64_t *get_ilp_solution_from_glpk_problem(glp_prob *lp) {
   int i, ncols;
-  int64 *sol;
+  int64_t *sol;
 
   ncols = glp_get_num_cols(lp);
-  sol = (int64 *)malloc(sizeof(int64) * ncols);
+  sol = (int64_t *)malloc(sizeof(int64_t) * ncols);
   for (i = 0; i < glp_get_num_cols(lp); i++) {
     double x = glp_mip_col_val(lp, i + 1);
-    IF_DEBUG(printf("c%d = %lld, ", i, (int64)round(x)););
-    sol[i] = (int64)round(x);
+    IF_DEBUG(printf("c%d = %ld, ", i, (int64_t)round(x)););
+    sol[i] = (int64_t)round(x);
   }
   IF_DEBUG(printf("\n"););
   return sol;
@@ -1323,11 +1323,11 @@ void set_glpk_objective_from_pluto_matrix(glp_prob *lp, PlutoMatrix *obj) {
 
 /* Construct ILP in cplex format. The last four parameters are used for
  * scaling solutions to integers */
-int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
                                           PlutoMatrix *obj, double **val,
                                           int **index, int npar, int num_ccs) {
   int i, j, is_unsat, num_sols;
-  int64 *sol;
+  int64_t *sol;
   double *fpsol, *scale_sols;
 
   IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin_glpk (%d variables, "
@@ -1369,19 +1369,19 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     lp = get_scaling_lp_glpk(fpsol, num_sols, val, index, npar, num_ccs);
 
     scale_sols = pluto_mip_scale_solutions_glpk(lp);
-    int64 *sol = (int64 *)malloc(sizeof(int64) * (num_sols));
+    int64_t *sol = (int64_t *)malloc(sizeof(int64_t) * (num_sols));
 
     /* Ideally u and w have to be set to be computed on a per CC basis. Since it
      * is not
      * used further down the tool chain, it is set to the maximum scaling
      * factor.*/
-    int64 max_scale_factor = (int64)round(glp_mip_col_val(lp, 1));
-    IF_MORE_DEBUG(printf("Scaling Factor for CC 1:%lld\n", max_scale_factor););
+    int64_t max_scale_factor = (int64_t)round(glp_mip_col_val(lp, 1));
+    IF_MORE_DEBUG(printf("Scaling Factor for CC 1:%ld\n", max_scale_factor););
     for (j = 0; j < num_ccs; j++) {
-      IF_MORE_DEBUG(printf("Scaling Factor for CC %d:%lld\n", j + 1,
-                           (int64)round(glp_mip_col_val(lp, j + 1))););
+      IF_MORE_DEBUG(printf("Scaling Factor for CC %d:%ld\n", j + 1,
+                           (int64_t)round(glp_mip_col_val(lp, j + 1))););
       if (scale_sols[j] > max_scale_factor) {
-        max_scale_factor = (int64)round(scale_sols[j]);
+        max_scale_factor = (int64_t)round(scale_sols[j]);
       }
     }
 
@@ -1392,8 +1392,8 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
     int col_iter = num_ccs;
     for (j = npar + 1; j < cst->ncols - 1; j++) {
       double x = scale_sols[col_iter++];
-      IF_DEBUG(printf("c%d = %lld, ", j, (int64)round(x)););
-      sol[j] = (int64)round(x);
+      IF_DEBUG(printf("c%d = %ld, ", j, (int64_t)round(x)););
+      sol[j] = (int64_t)round(x);
     }
     IF_DEBUG(printf("\n"););
 
@@ -1627,7 +1627,7 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
 }
 
 /* Add a lower bound for 'varnum' variable: varnum: 0-indexed */
-void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64 lb) {
+void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64_t lb) {
   assert(varnum >= 0 && varnum <= cst->ncols - 2);
 
   pluto_constraints_add_inequality(cst);
@@ -1640,7 +1640,7 @@ void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64 lb) {
 }
 
 /* Add an upper bound for 'varnum' variable: varnum: 0-indexed */
-void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64 ub) {
+void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64_t ub) {
   assert(varnum >= 0 && varnum <= cst->ncols - 2);
 
   pluto_constraints_add_inequality(cst);
@@ -1653,7 +1653,7 @@ void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64 ub) {
 }
 
 /* Set a value for a variable: varnum: 0-indexed */
-void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64 val) {
+void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64_t val) {
   assert(varnum >= 0 && varnum <= cst->ncols - 2);
 
   pluto_constraints_add_equality(cst);
@@ -1666,7 +1666,7 @@ void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64 val) {
 }
 
 /* Populate a PIP matrix */
-PipMatrix *pip_matrix_populate(int64 **cst, int nrows, int ncols) {
+PipMatrix *pip_matrix_populate(int64_t **cst, int nrows, int ncols) {
   int i, j;
   PipMatrix *matrix;
   Entier *p;
@@ -1878,7 +1878,7 @@ PlutoConstraints *pluto_constraints_empty(int ncols) {
 }
 
 int pluto_constraints_is_empty(const PlutoConstraints *cst) {
-  int64 *sol;
+  int64_t *sol;
   bool is_empty;
 
   if (options->islsolve) {
@@ -1917,7 +1917,7 @@ pluto_constraints_unionize_simple(PlutoConstraints *cst1,
 /* Get lower bound for pos^th variable if it's a (single) constant: return 1
  * if constant, 0 otherwise */
 int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int pos,
-                                   int64 *lb) {
+                                   int64_t *lb) {
   int i, retval;
 
   PlutoConstraints *cst = pluto_constraints_dup(cnst);
@@ -1941,7 +1941,7 @@ int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int pos,
   pluto_constraints_free(cst);
 
   if (retval && cnst->next != NULL) {
-    int64 next_lb;
+    int64_t next_lb;
     retval = pluto_constraints_get_const_lb(cnst->next, pos, &next_lb);
     if (*lb != next_lb)
       retval = 0;
@@ -1953,7 +1953,7 @@ int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int pos,
 /* Get upper bound for the pos^th variable if it's a (single) constant: return
  * 0 if not constant,  1 otherwise */
 int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos,
-                                   int64 *ub) {
+                                   int64_t *ub) {
   int i, retval;
 
   PlutoConstraints *cst = pluto_constraints_dup(cnst);
@@ -1977,7 +1977,7 @@ int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int pos,
   pluto_constraints_free(cst);
 
   if (retval && cnst->next != NULL) {
-    int64 next_ub;
+    int64_t next_ub;
     retval = pluto_constraints_get_const_ub(cnst->next, pos, &next_ub);
     if (*ub != next_ub)
       retval = 0;
@@ -2020,7 +2020,7 @@ void print_polylib_visual_sets_internal(char *str, int k,
         else if (cst->val[i][j] == -1)
           printf("-t%d", j);
         else if (cst->val[i][j] != 0)
-          printf("%lld*t%d", cst->val[i][j], j);
+          printf("%ld*t%d", cst->val[i][j], j);
       } else {
         first = 1;
         if (cst->val[i][j] == 1)
@@ -2028,15 +2028,15 @@ void print_polylib_visual_sets_internal(char *str, int k,
         else if (cst->val[i][j] == -1)
           printf("-t%d", j);
         else if (cst->val[i][j] != 0)
-          printf("%+lld*t%d", cst->val[i][j], j);
+          printf("%+ld*t%d", cst->val[i][j], j);
       }
     }
 
     if (cst->val[i][j] != 0) {
       if (first != 0)
-        printf("%+lld", cst->val[i][j]);
+        printf("%+ld", cst->val[i][j]);
       else
-        printf("%lld", cst->val[i][j]);
+        printf("%ld", cst->val[i][j]);
     }
 
     printf("%s0 ", cst->is_eq[i] ? "=" : ">=");
@@ -2079,7 +2079,7 @@ void print_polylib_visual_sets_internal_new(char *str, int k,
         else if (cst->val[i][j] == -1)
           printf("-t%d", j);
         else if (cst->val[i][j] != 0)
-          printf("%lld*t%d", cst->val[i][j], j);
+          printf("%ld*t%d", cst->val[i][j], j);
       } else {
         first = 1;
         if (cst->val[i][j] == 1)
@@ -2087,15 +2087,15 @@ void print_polylib_visual_sets_internal_new(char *str, int k,
         else if (cst->val[i][j] == -1)
           printf("-t%d", j);
         else if (cst->val[i][j] != 0)
-          printf("%+lld*t%d", cst->val[i][j], j);
+          printf("%+ld*t%d", cst->val[i][j], j);
       }
     }
 
     if (cst->val[i][j] != 0) {
       if (first != 0)
-        printf("%+lld", cst->val[i][j]);
+        printf("%+ld", cst->val[i][j]);
       else
-        printf("%lld", cst->val[i][j]);
+        printf("%ld", cst->val[i][j]);
     }
 
     printf("%s0 ", cst->is_eq[i] ? "=" : ">=");
@@ -2315,8 +2315,8 @@ void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
  */
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst,
                                           int max_elim) {
-  int64 **csm;
-  int64 i, j, ub, lb, nb, num_eq, cost;
+  int64_t **csm;
+  int64_t i, j, ub, lb, nb, num_eq, cost;
 
   int min_cost = cst->nrows * cst->nrows / 4;
   int best_candidate = cst->ncols - 2;
@@ -2446,7 +2446,7 @@ int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints *cst) {
  */
 void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, unsigned pos) {
   int i, r, k, l, p, q;
-  int64 lb, ub, nb;
+  int64_t lb, ub, nb;
   int *bound;
 
   // At least one variable
