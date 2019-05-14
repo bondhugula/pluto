@@ -27,7 +27,7 @@
 #include "constraints.h"
 #include "ddg.h"
 #include "math_support.h"
-#include "pluto/libpluto.h"
+#include "pluto/pluto.h"
 
 #include "osl/extensions/dependence.h"
 

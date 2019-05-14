@@ -30,7 +30,7 @@ bin_SCRIPTS = polycc vloog ploog plorc plutune getversion.sh
 CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 
-pkginclude_HEADERS = include/pluto/libpluto.h include/pluto/matrix.h
+pkginclude_HEADERS = include/pluto/pluto.h include/pluto/matrix.h
 
 polycc: polycc.sh
 	rm -f polycc
