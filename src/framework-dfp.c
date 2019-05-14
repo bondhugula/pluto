@@ -115,13 +115,24 @@ static int64 get_dep_dist_from_pluto_sol(double *sol, int npar) {
 /* A hyperplane is parallel if u+w is zero. */
 /* Returns true if the solution represents a parallel hyperplane */
 static inline bool is_lp_solution_parallel(double *sol, int npar) {
-  int i;
-  double tmp;
-  tmp = 0.0f;
-  for (i = 0; i < npar + 1; i++) {
+  double tmp = 0.0f;
+  for (int i = 0; i < npar + 1; i++) {
     tmp += sol[i];
   }
   if (tmp == 0.0f)
+    return true;
+  else
+    return false;
+}
+
+/* A hyperplane is parallel if u+w is zero. */
+/* Returns true if the integer solution represents a parallel hyperplane */
+static inline bool is_ilp_solution_parallel(int64 *sol, int npar) {
+  int64 tmp = 0.0f;
+  for (int i = 0; i < npar + 1; i++) {
+    tmp += sol[i];
+  }
+  if (tmp == 0)
     return true;
   else
     return false;
