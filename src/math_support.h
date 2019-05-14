@@ -23,9 +23,6 @@
 #include <gmp.h>
 #include <stdio.h>
 
-#include "isl/aff.h"
-#include "isl/mat.h"
-
 #include "pluto/libpluto.h"
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
