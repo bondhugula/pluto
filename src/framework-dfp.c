@@ -1960,7 +1960,8 @@ void cut_from_predecessor(int scc_id, PlutoProg *prog) {
   }
 }
 
-/* Returns a convex successor with the smallest scc_id */
+/* Returns a convex successor with the smallest scc_id that is (directly)
+ * connected to the current scc */
 int get_min_convex_successor(int scc_id, PlutoProg *prog) {
   int i, num, *convex_successors;
   int min_scc_id;
@@ -2083,6 +2084,27 @@ int *get_common_dims(int scc_id, int *convex_successors,
   return common_dims;
 }
 
+int *get_convex_preds_from_convex_successors(int min_scc_id, int scc_id,
+                                             int *convex_successors,
+                                             int num_convex_successors,
+                                             unsigned *num_preds) {
+  int *pred_list = NULL;
+  unsigned num = 0;
+  for (int i = 0; i < num_convex_successors; i++) {
+    if (min_scc_id < convex_successors[i])
+      continue;
+    if (pred_list == NULL) {
+      pred_list = (int *)malloc(num_convex_successors * sizeof(int));
+    }
+    if (convex_successors[i] == min_scc_id)
+      pred_list[num++] = scc_id;
+    else
+      pred_list[num++] = convex_successors[i];
+  }
+  *num_preds = num;
+  return pred_list;
+}
+
 /* Returns a dimension of an SCC (vetex in the FCG)
  * that can be colored next. */
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
@@ -2093,10 +2115,12 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   int *convex_successors, *common_dims;
   int num_convex_successors, num_dims;
   Scc *sccs;
+  Graph *fcg;
 
   sccs = prog->ddg->sccs;
   max_dim = sccs[scc_id].max_dim;
   scc_offset = sccs[scc_id].fcg_scc_offset;
+  fcg = prog->fcg;
   if (options->lpcolour) {
     colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
                                           discarded_list, num_discarded);
@@ -2126,9 +2150,20 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         }
       }
     }
-    common_dims = get_common_dims(scc_id, convex_successors,
-                                  num_convex_successors, colourable_dims,
-                                  num_dims, colour, current_colour, prog);
+
+    int min_scc_id = get_min_convex_successor(scc_id, prog);
+    int succ_dims;
+    bool *succ_colourable_dims = get_colourable_dims(
+        min_scc_id, prog, colour, &succ_dims, discarded_list, num_discarded);
+
+    unsigned num_preds;
+    int *pred_list = get_convex_preds_from_convex_successors(
+        min_scc_id, scc_id, convex_successors, num_convex_successors,
+        &num_preds);
+
+    common_dims =
+        get_common_dims(min_scc_id, pred_list, num_preds, succ_colourable_dims,
+                        succ_dims, colour, current_colour, prog);
     if (common_dims == NULL) {
       for (int i = 0; i < max_dim; i++) {
         if (colourable_dims[i]) {
@@ -2139,6 +2174,12 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
       }
     }
     int dim = get_colouring_dim(common_dims, max_dim);
+    int fcg_vertex = sccs[min_scc_id].fcg_scc_offset + dim;
+    for (int i = 0; i < max_dim; i++) {
+      if (colourable_dims[i] && fcg->adj->val[scc_offset + i][fcg_vertex]) {
+        return scc_offset + i;
+      }
+    }
     printf("Returning vertex %d for colouring\n", dim);
     free(common_dims);
     return scc_offset + dim;
