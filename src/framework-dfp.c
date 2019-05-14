@@ -115,27 +115,25 @@ static int64 get_dep_dist_from_pluto_sol(double *sol, int npar) {
 /* A hyperplane is parallel if u+w is zero. */
 /* Returns true if the solution represents a parallel hyperplane */
 static inline bool is_lp_solution_parallel(double *sol, int npar) {
-  double tmp = 0.0f;
+  double tmp = 0.0;
   for (int i = 0; i < npar + 1; i++) {
     tmp += sol[i];
   }
-  if (tmp == 0.0f)
+  if (tmp == 0.0)
     return true;
-  else
-    return false;
+  return false;
 }
 
 /* A hyperplane is parallel if u+w is zero. */
 /* Returns true if the integer solution represents a parallel hyperplane */
 static inline bool is_ilp_solution_parallel(int64 *sol, int npar) {
-  int64 tmp = 0.0f;
+  int64 tmp = 0;
   for (int i = 0; i < npar + 1; i++) {
     tmp += sol[i];
   }
   if (tmp == 0)
     return true;
-  else
-    return false;
+  return false;
 }
 
 /* Routine to mark parallel SCCs. This is called in dfp approach
