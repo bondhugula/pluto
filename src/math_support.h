@@ -22,6 +22,7 @@
 
 #include <gmp.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
