@@ -28,6 +28,7 @@
 #include "constraints.h"
 #include "math_support.h"
 
+#include "isl/aff.h"
 #include "isl/val.h"
 #include "isl/val_gmp.h"
 

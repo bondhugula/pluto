@@ -34,7 +34,7 @@
 
 #include "constraints.h"
 #include "pluto.h"
-#include "pluto/libpluto.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 PlutoOptions *options;

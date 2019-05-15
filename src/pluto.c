@@ -279,11 +279,11 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
  * - removes variables that we know will be assigned 0 - also do some
  *   permutation/substitution of variables
  */
-int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
+int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   Stmt **stmts;
   int i, j;
   int nstmts, nvar, npar, del_count;
-  int64 *sol, *fsol;
+  int64_t *sol, *fsol;
   PlutoConstraints *newcst;
   double t_start;
 
@@ -397,7 +397,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   fsol = NULL;
   if (sol) {
     int k1, k2, q;
-    int64 tmp;
+    int64_t tmp;
     /* Permute the solution in line with the permuted cst */
     if (!options->dfp) {
       unsigned j = npar + 1;
@@ -413,7 +413,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       }
     }
 
-    fsol = (int64 *)malloc((cst->ncols - 1) * sizeof(int64));
+    fsol = (int64_t *)malloc((cst->ncols - 1) * sizeof(int64_t));
 
     /* Fill the soln with zeros for the redundant variables */
     q = 0;
@@ -746,7 +746,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
   int num_sols_found, j, k;
-  int64 *bestsol;
+  int64_t *bestsol;
   PlutoConstraints *basecst, *nzcst, *boundcst;
   PlutoConstraints *currcst;
 
@@ -963,7 +963,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth) {
 
           for (j = 0; j < nvar; j++) {
             if (stmts[i]->is_orig_loop[j]) {
-              fscanf(precut, "%lld",
+              fscanf(precut, "%ld",
                      &stmts[i]->trans->val[stmts[i]->trans->nrows - 1][j]);
             } else {
               stmts[i]->trans->val[stmts[i]->trans->nrows - 1][j] = 0;
@@ -975,7 +975,7 @@ bool precut(PlutoProg *prog, Graph *ddg, int depth) {
           }
           /* Constant part */
           fscanf(
-              precut, "%lld",
+              precut, "%ld",
               &stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar]);
           if (get_loop_type(stmts[i], stmts[i]->trans->nrows - 1) == H_LOOP) {
             stmts[i]->hyp_types[stmts[i]->trans->nrows - 1] = H_LOOP;
@@ -1319,7 +1319,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   pluto_constraints_add(fcst, bcst);
   pluto_constraints_free(bcst);
 
-  int64 *sol = pluto_prog_constraints_lexmin(fcst, prog);
+  int64_t *sol = pluto_prog_constraints_lexmin(fcst, prog);
   pluto_constraints_free(fcst);
 
   if (!sol) {
@@ -1401,7 +1401,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
                                 PlutoConstraints *basecst, PlutoProg *prog,
                                 PlutoMatrix **cone_complement_hyps) {
   int i, s, j, k, lambda_k, nstmts, nvar, npar;
-  int64 *bestsol;
+  int64_t *bestsol;
   PlutoConstraints *con_start_cst, *lastcst;
 
   nvar = prog->nvar;
@@ -1556,7 +1556,7 @@ int get_first_non_scalar_hyperplane(PlutoProg *prog, int start, int end) {
 }
 
 /* Copy h2 into h1 */
-static void copy_hyperplane(int64 *h1, int64 *h2, int ncols) {
+static void copy_hyperplane(int64_t *h1, int64_t *h2, int ncols) {
   int j;
 
   for (j = 0; j < ncols; j++) {

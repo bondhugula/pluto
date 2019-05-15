@@ -27,7 +27,7 @@
 #include "constraints.h"
 #include "ddg.h"
 #include "math_support.h"
-#include "pluto/libpluto.h"
+#include "pluto/pluto.h"
 
 #include "osl/extensions/dependence.h"
 
@@ -639,7 +639,7 @@ PlutoConstraints *get_global_independence_cst(PlutoConstraints ***ortho_cst,
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
-int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog);
+int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog);
 
 int pluto_auto_transform(PlutoProg *prog);
 int pluto_dist_auto_transform(PlutoProg *prog);
