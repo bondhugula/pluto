@@ -2225,9 +2225,6 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
     printf("Colouring SCC %d\n", scc_id);
     print_scc_vertices(scc_id, prog->ddg);
     assert(0);
-    IF_DEBUG(printf("Returning vertex %d for colouring\n", dim););
-    free(common_dims);
-    return scc_offset + dim;
   }
 
   /* Normal brute force heuristic */
