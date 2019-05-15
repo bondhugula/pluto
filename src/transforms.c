@@ -66,7 +66,7 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
 /* Interchange loops for a stmt */
 void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
   for (unsigned j = 0; j < stmt->trans->ncols; j++) {
-    int64 tmp = stmt->trans->val[level1][j];
+    int64_t tmp = stmt->trans->val[level1][j];
     stmt->trans->val[level1][j] = stmt->trans->val[level2][j];
     stmt->trans->val[level2][j] = tmp;
   }

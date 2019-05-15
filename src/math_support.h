@@ -22,11 +22,9 @@
 
 #include <gmp.h>
 #include <stdio.h>
+#include <stdint.h>
 
-#include "isl/aff.h"
-#include "isl/mat.h"
-
-#include "pluto/libpluto.h"
+#include "pluto/matrix.h"
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
@@ -66,14 +64,14 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-int64 lcm(int64 a, int64 b);
-int64 gcd(int64 a, int64 b);
-int64 *min_lexical(int64 *a, int64 *b, int64 num);
+int64_t lcm(int64_t a, int64_t b);
+int64_t gcd(int64_t a, int64_t b);
+int64_t *min_lexical(int64_t *a, int64_t *b, int64_t num);
 
 char *concat(const char *prefix, const char *suffix);
-void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
+void pluto_affine_function_print(FILE *fp, int64_t *func, int ndims,
                                  const char **vars);
-char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars);
+char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);

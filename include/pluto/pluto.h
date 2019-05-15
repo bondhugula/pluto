@@ -21,29 +21,17 @@
  */
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
-#include "isl/union_map.h"
-#include "isl/union_set.h"
+
+typedef struct isl_union_set isl_union_set;
+typedef struct isl_union_map isl_union_map;
 
 #include "osl/scop.h"
+
+#include "pluto/matrix.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#define int64 long long int
-/* A matrix */
-struct plutoMatrix {
-  /* The values */
-  int64 **val;
-
-  unsigned nrows;
-  unsigned ncols;
-
-  /* Pre-allocated number of rows */
-  int alloc_nrows;
-  int alloc_ncols;
-};
-typedef struct plutoMatrix PlutoMatrix;
 
 struct plutoOptions {
 
@@ -60,19 +48,17 @@ struct plutoOptions {
   /* Extract scop information from libpet*/
   int pet;
 
-  /* dynamic scheduling
-   * using Synthesized Runtime Interface */
+  /* Dynamic scheduling using Synthesized Runtime Interface. */
   int dynschedule;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using Intel TBB Flow Graph scheduler */
+  /* Dynamic scheduling - previous technique of building the entire task graph
+   * in memory using Intel TBB Flow Graph scheduler */
   int dynschedule_graph;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using a custom DAG scheduler */
-  // no longer maintained
+  // Dynamic scheduling - previous technique of building the entire task graph
+  // in memory using a custom DAG scheduler.
+  // No longer maintained
+  // TODO: remove this!
   int dynschedule_graph_old;
 
   /* consider transitive dependences between tasks */
@@ -260,8 +246,7 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
 
 /*
  * Structure to hold Remapping information
- * Consists of number of statements, Remapping pluto matrix
- * and divs.
+ * Consists of number of statements, Remapping pluto matrix and divs.
  */
 struct remapping {
   unsigned nstmts;

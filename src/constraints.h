@@ -27,17 +27,15 @@
 #include "math_support.h"
 #include "isl/set.h"
 
-#define int64 long long int
-
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
  *  c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= / = 0 */
 struct pluto_constraints {
   /* Can be accessed as a double-subscripted array */
-  int64 **val;
+  int64_t **val;
 
   /* Internal contiguous buffer, val is set up to point into it */
-  int64 *buf;
+  int64_t *buf;
 
   /* Number of inequalities/equalities */
   unsigned nrows;
@@ -96,9 +94,9 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
 
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int64 *pluto_constraints_lexmin(const PlutoConstraints *, int);
-int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
-int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
+int64_t *pluto_constraints_lexmin(const PlutoConstraints *, int);
+int64_t *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
+int64_t *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
 void pluto_constraints_add_inequality(PlutoConstraints *cst);
 void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
@@ -107,9 +105,9 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
 void pluto_constraints_remove_row(PlutoConstraints *, unsigned);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 
-void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64 lb);
-void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64 ub);
-void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64 val);
+void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64_t lb);
+void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64_t ub);
+void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64_t val);
 
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
@@ -159,9 +157,9 @@ PlutoConstraints *pluto_constraints_intersect_isl(PlutoConstraints *cst1,
                                                   const PlutoConstraints *cst2);
 
 int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int depth,
-                                   int64 *ub);
+                                   int64_t *ub);
 int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int depth,
-                                   int64 *lb);
+                                   int64_t *lb);
 
 int pluto_constraints_is_empty(const PlutoConstraints *cst);
 int pluto_constraints_are_equal(const PlutoConstraints *cst1,
@@ -223,7 +221,7 @@ void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
 
 int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints *cst);
 #ifdef GLPK
-int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
                                           PlutoMatrix *obj, double **val,
                                           int **index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst,
@@ -231,7 +229,7 @@ double *pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst,
 #endif
 
 #ifdef GUROBI
-int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
+int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                             PlutoMatrix *obj, double **val,
                                             int **index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
