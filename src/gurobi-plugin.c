@@ -49,11 +49,9 @@ static inline void check_error_gurobi(GRBmodel *lp, unsigned int error) {
  * The input PlutoMatrix should have a single row and the column elements
  * correspond to the coefficients of the variables in the objective function. */
 double *get_gurobi_objective_from_pluto_matrix(PlutoMatrix *obj) {
-  int j;
-  double *grb_obj;
   assert(obj->nrows == 1);
-  grb_obj = (double *)malloc(sizeof(double) * (obj->ncols));
-  for (j = 0; j < obj->ncols; j++) {
+  double *grb_obj = (double *)malloc(sizeof(double) * (obj->ncols));
+  for (int j = 0; j < obj->ncols; j++) {
     grb_obj[j] = (double)(obj->val[0][j]);
   }
   return grb_obj;
@@ -63,27 +61,23 @@ double *get_gurobi_objective_from_pluto_matrix(PlutoMatrix *obj) {
  * Assumes that there are no rows or cols in the input model lp */
 void set_gurobi_constraints_from_pluto_constraints(
     GRBmodel *lp, const PlutoConstraints *cst) {
-  int i, j, k, nrows, ncols;
-  int *index;
-  double *value, rhs;
+  int nrows = cst->nrows;
+  int ncols = cst->ncols - 1;
 
-  nrows = cst->nrows;
-  ncols = cst->ncols - 1;
-
-  index = (int *)malloc((ncols) * sizeof(int));
-  value = (double *)malloc((ncols) * sizeof(double));
+  int *index = (int *)malloc((ncols) * sizeof(int));
+  double *value = (double *)malloc((ncols) * sizeof(double));
 
   /*Populate the constraints row by row. */
-  for (i = 0; i < nrows; i++) {
-    k = 0;
-    for (j = 0; j < ncols; j++) {
+  for (int i = 0; i < nrows; i++) {
+    int k = 0;
+    for (int j = 0; j < ncols; j++) {
       if (cst->val[i][j] != 0) {
         index[k] = j;
         value[k] = (double)cst->val[i][j];
         k++;
       }
     }
-    rhs = (double)-(cst->val[i][ncols]);
+    double rhs = (double)-(cst->val[i][ncols]);
     /* Trivial constraint. can be skipped */
     if (k == 0) {
       continue;
@@ -102,20 +96,19 @@ void set_gurobi_constraints_from_pluto_constraints(
 
 /* Retrives ilp solution from the input gurobi problem.
  * Assumes that the optimal solution exists and has been found*/
-int64 *get_ilp_solution_from_gurobi_problem(GRBmodel *lp) {
-  int num_cols, i, error;
-  int64 *sol;
-  double x;
+int64_t *get_ilp_solution_from_gurobi_problem(GRBmodel *lp) {
+  int num_cols;
 
-  error = GRBgetintattr(lp, GRB_INT_ATTR_NUMVARS, &num_cols);
+  int error = GRBgetintattr(lp, GRB_INT_ATTR_NUMVARS, &num_cols);
   check_error_gurobi(lp, error);
 
-  sol = (int64 *)malloc(num_cols * sizeof(int64));
+  int64_t *sol = (int64_t *)malloc(num_cols * sizeof(int64_t));
 
-  for (i = 0; i < num_cols; i++) {
+  for (int i = 0; i < num_cols; i++) {
+    double x;
     error = GRBgetdblattrelement(lp, GRB_DBL_ATTR_X, i, &x);
-    IF_DEBUG(printf("c%d = %lld, ", i, (int64)round(x)););
-    sol[i] = (int64)round(x);
+    IF_DEBUG(printf("c%d = %ld, ", i, (int64_t)round(x)););
+    sol[i] = (int64_t)round(x);
   }
   return sol;
 }
@@ -123,18 +116,17 @@ int64 *get_ilp_solution_from_gurobi_problem(GRBmodel *lp) {
 /* Retrives lp solution from the input gurobi problem.
  * Assumes that the optimal solution exists and has been found*/
 double *get_lp_solution_from_gurobi_problem(GRBmodel *lp) {
-  int num_cols, error, i;
-  double *sol;
+  int num_cols;
 
-  error = GRBgetintattr(lp, GRB_INT_ATTR_NUMVARS, &num_cols);
+  int error = GRBgetintattr(lp, GRB_INT_ATTR_NUMVARS, &num_cols);
   check_error_gurobi(lp, error);
 
-  sol = (double *)malloc(num_cols * sizeof(double));
+  double *sol = (double *)malloc(num_cols * sizeof(double));
 
   GRBgetdblattrarray(lp, GRB_DBL_ATTR_X, 0, num_cols, sol);
 
   if (options->debug) {
-    for (i = 0; i < num_cols; i++) {
+    for (int i = 0; i < num_cols; i++) {
       printf("c_%d=%0.6f,", i, sol[i]);
     }
     printf("\n");
@@ -153,19 +145,15 @@ static inline void find_optimal_solution_gurobi(GRBmodel *lp, double tol) {
  * The caller can retrive the funtion from the gurobi model object lp. If the
  * problem is infeasible then the routine returns 1. If the problem is
  * unbounded, program terminates with the corresponding error message. */
-int pluto_constraints_solve_gurobi(GRBmodel *lp, double tol) {
-  int optim_status;
-  double objval;
+bool pluto_constraints_solve_gurobi(GRBmodel *lp, double tol) {
   GRBenv *env = NULL;
 
   find_optimal_solution_gurobi(lp, tol);
 
+  int optim_status;
   GRBgetintattr(lp, GRB_INT_ATTR_STATUS, &optim_status);
 
   if (optim_status == GRB_INFEASIBLE) {
-    /* env = GRBgetenv(lp); */
-    /* GRBfreemodel(lp); */
-    /* GRBfreeenv(env); */
     return 1;
   }
 
@@ -178,6 +166,7 @@ int pluto_constraints_solve_gurobi(GRBmodel *lp, double tol) {
     exit(1);
   }
 
+  double objval;
   GRBgetdblattr(lp, GRB_DBL_ATTR_OBJVAL, &objval);
   IF_DEBUG(printf("Objective value: %0.6f\n", objval););
 
@@ -187,15 +176,12 @@ int pluto_constraints_solve_gurobi(GRBmodel *lp, double tol) {
 /* Returns the objective array for scaling MIP. The objective is to reduce the
  * sum of the scaling factors of each connected component. */
 double *get_gurobi_scaling_obj(int num_ccs, int num_sols_to_be_scaled) {
-  double *obj;
-  int i;
-  int nvars;
-  nvars = num_sols_to_be_scaled + num_ccs;
-  obj = (double *)malloc(nvars * sizeof(double));
-  for (i = 0; i < num_ccs; i++) {
+  int nvars = num_sols_to_be_scaled + num_ccs;
+  double *obj = (double *)malloc(nvars * sizeof(double));
+  for (int i = 0; i < num_ccs; i++) {
     obj[i] = 1.0f;
   }
-  for (i = num_ccs; i < nvars; i++) {
+  for (int i = num_ccs; i < nvars; i++) {
     obj[i] = 0.0f;
   }
   return obj;
@@ -204,18 +190,15 @@ double *get_gurobi_scaling_obj(int num_ccs, int num_sols_to_be_scaled) {
 /* Sets the lower bound of first lb1 variables to 1
  * and the next lb0 variables to zero */
 double *get_lower_bounds_for_variables(int lb1, int lb0) {
-  double *lb;
-  int i;
-
-  lb = (double *)malloc((lb0 + lb1) * sizeof(double));
+  double *lb = (double *)malloc((lb0 + lb1) * sizeof(double));
 
   /* Elements with lower bound one */
-  for (i = 0; i < lb1; i++) {
+  for (int i = 0; i < lb1; i++) {
     lb[i] = 1.0f;
   }
 
   /* Elements with lower bound zero */
-  for (i = lb1; i < lb1 + lb0; i++) {
+  for (int i = lb1; i < lb1 + lb0; i++) {
     lb[i] = 0.0f;
   }
   return lb;
@@ -223,16 +206,13 @@ double *get_lower_bounds_for_variables(int lb1, int lb0) {
 
 /* Solves scaling MIP with an integer tolorence of 0.01 */
 double *pluto_mip_scale_solutions_gurobi(GRBmodel *lp) {
-  double *scale_sols;
-  int is_unsat;
-
-  is_unsat = pluto_constraints_solve_gurobi(lp, 1e-2);
+  bool is_unsat = pluto_constraints_solve_gurobi(lp, 1e-2);
   if (is_unsat) {
     printf("[Pluto]: Error in scaling MIP, Aborting.\n");
     exit(1);
   }
 
-  scale_sols = get_lp_solution_from_gurobi_problem(lp);
+  double *scale_sols = get_lp_solution_from_gurobi_problem(lp);
   return scale_sols;
 }
 
@@ -241,32 +221,29 @@ double *pluto_mip_scale_solutions_gurobi(GRBmodel *lp) {
 GRBmodel *get_scaling_lp_gurobi(double *fpsol, int num_sols, double **val,
                                 int **index, int npar, int num_ccs,
                                 GRBenv *env) {
-  int i, num_sols_to_be_scaled, col_num;
   GRBmodel *lp = NULL;
-  double *grb_obj, *lb;
-  char *vtype;
 
-  num_sols_to_be_scaled = num_sols - npar - 1;
+  int num_sols_to_be_scaled = num_sols - npar - 1;
 
-  vtype = (char *)malloc(num_sols_to_be_scaled + num_ccs);
-  for (i = 0; i < num_ccs; i++) {
+  char *vtype = (char *)malloc(num_sols_to_be_scaled + num_ccs);
+  for (int i = 0; i < num_ccs; i++) {
     vtype[i] = GRB_CONTINUOUS;
   }
-  for (i = num_ccs; i < num_ccs + num_sols_to_be_scaled; i++) {
+  for (int i = num_ccs; i < num_ccs + num_sols_to_be_scaled; i++) {
     vtype[i] = GRB_INTEGER;
   }
 
-  grb_obj = get_gurobi_scaling_obj(num_ccs, num_sols_to_be_scaled);
+  double *grb_obj = get_gurobi_scaling_obj(num_ccs, num_sols_to_be_scaled);
 
-  lb = get_lower_bounds_for_variables(num_ccs, num_sols_to_be_scaled);
+  double *lb = get_lower_bounds_for_variables(num_ccs, num_sols_to_be_scaled);
 
   /* GRBnewmodel(env, &lp, NULL, num_ccs+num_sols_to_be_scaled, grb_obj, NULL,
    * NULL, vtype, NULL); */
   GRBnewmodel(env, &lp, NULL, num_ccs + num_sols_to_be_scaled, grb_obj, lb,
               NULL, vtype, NULL);
 
-  for (i = npar + 1; i < num_sols; i++) {
-    col_num = i - npar - 1 + num_ccs;
+  for (int i = npar + 1; i < num_sols; i++) {
+    int col_num = i - npar - 1 + num_ccs;
     if (fabs(fpsol[i]) > 1e-7) {
       val[i - npar - 1][1] = fpsol[i];
 
@@ -295,32 +272,23 @@ GRBmodel *get_scaling_lp_gurobi(double *fpsol, int num_sols, double **val,
  * The following routine returns the maximum scaling factor among the scaling
  * factors of each connected component; the largest among the first num_ccs
  * elements of the array sol*/
-int64 get_max_scale_factor(double *sol, int num_ccs) {
-  int i, max;
-  max = 0;
+int64_t get_max_scale_factor(double *sol, int num_ccs) {
+  int max = 0;
 
-  for (i = 0; i < num_ccs; i++) {
+  for (int i = 0; i < num_ccs; i++) {
     if (sol[i] > max) {
-      max = (int64)round(sol[i]);
+      max = (int64_t)round(sol[i]);
     }
   }
   return max;
 }
 
 /* Finds the lexmin solution for the constraints */
-int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
-                                            PlutoMatrix *obj, double **val,
-                                            int **index, int npar,
-                                            int num_ccs) {
-  int i, is_unsat, num_sols;
-  int num_vars, col_iter;
-  int64 max_scale_factor;
-  double *grb_obj, *fpsol, *scale_sols;
-  char *vtype;
-
-  int64 *sol;
-
-  num_vars = cst->ncols - 1;
+int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
+                                              PlutoMatrix *obj, double **val,
+                                              int **index, int npar,
+                                              int num_ccs) {
+  int num_vars = cst->ncols - 1;
 
   GRBenv *env = NULL;
   GRBmodel *lp = NULL;
@@ -331,15 +299,15 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
   GRBloadenv(&env, NULL);
   GRBsetintparam(env, GRB_INT_PAR_OUTPUTFLAG, 0);
 
-  grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
+  double *grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
 
   /* Default type is GRB_CONTINIOUS - that is reals */
-  vtype = NULL;
+  char *vtype = NULL;
 
   /* Set integer constraints on all variables of the ILP */
   if (!options->lp) {
     vtype = (char *)malloc(sizeof(char) * num_vars);
-    for (i = 0; i < num_vars; i++) {
+    for (int i = 0; i < num_vars; i++) {
       vtype[i] = GRB_INTEGER;
     }
   }
@@ -357,7 +325,7 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     GRBwrite(lp, "pluto.lp");
   }
 
-  is_unsat = pluto_constraints_solve_gurobi(lp, 1e-7);
+  bool is_unsat = pluto_constraints_solve_gurobi(lp, 1e-7);
 
   free(grb_obj);
 
@@ -367,9 +335,10 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     return NULL;
   }
 
+  int64_t *sol;
   if (options->lp) {
-    fpsol = get_lp_solution_from_gurobi_problem(lp);
-    num_sols = num_vars;
+    double *fpsol = get_lp_solution_from_gurobi_problem(lp);
+    int num_sols = num_vars;
     GRBfreemodel(lp);
     /* GRBfreeenv(env); */
 
@@ -380,28 +349,27 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
       GRBwrite(lp, "pluto-scaling-mip.lp");
     }
 
-    scale_sols = pluto_mip_scale_solutions_gurobi(lp);
+    double *scale_sols = pluto_mip_scale_solutions_gurobi(lp);
 
-    max_scale_factor = get_max_scale_factor(scale_sols, num_ccs);
+    int64_t max_scale_factor = get_max_scale_factor(scale_sols, num_ccs);
 
-    sol = (int64 *)malloc(sizeof(int64) * num_sols);
-    for (i = 0; i < npar + 1; i++) {
+    sol = (int64_t *)malloc(sizeof(int64_t) * num_sols);
+    for (int i = 0; i < npar + 1; i++) {
       sol[i] = max_scale_factor;
     }
 
-    col_iter = num_ccs;
+    int col_iter = num_ccs;
 
-    for (i = npar + 1; i < cst->ncols - 1; i++) {
+    for (int i = npar + 1; i < cst->ncols - 1; i++) {
       double x = scale_sols[col_iter++];
-      IF_DEBUG(printf("c%d = %lld, ", i, (int64)round(x)););
-      sol[i] = (int64)round(x);
+      IF_DEBUG(printf("c%d = %ld, ", i, (int64_t)round(x)););
+      sol[i] = (int64_t)round(x);
     }
 
     IF_DEBUG(printf("\n"););
     free(fpsol);
     free(scale_sols);
   } else {
-
     sol = get_ilp_solution_from_gurobi_problem(lp);
   }
 
@@ -416,25 +384,21 @@ int64 *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
  * NULL. */
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                             PlutoMatrix *obj) {
-  double *grb_obj, *sol;
-  int i, num_vars, is_unsat;
-  char *vtype;
-
   GRBenv *env = NULL;
   GRBmodel *lp = NULL;
   GRBloadenv(&env, NULL);
   GRBsetintparam(env, GRB_INT_PAR_OUTPUTFLAG, 0);
 
-  num_vars = cst->ncols - 1;
+  int num_vars = cst->ncols - 1;
 
-  grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
+  double *grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
 
-  vtype = NULL;
+  char *vtype = NULL;
 
   /* Set integer constraints on all variables of the ILP */
   if (!options->lp) {
     vtype = (char *)malloc(sizeof(char) * num_vars);
-    for (i = 0; i < num_vars; i++) {
+    for (int i = 0; i < num_vars; i++) {
       vtype[i] = GRB_INTEGER;
     }
   }
@@ -449,14 +413,14 @@ double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     GRBwrite(lp, "pluto-pairwise-constraints-gurobi.lp");
   }
 
-  is_unsat = pluto_constraints_solve_gurobi(lp, 1e-7);
+  bool is_unsat = pluto_constraints_solve_gurobi(lp, 1e-7);
 
   free(grb_obj);
 
   if (is_unsat) {
     return NULL;
   } else {
-    sol = get_lp_solution_from_gurobi_problem(lp);
+    double *sol = get_lp_solution_from_gurobi_problem(lp);
     return sol;
   }
 }
