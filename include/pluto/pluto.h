@@ -22,8 +22,8 @@
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
 
-#include "isl/union_map.h"
-#include "isl/union_set.h"
+typedef struct isl_union_set isl_union_set;
+typedef struct isl_union_map isl_union_map;
 
 #include "osl/scop.h"
 
