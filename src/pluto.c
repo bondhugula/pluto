@@ -2411,7 +2411,7 @@ void pluto_detect_scalar_dimensions(PlutoProg *prog) {
 
     for (d = 0; d < stmt->trans->nrows; d++) {
       int is_const_ub, is_const_lb;
-      int64 ub, lb;
+      int64_t ub, lb;
       is_const_lb = pluto_constraints_get_const_lb(newdom, d, &lb);
       is_const_ub = pluto_constraints_get_const_ub(newdom, d, &ub);
       if (is_const_lb && is_const_ub) {
@@ -2643,7 +2643,7 @@ PlutoConstraints *pluto_dist_get_nontrivial_solu_constraints(PlutoProg *prog) {
   return cst;
 }
 
-void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
+void pluto_dist_pretty_print(int64_t *sol, PlutoProg *prog) {
 
   int i, j, k;
   int cur = 0;
@@ -2657,7 +2657,7 @@ void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
 
   printf("\nComm volume due to dep = \n\t");
   for (i = 0; i < prog->npar + 1; i++)
-    printf("%lld\t", sol[i]);
+    printf("%ld\t", sol[i]);
   cur += prog->npar + 1;
   printf("\n");
 
@@ -2665,7 +2665,7 @@ void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
     printf("\n Comm due to data hyperplanes  of Array %s = \n\t",
            prog->arrays[k]->text);
     for (i = 0; i < prog->npar + 1; i++)
-      printf("%lld\t", sol[cur + i]);
+      printf("%ld\t", sol[cur + i]);
     cur += prog->npar + 1;
     printf("\n");
   }
@@ -2677,12 +2677,12 @@ void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
     printf("stmts_%d\t\t", i);
     num_cols_reverse = prog->stmts[i]->dim_orig;
     for (j = 0; j < num_cols_reverse; j++) {
-      printf("%lld\t", sol[cur + num_cols_reverse - 1 - j]);
+      printf("%ld\t", sol[cur + num_cols_reverse - 1 - j]);
     }
     cur += j;
 
     for (j = 0; j < prog->npar + 1; j++)
-      printf("%lld\t", sol[cur + j]);
+      printf("%ld\t", sol[cur + j]);
 
     cur += j;
 
@@ -2694,12 +2694,12 @@ void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
     printf("array_%s\t\t", prog->arrays[i]->text);
     num_cols_reverse = prog->arrays[i]->dim_orig;
     for (j = 0; j < num_cols_reverse; j++) {
-      printf("%lld\t", sol[cur + num_cols_reverse - 1 - j]);
+      printf("%ld\t", sol[cur + num_cols_reverse - 1 - j]);
     }
     cur += j;
 
     for (j = 0; j < prog->npar + 1; j++)
-      printf("%lld\t", sol[cur + j]);
+      printf("%ld\t", sol[cur + j]);
 
     cur += j;
 
@@ -2709,17 +2709,17 @@ void pluto_dist_pretty_print(int64 *sol, PlutoProg *prog) {
   return;
 }
 
-int64 *pluto_dist_constraints_solve(PlutoConstraints *cst, PlutoProg *prog) {
+int64_t *pluto_dist_constraints_solve(PlutoConstraints *cst, PlutoProg *prog) {
   int i, j, k;
 
-  int64 *sol;
+  int64_t *sol;
 
   print_polylib_visual_sets("cst", cst);
 
   // Remove the redundant cols and change order of cols
-  int64 **mat = (int64 **)malloc(cst->nrows * sizeof(int64 *));
+  int64_t **mat = (int64_t **)malloc(cst->nrows * sizeof(int64_t *));
   for (i = 0; i < cst->nrows; i++)
-    mat[i] = (int64 *)malloc(cst->ncols * sizeof(int64));
+    mat[i] = (int64_t *)malloc(cst->ncols * sizeof(int64_t));
 
   int curr_col = 0, cst_col = 0;
 
@@ -2780,7 +2780,7 @@ int64 *pluto_dist_constraints_solve(PlutoConstraints *cst, PlutoProg *prog) {
 
   assert(cst_col == cst->ncols);
 
-  int64 **prev = cst->val;
+  int64_t **prev = cst->val;
   int prev_ncols = cst->ncols;
   cst->val = mat;
   cst->ncols = curr_col;
@@ -2854,7 +2854,7 @@ PlutoConstraints *pluto_dist_convert_constraints(PlutoProg *prog,
   return cst;
 }
 
-int pluto_dist_is_valid_hyperplane(int64 *sol, int start, int len) {
+int pluto_dist_is_valid_hyperplane(int64_t *sol, int start, int len) {
 
   assert(sol != NULL);
 
@@ -2868,7 +2868,7 @@ int pluto_dist_is_valid_hyperplane(int64 *sol, int start, int len) {
   return 0;
 }
 
-void pluto_dist_add_hyperplanes(int64 *sol, int curr_hyperplane,
+void pluto_dist_add_hyperplanes(int64_t *sol, int curr_hyperplane,
                                 PlutoProg *prog) {
   int i, j;
   int cur = 0;
@@ -3040,7 +3040,7 @@ int pluto_dist_find_permutable_hyperplanes(PlutoProg *prog,
                   prog->nstmts * (stmt_cst_width) +
                   prog->narrays * (arr_cst_width) + 1;
   int cst_nrows = 0;
-  int64 *sol;
+  int64_t *sol;
   int num_sol_found = 0;
 
   for (i = 0; i < prog->nstmts; i++) {

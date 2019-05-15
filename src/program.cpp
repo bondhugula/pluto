@@ -1208,7 +1208,7 @@ void read_array_bounds_from_file(Array **arr, int narrays) {
 
     for (i = 0; i < nrows; i++) {
       for (j = 0; j < ncols; j++) {
-        fscanf(fp, "%lld\t", &cst->val[i][j]);
+        fscanf(fp, "%ld\t", &cst->val[i][j]);
       }
     }
 
