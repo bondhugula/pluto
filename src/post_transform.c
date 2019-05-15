@@ -19,8 +19,8 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "pluto.h"
 #include "post_transform.h"
@@ -461,13 +461,14 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor) {
 
           zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
           zstmt->domain->val[zstmt->domain->nrows][j] = 1;
-          zstmt->domain->val[zstmt->domain->nrows]
-                            [zstmt->dim + num_unroll + npar] = -k;
+          zstmt->domain
+              ->val[zstmt->domain->nrows][zstmt->dim + num_unroll + npar] = -k;
 
           zstmt->domain->val[zstmt->domain->nrows + 1][zstmt->dim] = ufactor;
           zstmt->domain->val[zstmt->domain->nrows + 1][j] = -1;
-          zstmt->domain->val[zstmt->domain->nrows + 1]
-                            [zstmt->dim + num_unroll + npar] = k;
+          zstmt->domain
+              ->val[zstmt->domain->nrows + 1][zstmt->dim + num_unroll + npar] =
+              k;
           zstmt->domain->nrows += 2;
 
           /* 0 <= i - ufactor*x <= ufactor - 1 */
@@ -476,13 +477,14 @@ void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor) {
 
           zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
           zstmt->domain->val[zstmt->domain->nrows][j] = 1;
-          zstmt->domain->val[zstmt->domain->nrows]
-                            [zstmt->dim + num_unroll + npar] = 0;
+          zstmt->domain
+              ->val[zstmt->domain->nrows][zstmt->dim + num_unroll + npar] = 0;
 
           zstmt->domain->val[zstmt->domain->nrows + 1][zstmt->dim] = ufactor;
           zstmt->domain->val[zstmt->domain->nrows + 1][j] = -1;
-          zstmt->domain->val[zstmt->domain->nrows + 1]
-                            [zstmt->dim + num_unroll + npar] = ufactor - 1;
+          zstmt->domain
+              ->val[zstmt->domain->nrows + 1][zstmt->dim + num_unroll + npar] =
+              ufactor - 1;
 
           zstmt->domain->nrows += 2;
         }

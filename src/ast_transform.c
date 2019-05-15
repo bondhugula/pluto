@@ -19,12 +19,12 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "ast_transform.h"
 #include "pluto.h"
 #include "program.h"
-#include "ast_transform.h"
 
 #include "cloog/cloog.h"
 
@@ -64,7 +64,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     IF_DEBUG(pluto_loop_print(ploops[i]););
     // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
-    ClastFilter filter = { iter, stmtids, ploops[i]->nstmts, subset };
+    ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
     clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
 
     /* There should be at least one */
@@ -135,7 +135,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
     // IF_DEBUG(printf("%s in \n", iter););
     // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
-    ClastFilter filter = { iter, stmtids, ploops[i]->nstmts, subset };
+    ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
     clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
 
     /* There should be at least one */

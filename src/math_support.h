@@ -22,8 +22,8 @@
 
 #include <stdio.h>
 
-#include "isl/mat.h"
 #include "isl/aff.h"
+#include "isl/mat.h"
 
 #include "gmp.h"
 

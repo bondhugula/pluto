@@ -19,22 +19,22 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 #include "program.h"
 
+#include "candl/candl.h"
 #include <isl/constraint.h>
+#include <isl/deprecated/int.h>
 #include <isl/mat.h>
 #include <isl/set.h>
-#include <isl/deprecated/int.h>
-#include "candl/candl.h"
 
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000
 #define MAX_FARKAS_CST 2000

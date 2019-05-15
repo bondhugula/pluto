@@ -24,42 +24,42 @@
  * core to the frontend and related matters
  *
  */
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
-#include <assert.h>
-#include <math.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "program.h"
 
-#include "osl/macros.h"
-#include "osl/scop.h"
 #include "osl/body.h"
-#include "osl/relation_list.h"
 #include "osl/extensions/arrays.h"
 #include "osl/extensions/dependence.h"
 #include "osl/extensions/loop.h"
 #include "osl/extensions/pluto_unroll.h"
 #include "osl/extensions/scatnames.h"
+#include "osl/macros.h"
+#include "osl/relation_list.h"
+#include "osl/scop.h"
 
 #include "cloog/cloog.h"
 
 #include "candl/candl.h"
-#include "candl/scop.h"
-#include "candl/options.h"
 #include "candl/dependence.h"
+#include "candl/options.h"
+#include "candl/scop.h"
 
+#include <isl/deprecated/int.h>
+#include <isl/deprecated/mat_int.h>
+#include <isl/flow.h>
 #include <isl/map.h>
 #include <isl/mat.h>
 #include <isl/set.h>
-#include <isl/flow.h>
 #include <isl/union_map.h>
-#include <isl/deprecated/int.h>
-#include <isl/deprecated/mat_int.h>
 
 #include "pet.h"
 
@@ -579,7 +579,7 @@ void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
     osl_pluto_unroll_p pluto_unroll = NULL;
     osl_pluto_unroll_p pluto_unroll_base = NULL;
 
-    char buffer[sizeof(i) * CHAR_BIT + 1] = { 0 };
+    char buffer[sizeof(i) * CHAR_BIT + 1] = {0};
 
     for (i = 0; i < prog->num_hyperplanes; i++) {
       if (hProps[i].unroll == UNROLL || hProps[i].unroll == UNROLLJAM) {
@@ -752,8 +752,7 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
   rows = s_dom_rows + t_dom_rows +
          (s_acc_rows == 0 ? 1 : s_acc_rows) // special case for 0-dimention
                                             // array(scalar)
-         +
-         depth;
+         + depth;
   cols = s_dom_output_dims + t_dom_output_dims + nb_pars +
          2; // cols: 2 => eq + const
 
@@ -879,10 +878,10 @@ PlutoConstraints *osl_dep_domain_to_pluto_constraints(osl_dependence_p in_dep) {
     }
 
     for (j = 0; j < t_access->nb_input_dims; j++) { // t_acc_dims==s_acc_dims
-      cst->val[pl_constraint][pl_t_index + j] =
-          osl_int_get_si(in_dep->domain->precision,
-                         in_dep->domain->m[osl_constraint + s_access->nb_rows]
-                                          [osl_t_index + j]);
+      cst->val[pl_constraint][pl_t_index + j] = osl_int_get_si(
+          in_dep->domain->precision,
+          in_dep->domain
+              ->m[osl_constraint + s_access->nb_rows][osl_t_index + j]);
     }
 
     // copy local dimensions - not supported by converter
@@ -2153,7 +2152,7 @@ static int isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
 /* Extract deps from isl union maps into Pluto Deps */
 int extract_deps(Dep **deps, int first, Stmt **stmts,
                  __isl_keep isl_union_map *umap, int type) {
-  struct pluto_extra_dep_info info = { deps, stmts, type, first };
+  struct pluto_extra_dep_info info = {deps, stmts, type, first};
 
   isl_union_map_foreach_map(umap, &map_extract_dep, &info);
 
@@ -3943,8 +3942,8 @@ PlutoMatrix *pluto_stmt_get_remapping(const Stmt *stmt, int **divs) {
       _lcm = lcm(remap->val[k][i], remap->val[i][i]);
       factor1 = _lcm / remap->val[k][i];
       for (j = 0; j < remap->ncols; j++) {
-        remap->val[k][j] = remap->val[k][j] * (factor1) -
-                           remap->val[i][j] * (_lcm / remap->val[i][i]);
+        remap->val[k][j] = remap->val[k][j] * (factor1)-remap->val[i][j] *
+                           (_lcm / remap->val[i][i]);
       }
     }
   }
@@ -4286,10 +4285,10 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
 
     char name[20];
     sprintf(name, "S_%d_r", stmt->id);
-    struct acc_info rinfo = { name, 0, &reads, &schedule, pstmt->schedule };
+    struct acc_info rinfo = {name, 0, &reads, &schedule, pstmt->schedule};
     isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
     sprintf(name, "S_%d_w", stmt->id);
-    struct acc_info winfo = { name, 0, &writes, &schedule, pstmt->schedule };
+    struct acc_info winfo = {name, 0, &writes, &schedule, pstmt->schedule};
     isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
 
     isl_union_map_free(lreads);
@@ -4491,12 +4490,9 @@ static Stmt **pet_to_pluto_stmts(struct pet_scop *pscop) {
     isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
     isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
-    struct pluto_access_meta_info e_reads = {
-      &stmt->reads, 0, stmt->dim, npar
-    };
-    struct pluto_access_meta_info e_writes = {
-      &stmt->writes, 0, stmt->dim, npar
-    };
+    struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
+    struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim,
+                                              npar};
 
     // printf("Num reads: %d\n", stmt->nreads);
     // isl_union_map_dump(reads);

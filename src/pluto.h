@@ -24,9 +24,9 @@
 
 #include "osl/scop.h"
 
-#include "math_support.h"
 #include "constraints.h"
 #include "ddg.h"
+#include "math_support.h"
 #include "pluto/libpluto.h"
 
 #include "osl/extensions/dependence.h"
@@ -77,7 +77,7 @@
 // [bounding coeffs |           stmt-wise vars                 | const ]
 // [npar + 1        |   1  | nvar + npar + 1 |       1 + 1     | 1     ]
 // [u, w            | c_sum| c_i s    | per-stmt decision vars | const ]
-#define CST_WIDTH (npar + 1 + nstmts *(nvar + npar + 1 + 3) + 1)
+#define CST_WIDTH (npar + 1 + nstmts * (nvar + npar + 1 + 3) + 1)
 
 #define COEFF_BOUND 4
 #define ALLOW_NEGATIVE_COEFF 1
@@ -279,11 +279,7 @@ struct dependence {
 };
 typedef struct dependence Dep;
 
-typedef enum unrollType {
-  NO_UNROLL,
-  UNROLL,
-  UNROLLJAM
-} UnrollType;
+typedef enum unrollType { NO_UNROLL, UNROLL, UNROLLJAM } UnrollType;
 
 /* Properties of the new hyperplanes found. These are common across all
  * statements or apply at a level across all statements

@@ -20,8 +20,8 @@
 #ifndef _CONSTRAINTS_H
 #define _CONSTRAINTS_H
 
-#include "isl/set.h"
 #include "math_support.h"
+#include "isl/set.h"
 
 #define int64 long long int
 

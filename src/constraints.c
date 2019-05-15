@@ -19,17 +19,17 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/time.h>
-#include <limits.h>
+#include <unistd.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 
 #include "piplib/piplib64.h"
@@ -1076,9 +1076,9 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
   int64 *sol;
   PlutoMatrix *pipmat;
 
-  IF_DEBUG2(printf(
-      "[pluto] pluto_constraints_lexmin_pip (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_pip (%d variables, %d "
+                   "constraints)\n",
+                   cst->ncols - 1, cst->nrows););
 
   pipmat = pluto_matrix_alloc(cst->nrows, cst->ncols + 1);
 
@@ -1120,7 +1120,7 @@ int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
 #ifdef PIP_WIDTH_MP
       sol[i] = mpz_get_si(*listPtr->vector->the_vector);
 #else
-      sol[i] = (int64) * listPtr->vector->the_vector;
+      sol[i] = (int64)*listPtr->vector->the_vector;
 #endif
       listPtr = listPtr->next;
     }
@@ -1896,7 +1896,7 @@ void pluto_constraints_list_free(PlutoConstraintsList *cstlist) {
 }
 
 /*adds a new element to constraints list
-*/
+ */
 void pluto_constraints_list_add(PlutoConstraintsList *list,
                                 const PlutoConstraints *cst, Dep *dep,
                                 int copyDep) {

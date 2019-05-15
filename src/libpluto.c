@@ -19,16 +19,16 @@
  */
 
 #include <assert.h>
-#include <string.h>
 #include <ctype.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "pluto.h"
-#include "constraints.h"
 #include "candl/candl.h"
-#include "program.h"
+#include "constraints.h"
+#include "pluto.h"
 #include "pluto/libpluto.h"
+#include "program.h"
 #include "isl/map.h"
 
 #include "candl/scop.h"
@@ -113,7 +113,7 @@ static int extract_stmt(__isl_take isl_set *set, void *user) {
     stmt->iterators[i] = iter;
   }
 
-  struct pluto_extra_stmt_info info = { stmts, id };
+  struct pluto_extra_stmt_info info = {stmts, id};
   r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
 
   pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0,
@@ -617,8 +617,8 @@ int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
 }
 
 /* Pluto_schedule method to get schedule, parallel loops and remapping
-*  all in one function
-*/
+ *  all in one function
+ */
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     isl_union_set *domains, isl_union_map *dependences, Ploop ***ploops,
     int *nploops, Remapping **remap, PlutoOptions *options_l) {

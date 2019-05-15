@@ -19,34 +19,34 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <string.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include "osl/scop.h"
-#include "osl/generic.h"
 #include "osl/extensions/irregular.h"
+#include "osl/generic.h"
+#include "osl/scop.h"
 
-#include "pluto.h"
-#include "transforms.h"
 #include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
+#include "transforms.h"
 #include "version.h"
 
-#include "clan/clan.h"
 #include "candl/candl.h"
 #include "candl/scop.h"
+#include "clan/clan.h"
 
 #include "pet.h"
 
@@ -185,67 +185,66 @@ int main(int argc, char *argv[]) {
   options = pluto_options_alloc();
 
   const struct option pluto_options[] = {
-    { "tile", no_argument, &options->tile, 1 },
-    { "notile", no_argument, &options->tile, 0 },
-    { "intratileopt", no_argument, &options->intratileopt, 1 },
-    { "nointratileopt", no_argument, &options->intratileopt, 0 },
-    { "lbtile", no_argument, &options->lbtile, 1 },
-    { "pet", no_argument, &options->pet, 1 },
-    { "diamond-tile", no_argument, &options->lbtile, 1 },
-    { "part-diamond-tile", no_argument, &options->partlbtile, 1 },
-    { "partlbtile", no_argument, &options->partlbtile, 1 },
-    { "debug", no_argument, &options->debug, true },
-    { "moredebug", no_argument, &options->moredebug, true },
-    { "rar", no_argument, &options->rar, 1 },
-    { "identity", no_argument, &options->identity, 1 },
-    { "nofuse", no_argument, &options->fuse, NO_FUSE },
-    { "maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE },
-    { "smartfuse", no_argument, &options->fuse, SMART_FUSE },
-    { "parallel", no_argument, &options->parallel, 1 },
-    { "parallelize", no_argument, &options->parallel, 1 },
-    { "innerpar", no_argument, &options->innerpar, 1 },
-    { "iss", no_argument, &options->iss, 1 },
-    { "unroll", no_argument, &options->unroll, 1 },
-    { "nounroll", no_argument, &options->unroll, 0 },
-    { "polyunroll", no_argument, &options->polyunroll, 1 },
-    { "bee", no_argument, &options->bee, 1 },
-    { "ufactor", required_argument, 0, 'u' },
-    { "prevector", no_argument, &options->prevector, 1 },
-    { "noprevector", no_argument, &options->prevector, 0 },
-    { "codegen-context", required_argument, 0, 'c' },
-    { "coeff-bound", required_argument, 0, 'C' },
-    { "cloogf", required_argument, 0, 'F' },
-    { "cloogl", required_argument, 0, 'L' },
-    { "cloogsh", no_argument, &options->cloogsh, 1 },
-    { "nocloogbacktrack", no_argument, &options->cloogbacktrack, 0 },
-    { "cyclesize", required_argument, 0, 'S' },
-    { "forceparallel", required_argument, 0, 'p' },
-    { "ft", required_argument, 0, 'f' },
-    { "lt", required_argument, 0, 'l' },
-    { "multipar", no_argument, &options->multipar, 1 },
-    { "l2tile", no_argument, &options->l2tile, 1 },
-    { "version", no_argument, 0, 'v' },
-    { "help", no_argument, 0, 'h' },
-    { "indent", no_argument, 0, 'i' },
-    { "silent", no_argument, &options->silent, 1 },
-    { "lastwriter", no_argument, &options->lastwriter, 1 },
-    { "nolastwriter", no_argument, &nolastwriter, 1 },
-    { "nodepbound", no_argument, &options->nodepbound, 1 },
-    { "scalpriv", no_argument, &options->scalpriv, 1 },
-    { "isldep", no_argument, &options->isldep, 1 },
-    { "candldep", no_argument, &options->candldep, 1 },
-    { "isldepaccesswise", no_argument, &options->isldepaccesswise, 1 },
-    { "isldepstmtwise", no_argument, &options->isldepaccesswise, 0 },
-    { "noisldepcoalesce", no_argument, &options->isldepcoalesce, 0 },
-    { "readscop", no_argument, &options->readscop, 1 },
-    { "pipsolve", no_argument, &options->pipsolve, 1 },
-    { "islsolve", no_argument, &options->islsolve, 1 },
-    { "glpksolve", no_argument, &options->glpksolve, 1 },
-    { "time", no_argument, &options->time, 1 },
-    { "disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1 },
-    { "disable-neg-coeffs", no_argument, &options->disable_neg_coeffs, 1 },
-    { 0, 0, 0, 0 }
-  };
+      {"tile", no_argument, &options->tile, 1},
+      {"notile", no_argument, &options->tile, 0},
+      {"intratileopt", no_argument, &options->intratileopt, 1},
+      {"nointratileopt", no_argument, &options->intratileopt, 0},
+      {"lbtile", no_argument, &options->lbtile, 1},
+      {"pet", no_argument, &options->pet, 1},
+      {"diamond-tile", no_argument, &options->lbtile, 1},
+      {"part-diamond-tile", no_argument, &options->partlbtile, 1},
+      {"partlbtile", no_argument, &options->partlbtile, 1},
+      {"debug", no_argument, &options->debug, true},
+      {"moredebug", no_argument, &options->moredebug, true},
+      {"rar", no_argument, &options->rar, 1},
+      {"identity", no_argument, &options->identity, 1},
+      {"nofuse", no_argument, &options->fuse, NO_FUSE},
+      {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
+      {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
+      {"parallel", no_argument, &options->parallel, 1},
+      {"parallelize", no_argument, &options->parallel, 1},
+      {"innerpar", no_argument, &options->innerpar, 1},
+      {"iss", no_argument, &options->iss, 1},
+      {"unroll", no_argument, &options->unroll, 1},
+      {"nounroll", no_argument, &options->unroll, 0},
+      {"polyunroll", no_argument, &options->polyunroll, 1},
+      {"bee", no_argument, &options->bee, 1},
+      {"ufactor", required_argument, 0, 'u'},
+      {"prevector", no_argument, &options->prevector, 1},
+      {"noprevector", no_argument, &options->prevector, 0},
+      {"codegen-context", required_argument, 0, 'c'},
+      {"coeff-bound", required_argument, 0, 'C'},
+      {"cloogf", required_argument, 0, 'F'},
+      {"cloogl", required_argument, 0, 'L'},
+      {"cloogsh", no_argument, &options->cloogsh, 1},
+      {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
+      {"cyclesize", required_argument, 0, 'S'},
+      {"forceparallel", required_argument, 0, 'p'},
+      {"ft", required_argument, 0, 'f'},
+      {"lt", required_argument, 0, 'l'},
+      {"multipar", no_argument, &options->multipar, 1},
+      {"l2tile", no_argument, &options->l2tile, 1},
+      {"version", no_argument, 0, 'v'},
+      {"help", no_argument, 0, 'h'},
+      {"indent", no_argument, 0, 'i'},
+      {"silent", no_argument, &options->silent, 1},
+      {"lastwriter", no_argument, &options->lastwriter, 1},
+      {"nolastwriter", no_argument, &nolastwriter, 1},
+      {"nodepbound", no_argument, &options->nodepbound, 1},
+      {"scalpriv", no_argument, &options->scalpriv, 1},
+      {"isldep", no_argument, &options->isldep, 1},
+      {"candldep", no_argument, &options->candldep, 1},
+      {"isldepaccesswise", no_argument, &options->isldepaccesswise, 1},
+      {"isldepstmtwise", no_argument, &options->isldepaccesswise, 0},
+      {"noisldepcoalesce", no_argument, &options->isldepcoalesce, 0},
+      {"readscop", no_argument, &options->readscop, 1},
+      {"pipsolve", no_argument, &options->pipsolve, 1},
+      {"islsolve", no_argument, &options->islsolve, 1},
+      {"glpksolve", no_argument, &options->glpksolve, 1},
+      {"time", no_argument, &options->time, 1},
+      {"disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1},
+      {"disable-neg-coeffs", no_argument, &options->disable_neg_coeffs, 1},
+      {0, 0, 0, 0}};
 
   /* Read command-line options */
   while (1) {

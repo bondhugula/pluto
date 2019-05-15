@@ -19,10 +19,10 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include "program.h"
-#include "pluto.h"
-#include "constraints.h"
 #include "transforms.h"
+#include "constraints.h"
+#include "pluto.h"
+#include "program.h"
 
 #include "assert.h"
 

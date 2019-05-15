@@ -19,18 +19,18 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 
+#include "isl/deprecated/int.h"
 #include "isl/val.h"
 #include "isl/val_gmp.h"
-#include "isl/deprecated/int.h"
 
 /*
  * Allocated; not initialized
@@ -407,7 +407,7 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
 }
 
 /* Eliminate variables from start to end (inclusive); start is 0-indexed
-*/
+ */
 void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   int i;
 

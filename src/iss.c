@@ -1,15 +1,15 @@
 /* Index set splitting */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "program.h"
 
 PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {

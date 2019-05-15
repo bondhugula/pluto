@@ -19,13 +19,13 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "ddg.h"
+#include "math_support.h"
+#include "pluto.h"
 
 /* Allocate a graph */
 Graph *graph_alloc(int nVertices) {

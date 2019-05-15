@@ -2,16 +2,16 @@
  * ISL-based operations for Pluto constraints, etc.
  *
  */
+#include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
-#include "math_support.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 
 #include "isl/map.h"
@@ -334,9 +334,9 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   isl_basic_set *bset, *all_positive;
   isl_set *domain, *all_positive_set, *lexmin;
 
-  IF_DEBUG2(printf(
-      "[pluto] pluto_constraints_lexmin_isl (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG2(printf("[pluto] pluto_constraints_lexmin_isl (%d variables, %d "
+                   "constraints)\n",
+                   cst->ncols - 1, cst->nrows););
 
   ctx = isl_ctx_alloc();
   bset = isl_basic_set_from_pluto_constraints(ctx, cst);

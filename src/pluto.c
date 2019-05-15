@@ -19,22 +19,22 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <math.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <glpk.h>
 
-#include "pluto.h"
-#include "math_support.h"
 #include "constraints.h"
+#include "ddg.h"
+#include "math_support.h"
+#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
-#include "ddg.h"
 #include "version.h"
 
 /* Iterative search modes */
@@ -73,8 +73,9 @@ int dep_satisfaction_update(PlutoProg *prog, int level) {
     if (!dep_is_satisfied(dep)) {
       dep->satisfied = dep_satisfaction_test(dep, prog, level);
       if (dep->satisfied) {
-        IF_MORE_DEBUG(printf(
-            "[pluto] dep_satisfaction_update: dep %d satisfied\n", i + 1););
+        IF_MORE_DEBUG(
+            printf("[pluto] dep_satisfaction_update: dep %d satisfied\n",
+                   i + 1););
         if (!IS_RAR(dep->type))
           num_new_carried++;
         dep->satisfaction_level = level;
@@ -667,9 +668,9 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   // IF_DEBUG2(printf("Transformed constraints\n"));
   // IF_DEBUG2(pluto_constraints_compact_print(stdout, newcst_sel_negated));
 
-  IF_DEBUG(printf(
-      "[pluto] pluto_prog_constraints_lexmin (%d variables, %d constraints)\n",
-      cst->ncols - 1, cst->nrows););
+  IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d "
+                  "constraints)\n",
+                  cst->ncols - 1, cst->nrows););
 
   /* Solve the constraints */
   if (options->glpksolve) {
@@ -1327,8 +1328,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
   int nvar = prog->nvar;
   int npar = prog->npar;
 
-  IF_DEBUG(fprintf(stdout, "[pluto] find_permutable_hyperplanes: max "
-                           "solution(s): %d; band depth: %d\n",
+  IF_DEBUG(fprintf(stdout,
+                   "[pluto] find_permutable_hyperplanes: max "
+                   "solution(s): %d; band depth: %d\n",
                    max_sols, band_depth));
 
   assert(max_sols >= 0);
@@ -2056,8 +2058,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   pluto_constraints_free(fcst);
 
   if (!sol) {
-    IF_DEBUG(printf(
-        "[pluto] get_face_with_concurrent_start: no valid 1-d schedules \n"););
+    IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d "
+                    "schedules \n"););
     return NULL;
   }
 
@@ -2104,8 +2106,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
     return NULL;
   }
 
-  IF_DEBUG(printf(
-      "[pluto] faces with concurrent start found for all statements\n"););
+  IF_DEBUG(
+      printf(
+          "[pluto] faces with concurrent start found for all statements\n"););
 
   return conc_start_faces;
 }
@@ -2840,9 +2843,9 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
 
   pluto_constraints_add_to_each(datadom, acc_cst);
 
-  pluto_constraints_project_out(datadom, copy_level, datadom->ncols -
-                                                         copy_level - npar - 1 -
-                                                         newacc->nrows);
+  pluto_constraints_project_out(datadom, copy_level,
+                                datadom->ncols - copy_level - npar - 1 -
+                                    newacc->nrows);
 
   // IF_DEBUG(printf("compute_region_data: data set written to\n"););
   // IF_DEBUG(pluto_constraints_print(stdout, datadom););
