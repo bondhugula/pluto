@@ -2197,13 +2197,34 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
     /* This dimension dim of the SCC allows colouring of maximum number of
      * predecessors. Find a corresponding dimension in the current scc that can
      * be coloured with this dimension */
-    int dim = get_colouring_dim(common_dims, max_dim);
+    int succ_scc_dim = sccs[scc_id].max_dim;
+    int dim = get_colouring_dim(common_dims, succ_scc_dim);
+    IF_DEBUG(printf("Colouring dim of SCC %d: %d\n", min_scc_id, dim););
     int fcg_vertex = sccs[min_scc_id].fcg_scc_offset + dim;
     for (int i = 0; i < max_dim; i++) {
-      if (colourable_dims[i] && fcg->adj->val[scc_offset + i][fcg_vertex]) {
+      if (colourable_dims[i] && !fcg->adj->val[scc_offset + i][fcg_vertex]) {
         return scc_offset + i;
       }
     }
+    /* There is a colourable dimension however, it can not be fused with the
+     * convex successor. In that case return the first colourable dimension of
+     * the current scc */
+    for (int i = 0; i < max_dim; i++) {
+      if (colourable_dims[i]) {
+        free(colourable_dims);
+        IF_DEBUG(
+            printf("Any colourable dimension has a fusion preventing edge with "
+                   "the successor. Returning vertex %d for colouring\n",
+                   i););
+        return scc_offset + i;
+      }
+    }
+    /* This part of code should not be reachable. However it is retained for
+     * testing / debugging purposes */
+    printf("Num hyperplanes found till now %d\n", prog->num_hyperplanes);
+    printf("Colouring SCC %d\n", scc_id);
+    print_scc_vertices(scc_id, prog->ddg);
+    assert(0);
     IF_DEBUG(printf("Returning vertex %d for colouring\n", dim););
     free(common_dims);
     return scc_offset + dim;
