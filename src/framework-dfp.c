@@ -102,9 +102,9 @@ PlutoConstraints *dfp_get_scc_ortho_constraints(int *colour, int scc_id,
   return indcst;
 }
 
-static int64 get_dep_dist_from_pluto_sol(double *sol, int npar) {
+static int64_t get_dep_dist_from_pluto_sol(double *sol, int npar) {
   unsigned int i;
-  int64 sum = 0;
+  int64_t sum = 0;
   for (i = 0; i < npar; i++) {
     sum = sum + 100 * ceil(sol[i]);
   }
@@ -126,8 +126,8 @@ static inline bool is_lp_solution_parallel(double *sol, int npar) {
 
 /* A hyperplane is parallel if u+w is zero. */
 /* Returns true if the integer solution represents a parallel hyperplane */
-static inline bool is_ilp_solution_parallel(int64 *sol, int npar) {
-  int64 tmp = 0;
+static inline bool is_ilp_solution_parallel(int64_t *sol, int npar) {
+  int64_t tmp = 0;
   for (int i = 0; i < npar + 1; i++) {
     tmp += sol[i];
   }
@@ -586,7 +586,7 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
                   ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] =
                   get_dep_dist_from_pluto_sol(sol, npar);
               printf("Dependence distance between dims %d and %d\n of SCCs %d "
-                     "and %d: %lld\n",
+                     "and %d: %ld\n",
                      dim1, dim2, scc1, scc2,
                      dep_dist_mat
                          ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2]);
@@ -1080,7 +1080,7 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   if (options->lpcolour && options->scc_cluster) {
     dep_dist_mat = pluto_matrix_alloc(num_nodes, num_nodes);
     for (i = 0; i < num_nodes; i++) {
-      bzero(dep_dist_mat->val[i], num_nodes * sizeof(int64));
+      bzero(dep_dist_mat->val[i], num_nodes * sizeof(int64_t));
     }
   }
 
@@ -1991,18 +1991,13 @@ int get_min_convex_successor(int scc_id, PlutoProg *prog) {
 
 int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
                                int num_discarded, int *discarded_list) {
-  int min;
-  int scc1_offset, scc2_offset;
-  Graph *fcg, *ddg;
-  int64 min_dist;
+  Graph *fcg = prog->fcg;
+  Graph *ddg = prog->ddg;
+  int64_t min_dist = 10000;
+  int min = -1;
 
-  fcg = prog->fcg;
-  ddg = prog->ddg;
-  min_dist = 10000;
-  min = -1;
-
-  scc1_offset = ddg->sccs[scc1].fcg_scc_offset;
-  scc2_offset = ddg->sccs[scc2].fcg_scc_offset;
+  int scc1_offset = ddg->sccs[scc1].fcg_scc_offset;
+  int scc2_offset = ddg->sccs[scc2].fcg_scc_offset;
   for (int i = 0; i < ddg->sccs[scc1].max_dim; i++) {
     int v1 = scc1_offset + i;
     if (is_discarded(v1, discarded_list, num_discarded))
@@ -2013,7 +2008,7 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
       if (is_adjecent(fcg, v1, v2))
         continue;
       if (dep_dist_mat->val[v1][v2] < min_dist) {
-        printf("Dep distance: %lld\n", dep_dist_mat->val[i][j]);
+        IF_DEBUG(printf("Dep distance: %ld\n", dep_dist_mat->val[i][j]););
         min_dist = dep_dist_mat->val[v1][v2];
         min = v1;
       }
