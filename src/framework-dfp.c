@@ -2017,6 +2017,9 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
   return min;
 }
 
+/* Returns the list of vertices of the FCG corresponding the dimensions of the
+ * current scc that can possibly be  coloured. Discarded list is the vertices of
+ * the current scc that are chosen to be not suitable for colouring. */
 bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
                           int *discarded_list, int num_discarded, int *num) {
   int num_col_dims, max_dim, scc_offset;
@@ -2044,10 +2047,12 @@ bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
   return colourable_dims;
 }
 
-int *get_common_dims(int scc_id, int *convex_successors,
-                     int num_convex_successors, bool *colourable_dims,
-                     int num_dims, int *colour, int current_colour,
-                     PlutoProg *prog) {
+/* For each dimension i of current scc (scc_id), it returns the number of sccs
+ * in scc_list that can be fused with i. The returned array is NULL if none of
+ * the Sccs in the scc_list is fuseable with any dimension of the current scc */
+int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
+                     bool *colourable_dims, int num_dims, int *colour,
+                     int current_colour, PlutoProg *prog) {
   int max_dim, scc_offset;
   int *common_dims;
   Graph *fcg;
@@ -2064,8 +2069,8 @@ int *get_common_dims(int scc_id, int *convex_successors,
     if (!colourable_dims[i])
       continue;
     int v = scc_offset + i;
-    for (int j = 0; j < num_convex_successors; j++) {
-      int scc2 = convex_successors[j];
+    for (int j = 0; j < num_sccs; j++) {
+      int scc2 = scc_list[j];
       int scc2_offset = sccs[scc2].fcg_scc_offset;
       for (int k = 0; k < sccs[scc2].max_dim; k++) {
         int v2;
