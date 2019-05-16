@@ -2017,8 +2017,8 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
   return min;
 }
 
-bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour, int *num,
-                          int *discarded_list, int num_discarded) {
+bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
+                          int *discarded_list, int num_discarded, int *num) {
   int num_col_dims, max_dim, scc_offset;
   bool *colourable_dims;
   Graph *fcg;
@@ -2120,8 +2120,8 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   int scc_offset = sccs[scc_id].fcg_scc_offset;
   if (options->lpcolour) {
     int num_dims;
-    bool *colourable_dims = get_colourable_dims(scc_id, prog, colour, &num_dims,
-                                                discarded_list, num_discarded);
+    bool *colourable_dims = get_colourable_dims(
+        scc_id, prog, colour, discarded_list, num_discarded, &num_dims);
     /* If there are no colourable dimensions, then the current scc cannot be
      * coloured */
     if (num_dims == 0) {
@@ -2172,7 +2172,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
     }
     int succ_dims;
     bool *succ_colourable_dims = get_colourable_dims(
-        min_scc_id, prog, colour, &succ_dims, discarded_list, num_discarded);
+        min_scc_id, prog, colour, discarded_list, num_discarded, &succ_dims);
 
     /* Get the predecessors of the smallest convex successor */
     unsigned num_preds;
