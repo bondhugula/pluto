@@ -1180,7 +1180,7 @@ int64_t *get_ilp_solution_from_glpk_problem(glp_prob *lp) {
  * Checks feasibility of the LP problem using simplex */
 void set_glpk_problem_params(glp_prob *lp) {
 
-  if (!options->debug && !options->moredebug) {
+  if (!options->moredebug) {
     glp_term_out(GLP_OFF);
   }
 
@@ -1189,7 +1189,7 @@ void set_glpk_problem_params(glp_prob *lp) {
   parm.presolve = GLP_ON;
 
   parm.msg_lev = GLP_MSG_OFF;
-  IF_DEBUG(parm.msg_lev = GLP_MSG_ON;);
+  IF_MORE_DEBUG(parm.msg_lev = GLP_MSG_ON;);
   IF_MORE_DEBUG(parm.msg_lev = GLP_MSG_ALL;);
 
   glp_scale_prob(lp, GLP_SF_AUTO);
@@ -1203,10 +1203,10 @@ void find_optimal_solution_glpk(glp_prob *lp, double tol) {
   /* The default is 1e-5; one may need to reduce it even further
    * depending on how large a coefficient we might see */
   iocp.tol_int = tol;
-  IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
+  IF_MORE_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
 
   iocp.msg_lev = GLP_MSG_OFF;
-  IF_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
+  IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ON;);
   IF_MORE_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
 
   /* Find optimal solution */
@@ -1233,7 +1233,7 @@ int pluto_constraints_solve_glpk(glp_prob *lp) {
   }
 
   double z = glp_mip_obj_val(lp);
-  IF_DEBUG(printf("z = %lf\n", z););
+  IF_DEBUG(printf("Objective value: z = %lf\n", z););
 
   return 0;
 }
@@ -1324,8 +1324,9 @@ void set_glpk_objective_from_pluto_matrix(glp_prob *lp, PlutoMatrix *obj) {
 /* Construct ILP in cplex format. The last four parameters are used for
  * scaling solutions to integers */
 int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                          PlutoMatrix *obj, double **val,
-                                          int **index, int npar, int num_ccs) {
+                                            PlutoMatrix *obj, double **val,
+                                            int **index, int npar,
+                                            int num_ccs) {
   int i, j, is_unsat, num_sols;
   int64_t *sol;
   double *fpsol, *scale_sols;
