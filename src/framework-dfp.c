@@ -2072,7 +2072,7 @@ int *get_common_dims(int scc_id, int *convex_successors,
         v2 = scc2_offset + k;
         if (colour[v2] != 0)
           continue;
-        if (fcg->adj->val[v][v2] || fcg->adj->val[v2][v2])
+        if (is_adjecent(fcg, v, v2) || fcg->adj->val[v2][v2])
           continue;
         if (!is_valid_colour(v2, current_colour, fcg, colour, check_parallel))
           continue;
@@ -2155,6 +2155,8 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
     }
 
     int min_scc_id = get_min_convex_successor(scc_id, prog);
+    IF_DEBUG(printf("Minimum convex successor for scc %d: %d\n", scc_id,
+                    min_scc_id););
     if (min_scc_id == prog->ddg->num_sccs) {
       /* There is no minimum convex successor */
       for (int i = 0; i < max_dim; i++) {
@@ -2194,15 +2196,20 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         }
       }
     }
+    int succ_scc_dim = sccs[scc_id].max_dim;
+    if (options->debug) {
+      for (int i = 0; i < succ_scc_dim; i++) {
+        printf("Common dims for %d :%d\n", i, common_dims[i]);
+      }
+    }
     /* This dimension dim of the SCC allows colouring of maximum number of
      * predecessors. Find a corresponding dimension in the current scc that can
      * be coloured with this dimension */
-    int succ_scc_dim = sccs[scc_id].max_dim;
     int dim = get_colouring_dim(common_dims, succ_scc_dim);
     IF_DEBUG(printf("Colouring dim of SCC %d: %d\n", min_scc_id, dim););
     int fcg_vertex = sccs[min_scc_id].fcg_scc_offset + dim;
     for (int i = 0; i < max_dim; i++) {
-      if (colourable_dims[i] && !fcg->adj->val[scc_offset + i][fcg_vertex]) {
+      if (colourable_dims[i] && !is_adjecent(fcg, scc_offset + i, fcg_vertex)) {
         return scc_offset + i;
       }
     }
