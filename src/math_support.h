@@ -20,20 +20,19 @@
 #ifndef _MATH_SUPPORT_H
 #define _MATH_SUPPORT_H
 
+#include <gmp.h>
 #include <stdio.h>
+#include <stdint.h>
 
-#include "isl/aff.h"
-#include "isl/mat.h"
-
-#include "gmp.h"
-
-#include "pluto/libpluto.h"
+#include "pluto/matrix.h"
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
 #define PLABS(a) ((a >= 0) ? (a) : (-a))
 
-#define LONG_LONG_INT_MAX 0x7FFFFFFFFFFFFFFFL
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 void pluto_matrix_print(FILE *, const PlutoMatrix *);
 void pluto_matrix_read(FILE *, const PlutoMatrix *);
@@ -47,7 +46,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp);
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1,
                                   const PlutoMatrix *mat2);
-int pluto_matrix_get_rank(const PlutoMatrix *mat);
+unsigned pluto_matrix_get_rank(const PlutoMatrix *mat);
 
 void pluto_matrix_add_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add_col(PlutoMatrix *mat, int pos);
@@ -65,13 +64,14 @@ void pluto_matrix_negate_row(PlutoMatrix *mat, int pos);
 void pluto_matrix_add(PlutoMatrix *mat1, const PlutoMatrix *mat2);
 void gaussian_eliminate(PlutoMatrix *mat, int start, int end);
 
-int64 lcm(int64 a, int64 b);
-int64 gcd(int64 a, int64 b);
-int64 *min_lexical(int64 *a, int64 *b, int64 num);
+int64_t lcm(int64_t a, int64_t b);
+int64_t gcd(int64_t a, int64_t b);
+int64_t *min_lexical(int64_t *a, int64_t *b, int64_t num);
 
 char *concat(const char *prefix, const char *suffix);
-void pluto_affine_function_print(FILE *fp, int64 *func, int ndims, char **vars);
-char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars);
+void pluto_affine_function_print(FILE *fp, int64_t *func, int ndims,
+                                 const char **vars);
+char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
@@ -81,11 +81,10 @@ int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2,
 int pluto_vector_is_normal(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2,
                            int r2);
 
-PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat);
-int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
-                          void *user);
-
-long long isl_val_get_num_ll(__isl_keep isl_val *v);
 void mpz_set_sll(mpz_t n, long long sll);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

@@ -9,6 +9,7 @@
 
 #include "constraints.h"
 #include "math_support.h"
+#include "isl_support.h"
 #include "pluto.h"
 #include "program.h"
 
@@ -24,9 +25,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
 
   ctx = isl_ctx_alloc();
   assert(ctx);
-
-  // printf("Input matrix\n");
-  // pluto_matrix_print(stdout, mat);
 
   h = isl_mat_alloc(ctx, mat->nrows, ndim);
 
@@ -76,8 +74,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
       }
     }
   }
-  // printf("Ortho matrix\n");
-  // pluto_matrix_print(stdout, ortho);
 
   for (i = 0; i < ortho->ncols; i++) {
     for (j = 0; j < ndim; j++) {
@@ -87,8 +83,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
     orthcst[i]->val[0][ndim] = -1;
     orthcst[i]->val[0][ndim] = 0;
   }
-
-  // pluto_matrix_print(stdout, stmt->trans);
 
   if (ortho->ncols >= 1) {
     /* Sum of all of the above is the last constraint */
@@ -102,12 +96,6 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
     *orthonum = ortho->ncols + 1;
   } else
     *orthonum = 0;
-
-  // printf("Ortho constraints: %d set(s)\n", *orthonum);
-  // for (i=0; i<*orthonum; i++) {
-  // print_polylib_visual_sets("li", orthcst[i]);
-  // pluto_constraints_print(stdout, orthcst[i]);
-  // }
 
   /* Free the unnecessary ones */
   for (i = *orthonum; i < ndim + 1; i++) {
@@ -153,7 +141,6 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
   PlutoConstraints *cst = pluto_constraints_alloc(10, iss_cst_width);
 
   for (k = 0; k < ndoms; k++) {
-    // printf("[iss] Domain %d\n", k);
     const PlutoConstraints *dom = doms[k];
 
     /* Linearize m + 2v(p) - h.s - h.t >= 0 */
@@ -236,7 +223,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
     pluto_constraints_add(cst, indcst);
   }
 
-  int64 *sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+  int64_t *sol = pluto_constraints_lexmin(cst, DO_NOT_ALLOW_NEGATIVE_COEFF);
 
   pluto_constraints_free(cst);
   pluto_constraints_free(nz);
@@ -256,7 +243,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
     pluto_constraints_set_names_range(h, dom0->names, 0, 0, ndim);
     pluto_constraints_set_names_range(h, dom0->names, ndim, 2 * ndim, npar);
 
-    PLUTO_MESSAGE(printf("[iss] m = %lld\n", sol[0]););
+    PLUTO_MESSAGE(printf("[iss] m = %ld\n", sol[0]););
     PLUTO_MESSAGE(printf("[iss] h (cut) is "););
     PLUTO_MESSAGE(pluto_constraints_compact_print(stdout, h););
     free(sol);
@@ -269,9 +256,6 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
 
 int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
   assert(dep->src == dep->dest);
-
-  // printf("Dep %d, dim; %d\n", dep->id+1, dim);
-  // pluto_constraints_compact_print(stdout, dep->dpolytope);
 
   int ndim = (dep->dpolytope->ncols - 1 - npar) / 2;
 
@@ -286,15 +270,13 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
   dpolyc->val[dpolyc->nrows - 1][1 + dim] = 1;
   dpolyc->val[dpolyc->nrows - 1][1 + ndim + dim] = -1;
 
-  int64 lb, ub;
+  int64_t lb, ub;
   int retval1, retval2;
 
   retval1 = pluto_constraints_get_const_lb(dpolyc, 0, &lb);
   retval2 = pluto_constraints_get_const_ub(dpolyc, 0, &ub);
 
   pluto_constraints_free(dpolyc);
-
-  // printf("lb = %lld, ub = %lld\n", lb, ub);
 
   return !(retval1 && retval2 && abs(ub) <= 5 && abs(lb) <= 5);
 }
@@ -320,7 +302,7 @@ void pluto_update_deps_after_iss(PlutoProg *prog, PlutoConstraints **cuts,
 
     if (dep->src != iss_stmt_id && dep->dest != iss_stmt_id) {
       num_iss_deps++;
-      iss_deps = realloc(iss_deps, num_iss_deps * sizeof(Dep *));
+      iss_deps = (Dep **)realloc(iss_deps, num_iss_deps * sizeof(Dep *));
       iss_deps[num_iss_deps - 1] = dep;
       continue;
     }
@@ -358,7 +340,7 @@ void pluto_update_deps_after_iss(PlutoProg *prog, PlutoConstraints **cuts,
 
         if (!pluto_constraints_is_empty(dpolytope)) {
           num_iss_deps++;
-          iss_deps = realloc(iss_deps, num_iss_deps * sizeof(Dep *));
+          iss_deps = (Dep **)realloc(iss_deps, num_iss_deps * sizeof(Dep *));
           iss_deps[num_iss_deps - 1] = pluto_dep_dup(dep);
 
           Dep *iss_dep = iss_deps[num_iss_deps - 1];
@@ -464,7 +446,8 @@ void pluto_iss_dep(PlutoProg *prog) {
       (PlutoConstraints ***)malloc(sizeof(PlutoConstraints **) * ndim);
   for (i = 0; i < ndim; i++) {
     if (num_long_deps[i] >= 1) {
-      long_dep_doms[i] = malloc(num_long_deps[i] * sizeof(PlutoConstraints *));
+      long_dep_doms[i] = (PlutoConstraints **)malloc(
+          num_long_deps[i] * sizeof(PlutoConstraints *));
     } else
       long_dep_doms[i] = NULL;
   }
@@ -525,7 +508,6 @@ void pluto_iss_dep(PlutoProg *prog) {
     /* Split the old statements */
     for (i = 0; i < nstmts; i++) {
       pluto_iss(prog->stmts[i], cuts, num_cuts, prog);
-      // pluto_stmts_print(stdout, prog->stmts, prog->nstmts);
     }
     /* Remove old statements */
     for (i = 0; i < nstmts; i++) {

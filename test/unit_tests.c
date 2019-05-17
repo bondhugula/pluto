@@ -20,20 +20,21 @@
  *
  * unit_tests.c
  *
- * This file is meant to test certain functions in Pluto in standalone
- * mode
+ * This file is meant to unit test certain functions in Pluto.
  *
  */
 #include <assert.h>
 #include <stdio.h>
 
-#include "constraints.h"
-#include "program.h"
+#include "math_support.h"
 
 void test_rank() {
-  while (!feof(stdin)) {
-    PlutoMatrix *mat = pluto_matrix_input(stdin);
-    printf("Rank of matrix is %d\n", pluto_matrix_get_rank(mat));
-    pluto_matrix_free(mat);
-  }
+  PlutoMatrix *mat = pluto_matrix_input(stdin);
+  printf("The rank of this matrix is %d\n", pluto_matrix_get_rank(mat));
+  pluto_matrix_free(mat);
+}
+
+int main() {
+  test_rank();
+  return 0;
 }

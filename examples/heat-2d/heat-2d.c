@@ -50,7 +50,7 @@ int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *
 }
 
 int main(int argc, char * argv[]) {
-    long int t, i, j, k;
+    long int i, j, k;
     const int BASE = 1024;
 
     // for timekeeping
@@ -74,9 +74,9 @@ int main(int argc, char * argv[]) {
 #endif
 
 #pragma scop
-    for (t = 0; t < T; t++) {
-        for (i = 1; i < N+1; i++) {
-            for (j = 1; j < N+1; j++) {
+    for (int t = 0; t < T; t++) {
+        for (int i = 1; i < N+1; i++) {
+            for (int j = 1; j < N+1; j++) {
                 A[(t+1)%2][i][j] =   0.125 * (A[t%2][i+1][j] - 2.0 * A[t%2][i][j] + A[t%2][i-1][j])
                                  + 0.125 * (A[t%2][i][j+1] - 2.0 * A[t%2][i][j] + A[t%2][i][j-1])
                                  + A[t%2][i][j];
@@ -92,29 +92,30 @@ int main(int argc, char * argv[]) {
     tdiff = (double)(result.tv_sec + result.tv_usec * 1.0e-6);
 
     printf("|Time taken =  %7.5lfms\t", tdiff * 1.0e3);
-    printf("|MFLOPS =  %f\t", ((((double)NUM_FP_OPS * N *N *  T) / tdiff) / 1000000L));
+    printf("|MFLOPS =  %f\n", ((((double)NUM_FP_OPS * N *N *  T) / tdiff) / 1000000L));
 #endif
 
-#ifdef VERIFY
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            total+= A[T%2][i][j] ;
+    if (fopen(".test", "r")) {
+        for (int i = 1; i < N+1; i++) {
+            for (int j = 1; j < N+1; j++) {
+                total+= A[T%2][i][j] ;
+            }
         }
-    }
-    printf("|sum: %e\t", total);
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            sum_err_sqr += (A[T%2][i][j] - (total/N))*(A[T%2][i][j] - (total/N));
+        fprintf(stderr, "|sum: %e\t", total);
+        for (int i = 1; i < N+1; i++) {
+            for (int j = 1; j < N+1; j++) {
+                sum_err_sqr += (A[T%2][i][j] - (total/N))*(A[T%2][i][j] - (total/N));
+            }
         }
-    }
-    printf("|rms(A) = %7.2f\t", sqrt(sum_err_sqr));
-    for (i = 1; i < N+1; i++) {
-        for (j = 1; j < N+1; j++) {
-            chtotal += ((char *)A[T%2][i])[j];
+        fprintf(stderr, "|rms(A) = %7.2f\t", sqrt(sum_err_sqr));
+        for (int i = 1; i < N+1; i++) {
+            for (int j = 1; j < N+1; j++) {
+                chtotal += ((char *)A[T%2][i])[j];
+            }
         }
+        fprintf(stderr, "|sum(rep(A)) = %d\n", chtotal);
     }
-    printf("|sum(rep(A)) = %d\n", chtotal);
-#endif
+
     return 0;
 }
 

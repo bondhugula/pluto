@@ -1,10 +1,3 @@
-#
-# Pluto README
-#
-# Uday Bondhugula
-# uday@csa.iisc.ernet.in
-#
-
 LICENSE
 
 Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
@@ -14,25 +7,26 @@ INSTALLING PLUTO
 PREREQUISITES
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
-running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also 
-be fine if you have GNU utilities. In order to use the development version 
-from Pluto's git repository, automatic build system tools including 
-autoconf, automake, and libtool are needed. LLVM/Clang 3.4 is needed for 
-the pet submodule. GMP (GNU multi precision arithmetic library) is 
-needed by ISL (one of the included libraries). If it's not already on 
-your system, it can be installed easily with, for eg., 'sudo yum -y 
-install gmp gmp-devel' on a Fedora ('sudo apt-get install libgmp3-dev' 
-or something similar on an Ubuntu).  
+running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also be 
+fine if you have GNU utilities. 
 
-GLPK (version 4.47 or higher) is required.  "yum -y install glpk-devel" 
-for Fedora or download from https://www.gnu.org/software/glpk/)
+- In order to use the development version from Pluto's git repository, automatic 
+  build system tools including autoconf, automake, and libtool are needed.  
 
-It is also recommended astyle and indent be installed if a user wishes 
-to browse through generated code.
+- LLVM/Clang (2.9 or higher) along with its development/header files is needed 
+  for the pet submodule. These packages are available in distribution 
+  repositories, or could be installed by building LLVM and Clang from sources.
 
-Pluto includes all polyhedral libraries that it depends on. The pet  
-submodule included in Pluto will only work with LLVM/Clang versions up 
-until 3.4. See pet/README for pet's pre-requisites. 
+- LLVM FileCheck is used for Pluto's test suite. (On a Fedora, this is part of 
+  the 'llvm' package.)
+
+- GMP (GNU multi precision arithmetic library) is needed by ISL (one of the 
+  included libraries).  If it's not already on your system, it can be installed 
+  easily with, for eg., 'sudo yum -y install gmp gmp-devel' on a Fedora ('sudo 
+  apt-get install libgmp3-dev' or something similar on an Ubuntu).  
+  
+Pluto includes all polyhedral libraries that it depends on. See pet/README for 
+pet's pre-requisites. 
 
 
 BUILDING PLUTO+
@@ -59,7 +53,6 @@ $ git clone git://repo.or.cz/pluto.git
 $ cd pluto/
 $ git submodule init 
 $ git submodule update
-$ ./apply_patches.sh
 $ ./autogen.sh
 $ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
 $ make
@@ -84,7 +77,7 @@ TRYING A NEW CODE
 
 - Then, just run 
     
-    ./polycc <C source file> --parallel --tile
+    ./polycc <C source file>
 
   The transformation is also printed out, and test.par.c will have the 
   parallelized code. If you want to see intermediate files, like the 
@@ -104,14 +97,13 @@ ICC (Intel C compiler), uncomment line 7 and comment line
   )
 
 - do a make (this will build all executables; 'orig' is the original code 
-  compiled with the native compiler, 'tiled' is the tiled code, 'par' is the 
-  OpenMP parallelized+locality optimized code, 'lbpar' with diamond tiling 
-  when possible. One could do 'make <target>' where target can be orig, 
-  orig_par, opt, tiled, par, lbpar, etc. (see examples/common.mk for full 
-  list)
+  compiled with the native compiler, 'tiled' is the tiled code, 'par' is 
+  the OpenMP parallelized + locality optimized code. One could do 'make 
+  <target>' where target can be orig, orig_par, opt, tiled, par, 
+  pipepar, etc.  (see examples/common.mk for full list)
 
-- 'make test' to test for correctness, 'make perf', 'make lbperf' to compare 
-performance
+- 'make test' to test for correctness, 'make perf' to compare 
+  performance
 
 
 COMMAND-LINE OPTIONS
@@ -182,7 +174,6 @@ with orig for all examples, in examples/, run 'make test'.
 
 
 
-
 MORE INFO
 
 * See doc/DOC.txt for an overview of the system and details on all 
@@ -195,7 +186,8 @@ doc/DOC.txt
 doc/DOC.txt
 
 
-CONTACT
+BUGS AND ISSUES
 
-Please send all bugs reports and comments to Uday Bondhugula 
-<uday@csa.iisc.ernet.in> or post of pluto-development@googlegroups.com.
+Please report bugs/issues at https://github.com/bondhugula/pluto/issues  
+For questions and general discussion, please email 
+pluto-development@googlegroups.com.

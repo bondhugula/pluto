@@ -1,7 +1,19 @@
-0.12.0
+=======
+Until present
 
-PLUTO+: a major update to modeling of the space of transformations (cf
-PPoPP'15 paper)
+- Coding style set to LLVM style; all sources in src/ and include/
+  auto-formatted to that
+- Code modernized for compilation with C++ compilers; language changed to C99
+  and C++11 for all future development
+- 'pet' branch merged into master
+- Submodules pet, cloog-isl, isl, clan, candl, openscop - all updated to
+  their most recent releases or git master tips
+- --tile and --parallel enabled by default
+- Diamond tiling enabled by default
+
+- PLUTO+: a major update to modeling of the space of transformations (cf
+  PPoPP'15 paper)
+
 
 
 version 0.11.4

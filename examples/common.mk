@@ -10,6 +10,8 @@ CC=gcc
 
 NPROCS=4
 NTHREADS=4
+POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
+POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
@@ -19,7 +21,7 @@ ACML=/usr/local/acml
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
-	OMP_FLAGS     := -openmp
+	OMP_FLAGS     := -qopenmp
 else
 	# for gcc
 	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
@@ -38,25 +40,28 @@ ifdef PERFCTR
 	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
 endif
 
-PLC=../../polycc
+ifdef POLYBENCH
+	CFLAGS += -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -I $(POLYBENCHINCDIR) $(POLYBENCHSRC)
+	DISTOPT_FLAGS += --variables_not_global
+endif
 
 all: orig tiled par
 
 $(SRC).opt.c:  $(SRC).c
-	$(PLC) $(SRC).c $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --notile --noparallel $(PLCFLAGS)  -o $@
 
 $(SRC).tiled.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
+	$(PLC) $(SRC).c --noparallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).par.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel $(TILEFLAGS) $(PLCFLAGS)  -o $@
-
-$(SRC).lbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --partlbtile $(TILEFLAGS) $(PLCFLAGS) -o $@
+	$(PLC) $(SRC).c $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
 $(SRC).mlbpar.c:  $(SRC).c
-	$(PLC) $(SRC).c --tile --parallel --lbtile --multipar $(TILEFLAGS) $(PLCFLAGS) -o $@
+	$(PLC) $(SRC).c --full-diamond-tile $(TILEFLAGS) $(PLCFLAGS)  -o $@
 
+# Version that doesn't use diamond tiling
+$(SRC).pipepar.c:  $(SRC).c
+	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
 orig: $(SRC).c 
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
@@ -73,12 +78,12 @@ tiled: $(SRC).tiled.c
 par: $(SRC).par.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).par.c -o $@  $(LDFLAGS)
 
-lbpar: $(SRC).lbpar.c
-	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).lbpar.c -o $@  $(LDFLAGS)
-
 mlbpar: $(SRC).mlbpar.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).mlbpar.c -o $@  $(LDFLAGS)
 
+# Version that doesn't use diamond tiling
+pipepar: $(SRC).pipepar.c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).pipepar.c -o $@  $(LDFLAGS)
 
 perf: orig tiled par orig_par
 	rm -f .test
@@ -87,10 +92,11 @@ perf: orig tiled par orig_par
 	./tiled
 	OMP_NUM_THREADS=$(NTHREADS) ./par 
 
-lbperf: par lbpar
+# Compare performance with and without diamond tiling.
+pipeperf: par pipepar
 	rm -f .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 
 
 
 test: orig tiled par
@@ -103,14 +109,13 @@ test: orig tiled par
 	diff -q out_orig out_par4
 	@echo Success!
 
-lbtest: par lbpar mlbpar
+lbtest: par pipepar
 	touch .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par 2> out_par4
-	OMP_NUM_THREADS=$(NTHREADS) ./lbpar 2> out_lbpar4
-	OMP_NUM_THREADS=$(NTHREADS) ./mlbpar 2> out_mlbpar4
+	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 2> out_pipepar4
 	rm -f .test
-	diff -q out_par4 out_lbpar4
-	diff -q out_par4 out_mlbpar4
+	diff -q out_par4 out_pipepar4
+	diff -q out_par4 out_fulldiamondtile4
 	@echo Success!
 
 opt-test: orig opt
@@ -123,11 +128,11 @@ opt-test: orig opt
 	rm -f .test
 
 clean:
-	rm -f out_* *.lbpar.c *.tiled.c *.opt.c *.par.c *.mlbpar.c orig opt tiled par sched orig_par \
+	rm -f out_* *.pipepar.c *.tiled.c *.opt.c *.par.c orig opt tiled par sched orig_par \
 		hopt hopt *.par2d.c *.out.* \
 		*.kernel.* a.out $(EXTRA_CLEAN) tags tmp* gmon.out *~ .unroll \
 	   	.vectorize par2d parsetab.py *.body.c *.pluto.c *.par.cloog *.tiled.cloog *.pluto.cloog
 
 exec-clean:
-	rm -f out_* opt orig tiled lbtile lbpar  sched sched hopt hopt par orig_par *.out.* *.kernel.* a.out \
+	rm -f out_* opt orig tiled sched sched hopt hopt par pipepar orig_par *.out.* *.kernel.* a.out \
 		$(EXTRA_CLEAN) tags tmp* gmon.out *~ par2d

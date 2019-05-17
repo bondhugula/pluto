@@ -11,11 +11,15 @@
 #include <unistd.h>
 
 #include "constraints.h"
+#include "isl_support.h"
 #include "math_support.h"
 #include "pluto.h"
 
+#include "isl/aff.h"
+#include "isl/ctx.h"
 #include "isl/map.h"
 #include "isl/set.h"
+#include "isl/space.h"
 #include "isl/val_gmp.h"
 
 /* start: 0-indexed */
@@ -29,7 +33,7 @@ void pluto_constraints_project_out_isl(PlutoConstraints *cst, int start,
     return;
 
   end = start + num - 1;
-  assert(start >= 0 && end <= cst->ncols - 2);
+  assert(start >= 0 && end <= (int)cst->ncols - 2);
 
   set = isl_set_from_pluto_constraints(cst, NULL);
   set = isl_set_project_out(set, isl_dim_set, start, num);
@@ -49,7 +53,7 @@ void pluto_constraints_project_out_isl_single(PlutoConstraints **cst, int start,
     return;
 
   end = start + num - 1;
-  assert(start >= 0 && end <= (*cst)->ncols - 2);
+  assert(start >= 0 && end <= (int)(*cst)->ncols - 2);
 
   isl_ctx *ctx = isl_ctx_alloc();
   bset = isl_basic_set_from_pluto_constraints(ctx, *cst);
@@ -67,13 +71,12 @@ void pluto_constraints_project_out_isl_single(PlutoConstraints **cst, int start,
 __isl_give isl_basic_set *
 isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
                                      const PlutoConstraints *cst) {
-  int i, j;
   int n_eq = 0, n_ineq = 0;
-  isl_dim *dim;
+  isl_space *dim;
   isl_mat *eq, *ineq;
   isl_basic_set *bset;
 
-  for (i = 0; i < cst->nrows; ++i)
+  for (unsigned i = 0; i < cst->nrows; ++i)
     if (cst->is_eq[i])
       n_eq++;
     else
@@ -82,10 +85,10 @@ isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
   eq = isl_mat_alloc(ctx, n_eq, cst->ncols);
   ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
 
-  dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+  dim = isl_space_set_alloc(ctx, 0, cst->ncols - 1);
 
   n_eq = n_ineq = 0;
-  for (i = 0; i < cst->nrows; ++i) {
+  for (unsigned i = 0; i < cst->nrows; ++i) {
     isl_mat **m;
     int row;
 
@@ -97,7 +100,7 @@ isl_basic_set_from_pluto_constraints(isl_ctx *ctx,
       row = n_ineq++;
     }
 
-    for (j = 0; j < cst->ncols; ++j) {
+    for (unsigned j = 0; j < cst->ncols; ++j) {
       mpz_t tmp, one;
       mpz_init(tmp);
       mpz_init(one);
@@ -122,7 +125,7 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
                                                    isl_ctx *ctx) {
   isl_set *set;
 
-  isl_space *dim = isl_dim_set_alloc(ctx, 0, cst->ncols - 1);
+  isl_space *dim = isl_space_set_alloc(ctx, 0, cst->ncols - 1);
   set = isl_set_empty(dim);
 
   while (cst != NULL) {
@@ -134,8 +137,8 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
   return set;
 }
 
-static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
-                                         void *usr) {
+static isl_stat extract_basic_set_constraints(__isl_take isl_basic_set *bset,
+                                              void *usr) {
   PlutoConstraints **cst = (PlutoConstraints **)usr;
 
   PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
@@ -150,7 +153,7 @@ static int extract_basic_set_constraints(__isl_take isl_basic_set *bset,
     pluto_constraints_free(bcst);
   }
 
-  return 0;
+  return isl_stat_ok;
 }
 
 /* Convert an isl_set to PlutoConstraints */
@@ -170,17 +173,16 @@ PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set) {
 __isl_give isl_basic_map *
 isl_basic_map_from_pluto_constraints(isl_ctx *ctx, const PlutoConstraints *cst,
                                      int n_in, int n_out, int n_par) {
-  int i, j;
   int n_eq = 0, n_ineq = 0;
   isl_mat *eq, *ineq;
   isl_basic_map *bmap;
   isl_space *space;
 
-  assert(cst->ncols == n_in + n_out + n_par + 1);
+  assert((int)cst->ncols == n_in + n_out + n_par + 1);
 
   space = isl_space_alloc(ctx, n_par, n_in, n_out);
 
-  for (i = 0; i < cst->nrows; ++i) {
+  for (unsigned i = 0; i < cst->nrows; ++i) {
     if (cst->is_eq[i])
       n_eq++;
     else
@@ -191,7 +193,7 @@ isl_basic_map_from_pluto_constraints(isl_ctx *ctx, const PlutoConstraints *cst,
   ineq = isl_mat_alloc(ctx, n_ineq, cst->ncols);
 
   n_eq = n_ineq = 0;
-  for (i = 0; i < cst->nrows; ++i) {
+  for (unsigned i = 0; i < cst->nrows; ++i) {
     isl_mat **m;
     int row;
 
@@ -203,7 +205,7 @@ isl_basic_map_from_pluto_constraints(isl_ctx *ctx, const PlutoConstraints *cst,
       row = n_ineq++;
     }
 
-    for (j = 0; j < cst->ncols; ++j) {
+    for (unsigned j = 0; j < cst->ncols; ++j) {
       *m = isl_mat_set_element_si(*m, row, j, cst->val[i][j]);
     }
   }
@@ -327,9 +329,9 @@ int isl_basic_map_to_pluto_constraints_func_arg(__isl_take isl_basic_map *bmap,
 
 /* Use isl to solve these constraints (solves just for the first element if
  * it's a list of constraints */
-int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
+int64_t *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   int i;
-  int64 *sol;
+  int64_t *sol;
   isl_ctx *ctx;
   isl_basic_set *bset, *all_positive;
   isl_set *domain, *all_positive_set, *lexmin;
@@ -344,12 +346,10 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
 
   // Allow only positive values.
   if (negvar == 0) {
-    all_positive = isl_basic_set_positive_orthant(isl_set_get_dim(domain));
+    all_positive = isl_basic_set_positive_orthant(isl_set_get_space(domain));
     all_positive_set = isl_set_from_basic_set(all_positive);
     domain = isl_set_intersect(domain, all_positive_set);
   }
-  // isl_set_print(domain, stdout, 0, ISL_FORMAT_ISL);
-  // isl_set_dump(domain);
   lexmin = isl_set_lexmin(domain);
 
   if (isl_set_is_empty(lexmin)) {
@@ -359,7 +359,7 @@ int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   }
 
   int num_dimensions = isl_set_n_dim(lexmin);
-  sol = (int64 *)malloc((num_dimensions) * sizeof(int64));
+  sol = (int64_t *)malloc((num_dimensions) * sizeof(int64_t));
 
   // As the set is non parametric, there is only a single point in the set.
   // This point is the lexicographic minimum of the set.
@@ -410,7 +410,6 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
     /* Schedule should be single valued */
     assert(isl_map_dim_is_single_valued(map, i));
     isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
-    // isl_pw_aff_dump(pw_aff);
     /* TODO: check to make sure there is only one piece; or else
      * an incorrect schedule will be extracted */
     /* Best effort: Gets it from the last piece */
@@ -423,18 +422,16 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
   return func;
 }
 
-static int basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
-  int *count = user;
+static isl_stat basic_map_count(__isl_take isl_basic_map *bmap, void *user) {
+  int *count = (int *)user;
 
   *count += 1;
   isl_basic_map_free(bmap);
-  return 0;
+  return isl_stat_ok;
 }
 
-int isl_map_count(__isl_take isl_map *map, void *user) {
-  int r;
-
-  r = isl_map_foreach_basic_map(map, &basic_map_count, user);
+isl_stat isl_map_count(__isl_take isl_map *map, void *user) {
+  isl_stat r = isl_map_foreach_basic_map(map, &basic_map_count, user);
   isl_map_free(map);
   return r;
 }

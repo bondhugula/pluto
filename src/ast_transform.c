@@ -32,27 +32,21 @@
  * Clast-based parallel loop marking */
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                          CloogOptions *cloogOptions) {
-  int i, j, nloops, nstmts, nploops;
+  unsigned i, j, nloops, nstmts, nploops;
   struct clast_for **loops;
   int *stmts;
   assert(root != NULL);
 
-  // int filter[1] = {1};
-
   Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
-
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
 
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-  // clast_pprint(stdout, root, 0, cloogOptions);
-
   for (i = 0; i < nploops; i++) {
-    char iter[5];
+    char iter[13];
     sprintf(iter, "t%d", ploops[i]->depth + 1);
-    int *stmtids = malloc(ploops[i]->nstmts * sizeof(int));
-    int max_depth = 0;
+    int *stmtids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
+    unsigned max_depth = 0;
     for (j = 0; j < ploops[i]->nstmts; j++) {
       Stmt *stmt = ploops[i]->stmts[j];
       if (stmt->trans->nrows > max_depth)
@@ -64,8 +58,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     IF_DEBUG(pluto_loop_print(ploops[i]););
     // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
-    ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
-    clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
+    ClastFilter filter = {iter, stmtids, (int)ploops[i]->nstmts, subset};
+    clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
     /* There should be at least one */
     if (nloops == 0) {
@@ -77,14 +71,15 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     } else {
       for (j = 0; j < nloops; j++) {
         loops[j]->parallel = CLAST_PARALLEL_NOT;
-        char *private_vars = malloc(128);
+        char *private_vars = (char *)malloc(512);
         strcpy(private_vars, "lbv,ubv");
         if (options->parallel) {
           IF_DEBUG(printf("Marking %s parallel\n", loops[j]->iterator););
           loops[j]->parallel = CLAST_PARALLEL_OMP;
-          int depth = ploops[i]->depth + 1;
-          for (depth++; depth <= max_depth; depth++) {
-            sprintf(private_vars + strlen(private_vars), ",t%d", depth);
+          unsigned depth = ploops[i]->depth + 1;
+          depth++;
+          for (; depth <= max_depth; depth++) {
+            sprintf(private_vars + strlen(private_vars), ",t%u", depth);
           }
         }
         loops[j]->private_vars = strdup(private_vars);
@@ -103,7 +98,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
  * Clast-based vector loop marking */
 void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
                        CloogOptions *cloogOptions) {
-  int i, j, nloops, nstmts, nploops;
+  unsigned i, j, nloops, nstmts, nploops;
   struct clast_for **loops;
   int *stmts;
   assert(root != NULL);
@@ -113,9 +108,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
   IF_DEBUG(printf("[pluto_mark_vector] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
 
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
-  // clast_pprint(stdout, root, 0, cloogOptions);
-
   for (i = 0; i < nploops; i++) {
     /* Only the innermost ones */
     if (!pluto_loop_is_innermost(ploops[i], prog))
@@ -123,20 +115,15 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
 
     IF_DEBUG(printf("[pluto_mark_vector] marking loop vectorizable\n"););
     IF_DEBUG(pluto_loop_print(ploops[i]););
-    char iter[5];
+    char iter[13];
     sprintf(iter, "t%d", ploops[i]->depth + 1);
-    int *stmtids = malloc(ploops[i]->nstmts * sizeof(int));
+    int *stmtids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
     for (j = 0; j < ploops[i]->nstmts; j++) {
       stmtids[j] = ploops[i]->stmts[j]->id + 1;
     }
 
-    // IF_DEBUG(printf("Looking for loop\n"););
-    // IF_DEBUG(pluto_loop_print(ploops[i]););
-    // IF_DEBUG(printf("%s in \n", iter););
-    // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
-
-    ClastFilter filter = {iter, stmtids, ploops[i]->nstmts, subset};
-    clast_filter(root, filter, &loops, &nloops, &stmts, &nstmts);
+    ClastFilter filter = {iter, stmtids, (int)ploops[i]->nstmts, subset};
+    clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
 
     /* There should be at least one */
     if (nloops == 0) {
@@ -148,7 +135,6 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
       continue;
     }
     for (j = 0; j < nloops; j++) {
-      // printf("\tMarking %s ivdep\n", loops[j]->iterator);
       loops[j]->parallel += CLAST_PARALLEL_VEC;
     }
     free(stmtids);

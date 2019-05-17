@@ -1,28 +1,37 @@
+/******************************************************************************
+ *               libpluto -  A library version of Pluto                       *
+ ******************************************************************************
+ *                                                                            *
+ * Copyright (C) 2012 Uday Bondhugula                                         *
+ *                                                                            *
+ * This library is free software; you can redistribute it and/or              *
+ * modify it under the terms of the GNU Lesser General Public                 *
+ * License version 2.1 as published by the Free Software Foundation.          *
+ *                                                                            *
+ * This library is distributed in the hope that it will be useful,            *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU          *
+ * Lesser General Public License for more details.                            *
+ *                                                                            *
+ * A copy of the GNU Lesser General Public Licence can be found in the file
+ * `LICENSE.LGPL2' in the top-level directory of this distribution.
+ *
+ * This file is part of libpluto.
+ *
+ */
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
-#include "isl/union_map.h"
-#include "isl/union_set.h"
+
+typedef struct isl_union_set isl_union_set;
+typedef struct isl_union_map isl_union_map;
 
 #include "osl/scop.h"
+
+#include "pluto/matrix.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#define int64 long long int
-/* A matrix */
-struct plutoMatrix {
-  /* The values */
-  int64 **val;
-
-  int nrows;
-  int ncols;
-
-  /* Pre-allocated number of rows */
-  int alloc_nrows;
-  int alloc_ncols;
-};
-typedef struct plutoMatrix PlutoMatrix;
 
 struct plutoOptions {
 
@@ -32,34 +41,33 @@ struct plutoOptions {
   /* Intra-tile optimization */
   int intratileopt;
 
-  /* Load-balanced tiling */
-  int lbtile;
-
-  /* Load-balanced tiling (one dimensional concurrent start)*/
-  int partlbtile;
+  /* Diamond tiling for concurrent startup; enables concurrent startup along
+   * one dimension. */
+  int diamondtile;
 
   /* Extract scop information from libpet*/
   int pet;
 
-  /* dynamic scheduling
-   * using Synthesized Runtime Interface */
+  /* Dynamic scheduling using Synthesized Runtime Interface. */
   int dynschedule;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using Intel TBB Flow Graph scheduler */
+  /* Dynamic scheduling - previous technique of building the entire task graph
+   * in memory using Intel TBB Flow Graph scheduler */
   int dynschedule_graph;
 
-  /* dynamic scheduling - previous technique of
-   * building the entire task graph in memory
-   * using a custom DAG scheduler */
-  // no longer maintained
+  // Dynamic scheduling - previous technique of building the entire task graph
+  // in memory using a custom DAG scheduler.
+  // No longer maintained
+  // TODO: remove this!
   int dynschedule_graph_old;
 
   /* consider transitive dependences between tasks */
   int dyn_trans_deps_tasks;
 
-  /* parallelization */
+  /* Enables concurrent startup along dimensions  */
+  int fulldiamondtile;
+
+  /* Parallelization */
   int parallel;
 
   /* prefer pure inner parallelism to pipelined parallelism */
@@ -80,6 +88,12 @@ struct plutoOptions {
 
   /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
   int fuse;
+
+  /* For experimental purposes with dfp */
+  int delayed_cut;
+
+  /* Tyepd fuse at outer levels, max fuse at inner levels */
+  int hybridcut;
 
   /* for debugging - print default cloog-style total */
   int scancount;
@@ -118,9 +132,6 @@ struct plutoOptions {
   /* Not implemented yet: Don't output anything unless something fails */
   int quiet;
 
-  /* Pure polyhedral unrolling (instead of postpass) */
-  int polyunroll;
-
   /* Identity transformation */
   int identity;
 
@@ -157,10 +168,7 @@ struct plutoOptions {
   /* DEV: Don't use cost function */
   int nodepbound;
 
-  /*
-   * Hard bound on transformation coefficients; absolute values of all
-   * coefficients <= coeff_bound
-   */
+  /* hard upper bound for transformation coefficients */
   int coeff_bound;
 
   /* Ask candl to privatize */
@@ -172,13 +180,33 @@ struct plutoOptions {
   /* Read input from a .scop file */
   int readscop;
 
-  /* Use PIP as ilp solver. */
+  /* Use PIP as the ILP solver. */
   int pipsolve;
 
-  /* Use isl as ilp solver. */
+  /* Use isl as the ILP solver. */
   int islsolve;
 
-  int glpksolve;
+  /* Use glpk as the ILP solver. */
+  int glpk;
+
+  /* Use gurobi as the ILP solver. */
+  int gurobi;
+
+  /* Use lp instead of ILP. */
+  int lp;
+
+  /* Use pluto-(i)lp-dfp framework instead of pluto-ilp */
+  int dfp;
+
+  /* Use ILP with pluto-dfp instead of LP. */
+  int ilp;
+
+  /* Use LP solutions to colour SCCs */
+  int lpcolour;
+
+  /* Cluster the statements of the SCC. Currently supported with DFP based
+   * approach only */
+  int scc_cluster;
 
   /* Index set splitting */
   int iss;
@@ -189,8 +217,8 @@ struct plutoOptions {
   /* Polyhedral compile time stats */
   int time;
 
-  int disable_param_coeffs;
-  int disable_neg_coeffs;
+  /* fast linear independence check */
+  int flic;
 };
 typedef struct plutoOptions PlutoOptions;
 
@@ -202,6 +230,10 @@ typedef struct plutoOptions PlutoOptions;
 #define MAXIMAL_FUSE 1
 /* Something in between the above two */
 #define SMART_FUSE 2
+/* Fuses SCCs only if fusion does not result in loss of parallelism */
+#define TYPED_FUSE 3
+/* Typed fuse at outer levels, Max fuse at inner levels */
+#define HYBRID_FUSE 4
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
@@ -211,17 +243,13 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
                                          PlutoOptions *options);
 
 int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
-#if defined(__cplusplus)
-}
-#endif
 
 /*
  * Structure to hold Remapping information
- * Consists of number of statements, Remapping pluto matrix
- * and divs.
+ * Consists of number of statements, Remapping pluto matrix and divs.
  */
 struct remapping {
-  int nstmts;
+  unsigned nstmts;
   PlutoMatrix **stmt_inv_matrices;
   int **stmt_divs;
 };
@@ -244,12 +272,16 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 void pluto_remapping_free(Remapping *);
 
 void pluto_get_remapping_str(const char *domains_str,
-                             const char *dependences_str,
-                             Remapping **remapping_ptr, PlutoOptions *options);
+                             const char *dependences_str, PlutoOptions *options,
+                             Remapping *remapping);
 
 /*
 Free the string stored in schedules_str_buffer_ptr
 */
 void pluto_schedules_strbuf_free(char *schedules_str_buffer);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

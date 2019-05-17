@@ -1,9 +1,9 @@
 [submodule "isl"]
-       path = isl
-       url = git://repo.or.cz/isl.git
+	path = isl
+	url = https://github.com/bondhugula/isl-for-pluto.git
 [submodule "cloog-isl"]
 	path = cloog-isl
-	url = git://repo.or.cz/cloog.git
+	url = https://github.com/periscop/cloog.git
 [submodule "piplib"]
 	path = piplib
 	url = https://github.com/periscop/piplib.git
@@ -21,4 +21,4 @@
 	url = https://github.com/periscop/openscop.git
 [submodule "pet"]
 	path = pet
-	url = git://repo.or.cz/pet.git
+	url = https://github.com/bondhugula/pet-for-pluto.git

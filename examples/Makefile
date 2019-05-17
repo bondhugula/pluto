@@ -1,22 +1,23 @@
 
-DIRS = ssymm \
-	   strmm \
-	   gemver \
-	   tmm \
-	   matmul \
-	   dsyrk \
-	   dsyr2k \
-	   covcol \
-	   corcol \
-	   seidel \
-	   jacobi-1d-imper \
-	   jacobi-2d-imper \
-	   fdtd-2d \
-	   mvt \
-	   lu \
-	   heat-1dp \
-	   heat-2dp \
-	   heat-3dp
+DIRS = \
+       covcol \
+       corcol \
+       dsyrk \
+       dsyr2k \
+       fdtd-2d \
+       gemver \
+       heat-1dp \
+       heat-2dp \
+       heat-3dp
+       jacobi-1d-imper \
+       jacobi-2d-imper \
+       lu \
+       matmul \
+       mvt \
+       seidel \
+       ssymm \
+       strmm \
+       tmm
 
 all: orig orig_par tiled par
 
@@ -30,9 +31,9 @@ par:
 		make -C $$d par; \
 		done
 
-lbpar:
+pipepar:
 	@-for d in $(DIRS); do \
-		make -C $$d lbpar; \
+		make -C $$d pipepar; \
 		done
 
 orig_par:

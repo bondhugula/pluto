@@ -28,10 +28,6 @@
 #include "constraints.h"
 #include "math_support.h"
 
-#include "isl/deprecated/int.h"
-#include "isl/val.h"
-#include "isl/val_gmp.h"
-
 /*
  * Allocated; not initialized
  *
@@ -46,13 +42,13 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols) {
 
   mat = (PlutoMatrix *)malloc(sizeof(PlutoMatrix));
 
-  mat->val = (int64 **)malloc(PLMAX(alloc_nrows, 1) * sizeof(int64 *));
+  mat->val = (int64_t **)malloc(PLMAX(alloc_nrows, 1) * sizeof(int64_t *));
 
   mat->alloc_nrows = PLMAX(alloc_nrows, 1);
   mat->alloc_ncols = PLMAX(alloc_ncols, 1);
 
   for (i = 0; i < mat->alloc_nrows; i++) {
-    mat->val[i] = (int64 *)malloc(mat->alloc_ncols * sizeof(int64));
+    mat->val[i] = (int64_t *)malloc(mat->alloc_ncols * sizeof(int64_t));
   }
 
   mat->nrows = alloc_nrows;
@@ -109,14 +105,14 @@ void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols) {
   int alloc_nrows = PLMAX(nrows, mat->alloc_nrows);
   int alloc_ncols = PLMAX(ncols, mat->alloc_ncols);
 
-  mat->val = (int64 **)realloc(mat->val, alloc_nrows * sizeof(int64 *));
+  mat->val = (int64_t **)realloc(mat->val, alloc_nrows * sizeof(int64_t *));
 
   for (i = mat->alloc_nrows; i < alloc_nrows; i++) {
     mat->val[i] = NULL;
   }
 
   for (i = 0; i < alloc_nrows; i++) {
-    mat->val[i] = (int64 *)realloc(mat->val[i], alloc_ncols * sizeof(int64));
+    mat->val[i] = (int64_t *)realloc(mat->val[i], alloc_ncols * sizeof(int64_t));
   }
 
   mat->alloc_nrows = alloc_nrows;
@@ -314,7 +310,7 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat) {
 
   for (i = 0; i < mat->nrows; i++)
     for (j = 0; j < mat->ncols; j++)
-      fscanf(fp, "%lld", &mat->val[i][j]);
+      fscanf(fp, "%ld", &mat->val[i][j]);
 }
 
 PlutoMatrix *pluto_matrix_input(FILE *fp) {
@@ -325,7 +321,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp) {
 
   for (i = 0; i < mat->nrows; i++)
     for (j = 0; j < mat->ncols; j++)
-      fscanf(fp, "%lld", &mat->val[i][j]);
+      fscanf(fp, "%ld", &mat->val[i][j]);
 
   return mat;
 }
@@ -337,7 +333,7 @@ void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat) {
 
   for (i = 0; i < mat->nrows; i++) {
     for (j = 0; j < mat->ncols; j++) {
-      fprintf(fp, "%s%lld ", mat->val[i][j] >= 0 ? " " : "", mat->val[i][j]);
+      fprintf(fp, "%s%ld ", mat->val[i][j] >= 0 ? " " : "", mat->val[i][j]);
     }
     fprintf(fp, "\n");
   }
@@ -373,10 +369,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
   int r, r2, c;
   int factor1, factor2;
 
-  // printf("Before gaussian eliminate\n");
-  // pluto_matrix_print(stdout, mat);
-  // printf("eliminate: %d\n", pos);
-
   for (r = 0; r < mat->nrows; r++) {
     if (mat->val[r][pos] != 0) {
       for (r2 = 0; r2 < mat->nrows; r2++) {
@@ -388,9 +380,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
           factor2 = lcm(llabs(mat->val[r][pos]), llabs(mat->val[r2][pos])) /
                     mat->val[r][pos];
           for (c = 0; c < mat->ncols; c++) {
-            // printf("%d %d\n", mat->val[r2][pos], mat->val[r][pos]);
-            // printf("%d\n", factor1);
-            // printf("%d\n", factor2);
             mat->val[r2][c] =
                 mat->val[r2][c] * factor1 - mat->val[r][c] * factor2;
           }
@@ -400,8 +389,6 @@ void gaussian_eliminate_var(PlutoMatrix *mat, int pos) {
       break;
     }
   }
-  // printf("After gaussian eliminate\n");
-  // pluto_matrix_print(stdout, mat);
 
   pluto_matrix_remove_col(mat, pos);
 }
@@ -416,14 +403,14 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   }
 }
 
-inline int64 lcm(int64 a, int64 b) {
+int64_t lcm(int64_t a, int64_t b) {
   if (a * b == 0)
     return 0;
   return (a * b) / gcd(a, b);
 }
 
 /* Assuming both args are not zero */
-inline int64 gcd(int64 a, int64 b) {
+int64_t gcd(int64_t a, int64_t b) {
   a = llabs(a);
   b = llabs(b);
 
@@ -437,7 +424,7 @@ inline int64 gcd(int64 a, int64 b) {
   return ((a > b) ? gcd(a % b, b) : gcd(a, b % a));
 }
 
-int64 *min_lexical(int64 *a, int64 *b, int64 num) {
+int64_t *min_lexical(int64_t *a, int64_t *b, int64_t num) {
   int i;
 
   for (i = 0; i < num; i++) {
@@ -453,7 +440,7 @@ int64 *min_lexical(int64 *a, int64 *b, int64 num) {
 
 /* Free returned string with free */
 char *concat(const char *prefix, const char *suffix) {
-  char *concat = malloc(strlen(prefix) + strlen(suffix) + 1);
+  char *concat = (char *)malloc(strlen(prefix) + strlen(suffix) + 1);
   sprintf(concat, "%s%s", prefix, suffix);
   return concat;
 }
@@ -483,7 +470,6 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat) {
 
   r = 0;
   for (i = 0; i < PLMIN(mat->ncols, mat->nrows); i++) {
-    // pluto_matrix_print(stdout, sched);
     if (mat->val[r][i] == 0) {
       for (k = r + 1; k < mat->nrows; k++) {
         if (mat->val[k][i] != 0)
@@ -512,17 +498,15 @@ PlutoMatrix *pluto_matrix_to_row_echelon(PlutoMatrix *mat) {
 }
 
 /* Rank of the matrix */
-int pluto_matrix_get_rank(const PlutoMatrix *mat) {
-  int i, j, null, rank;
+unsigned pluto_matrix_get_rank(const PlutoMatrix *mat) {
+  unsigned rank;
 
   PlutoMatrix *re = pluto_matrix_to_row_echelon(pluto_matrix_dup(mat));
 
-  // pluto_matrix_print(stdout, re);
-
-  null = 0;
-  for (i = 0; i < re->nrows; i++) {
+  unsigned null = 0;
+  for (unsigned i = 0; i < re->nrows; i++) {
     int sum = 0;
-    for (j = 0; j < re->ncols; j++) {
+    for (unsigned j = 0; j < re->ncols; j++) {
       sum += llabs(re->val[i][j]);
     }
     if (sum == 0)
@@ -534,7 +518,7 @@ int pluto_matrix_get_rank(const PlutoMatrix *mat) {
 }
 
 void pluto_matrix_swap_rows(PlutoMatrix *mat, int r1, int r2) {
-  int64 tmp;
+  int64_t tmp;
   int j;
 
   for (j = 0; j < mat->ncols; j++) {
@@ -553,27 +537,6 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat) {
   }
 }
 
-/*
- * Construct a PlutoMatrix with the same content as the given isl_mat.
- */
-PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
-  int i, j;
-  int rows, cols;
-  PlutoMatrix *pluto;
-
-  rows = isl_mat_rows(mat);
-  cols = isl_mat_cols(mat);
-  pluto = pluto_matrix_alloc(rows, cols);
-
-  for (i = 0; i < rows; ++i)
-    for (j = 0; j < cols; ++j) {
-      isl_val *v = isl_mat_get_element_val(mat, i, j);
-      pluto->val[i][j] = isl_val_get_num_si(v);
-      isl_val_free(v);
-    }
-
-  return pluto;
-}
 
 /*
  * Pretty prints a one-dimensional affine function
@@ -581,8 +544,8 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
  * func should have ndims+1 elements (affine function)
  * vars: names of the ndims variables; if NULL, x0, x1, ... are used
  */
-void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
-                                 char **vars) {
+void pluto_affine_function_print(FILE *fp, int64_t *func, int ndims,
+                                 const char **vars) {
   char *var[ndims];
   int j;
 
@@ -590,7 +553,7 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -605,9 +568,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
       fprintf(fp, "-%s", var[j]);
     } else if (func[j] != 0) {
       if (func[j] > 0) {
-        fprintf(fp, "%s%lld%s", first ? "+" : "", func[j], var[j]);
+        fprintf(fp, "%s%ld%s", first ? "+" : "", func[j], var[j]);
       } else {
-        fprintf(fp, "%lld%s", func[j], var[j]);
+        fprintf(fp, "%ld%s", func[j], var[j]);
       }
     }
     if (func[j] != 0)
@@ -617,9 +580,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
   if (func[ndims] >= 1) {
     if (first)
       fprintf(fp, "+");
-    fprintf(fp, "%lld", func[ndims]);
+    fprintf(fp, "%ld", func[ndims]);
   } else if (func[ndims] <= -1) {
-    fprintf(fp, "%lld", func[ndims]);
+    fprintf(fp, "%ld", func[ndims]);
   } else {
     /* 0 */
     if (!first)
@@ -632,20 +595,20 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
 }
 
 /* Returned string should be freed with malloc */
-char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
+char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars) {
   char *var[ndims], *out;
   int j, n;
 
   /* max 5 chars for var, 3 for coefficient + 1 if ndims is 0 + 1 null char */
   n = 9 * ndims + 1 + 1;
-  out = malloc(n);
+  out = (char *)malloc(n);
   *out = '\0';
 
   for (j = 0; j < ndims; j++) {
     if (vars && vars[j]) {
       var[j] = strdup(vars[j]);
     } else {
-      var[j] = malloc(5);
+      var[j] = (char *)malloc(5);
       sprintf(var[j], "x%d", j + 1);
     }
   }
@@ -660,10 +623,10 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
       snprintf(out + strlen(out), 6, "-%s", var[j]);
     } else if (func[j] != 0) {
       if (func[j] >= 1) {
-        snprintf(out + strlen(out), 9, "%s%lld%s", first ? "+" : "", func[j],
-                 var[j]);
+        snprintf(out + strlen(out), n - strlen(out), "%s%ld%s",
+                 first ? "+" : "", func[j], var[j]);
       } else {
-        snprintf(out + strlen(out), 8, "%lld%s", func[j], var[j]);
+        snprintf(out + strlen(out), n - strlen(out), "%ld%s", func[j], var[j]);
       }
     }
     if (func[j] != 0)
@@ -673,9 +636,9 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
   if (func[ndims] >= 1) {
     if (first)
       strcat(out, "+");
-    snprintf(out + strlen(out), 3, "%lld", func[ndims]);
+    snprintf(out + strlen(out), 3, "%ld", func[ndims]);
   } else if (func[ndims] <= -1) {
-    snprintf(out + strlen(out), 3, "%lld", func[ndims]);
+    snprintf(out + strlen(out), 3, "%ld", func[ndims]);
   } else {
     /* 0 */
     if (!first)
@@ -689,55 +652,6 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, char **vars) {
   return out;
 }
 
-/*
- * Convert an isl affine expression to Pluto function
- */
-int isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
-                          void *user) {
-  int i, j, npar;
-
-  npar = isl_aff_dim(aff, isl_dim_param);
-
-  PlutoMatrix **mat_p = (PlutoMatrix **)user;
-  if (*mat_p != NULL)
-    pluto_matrix_free(*mat_p);
-  *mat_p = pluto_matrix_alloc(1, isl_aff_dim(aff, isl_dim_in) + npar + 1);
-  PlutoMatrix *mat = *mat_p;
-
-  if (isl_aff_dim(aff, isl_dim_div) >= 1) {
-    isl_aff *div = isl_aff_get_div(aff, 0);
-    isl_val *v = isl_aff_get_denominator_val(div);
-    isl_aff_free(div);
-    if (!isl_val_is_one(v)) {
-      pluto_matrix_zero_row(mat, 0);
-      isl_val_free(v);
-      isl_set_free(set);
-      isl_aff_free(aff);
-      return 0;
-    }
-    isl_val_free(v);
-  }
-
-  for (i = 0; i < isl_aff_dim(aff, isl_dim_in); i++) {
-    isl_val *v = isl_aff_get_coefficient_val(aff, isl_dim_in, i);
-    mat->val[0][i] = isl_val_get_num_si(v);
-    isl_val_free(v);
-  }
-  for (j = 0; j < npar; i++, j++) {
-    isl_val *v = isl_aff_get_coefficient_val(aff, isl_dim_param, j);
-    mat->val[0][i] = isl_val_get_num_si(v);
-    isl_val_free(v);
-  }
-  isl_val *v = isl_aff_get_constant_val(aff);
-  mat->val[0][i] = isl_val_get_num_si(v);
-  isl_val_free(v);
-  // pluto_matrix_print(stdout, mat);
-
-  isl_set_free(set);
-  isl_aff_free(aff);
-
-  return 0;
-}
 
 /*
  * Is row r1 of mat1 parallel to row r2 of mat2
@@ -805,80 +719,4 @@ void mpz_set_ull(mpz_t n, unsigned long long ull) {
   mpz_mul_2exp(n, n, 32);
   /* n += (unsigned int)ull */
   mpz_add_ui(n, n, (unsigned int)ull);
-}
-
-/* Does the mpz value fit in a long long? */
-static int mpz_fits_ll(mpz_t z) {
-  int sign;
-
-  mpz_t tmp;
-  mpz_init(tmp);
-  /* tmp = (upper bits of r) */
-  if (mpz_sgn(z) > 0) {
-    mpz_tdiv_q_2exp(tmp, z, 63);
-  } else {
-    mpz_add_ui(tmp, z, 1);
-    mpz_tdiv_q_2exp(tmp, tmp, 63);
-  }
-  sign = mpz_sgn(tmp);
-  mpz_clear(tmp);
-  return sign == 0;
-}
-
-/* Extract the numerator of a rational value "v" as a long long int.
- *
- * If "v" is not a rational value, then the result is undefined.
- */
-long long isl_val_get_num_ll(__isl_keep isl_val *v) {
-  unsigned lo, hi;
-  mpz_t z, tmp;
-  int sign;
-  long long result;
-
-  mpz_init(tmp);
-  // isl_val_get_num_gmp(v, tmp);
-  // gmp_printf("isl_int: %Zd\n", tmp );
-  // gmp_printf("isl_int hex: %Zx\n", tmp);
-
-  if (!v)
-    return 0;
-  if (!isl_val_is_rat(v))
-    isl_die(isl_val_get_ctx(v), isl_error_invalid, "expecting rational value",
-            return 0);
-
-  mpz_init(z);
-  isl_val_get_num_gmp(v, z);
-
-  if (!mpz_fits_ll(z)) {
-    // gmp_printf("isl_int: %Zd\n", z);
-    // gmp_printf("isl_int hex: %Zx\n", z);
-    printf("[pluto_math_support] numerator too large; returning "
-           "largest/smallest signed 64-bit number\n");
-    sign = mpz_sgn(z);
-    mpz_clear(z);
-
-    /* 2^63-1 is the largest positive signed number for 64-bit */
-    /* -2^63 is the largest negative signed number for 64-bit */
-    return sign ? (long long)((1ULL << 63) - 1) : (long long)((1ULL << 63));
-  }
-
-  /* tmp = (lower 64 bits of r) */
-  mpz_mod_2exp(tmp, z, 64);
-  mpz_clear(z);
-
-  /* lo = tmp & 0xffffffff */
-  lo = mpz_get_ui(tmp);
-
-  /* tmp >>= 32 */
-  mpz_div_2exp(tmp, tmp, 32);
-
-  /* hi = tmp & 0xffffffff */
-  hi = mpz_get_ui(tmp);
-
-  mpz_clear(tmp);
-  result = (long long)((((unsigned long long)hi) << 32) + lo);
-
-  // printf("result: %lld\n", result);
-
-  return result;
 }

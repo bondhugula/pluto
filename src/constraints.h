@@ -20,32 +20,34 @@
 #ifndef _CONSTRAINTS_H
 #define _CONSTRAINTS_H
 
+#ifdef GLPK
+#include <glpk.h>
+#endif
+
 #include "math_support.h"
 #include "isl/set.h"
-
-#define int64 long long int
 
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
  *  c_1*x_1 + c_2*x_2 + ... + c_n*x_n + c_0 >= / = 0 */
 struct pluto_constraints {
   /* Can be accessed as a double-subscripted array */
-  int64 **val;
+  int64_t **val;
 
   /* Internal contiguous buffer, val is set up to point into it */
-  int64 *buf;
+  int64_t *buf;
 
   /* Number of inequalities/equalities */
-  int nrows;
+  unsigned nrows;
   /* Number of columns (number of vars + 1) */
-  int ncols;
+  unsigned ncols;
 
   /* Is row i an equality? 1 yes, 0 no */
   int *is_eq;
 
   /* Number of rows allocated a-priori */
-  int alloc_nrows;
-  int alloc_ncols;
+  unsigned alloc_nrows;
+  unsigned alloc_ncols;
 
   /* Names of the dimensions (optional) */
   char **names;
@@ -59,12 +61,16 @@ typedef struct pluto_constraints PlutoConstraints;
 typedef PlutoConstraints PlutoEquality;
 typedef PlutoConstraints Hyperplane;
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
 void pluto_constraints_free(PlutoConstraints *);
 PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
-void pluto_constraints_resize_single(PlutoConstraints *cst, int nrows,
-                                     int ncols);
+void pluto_constraints_resize_single(PlutoConstraints *cst, unsigned nrows,
+                                     unsigned ncols);
 PlutoConstraints *pluto_constraints_copy(PlutoConstraints *dest,
                                          const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest,
@@ -72,8 +78,8 @@ PlutoConstraints *pluto_constraints_copy_single(PlutoConstraints *dest,
 PlutoConstraints *pluto_constraints_dup(const PlutoConstraints *src);
 PlutoConstraints *pluto_constraints_dup_single(const PlutoConstraints *src);
 
-void fourier_motzkin_eliminate(PlutoConstraints *, int n);
-void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, int pos);
+void fourier_motzkin_eliminate(PlutoConstraints *, unsigned n);
+void fourier_motzkin_eliminate_smart(PlutoConstraints *cst, unsigned pos);
 
 PlutoMatrix *pluto_constraints_to_pip_matrix(const PlutoConstraints *cst,
                                              PlutoMatrix *pmat);
@@ -88,20 +94,20 @@ PlutoConstraints *pluto_constraints_add_to_each(PlutoConstraints *cst1,
 
 void pluto_constraints_simplify(PlutoConstraints *const cst);
 
-int64 *pluto_constraints_lexmin(const PlutoConstraints *, int);
-int64 *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
-int64 *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
+int64_t *pluto_constraints_lexmin(const PlutoConstraints *, int);
+int64_t *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar);
+int64_t *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar);
 void pluto_constraints_add_inequality(PlutoConstraints *cst);
 void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
                                const char *name);
-void pluto_constraints_remove_row(PlutoConstraints *, int);
+void pluto_constraints_remove_row(PlutoConstraints *, unsigned);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 
-void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64 lb);
-void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64 ub);
-void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64 val);
+void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64_t lb);
+void pluto_constraints_add_ub(PlutoConstraints *cst, int varnum, int64_t ub);
+void pluto_constraints_set_var(PlutoConstraints *cst, int varnum, int64_t val);
 
 void pluto_constraints_zero_row(PlutoConstraints *, int);
 void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos);
@@ -151,9 +157,9 @@ PlutoConstraints *pluto_constraints_intersect_isl(PlutoConstraints *cst1,
                                                   const PlutoConstraints *cst2);
 
 int pluto_constraints_get_const_ub(const PlutoConstraints *cnst, int depth,
-                                   int64 *ub);
+                                   int64_t *ub);
 int pluto_constraints_get_const_lb(const PlutoConstraints *cnst, int depth,
-                                   int64 *lb);
+                                   int64_t *lb);
 
 int pluto_constraints_is_empty(const PlutoConstraints *cst);
 int pluto_constraints_are_equal(const PlutoConstraints *cst1,
@@ -198,7 +204,7 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
 PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst,
                                           int max_elim);
-int isl_map_count(__isl_take isl_map *map, void *user);
+isl_stat isl_map_count(__isl_take isl_map *map, void *user);
 PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar);
 PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h);
 PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h);
@@ -212,8 +218,26 @@ void pluto_constraints_cplex_print(FILE *fp, const PlutoConstraints *cst);
 PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom,
                                       const PlutoMatrix *phi);
 void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
-void pluto_constraints_multiply_matrices(PlutoConstraints *mat1,
-                                         PlutoMatrix *mat2,
-                                         PlutoConstraints *prod);
+
+int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints *cst);
+#ifdef GLPK
+int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+                                          PlutoMatrix *obj, double **val,
+                                          int **index, int npar, int num_ccs);
+double *pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst,
+                                          PlutoMatrix *obj);
+#endif
+
+#ifdef GUROBI
+int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
+                                            PlutoMatrix *obj, double **val,
+                                            int **index, int npar, int num_ccs);
+double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
+                                            PlutoMatrix *obj);
+#endif
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif

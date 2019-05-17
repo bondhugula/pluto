@@ -159,7 +159,7 @@ static void gen_stmt_macro(const Stmt *stmt, FILE *outfp) {
     for (j = 0; j < stmt->trans->nrows; j++) {
       fprintf(outfp, "[");
       pluto_affine_function_print(outfp, stmt->trans->val[j], stmt->dim,
-                                  stmt->iterators);
+                                  (const char **)stmt->iterators);
       fprintf(outfp, "]");
     }
     fprintf(outfp, " _NL_DELIMIT_ ");
@@ -225,8 +225,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   state = cloog_state_malloc();
   cloogOptions = cloog_options_malloc(state);
 
-  cloogOptions->fs = malloc(nstmts * sizeof(int));
-  cloogOptions->ls = malloc(nstmts * sizeof(int));
+  cloogOptions->fs = (int *)malloc(nstmts * sizeof(int));
+  cloogOptions->ls = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->fs_ls_size = nstmts;
 
   for (i = 0; i < nstmts; i++) {
@@ -238,7 +238,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   cloogOptions->compilable = 0;
   cloogOptions->esp = 1;
   cloogOptions->strides = 1;
-  cloogOptions->quiet = options->silent;
+  cloogOptions->quiet = !options->debug;
 
   /* Generates better code in general */
   cloogOptions->backtrack = options->cloogbacktrack;

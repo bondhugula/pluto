@@ -76,12 +76,10 @@ fi
 # put the original skeleton around the transformed code
 @SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
 
-
-if [ "$INDENT" == 1 ] && [ -x /usr/bin/indent ]; then
-    indent -kr -br -ce -l125 $OUTFILE
+if [ "$INDENT" == 1 ] && [ -x /usr/bin/clang-format ]; then
+    clang-format --style=LLVM -i $OUTFILE
 fi
 }
-
 
 run "$*"
 WORK=1
@@ -110,19 +108,19 @@ do
 	fi
 done
 
-cleanup()
-{
-	# An attempt to move the original file back in place
-	# in the event of an exception
-	if [ -f "$TEMPFILE" ]
-	then
-		mv $TEMPFILE $SOURCEFILE
-	fi
-if [ "$DEBUG" != 1 ]; then
-    rm -rf .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized\
-    $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
-    *.sysloog .appendfilename
-fi
+cleanup() {
+  # An attempt to move the original file back in place
+  # in the event of an exception
+  if [ -f "$TEMPFILE" ]
+  then
+    mv $TEMPFILE $SOURCEFILE
+  fi
+  if [ "$DEBUG" != 1 ]; 
+  then
+    rm -f .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized \
+      $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
+      *.sysloog .appendfilename
+  fi
 }
 
-trap cleanup SIGINT exit
+    trap cleanup SIGINT exit

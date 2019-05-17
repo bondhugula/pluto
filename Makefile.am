@@ -30,8 +30,7 @@ bin_SCRIPTS = polycc vloog ploog plorc plutune getversion.sh
 CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 
-
-pkginclude_HEADERS = include/pluto/libpluto.h
+pkginclude_HEADERS = include/pluto/pluto.h include/pluto/matrix.h
 
 polycc: polycc.sh
 	rm -f polycc
@@ -54,22 +53,31 @@ binit:
 pclean:
 	$(MAKE) -C src clean
 
-test_libpluto: src/test_libpluto.c
-	libtool --mode=link gcc -g src/test_libpluto.c -Lsrc/.libs/ $(ISL_INCLUDE) $(ISL_LIBADD) -I include -I openscop/include -lpluto -lgomp -o test_libpluto
+test_libpluto: test/test_libpluto.c
+	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
-test: .PHO
+unit_tests: test/unit_tests.c
+	libtool --mode=link $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include -I src -lpluto -o unit_tests
 
-.PHO: 
-	./test.sh --silent
-	./test.sh --silent --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --partlbtile --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter
-	./test.sh --silent --nofuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --partlbtile --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --nofuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --lastwriter --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --maxfuse --tile --parallel --cloogsh --nocloogbacktrack
-	./test.sh --silent --nofuse
-	./test.sh --silent --iss
-	./test.sh --silent --lastwriter --iss --tile --parallel
+src/pluto: force
+	$(MAKE) $(MFLAGS) -C src pluto
+
+force:
+	true
+
+test: PHONY
+	
+PHONY: polycc src/pluto test_libpluto unit_tests
+	./test.sh
+
+test-alt: polycc src/pluto
+	./test-alt.sh --silent --notile --noparallel
+	./test-alt.sh --silent --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter --nodiamond-tile --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --lastwriter
+	./test-alt.sh --silent --nofuse --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --maxfuse --cloogsh --nocloogbacktrack
+	./test-alt.sh --silent --nofuse
+	./test-alt.sh --silent --iss

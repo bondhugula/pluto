@@ -1,6 +1,3 @@
-# Mon 05 May 2008 04:45:39 PM EDT
-# Uday Bondhugula
-
 OVERVIEW
 
 PLUTO is an automatic parallelization tool that is based on the 
@@ -156,6 +153,8 @@ COMMAND-LINE OPTIONS
 	-q | --silent
 	UNIX-style silence: no output as long as everything goes fine
 
+    For more please see the output with '--help'.
+
     Besides these, 'tile.sizes' and '.fst' files allow the user to force 
     certain things.
 
@@ -218,18 +217,16 @@ time tile.sizes is changed, code has to be regenerated (rm -f *.tiled.c;
 make tiled; ./tiled).
 
 If one wishes to carefully tune tile sizes, it may be good to first run 
-Pluto without tiling (without --tile/--partlbtile/--lbtile) and check the 
-number of iterations in each of the loops in the tilable band of the 
-generated code, and then determine tile sizes.
+Pluto without tiling (without --tile) and check the number of iterations 
+in each of the loops in the tilable band of the generated code, and then 
+determine tile sizes.
 
 TILE SIZES FOR DIAMOND TILING OF STENCILS 
 
-For 'lbpar' (generated with --partlbtile --parallel), which is code 
-diamond-tiled along the outermost two dimensions, the same tile size should 
-be chosen along the first two dimensions; otherwise, the tile wavefront will 
-no longer be parallel to the concurrent start face and tile-wise concurrent 
-start will be lost.
-
+Wherever diamond tiling is performed, the same tile size should be 
+chosen along the first two dimensions of the tile band; otherwise, the 
+tile wavefront will no longer be parallel to the concurrent start face 
+and tile-wise concurrent start will be lost.
 
 
 SPECIFYING A CUSTOM FUSION STRUCTURE THROUGH '.fst' or '.precut' file

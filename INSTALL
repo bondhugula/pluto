@@ -1,12 +1,3 @@
-# Pluto INSTALL
-#
-# Thu Dec 13 02:13:01 EST 2007
-#
-# Uday Bondhugula
-# uday@csa.iisc.ernet.in
-#
-
-
 REQUIREMENTS
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines 
