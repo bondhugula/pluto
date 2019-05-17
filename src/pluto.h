@@ -706,8 +706,6 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
                PlutoProg *prog);
 
-int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                          const PlutoProg *prog);
 void populate_scaling_csr_matrices_for_pluto_program(int ***index,
                                                      double ***val, int nrows,
                                                      PlutoProg *prog);
