@@ -649,17 +649,10 @@ void print_dynsched_file(char *srcFileName, FILE *cloogfp, FILE *outfp,
 int get_outermost_parallel_loop(const PlutoProg *prog);
 
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
-<<<<<<< HEAD
-Ploop **pluto_get_parallel_loops(const PlutoProg *prog, int *nploops);
-Ploop **pluto_get_all_loops(const PlutoProg *prog, int *num);
-Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, int *nploops);
-Band **pluto_get_dom_parallel_bands(PlutoProg *prog, int *nbands,
-=======
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands,
->>>>>>> origin/master
                                     int **comm_placement_levels);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
@@ -674,32 +667,17 @@ Ploop *pluto_loop_dup(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop,
                                     const Stmt *stmt);
-<<<<<<< HEAD
-int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog, const Ploop *loop,
-                                   int depth);
-int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog,
-                                                const Ploop *loop);
-void pluto_bands_free(Band **bands, int nbands);
-=======
 int pluto_loop_has_satisfied_dep_with_component(const PlutoProg *prog,
                                                 const Ploop *loop);
 void pluto_bands_free(Band **bands, unsigned nbands);
->>>>>>> origin/master
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level);
 void pluto_detect_hyperplane_types(PlutoProg *prog);
 void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
-<<<<<<< HEAD
-Ploop **pluto_get_loops_under(Stmt **stmts, int nstmts, int depth,
-                              const PlutoProg *prog, int *num);
-Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
-                                          int *num);
-=======
 Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
                               const PlutoProg *prog, unsigned *num);
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
                                           unsigned *num);
->>>>>>> origin/master
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
@@ -721,20 +699,15 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 
 void pluto_iss_dep(PlutoProg *prog);
-<<<<<<< HEAD
-void generate_mod_const_coeffs(int64 **val, int i, int j, int n,
+void generate_mod_const_coeffs(int64_t **val, int i, int j, int n,
                                int stmt_row_offset, int stmt_col_offset);
-=======
->>>>>>> origin/master
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
                                  int npar, PlutoConstraints *);
 void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
                PlutoProg *prog);
 
-<<<<<<< HEAD
-int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
                                           const PlutoProg *prog);
-=======
 void populate_scaling_csr_matrices_for_pluto_program(int ***index,
                                                      double ***val, int nrows,
                                                      PlutoProg *prog);
@@ -751,6 +724,5 @@ void introduce_skew(PlutoProg *prog);
 #if defined(__cplusplus)
 }
 #endif
->>>>>>> origin/master
 
 #endif
