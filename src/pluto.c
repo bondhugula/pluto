@@ -336,7 +336,7 @@ get_stmt_non_negative_orthant_constraints(Stmt *stmt, const PlutoProg *prog,
 }
 
 /* Generates all posible combinations of c_i for mod sum reduction. */
-void generate_mod_const_coeffs(int64 **val, int i, int j, int n,
+void generate_mod_const_coeffs(int64_t **val, int i, int j, int n,
                                int stmt_row_offset, int stmt_col_offset) {
   int mid, temp, k;
   if (n == 0)
@@ -366,7 +366,7 @@ void generate_mod_const_coeffs(int64 **val, int i, int j, int n,
  * maximum
  * values that c_sum can take. Minimizing this will give minimize the values of
  * c_i. */
-void get_mod_sum_constraints(int64 **val, int stmt_row_offset,
+void get_mod_sum_constraints(int64_t **val, int stmt_row_offset,
                              int stmt_col_offset, int nvar) {
   int nrows, i;
   // PlutoConstraints *sum_constraints;
@@ -401,7 +401,7 @@ void get_mod_sum_constraints(int64 **val, int stmt_row_offset,
  * translation co-efficient for each statement.
  * ToDO:(Include more details if possible.)
  * This equations are available in the tech report(Equations 5 and 6) */
-void get_non_zero_constraints(int64 **val, int stmt_row_offset,
+void get_non_zero_constraints(int64_t **val, int stmt_row_offset,
                               int stmt_col_offset, int nvar, int npar,
                               int coeff_bound) {
   int i;
@@ -528,11 +528,11 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  * removes variables that we know will be assigned 0 - also do some
  * permutation/substitution of variables
  */
-int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
+int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   Stmt **stmts;
   int i, j, k, q;
   int nstmts, nvar, npar, del_count;
-  int64 *sol, *fsol;
+  int64_t *sol, *fsol;
   PlutoConstraints *newcst;
 
   stmts = prog->stmts;
@@ -663,7 +663,7 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     }
     free(sol);
 
-    fsol = (int64 *)malloc((cst->ncols - 1) * sizeof(int64));
+    fsol = (int64_t *)malloc((cst->ncols - 1) * sizeof(int64_t));
     /* Fill the soln with zeros for the redundant variables */
     q = 0;
     for (j = 0; j < cst->ncols - 1; j++) {
@@ -685,8 +685,8 @@ int64 *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 /*
  * Solve Pluto algorithm constraints using GLPK
  */
-int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                          const PlutoProg *prog) {
+int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
+                                            const PlutoProg *prog) {
   int npar = prog->npar;
   int nvar = prog->nvar;
   int i, j, k, b;
@@ -836,11 +836,11 @@ int64 *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
   double z = glp_mip_obj_val(lp);
   IF_DEBUG(printf("z = %lf\n", z););
 
-  int64 *sol = malloc(sizeof(int64) * (cst->ncols - 1));
+  int64_t *sol = malloc(sizeof(int64_t) * (cst->ncols - 1));
 
   for (j = 0; j < glp_get_num_cols(lp); j++) {
     double x = glp_mip_col_val(lp, j + 1);
-    IF_DEBUG(printf("c%d = %lld, ", j, (int64)round(x)););
+    IF_DEBUG(printf("c%d = %lld, ", j, (int64_t)round(x)););
     sol[j] = (int)round(x);
   }
   IF_DEBUG(printf("\n"););
@@ -1460,7 +1460,7 @@ PlutoConstraints *get_prog_mod_sum_constraints(PlutoProg *prog) {
  * value when looking for diamond tiling cone complement)
  */
 PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog,
-                                                 int64 lb_param_coeffs) {
+                                                 int64_t lb_param_coeffs) {
   int j, i;
 
   int nvar = prog->nvar;
@@ -1546,7 +1546,7 @@ PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog,
 int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
   int num_sols_found, j, k;
-  int64 *bestsol;
+  int64_t *bestsol;
   PlutoConstraints *basecst, *nzcst, *boundcst, *modsumCst;
   PlutoConstraints *currcst;
 
@@ -2125,7 +2125,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   pluto_constraints_add(fcst, modsumcst);
   pluto_constraints_free(modsumcst);
 
-  int64 *sol = pluto_prog_constraints_lexmin(fcst, prog);
+  int64_t *sol = pluto_prog_constraints_lexmin(fcst, prog);
   pluto_constraints_free(fcst);
 
   if (!sol) {
@@ -3074,7 +3074,7 @@ void pluto_detect_scalar_dimensions(PlutoProg *prog) {
 
     for (d = 0; d < stmt->trans->nrows; d++) {
       int is_const_ub, is_const_lb;
-      int64 ub, lb;
+      int64_t ub, lb;
       is_const_lb = pluto_constraints_get_const_lb(newdom, d, &lb);
       is_const_ub = pluto_constraints_get_const_ub(newdom, d, &ub);
       if (is_const_lb && is_const_ub) {
