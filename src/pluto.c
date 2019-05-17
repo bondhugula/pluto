@@ -163,6 +163,9 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog) {
   }
 }
 
+/* TODO:Merge this code with get_stmt_ortho_constraints in src/framework.c */
+
+#if 0
 /*
  * Constraints to specify a portion of the linearly independent sub-space
  */
@@ -334,6 +337,7 @@ get_stmt_non_negative_orthant_constraints(Stmt *stmt, const PlutoProg *prog,
 
   return orthcst;
 }
+#endif
 
 /* Generates all posible combinations of c_i for mod sum reduction. */
 void generate_mod_const_coeffs(int64_t **val, int i, int j, int n,
@@ -528,6 +532,10 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  * removes variables that we know will be assigned 0 - also do some
  * permutation/substitution of variables
  */
+
+/* The following code block under if 0 will be retained till bugs in
+ * pluto_prog_constraints_lexmin are fixed */
+#if 0
 int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   Stmt **stmts;
   int i, j, k, q;
@@ -683,6 +691,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
   return fsol;
 }
+#endif
 
 bool dep_is_satisfied(Dep *dep) { return dep->satisfied; }
 
@@ -1250,8 +1259,10 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
     /* Get independence constraints for each statement */
     for (j = 0; j < nstmts; j++) {
-      orthcst[j] = get_stmt_non_negative_orthant_constraints(
-          stmts[j], prog, currcst, &orthonum[j]);
+      /* TODO: Replace this call the get_stmt_ortho_constraints in
+       * src/framework.c*/
+      /* orthcst[j] = get_stmt_non_negative_orthant_constraints( */
+      /*     stmts[j], prog, currcst, &orthonum[j]); */
       orthosum += orthonum[j];
     }
 
@@ -1305,6 +1316,11 @@ PlutoConstraints *get_prog_mod_sum_constraints(PlutoProg *prog) {
   return modsumCst;
 }
 
+/* The following code can be removed once we know that the lower bound for param
+ * coeffs are not required. For finding the cone complement the negative value
+ * is set in get_coeff_bounding_constraints_for_cone_complement. The callers
+ * have been commented out in commit 66275dd*/
+#if 0
 /*
  * Sets the upper and lower bounds for all Pluto+ ILP variables
  * lb_param_coeffs: lower bound for parametric shift coeffs (need a negative
@@ -1384,6 +1400,7 @@ PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog,
 
   return boundingcst;
 }
+#endif
 
 /* Find all linearly independent permutable band of hyperplanes at a level.
  *
@@ -2004,9 +2021,9 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
   for (s = 0; s < band->loop->nstmts; s++) {
     IF_DEBUG(printf("\tf(S%d) = ", band->loop->stmts[s]->id + 1););
-    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s],
-                                         nvar + npar,
-                                         band->loop->stmts[s]->domain->names););
+    IF_DEBUG(pluto_affine_function_print(
+                 stdout, conc_start_faces->val[s], nvar + npar,
+                 (const char **)band->loop->stmts[s]->domain->names););
     IF_DEBUG(printf("\n"););
   }
 
@@ -2056,7 +2073,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
                                 unsigned evict_pos, int cone_complement_pos,
                                 PlutoConstraints *basecst, PlutoProg *prog,
                                 PlutoMatrix **cone_complement_hyps) {
-  int i, s, j, k, lambda_k, nstmts, nvar, npar;
+  int s, j, k, lambda_k, nstmts, nvar, npar;
   int64_t *bestsol;
   PlutoConstraints *con_start_cst, *lastcst;
 
@@ -2125,8 +2142,10 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
    * No need of non-zero solution constraints
    */
   con_start_cst = pluto_constraints_dup(basecst);
-  boundcst = get_coeff_bounding_constraints(prog, -4);
-  modsumcst = get_prog_mod_sum_constraints(prog);
+  /* TODO: Fix this call in case we need lb of -4  */
+  /* boundcst = get_coeff_bounding_constraints(prog, -4); */
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
+  PlutoConstraints *modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(con_start_cst, modsumcst);
   /* IMPORTANT: boundcst adds a bound on parametric shifts */
   pluto_constraints_add(con_start_cst, boundcst);
@@ -2157,9 +2176,9 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
             bestsol[npar + 1 + stmt->id * (nvar + npar + 4) + 1 + k];
       }
       IF_DEBUG(printf("\tcone_complement(S%d) = ", stmt->id + 1););
-      IF_DEBUG(pluto_affine_function_print(stdout,
-                                           cone_complement_hyps[j]->val[0],
-                                           nvar + npar, stmt->domain->names););
+      IF_DEBUG(pluto_affine_function_print(
+                   stdout, cone_complement_hyps[j]->val[0], nvar + npar,
+                   (const char **)stmt->domain->names););
       IF_DEBUG(printf("\n"););
     }
     free(bestsol);
@@ -2853,59 +2872,6 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
   return datadom;
 }
 
-/* Update a dependence with a new constraint added to the statement domain */
-void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
-  int i, c;
-
-  Stmt **stmts = prog->stmts;
-
-  assert(cst->ncols == stmt->domain->ncols);
-
-  for (i = 0; i < prog->ndeps; i++) {
-    Dep *dep = prog->deps[i];
-    if (stmts[dep->src] == stmt) {
-      PlutoConstraints *cst_l = pluto_constraints_dup(cst);
-      Stmt *tstmt = stmts[dep->dest];
-      for (c = 0; c < tstmt->dim; c++) {
-        pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
-      }
-      pluto_constraints_add(dep->dpolytope, cst_l);
-      pluto_constraints_free(cst_l);
-    }
-    if (stmts[dep->dest] == stmt) {
-      PlutoConstraints *cst_l = pluto_constraints_dup(cst);
-      Stmt *sstmt = stmts[dep->src];
-      for (c = 0; c < sstmt->dim; c++) {
-        pluto_constraints_add_dim(cst_l, 0, NULL);
-      }
-      pluto_constraints_add(dep->dpolytope, cst_l);
-      pluto_constraints_free(cst_l);
-    }
-  }
-
-  for (i = 0; i < prog->ntransdeps; i++) {
-    Dep *dep = prog->transdeps[i];
-    if (stmts[dep->src] == stmt) {
-      PlutoConstraints *cst_l = pluto_constraints_dup(cst);
-      Stmt *tstmt = stmts[dep->dest];
-      for (c = 0; c < tstmt->dim; c++) {
-        pluto_constraints_add_dim(cst_l, stmt->dim, NULL);
-      }
-      pluto_constraints_add(dep->dpolytope, cst_l);
-      pluto_constraints_free(cst_l);
-    }
-    if (stmts[dep->dest] == stmt) {
-      PlutoConstraints *cst_l = pluto_constraints_dup(cst);
-      Stmt *sstmt = stmts[dep->src];
-      for (c = 0; c < sstmt->dim; c++) {
-        pluto_constraints_add_dim(cst_l, 0, NULL);
-      }
-      pluto_constraints_add(dep->dpolytope, cst_l);
-      pluto_constraints_free(cst_l);
-    }
-  }
-}
-
 /*
  * Detect scattering functions that map to a single value, and modify the
  * scattering function to set it to that value; if the domain is  empty, this
@@ -2938,21 +2904,6 @@ void pluto_detect_scalar_dimensions(PlutoProg *prog) {
     }
     pluto_constraints_free(newdom);
   }
-}
-
-/* Are these statements completely fused until the innermost level */
-int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
-  int num;
-
-  if (prog->num_hyperplanes <= 1)
-    return 1;
-
-  Ploop **loops = pluto_get_loops_under(stmts, nstmts,
-                                        prog->num_hyperplanes - 2, prog, &num);
-  // pluto_loops_print(loops, num);
-  pluto_loops_free(loops, num);
-
-  return num == 1;
 }
 
 /* Update a dependence with a new constraint added to the statement domain */
