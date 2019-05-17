@@ -253,32 +253,10 @@ int gen_unroll_file(PlutoProg *prog) {
  */
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
-<<<<<<< HEAD
-  int nloops, l, max_score;
-  Ploop *best_loop;
-
-=======
->>>>>>> origin/master
   /* Band has to be the innermost band as well */
   if (!pluto_is_band_innermost(band, num_tiled_levels)) {
     return 0;
   }
-
-<<<<<<< HEAD
-  Ploop **loops;
-
-  loops = pluto_get_loops_under(
-      band->loop->stmts, band->loop->nstmts,
-      band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
-
-  max_score = 0;
-  best_loop = NULL;
-  for (l = 0; l < nloops; l++) {
-    int a, s, t, v, score;
-    a = get_num_accesses(loops[l], prog);
-    s = get_num_spatial_accesses(loops[l], prog);
-    t = get_num_invariant_accesses(loops[l], prog);
-=======
   unsigned nloops;
   Ploop **loops = pluto_get_loops_under(
       band->loop->stmts, band->loop->nstmts,
@@ -291,7 +269,6 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     a = get_num_accesses(loops[l]);
     s = get_num_spatial_accesses(loops[l]);
     t = get_num_invariant_accesses(loops[l]);
->>>>>>> origin/master
     v = pluto_loop_is_vectorizable(loops[l], prog);
     /*
      * Penalize accesses which will have neither spatial nor temporal
@@ -325,12 +302,8 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
 
 /* is_tiled: is the band tiled */
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
-<<<<<<< HEAD
-  int i, nbands, retval;
-=======
   unsigned i, nbands;
   int retval;
->>>>>>> origin/master
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
   retval = 0;
@@ -367,123 +340,13 @@ int get_outermost_parallel_loop(const PlutoProg *prog) {
   }
 
   return parallel_loop;
-<<<<<<< HEAD
 }
 
-/* Unroll scattering functions - incomplete / not used */
-void unroll_phis(PlutoProg *prog, int unroll_dim, int ufactor) {
-  int i, j, k;
-
-  Stmt **stmts = prog->stmts;
-  int nstmts = prog->nstmts;
-  int npar = prog->npar;
-
-  /*
-   * Change the 'stmts' array from this
-   *
-   * | stmt 0 | stmt 1 | ... | stmt k |
-   *
-   * to
-   *
-   * | stmt 0 | stmt 0 | stmt 0 | stmt 0 | stmt 1 | stmt 1 ... |
-   *
-   * if you are unrolling by four
-   */
-  for (i = nstmts - 1; i >= 0; i--) {
-
-    Stmt *stmt = stmts[i];
-
-    int unroll[prog->nvar];
-    int num_unroll = 0;
-
-    for (j = 0; j < prog->nvar; j++) {
-      unroll[j] = 0;
-    }
-
-    /* 1.1 which original dimensions to unroll */
-    for (j = 0; j < stmt->dim; j++) {
-      if (stmt->trans->val[unroll_dim][j] != 0) {
-        if (unroll[j] == 0) {
-          num_unroll++;
-        }
-        unroll[j] = 1;
-      }
-    }
-
-    for (k = ufactor - 1; k >= 0; k--) {
-      // Stmt *zstmt = pluto_stmt_dup(stmts[i]);
-      Stmt *zstmt =
-          pluto_stmt_alloc(stmts[i]->dim, stmts[i]->domain, stmts[i]->trans);
-
-      for (j = 0; j < zstmt->dim; j++) {
-        if (unroll[j]) {
-
-          pluto_constraints_add_dim(zstmt->domain, zstmt->dim, NULL);
-          /* Just put a dummy iterator name since Cloog will
-           * generate a remapping for this too */
-          sprintf(zstmt->iterators[zstmt->dim], "zU%d",
-                  j); // where is memory for iterators allocated?
-
-          /* Now add rows */
-
-          /* i = ufactor*x + k */
-          pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows);
-          pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows + 1);
-
-          zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
-          zstmt->domain->val[zstmt->domain->nrows][j] = 1;
-          zstmt->domain
-              ->val[zstmt->domain->nrows][zstmt->dim + num_unroll + npar] = -k;
-
-          zstmt->domain->val[zstmt->domain->nrows + 1][zstmt->dim] = ufactor;
-          zstmt->domain->val[zstmt->domain->nrows + 1][j] = -1;
-          zstmt->domain
-              ->val[zstmt->domain->nrows + 1][zstmt->dim + num_unroll + npar] =
-              k;
-          zstmt->domain->nrows += 2;
-
-          /* 0 <= i - ufactor*x <= ufactor - 1 */
-          pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows);
-          pluto_constraints_zero_row(zstmt->domain, zstmt->domain->nrows + 1);
-
-          zstmt->domain->val[zstmt->domain->nrows][zstmt->dim] = -ufactor;
-          zstmt->domain->val[zstmt->domain->nrows][j] = 1;
-          zstmt->domain
-              ->val[zstmt->domain->nrows][zstmt->dim + num_unroll + npar] = 0;
-
-          zstmt->domain->val[zstmt->domain->nrows + 1][zstmt->dim] = ufactor;
-          zstmt->domain->val[zstmt->domain->nrows + 1][j] = -1;
-          zstmt->domain
-              ->val[zstmt->domain->nrows + 1][zstmt->dim + num_unroll + npar] =
-              ufactor - 1;
-
-          zstmt->domain->nrows += 2;
-        }
-      }
-      zstmt->dim += num_unroll;
-
-      /* Now update the scatterings */
-      /* for the new variable added to the domain */
-      pluto_matrix_add_col(zstmt->trans, zstmt->trans->ncols - 1);
-
-      /* 1. Align the sub-domains (z-polyhedra) */
-      zstmt->trans->val[unroll_dim][zstmt->trans->ncols - 1] -= k;
-
-      /* Add a new dimension */
-      pluto_matrix_add_row(zstmt->trans, zstmt->trans->nrows);
-
-      zstmt->trans->val[zstmt->trans->nrows - 1][zstmt->trans->ncols - 1] = k;
-
-      // printf("%d %d \n", i*ufactor+k, zstmt->trans->ncols);
-
-      /* Add the statement to the list of statements */
-
-      stmts[i * ufactor + k] = zstmt;
-    }
-  }
-  nstmts = nstmts * ufactor;
-}
-
+/* TODO: The remaining segment of code is to distribute loops at the innermost
+ * level. This appeared to give perfomance behifits with iss in case of higer
+ * 2d/ 3d stencils. However this does not seem to be called anywhere at the
+ * moment*/
+#if 0
 /* Any reuse between s1 and s2 at hyperplane depth 'depth' */
 static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
   int i;
@@ -585,6 +448,5 @@ int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
   }
 
   return retval;
-=======
->>>>>>> origin/master
 }
+#endif
