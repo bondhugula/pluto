@@ -3377,6 +3377,17 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
   return skewCst;
 }
 
+int get_outermost_sat_dim(int scc_id, int *src_dims, PlutoProg *prog) {
+  int max_dim = prog->ddg->sccs[scc_id].max_dim;
+  for (int i = 0; i < max_dim; i++) {
+    if (src_dims[i])
+      return i;
+  }
+  return -1;
+}
+
+void swap_ilp_sol_with_level(int par_level, int level, int cc_id, int64_t sol,
+                             PlutoProg *prog) {}
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
@@ -3493,18 +3504,24 @@ bool introduce_skew(PlutoProg *prog) {
         break;
       }
 
-      /* Set the Appropriate coeffs in the transformation matrix */
-      for (int j = 0; j < nstmts; j++) {
-        stmt_offset = npar + 1 + j * (nvar + 1);
-        for (int k = 0; k < nvar; k++) {
-          stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
+      if (is_ilp_solution_parallel(sol, nvar)) {
+        int par_level = get_outermost_sat_dim(scc_id, src_dims, prog);
+        int cc_id = sccs[i].vertices[0].cc_id;
+        swap_ilp_sol_with_level(par_level, level, cc_id, sol, prog);
+      } else {
+        /* Set the Appropriate coeffs in the transformation matrix */
+        for (int j = 0; j < nstmts; j++) {
+          stmt_offset = npar + 1 + j * (nvar + 1);
+          for (int k = 0; k < nvar; k++) {
+            stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
+          }
+          /* No parametric Shifts */
+          for (int k = nvar; k < nvar + npar; k++) {
+            stmts[j]->trans->val[level][k] = 0;
+          }
+          /* The constant Shift */
+          stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
         }
-        /* No parametric Shifts */
-        for (int k = nvar; k < nvar + npar; k++) {
-          stmts[j]->trans->val[level][k] = 0;
-        }
-        /* The constant Shift */
-        stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
       }
       free(sol);
       is_skew_introduced = true;
