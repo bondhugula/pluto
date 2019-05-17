@@ -453,6 +453,11 @@ void get_non_zero_constraints(int64_t **val, int stmt_row_offset,
  *statements
  *  should be a loop hyperplane as opposed to all
  */
+
+/* TODO: Merge this routine with get_non_trivial_sol_constraints in
+ * src/framework.c Constraints have to be according to get_non_zero_constraints
+ * described above  */
+#if 0
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                                                   bool hyp_search_mode) {
   PlutoConstraints *nzcst;
@@ -525,6 +530,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
    * %d\n",nzcst->ncols,npar,nstmts,nvar); */
   return nzcst;
 }
+#endif
 
 /*
  * This calls pluto_constraints_lexmin, but before doing that does some
@@ -1988,6 +1994,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
 
   /* TODO: Check why the lowerbound has to be zero */
   /* bcst = get_coeff_bounding_constraints(prog, 0); */
+  bcst = get_coeff_bounding_constraints(prog);
   modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(fcst, bcst);
   pluto_constraints_free(bcst);
