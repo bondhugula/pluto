@@ -638,16 +638,18 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
                   cst->ncols - 1, cst->nrows););
 
   /* Solve the constraints */
-  if (options->glpksolve) {
-    sol = pluto_prog_constraints_lexmin_glpk(newcst_sel_negated, prog);
-  } else if (options->islsolve) {
-    sol =
-        pluto_constraints_lexmin_isl(newcst_sel_negated, ALLOW_NEGATIVE_COEFF);
-  } else {
-    sol =
-        pluto_constraints_lexmin_pip(newcst_sel_negated, ALLOW_NEGATIVE_COEFF);
-    /* print_polylib_visual_sets("csts", newcst); */
-  }
+  /* if (options->glpksolve) { */
+  /*   sol = pluto_prog_constraints_lexmin_glpk(newcst_sel_negated, prog); */
+  /* } else if (options->islsolve) { */
+  /*   sol = */
+  /*       pluto_constraints_lexmin_isl(newcst_sel_negated,
+   * ALLOW_NEGATIVE_COEFF); */
+  /* } else { */
+  /*   sol = */
+  /*       pluto_constraints_lexmin_pip(newcst_sel_negated,
+   * ALLOW_NEGATIVE_COEFF); */
+  /*   #<{(| print_polylib_visual_sets("csts", newcst); |)}># */
+  /* } */
 
   pluto_constraints_free(newcst_sel_negated);
 
@@ -680,173 +682,6 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   pluto_constraints_free(newcst);
 
   return fsol;
-}
-
-/*
- * Solve Pluto algorithm constraints using GLPK
- */
-int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                            const PlutoProg *prog) {
-  int npar = prog->npar;
-  int nvar = prog->nvar;
-  int i, j, k, b;
-
-  IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin_glpk (%d variables, "
-                  "%d constraints)\n",
-                  cst->ncols - 1, cst->nrows););
-
-  /* The bound for Pluto+'s c_i's */
-  b = prog->options->coeff_bound;
-
-  assert(b >= 1);
-
-  /* Construct objective */
-  PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols - 1);
-  pluto_matrix_set(obj, 0);
-
-  /* u */
-  for (j = 0; j < npar; j++) {
-    obj->val[0][j] = 100 * (b + 1) * nvar * (b + 1) * nvar * prog->nstmts;
-  }
-  /* w */
-  obj->val[0][npar] = (b + 1) * nvar * (b + 1) * nvar * prog->nstmts;
-
-  for (i = 0, j = npar + 1; i < prog->nstmts; i++) {
-    /* c_sum */
-    obj->val[0][j++] = (b + 1) * nvar;
-    for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
-      /* c_i */
-      obj->val[0][k] = prog->stmts[i]->dim_orig - (k - j);
-    }
-    /* parametric shifts */
-    for (; k < j + prog->stmts[i]->dim_orig + npar; k++) {
-      obj->val[0][k] = 1;
-    }
-    /* constant shift */
-    obj->val[0][k] = 1;
-    j += prog->stmts[i]->dim_orig + npar + 1 + 2;
-  }
-
-  /* Print out file in CPLEX form */
-  FILE *fp = fopen("pluto.cplex", "w");
-
-  fprintf(fp, "Minimize\n");
-  for (j = 0; j < obj->ncols; j++) {
-    fprintf(fp, "%s%lldc_%d ", obj->val[0][j] >= 0 ? "+" : "", obj->val[0][j],
-            j);
-  }
-  fprintf(fp, "\n");
-  pluto_matrix_free(obj);
-
-  fprintf(fp, "Subject To \n");
-  pluto_constraints_cplex_print(fp, cst);
-
-  /* Bounds */
-  fprintf(fp, "Bounds\n");
-
-  /* u, w */
-  for (j = 0; j < npar + 1; j++) {
-    fprintf(fp, "0 <= c_%d\n", j);
-  }
-  for (i = 0, j = npar + 1; i < prog->nstmts; i++) {
-    /* c_sum */
-    fprintf(fp, "0 <= c_%d <= %d\n", j++, prog->stmts[i]->dim_orig * b);
-    for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
-      /* c_i's */
-      fprintf(fp, "%d <= c_%d <= %d\n", -b, k, b);
-    }
-    /* parametric shifts */
-    for (; k < j + prog->stmts[i]->dim_orig + npar; k++) {
-      fprintf(fp, "0 <= c_%d <= %d\n", k, b);
-    }
-    /* constant shift */
-    fprintf(fp, "0 <= c_%d\n", k);
-    /* binary variables */
-    fprintf(fp, "0 <= c_%d <= 1\n", k + 1);
-    fprintf(fp, "0 <= c_%d <= 1\n", k + 2);
-    j += prog->stmts[i]->dim_orig + npar + 1 + 2;
-  }
-  fprintf(fp, "\n");
-
-  fprintf(fp, "Integer\n");
-  for (i = 0; i < cst->ncols - 1; i++) {
-    fprintf(fp, "c_%d\n", i);
-  }
-  fprintf(fp, "End\n");
-
-  fclose(fp);
-
-  if (!options->debug && !options->moredebug) {
-    glp_term_out(GLP_OFF);
-  }
-
-  glp_smcp parm;
-  glp_init_smcp(&parm);
-  parm.presolve = GLP_ON;
-
-  parm.msg_lev = GLP_MSG_OFF;
-  IF_DEBUG(parm.msg_lev = GLP_MSG_ALL;);
-
-  glp_prob *lp = glp_create_prob();
-
-  glp_read_lp(lp, NULL, "pluto.cplex");
-
-  glp_scale_prob(lp, GLP_SF_AUTO);
-  glp_adv_basis(lp, 0);
-  int lp_retval = glp_simplex(lp, &parm);
-
-  if (lp_retval) {
-    fprintf(stderr, "GLPK LP failure\n");
-    assert(0);
-  }
-
-  int lp_status = glp_get_status(lp);
-
-  if (lp_status == GLP_INFEAS || lp_status == GLP_UNDEF) {
-    glp_delete_prob(lp);
-    return NULL;
-  }
-
-  glp_iocp iocp;
-  glp_init_iocp(&iocp);
-  /* The default is 1e-5; one may need to reduce it even further
-   * depending on how large a coefficient we might see */
-  iocp.tol_int = PLMIN(1e-7, pow(b, -nvar) * 1e-1);
-  IF_DEBUG(printf("Setting GLPK integer tolerance to %e\n", iocp.tol_int));
-
-  iocp.msg_lev = GLP_MSG_OFF;
-  IF_DEBUG(iocp.msg_lev = GLP_MSG_ALL;);
-
-  int ilp_retval = glp_intopt(lp, &iocp);
-
-  /* ilp_status = 0 => problem has been successfully solved */
-  if (ilp_retval) {
-    fprintf(stderr, "GLPK Int Opt failure\n");
-    assert(0);
-  }
-
-  int ilp_status = glp_mip_status(lp);
-
-  /* No integer solution feasible */
-  if (ilp_status == GLP_NOFEAS) {
-    glp_delete_prob(lp);
-    return NULL;
-  }
-
-  double z = glp_mip_obj_val(lp);
-  IF_DEBUG(printf("z = %lf\n", z););
-
-  int64_t *sol = malloc(sizeof(int64_t) * (cst->ncols - 1));
-
-  for (j = 0; j < glp_get_num_cols(lp); j++) {
-    double x = glp_mip_col_val(lp, j + 1);
-    IF_DEBUG(printf("c%d = %lld, ", j, (int64_t)round(x)););
-    sol[j] = (int)round(x);
-  }
-  IF_DEBUG(printf("\n"););
-  glp_delete_prob(lp);
-
-  return sol;
 }
 
 bool dep_is_satisfied(Dep *dep) { return dep->satisfied; }
@@ -983,18 +818,33 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   assert((int)cst->ncols - 1 == CST_WIDTH - 1);
 
   /* Remove redundant variables - that don't appear in your outer loops */
-  int redun[npar + 1 + nstmts * (nvar + 1) + 1];
+  int redun[npar + 1 + nstmts * (nvar + npar + 1 + 3) + 1];
+
+  /* Remove redundant variables - that don't appear in your outer loops */
   for (i = 0; i < npar + 1; i++) {
     redun[i] = 0;
   }
 
   for (i = 0; i < nstmts; i++) {
-    for (j = 0; j < nvar; j++) {
-      redun[npar + 1 + i * (nvar + 1) + j] = !stmts[i]->is_orig_loop[j];
+    for (j = 1; j < nvar + 1; j++) {
+      redun[npar + 1 + i * (nvar + npar + 1 + 3) + j] =
+          !stmts[i]->is_orig_loop[j - 1];
     }
-    redun[npar + 1 + i * (nvar + 1) + nvar] = 0;
+    /* Parameter coefficients not redundant */
+    for (j = 1 + nvar; j < 1 + nvar + npar; j++) {
+      redun[npar + 1 + i * (nvar + npar + 1 + 3) + j] = 0;
+    }
+    /* The translation co-eff is not redundant */
+    redun[npar + 1 + i * (nvar + npar + 1 + 3) + nvar + npar + 1] = 0;
+    /* Decision variables are not redundant */
+    /* sum of absolute values of coeffs */
+    redun[npar + 1 + i * (nvar + npar + 1 + 3)] = 0;
+    /* decision variable for zero_cnst */
+    redun[npar + 1 + i * (nvar + npar + 1 + 3) + nvar + npar + 2] = 0;
+    /* decision variable for lin_ind_cnst */
+    redun[npar + 1 + i * (nvar + npar + 1 + 3) + nvar + npar + 3] = 0;
   }
-  redun[npar + 1 + nstmts * (nvar + 1)] = 0;
+  redun[npar + 1 + nstmts * (nvar + npar + 1 + 3)] = 0;
 
   del_count = 0;
   newcst = pluto_constraints_dup(cst);
@@ -1004,6 +854,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       del_count++;
     }
   }
+  /* TODO: To be updated from here */
 
   /* Permute the constraints so that if all else is the same, the original
    * hyperplane order is preserved (no strong reason to do this) */
@@ -1025,7 +876,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   /* Solve the constraints using chosen solvers*/
   if (options->islsolve) {
     t_start = rtclock();
-    sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_lexmin_isl(newcst, ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   } else if (options->glpk || options->lp || options->dfp || options->gurobi) {
     double **val = NULL;
@@ -1077,7 +928,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   } else {
     /* Use PIP */
     t_start = rtclock();
-    sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
+    sol = pluto_constraints_lexmin_pip(newcst, ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   }
 
@@ -1578,7 +1429,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
    * we will just allocate once and copy each time */
   currcst = pluto_constraints_alloc(basecst->nrows + nstmts + nvar * nstmts,
                                     CST_WIDTH);
-  boundcst = get_coeff_bounding_constraints(prog, 0);
+  /* boundcst = get_coeff_bounding_constraints(prog, 0); */
   modsumCst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(basecst, boundcst);
   pluto_constraints_add(basecst, modsumCst);
@@ -2118,7 +1969,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   PlutoConstraints *fcst = get_feautrier_schedule_constraints(
       prog, band->loop->stmts, band->loop->nstmts);
 
-  bcst = get_coeff_bounding_constraints(prog, 0);
+  /* TODO: Check why the lowerbound has to be zero */
+  /* bcst = get_coeff_bounding_constraints(prog, 0); */
   modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(fcst, bcst);
   pluto_constraints_free(bcst);
