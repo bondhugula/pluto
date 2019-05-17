@@ -17,7 +17,6 @@
  *
  * A copy of the GNU General Public Licence can be found in the file
  * `LICENSE' in the top-level directory of this distribution.
- *
  */
 #include <assert.h>
 #include <getopt.h>
@@ -769,13 +768,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
            t_d);
     printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
     if (options->dfp) {
-      printf("[pluto] \t\tTotal FCG Construction Time: %0.6lfs\n",
+      printf("[pluto] \tFCG construction time: %0.6lfs\n",
              prog->fcg_const_time);
-      printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n",
+      printf("[pluto] \tFCG colouring time: %0.6lfs\n",
              prog->fcg_colour_time);
-      printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n",
+      printf("[pluto] \tscaling + shifting time: %0.6lfs\n",
              prog->fcg_dims_scale_time);
-      printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n", prog->skew_time);
+      printf("[pluto] \tskew determination time: %0.6lfs\n", prog->skew_time);
     }
     printf("[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: "
            "%0.6lfs\n",

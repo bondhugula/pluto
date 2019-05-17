@@ -1832,7 +1832,7 @@ int pluto_auto_transform(PlutoProg *prog) {
                      get_num_unsatisfied_deps(prog->deps, prog->ndeps));
               printf("\tNumber of unsatisfied inter-scc deps: %d\n",
                      get_num_unsatisfied_inter_scc_deps(prog));
-              fprintf(stdout, "[pluto] WARNING: Unfortunately, pluto cannot "
+              fprintf(stdout, "[pluto] WARNING: Unfortunately, Pluto cannot "
                               "find any more hyperplanes.\n");
               fprintf(stdout, "\tThis is usually a result of (1) a bug in the "
                               "dependence tester,\n");
