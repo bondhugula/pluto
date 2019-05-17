@@ -1044,7 +1044,7 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   if (options->fuse == TYPED_FUSE) {
     par_preventing_adj_mat = pluto_matrix_alloc(num_nodes, num_nodes);
     for (i = 0; i < num_nodes; i++) {
-      bzero(par_preventing_adj_mat->val[i], num_nodes * sizeof(int64));
+      bzero(par_preventing_adj_mat->val[i], num_nodes * sizeof(int64_t));
     }
   }
 
@@ -2119,7 +2119,7 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
 /* Adds a hyperplane (H_LOOP) from the solution an ILP solution.
  * This method can also be moved to framework.c (or pluto.c) and
  * appropriate changes can be made. */
-void add_hyperplane_from_ilp_solution(int64 *sol, PlutoProg *prog) {
+void add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
   int j, k;
   int nvar, npar, nstmts;
   Stmt **stmts;
@@ -2587,7 +2587,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   int nstmts;
   double t_start;
   PlutoConstraints *basecst, *coeffcst, *boundcst;
-  int64 *sol;
+  int64_t *sol;
 
   nvar = prog->nvar;
   npar = prog->npar;
@@ -2776,7 +2776,7 @@ bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
   IF_DEBUG(pluto_constraints_cplex_print(stdout, basecst););
 
   /* Replace this with LP call */
-  int64 *sol = pluto_prog_constraints_lexmin(basecst, prog);
+  int64_t *sol = pluto_prog_constraints_lexmin(basecst, prog);
   if (sol == NULL) {
     return false;
   }
@@ -2896,7 +2896,7 @@ void introduce_skew(PlutoProg *prog) {
   int i, j, num_sccs, nvar, npar, nstmts, level, ndeps;
   int initial_cuts, nrows, stmt_offset;
   Graph *orig_ddg;
-  int64 *sol;
+  int64_t *sol;
   PlutoConstraints *skewingCst, *basecst, *const_dep_check_cst;
   HyperplaneProperties *hProps;
   Stmt **stmts;

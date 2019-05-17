@@ -42,13 +42,13 @@ PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols) {
 
   mat = (PlutoMatrix *)malloc(sizeof(PlutoMatrix));
 
-  mat->val = (int64 **)malloc(PLMAX(alloc_nrows, 1) * sizeof(int64 *));
+  mat->val = (int64_t **)malloc(PLMAX(alloc_nrows, 1) * sizeof(int64_t *));
 
   mat->alloc_nrows = PLMAX(alloc_nrows, 1);
   mat->alloc_ncols = PLMAX(alloc_ncols, 1);
 
   for (i = 0; i < mat->alloc_nrows; i++) {
-    mat->val[i] = (int64 *)malloc(mat->alloc_ncols * sizeof(int64));
+    mat->val[i] = (int64_t *)malloc(mat->alloc_ncols * sizeof(int64_t));
   }
 
   mat->nrows = alloc_nrows;
@@ -105,14 +105,14 @@ void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols) {
   int alloc_nrows = PLMAX(nrows, mat->alloc_nrows);
   int alloc_ncols = PLMAX(ncols, mat->alloc_ncols);
 
-  mat->val = (int64 **)realloc(mat->val, alloc_nrows * sizeof(int64 *));
+  mat->val = (int64_t **)realloc(mat->val, alloc_nrows * sizeof(int64_t *));
 
   for (i = mat->alloc_nrows; i < alloc_nrows; i++) {
     mat->val[i] = NULL;
   }
 
   for (i = 0; i < alloc_nrows; i++) {
-    mat->val[i] = (int64 *)realloc(mat->val[i], alloc_ncols * sizeof(int64));
+    mat->val[i] = (int64_t *)realloc(mat->val[i], alloc_ncols * sizeof(int64_t));
   }
 
   mat->alloc_nrows = alloc_nrows;
@@ -310,7 +310,7 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat) {
 
   for (i = 0; i < mat->nrows; i++)
     for (j = 0; j < mat->ncols; j++)
-      fscanf(fp, "%lld", &mat->val[i][j]);
+      fscanf(fp, "%ld", &mat->val[i][j]);
 }
 
 PlutoMatrix *pluto_matrix_input(FILE *fp) {
@@ -321,7 +321,7 @@ PlutoMatrix *pluto_matrix_input(FILE *fp) {
 
   for (i = 0; i < mat->nrows; i++)
     for (j = 0; j < mat->ncols; j++)
-      fscanf(fp, "%lld", &mat->val[i][j]);
+      fscanf(fp, "%ld", &mat->val[i][j]);
 
   return mat;
 }
@@ -333,7 +333,7 @@ void pluto_matrix_print(FILE *fp, const PlutoMatrix *mat) {
 
   for (i = 0; i < mat->nrows; i++) {
     for (j = 0; j < mat->ncols; j++) {
-      fprintf(fp, "%s%lld ", mat->val[i][j] >= 0 ? " " : "", mat->val[i][j]);
+      fprintf(fp, "%s%ld ", mat->val[i][j] >= 0 ? " " : "", mat->val[i][j]);
     }
     fprintf(fp, "\n");
   }
@@ -403,14 +403,14 @@ void gaussian_eliminate(PlutoMatrix *mat, int start, int num_elim) {
   }
 }
 
-int64 lcm(int64 a, int64 b) {
+int64_t lcm(int64_t a, int64_t b) {
   if (a * b == 0)
     return 0;
   return (a * b) / gcd(a, b);
 }
 
 /* Assuming both args are not zero */
-int64 gcd(int64 a, int64 b) {
+int64_t gcd(int64_t a, int64_t b) {
   a = llabs(a);
   b = llabs(b);
 
@@ -424,7 +424,7 @@ int64 gcd(int64 a, int64 b) {
   return ((a > b) ? gcd(a % b, b) : gcd(a, b % a));
 }
 
-int64 *min_lexical(int64 *a, int64 *b, int64 num) {
+int64_t *min_lexical(int64_t *a, int64_t *b, int64_t num) {
   int i;
 
   for (i = 0; i < num; i++) {
@@ -518,7 +518,7 @@ unsigned pluto_matrix_get_rank(const PlutoMatrix *mat) {
 }
 
 void pluto_matrix_swap_rows(PlutoMatrix *mat, int r1, int r2) {
-  int64 tmp;
+  int64_t tmp;
   int j;
 
   for (j = 0; j < mat->ncols; j++) {
@@ -544,7 +544,7 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat) {
  * func should have ndims+1 elements (affine function)
  * vars: names of the ndims variables; if NULL, x0, x1, ... are used
  */
-void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
+void pluto_affine_function_print(FILE *fp, int64_t *func, int ndims,
                                  const char **vars) {
   char *var[ndims];
   int j;
@@ -568,9 +568,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
       fprintf(fp, "-%s", var[j]);
     } else if (func[j] != 0) {
       if (func[j] > 0) {
-        fprintf(fp, "%s%lld%s", first ? "+" : "", func[j], var[j]);
+        fprintf(fp, "%s%ld%s", first ? "+" : "", func[j], var[j]);
       } else {
-        fprintf(fp, "%lld%s", func[j], var[j]);
+        fprintf(fp, "%ld%s", func[j], var[j]);
       }
     }
     if (func[j] != 0)
@@ -580,9 +580,9 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
   if (func[ndims] >= 1) {
     if (first)
       fprintf(fp, "+");
-    fprintf(fp, "%lld", func[ndims]);
+    fprintf(fp, "%ld", func[ndims]);
   } else if (func[ndims] <= -1) {
-    fprintf(fp, "%lld", func[ndims]);
+    fprintf(fp, "%ld", func[ndims]);
   } else {
     /* 0 */
     if (!first)
@@ -595,7 +595,7 @@ void pluto_affine_function_print(FILE *fp, int64 *func, int ndims,
 }
 
 /* Returned string should be freed with malloc */
-char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars) {
+char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars) {
   char *var[ndims], *out;
   int j, n;
 
@@ -623,10 +623,10 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars) {
       snprintf(out + strlen(out), 6, "-%s", var[j]);
     } else if (func[j] != 0) {
       if (func[j] >= 1) {
-        snprintf(out + strlen(out), n - strlen(out), "%s%lld%s",
+        snprintf(out + strlen(out), n - strlen(out), "%s%ld%s",
                  first ? "+" : "", func[j], var[j]);
       } else {
-        snprintf(out + strlen(out), n - strlen(out), "%lld%s", func[j], var[j]);
+        snprintf(out + strlen(out), n - strlen(out), "%ld%s", func[j], var[j]);
       }
     }
     if (func[j] != 0)
@@ -636,9 +636,9 @@ char *pluto_affine_function_sprint(int64 *func, int ndims, const char **vars) {
   if (func[ndims] >= 1) {
     if (first)
       strcat(out, "+");
-    snprintf(out + strlen(out), 3, "%lld", func[ndims]);
+    snprintf(out + strlen(out), 3, "%ld", func[ndims]);
   } else if (func[ndims] <= -1) {
-    snprintf(out + strlen(out), 3, "%lld", func[ndims]);
+    snprintf(out + strlen(out), 3, "%ld", func[ndims]);
   } else {
     /* 0 */
     if (!first)
