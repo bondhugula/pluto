@@ -690,7 +690,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_ortho_constraints(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] = get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
     orthosum += orthonum[j];
   }
 
