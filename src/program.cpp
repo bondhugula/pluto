@@ -1362,7 +1362,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
  *
  */
 static int64_t *pluto_check_supernode(const Stmt *stmt, unsigned pos,
-                                    int *tile_size) {
+                                      int *tile_size) {
   int lb_pos, ub_pos;
   int64_t *tile_hyp;
 
@@ -2100,8 +2100,7 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
 }
 
 /* Extract Pluto access functions from isl_map */
-isl_stat isl_map_extract_access_func(__isl_take isl_map *map,
-                                            void *user) {
+isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
   /* Extract a PlutoAccess from every isl_basic_map */
   isl_stat r =
       isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
@@ -2158,11 +2157,11 @@ osl_names_p get_scop_names(osl_scop_p scop) {
 //
 //  The RAR deps are only computed if options->rar is set.
 void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
-                             isl_union_map *schedule, isl_union_map *empty,
-                             isl_union_map **dep_raw, isl_union_map **dep_war,
-                             isl_union_map **dep_waw, isl_union_map **dep_rar,
-                             isl_union_map **trans_dep_war,
-                             isl_union_map **trans_dep_waw) {
+                      isl_union_map *schedule, isl_union_map *empty,
+                      isl_union_map **dep_raw, isl_union_map **dep_war,
+                      isl_union_map **dep_waw, isl_union_map **dep_rar,
+                      isl_union_map **trans_dep_war,
+                      isl_union_map **trans_dep_waw) {
   if (options->lastwriter) {
     // Compute RAW dependences with last writer (no transitive dependences).
     isl_union_map_compute_flow(
@@ -2531,7 +2530,6 @@ int read_codegen_context_from_file(PlutoConstraints *codegen_context) {
   return 1;
 }
 
-
 /*
  * Extract necessary information from clan_scop to create PlutoProg - a
  * representation of the program sufficient to be used throughout Pluto.
@@ -2821,7 +2819,8 @@ PlutoOptions *pluto_options_alloc() {
   /* Default context is no context */
   options->codegen_context = -1;
 
-  options->coeff_bound = -1;
+  /* In Pluto+ coefficeints are bounded above and below by +4 and -4 */
+  options->coeff_bound = 4;
 
   options->forceparallel = 0;
 
@@ -3569,8 +3568,8 @@ char *get_expr(PlutoConstraints *cst, int pos, const char **params,
         sprintf(expr + strlen(expr), (cst->val[pos][c] >= 1) ? "+%ld" : "%ld",
                 cst->val[pos][c]);
       } else {
-        sprintf(expr + strlen(expr),
-                (cst->val[pos][c] <= -1) ? "+%ld" : "%ld", -cst->val[pos][c]);
+        sprintf(expr + strlen(expr), (cst->val[pos][c] <= -1) ? "+%ld" : "%ld",
+                -cst->val[pos][c]);
       }
     }
 
