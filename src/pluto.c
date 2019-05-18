@@ -1326,9 +1326,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                     CST_WIDTH);
   PlutoConstraints *boundcst = get_coeff_bounding_constraints_pluto_plus(prog, 0);
   modsumCst = get_prog_mod_sum_constraints(prog);
-  pluto_constraints_add(basecst, boundcst);
+  // pluto_constraints_add(basecst, boundcst);
   pluto_constraints_add(basecst, modsumCst);
-  pluto_constraints_free(boundcst);
+  // pluto_constraints_free(boundcst);
   pluto_constraints_free(modsumCst);
 
   num_sols_found = 0;
