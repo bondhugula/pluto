@@ -878,6 +878,122 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
   return nzcst;
 }
 
+/* TODO: This routine is moved from src/pluto.c. It is called by
+ * get_non_trivial_soluition_constraints_pluto_plus. The caller along with the
+ * callee seems to have some redundences (probably unnecessary loop in the
+ * caller). Need more accurate comments for this routine and might have to be
+ * renamed */
+void get_non_zero_constraints(int64_t **val, int stmt_row_offset,
+                              int stmt_col_offset, int nvar, int npar,
+                              int coeff_bound) {
+  int i;
+  // PlutoConstraints *linearIndConst, *coeffSumConst;
+  // linearIndConst = pluto_constraints_alloc(4, n + 3);
+  /* Implement equations (5) and (6) shown in the tech report */
+
+  /* In equation (5) the coeffs of  delta is 5^ms */
+  val[stmt_row_offset + 0][stmt_col_offset + 0] = 0;
+  val[stmt_row_offset + 0][stmt_col_offset + nvar + npar + 2] =
+      (int)pow((double)(coeff_bound + 1), (double)nvar);
+  /* In equation (5) the coeffs of delta is 5^ms */
+  val[stmt_row_offset + 1][stmt_col_offset + 0] = 0;
+  val[stmt_row_offset + 1][stmt_col_offset + nvar + npar + 2] =
+      -(int)pow((double)(coeff_bound + 1), (double)nvar);
+  // val[stmt_row_offset+i][stmt_col_offset+0] = 0;
+
+  /* the coefficients for ci is 5^i-1 */
+  for (i = 1; i <= nvar; i++) {
+    val[stmt_row_offset + 0][stmt_col_offset + i] =
+        (int)pow((double)(coeff_bound + 1), (double)(i - 1)); // Equation 5
+    val[stmt_row_offset + 1][stmt_col_offset + i] =
+        -(int)pow((double)(coeff_bound + 1), (double)(i - 1)); // Equation 6
+  }
+  /* val[stmt_row_offset+0][CST_WIDTH] = -1;//[stmt_col_offset+nvar + 2] */
+  /* val[stmt_row_offset+1][CST_WIDTH] = (int)pow(5.0, (double)nvar) -
+   * 1;//[stmt_col_offset+nvar + 2] */
+  // 0<=\delta<=1
+  /* val[stmt_row_offset+2][stmt_col_offset+0] = 1; */
+  /* val[stmt_row_offset+3][stmt_col_offset+0] = -1; */
+  /* val[stmt_row_offset+3][CST_WIDTH-1] = -1; */
+
+  /* stmt_row_offset+=4; */
+
+  /* get_mod_sum_constraints(val, stmt_row_offset, stmt_col_offset,nvar); */
+  /* linearIndConst = pluto_constraints_add(coeffSumConst, linearIndConst); */
+  /* return linearIndConst; */
+}
+/* Trivial solution avoiding constraints for ILP formulation in Pluto+ */
+PlutoConstraints *
+get_non_trivial_sol_constraints_pluto_plus(const PlutoProg *prog,
+                                           bool hyp_search_mode) {
+  PlutoConstraints *nzcst;
+  int i, j, stmt_offset, nvar, npar, nstmts, rows_per_stmt, stmt_row_offset;
+
+  Stmt **stmts = prog->stmts;
+  nstmts = prog->nstmts;
+  nvar = prog->nvar;
+  npar = prog->npar;
+
+  int coeff_bound = prog->options->coeff_bound;
+
+  rows_per_stmt = 2;
+
+  nzcst = pluto_constraints_alloc(nstmts * rows_per_stmt, CST_WIDTH);
+  nzcst->ncols = CST_WIDTH;
+
+  if (hyp_search_mode == EAGER) {
+    for (i = 0; i < nstmts; i++) {
+      /* Don't add the constraint if enough solutions have been found */
+      if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
+        IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+        continue;
+      }
+
+      stmt_offset = npar + 1 + i * (1 + nvar + npar + 1 + 2);
+      stmt_row_offset = i * rows_per_stmt;
+
+      for (j = 0; j < nvar; j++) {
+        if (stmts[i]->is_orig_loop[j] == 1) {
+          /* printf("nzcnst rows %d\n", nzcst->nrows); */
+          // nzcst->val[nzcst->nrows][stmt_offset + j] = 1;
+          get_non_zero_constraints(nzcst->val, stmt_row_offset, stmt_offset,
+                                   nvar, npar, coeff_bound);
+          nzcst->val[stmt_row_offset + 0][CST_WIDTH - 1] =
+              -1; //[stmt_col_offset+nvar + 2]
+          nzcst->val[stmt_row_offset + 1][CST_WIDTH - 1] =
+              (int)pow((double)(coeff_bound + 1), (double)(nvar)) - 1;
+          // 0<=\delta<=1 added with bounding constraints
+          /* nzcst->val[stmt_row_offset+2][stmt_offset+nvar+npar+2] = 1; */
+          /* nzcst->val[stmt_row_offset+3][stmt_offset+nvar+npar+2] = -1; */
+          /* nzcst->val[stmt_row_offset+3][CST_WIDTH-1] = 1; */
+        }
+      }
+      // nzcst->val[nzcst->nrows][CST_WIDTH - 1] = -1;
+      nzcst->nrows += rows_per_stmt;
+    }
+  } else {
+    /* LAZY mode */
+    assert(hyp_search_mode == LAZY);
+    for (i = 0; i < nstmts; i++) {
+      /* Don't add the constraint if enough solutions have been found */
+      if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
+        IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
+        continue;
+      }
+      stmt_offset = npar + 1 + i * (1 + nvar + npar + 1 + 2);
+
+      for (j = 0; j < nvar; j++) {
+        if (stmts[i]->is_orig_loop[j] == 1) {
+          nzcst->val[0][stmt_offset + j] = 1;
+        }
+      }
+      nzcst->val[0][CST_WIDTH - 1] = -1;
+    }
+    nzcst->nrows = 1;
+  }
+  return nzcst;
+}
+
 /**
  * Bounds for Pluto ILP variables
  */
@@ -1010,7 +1126,6 @@ get_coeff_bounding_constraints_pluto_plus(PlutoProg *prog,
 
   return boundingcst;
 }
-
 
 /*
  * Check whether the dependence is satisfied at level 'level'
@@ -1245,7 +1360,8 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
 
 /* Direction vector component at level 'level'
  */
-DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog, unsigned level) {
+DepDir get_dep_direction(const Dep *dep, const PlutoProg *prog,
+                         unsigned level) {
   PlutoConstraints *cst;
   int j, src, dest;
 

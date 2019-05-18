@@ -397,7 +397,7 @@ void get_mod_sum_constraints(int64_t **val, int stmt_row_offset,
   /* generate_coeffs(a, 0, 1, n); */
   // return sum_constraints;
 }
-
+#if 0
 /* Constraints are added to incorporate negative coeffs and also avoid the
  * trivial zero solution. Since the coeffs can be negative we need \Sigma
  * |c_i|>=1.
@@ -457,7 +457,6 @@ void get_non_zero_constraints(int64_t **val, int stmt_row_offset,
 /* TODO: Merge this routine with get_non_trivial_sol_constraints in
  * src/framework.c Constraints have to be according to get_non_zero_constraints
  * described above  */
-#if 0
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                                                   bool hyp_search_mode) {
   PlutoConstraints *nzcst;
@@ -470,7 +469,6 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
 
   int coeff_bound = prog->options->coeff_bound;
 
-  /* Constraints for equation 5 and 6 */
   rows_per_stmt = 2;
 
   nzcst = pluto_constraints_alloc(nstmts * rows_per_stmt, CST_WIDTH);
@@ -526,8 +524,6 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
     }
     nzcst->nrows = 1;
   }
-  /* printf("No of cols in zero cnst matrix %d %d %d
-   * %d\n",nzcst->ncols,npar,nstmts,nvar); */
   return nzcst;
 }
 #endif
@@ -1324,7 +1320,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
    * we will just allocate once and copy each time */
   currcst = pluto_constraints_alloc(basecst->nrows + nstmts + nvar * nstmts,
                                     CST_WIDTH);
-  PlutoConstraints *boundcst = get_coeff_bounding_constraints_pluto_plus(prog, 0);
+  PlutoConstraints *boundcst =
+      get_coeff_bounding_constraints_pluto_plus(prog, 0);
   modsumCst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(basecst, boundcst);
   pluto_constraints_add(basecst, modsumCst);
@@ -1337,7 +1334,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     IF_DEBUG2(printf("Base Constraints\n"));
     IF_DEBUG2(pluto_constraints_compact_print(stdout, basecst));
     pluto_constraints_copy(currcst, basecst);
-    nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
+    nzcst = get_non_trivial_sol_constraints_pluto_plus(prog, hyp_search_mode);
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 

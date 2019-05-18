@@ -522,6 +522,8 @@ PlutoConstraints *get_global_independence_cst(PlutoConstraints ***ortho_cst,
                                               int *orthonum,
                                               const PlutoProg *prog);
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
+PlutoConstraints *get_non_trivial_sol_constraints_pluto_plus(const PlutoProg *,
+                                                             bool);
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
 PlutoConstraints *
