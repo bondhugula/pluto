@@ -47,10 +47,10 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
 
 /**
  *
- * Each constraint row has the following format
+ * Each constraint row has the following format:
  *
  *      [dep distance bound | mapping coeff.s for S1, S2,... |constant]
- * Size:[       npar+1      | (nvar+1)*nstmts                | 1      ]
+ * Size:[       npar+1      | (nvar+npar+1)*nstmts           | 1      ]
  *
  * npar - number of parameters in whole program
  * nvar - number of parameters in whole program
