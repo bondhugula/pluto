@@ -14,3 +14,6 @@
 
 - Contributions should be submitted as pull requests on the Github repo:
   https://github.com/bondhugula/pluto
+
+- Documentation comments for functions should be in doxygen format (C++ style 
+  for C++ sources, and either C or C++ style for C sources).
