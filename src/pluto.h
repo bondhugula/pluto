@@ -518,6 +518,10 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
 PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
                                               const PlutoConstraints *currcst,
                                               int *orthonum);
+PlutoConstraints **
+get_stmt_ortho_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
+                                      const PlutoConstraints *currcst,
+                                      int *orthonum);
 PlutoConstraints *get_global_independence_cst(PlutoConstraints ***ortho_cst,
                                               int *orthonum,
                                               const PlutoProg *prog);

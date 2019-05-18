@@ -819,6 +819,181 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
   return orthcst;
 }
 
+/* TODO: Recheck whether linear ind constraints are correct */
+/* Pluto+ constraints that specify a portion of the linearly independent
+ * sub-space of the hyperplanes that were already found for each statement
+ */
+PlutoConstraints **
+get_stmt_ortho_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
+                                      const PlutoConstraints *currcst,
+                                      int *orthonum) {
+  int i, j, k, p, q;
+  PlutoConstraints **orthcst;
+  isl_ctx *ctx;
+  isl_mat *h;
+  isl_basic_set *isl_currcst;
+
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  HyperplaneProperties *hProps = prog->hProps;
+
+  if (pluto_stmt_get_num_ind_hyps(stmt) >= stmt->dim_orig) {
+    *orthonum = 0;
+    return NULL;
+  }
+
+  /* Get rid of the variables that don't appear in the domain of this
+   * statement and also beta rows */
+  for (i = 0, p = 0; i < nvar; i++) {
+    if (stmt->is_orig_loop[i]) {
+      p++;
+    }
+  }
+
+  assert(stmt->trans != NULL);
+
+  for (j = 0, q = 0; j < stmt->trans->nrows; j++) {
+    if (hProps[j].type != H_SCALAR) {
+      q++;
+    }
+  }
+
+  ctx = isl_ctx_alloc();
+  assert(ctx);
+
+  h = isl_mat_alloc(ctx, q, p);
+
+  p = 0;
+  q = 0;
+  for (i = 0; i < nvar; i++) {
+    if (stmt->is_orig_loop[i]) {
+      q = 0;
+      for (j = 0; j < stmt->trans->nrows; j++) {
+        /* Skip rows of h that are zero */
+        if (hProps[j].type != H_SCALAR) {
+          h = isl_mat_set_element_si(h, q, p, stmt->trans->val[j][i]);
+          q++;
+        }
+      }
+      p++;
+    }
+  }
+
+  h = isl_mat_right_kernel(h);
+
+  PlutoMatrix *ortho = pluto_matrix_from_isl_mat(h);
+
+  isl_mat_free(h);
+
+  orthcst =
+      (PlutoConstraints **)malloc((nvar + 1) * sizeof(PlutoConstraints *));
+
+  for (i = 0; i < nvar + 1; i++) {
+    orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
+    orthcst[i]->ncols = CST_WIDTH;
+  }
+
+  /* All non-negative orthant only */
+  /* An optimized version where the constraints are added as
+   * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
+   *
+   * basically only look in the orthogonal space where everything is
+   * non-negative
+   *
+   * All of these constraints are added later to
+   * the global constraint matrix
+   */
+
+  /* Normalize ortho first */
+  for (j = 0; j < ortho->ncols; j++) {
+    if (ortho->val[0][j] == 0)
+      continue;
+    int colgcd = abs(ortho->val[0][j]);
+    for (i = 1; i < ortho->nrows; i++) {
+      if (ortho->val[i][j] == 0)
+        break;
+      colgcd = gcd(colgcd, abs(ortho->val[i][j]));
+    }
+    if (i == ortho->nrows) {
+      if (colgcd > 1) {
+        for (k = 0; k < ortho->nrows; k++) {
+          ortho->val[k][j] /= colgcd;
+        }
+      }
+    }
+  }
+  // printf("Ortho matrix\n");
+  // pluto_matrix_print(stdout, ortho);
+
+  isl_currcst = isl_basic_set_from_pluto_constraints(ctx, currcst);
+
+  assert(p == ortho->nrows);
+  p = 0;
+  for (i = 0; i < ortho->ncols; i++) {
+    isl_basic_set *orthcst_i;
+
+    j = 0;
+    for (q = 0; q < nvar; q++) {
+      if (stmt->is_orig_loop[q]) {
+        int stmt_offset = npar + 1 + stmt->id * (1 + nvar + npar + 1 + 2);
+        orthcst[p]->val[0][stmt_offset + 1 + q] = ortho->val[j][i];
+        j++;
+      }
+    }
+    orthcst[p]->nrows = 1;
+    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
+    orthcst[p]->val[0][CST_WIDTH - 1] = 0;
+
+    /* TODO: Check whether this is required in Pluto+ */
+    orthcst_i =
+        isl_basic_set_intersect(orthcst_i, isl_basic_set_copy(isl_currcst));
+    /* Check if this has to be is_basic_set_plain */
+    if (isl_basic_set_plain_is_empty(orthcst_i) ||
+        isl_basic_set_is_empty(orthcst_i)) {
+      pluto_constraints_negate_row(orthcst[p], 0);
+    }
+    isl_basic_set_free(orthcst_i);
+    p++;
+    /* assert(p<=nvar-1); */
+  }
+
+  // pluto_matrix_print(stdout, stmt->trans);
+
+  if (p > 0) {
+    /* Sum of all of the above is the last constraint */
+    for (j = 0; j < CST_WIDTH; j++) {
+      for (i = 0; i < p; i++) {
+        orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
+      }
+    }
+    orthcst[p]->nrows = 1;
+    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    p++;
+  }
+
+  *orthonum = p;
+
+  IF_DEBUG2(
+      printf("Ortho constraints for S%d; %d sets\n", stmt->id + 1, *orthonum));
+  for (i = 0; i < *orthonum; i++) {
+    // print_polylib_visual_sets("li", orthcst[i]);
+    // IF_DEBUG2(pluto_constraints_print(stdout, orthcst[i]));
+  }
+
+  /* Free the unnecessary ones */
+  for (i = p; i < nvar + 1; i++) {
+    pluto_constraints_free(orthcst[i]);
+  }
+
+  pluto_matrix_free(ortho);
+  isl_basic_set_free(isl_currcst);
+  isl_ctx_free(ctx);
+
+  return orthcst;
+}
+
 /* PlutoConstraints to avoid trivial solutions (all zeros)
  *
  * hyp_search_mode = EAGER: If a statement's transformation is not full-ranked,

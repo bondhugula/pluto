@@ -163,9 +163,9 @@ void pluto_compute_dep_satisfaction(PlutoProg *prog) {
   }
 }
 
+#if 0
 /* TODO:Merge this code with get_stmt_ortho_constraints in src/framework.c */
 
-#if 0
 /*
  * Constraints to specify a portion of the linearly independent sub-space
  */
@@ -1200,7 +1200,8 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_ortho_constraints(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] = get_stmt_ortho_constraints_pluto_plus(stmts[j], prog, cst,
+                                                       &orthonum[j]);
     orthosum += orthonum[j];
   }
 
@@ -1221,13 +1222,13 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     assert(lin_ind_mode == LAZY);
 
     /* Get independence constraints for each statement */
-    for (j = 0; j < nstmts; j++) {
-      /* TODO: Replace this call the get_stmt_ortho_constraints in
-       * src/framework.c*/
-      /* orthcst[j] = get_stmt_non_negative_orthant_constraints( */
-      /*     stmts[j], prog, currcst, &orthonum[j]); */
-      orthosum += orthonum[j];
-    }
+    /* for (j = 0; j < nstmts; j++) { */
+    /* TODO: Replace this call the get_stmt_ortho_constraints in
+     * src/framework.c*/
+    /*   orthcst[j] = get_stmt_non_negative_orthant_constraints( */
+    /*       stmts[j], prog, currcst, &orthonum[j]); */
+    /*   orthosum += orthonum[j]; */
+    /* } */
 
     if (orthosum >= 1) {
       /* At least one stmt should have a linearly independent hyperplane */
@@ -1285,8 +1286,8 @@ PlutoConstraints *get_prog_mod_sum_constraints(PlutoProg *prog) {
  *
  * If all statements already have enough linearly independent solutions, no
  * independence constraints will be generated, and since no non-trivial
- * solution constraints are added in such a case, the trivial zero solution will
- * end up being returned.
+ * solution constraints are added in such a case, the trivial zero solution
+ * will end up being returned.
  * */
 int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
@@ -1395,8 +1396,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
 }
 
 /*
- * Returns H_LOOP if this hyperplane is a real loop or H_SCALAR if it's a scalar
- * dimension (beta row or node splitter)
+ * Returns H_LOOP if this hyperplane is a real loop or H_SCALAR if it's a
+ * scalar dimension (beta row or node splitter)
  */
 int get_loop_type(Stmt *stmt, int level) {
   for (int j = 0; j < (int)stmt->trans->ncols - 1; j++) {
@@ -1667,8 +1668,8 @@ void pluto_print_dep_directions(PlutoProg *prog) {
 
 /*
  * 1. Pad statement domains to maximum domain depth to make it easier to
- * construct scheduling constraints. These will be removed before the actual ILP
- * runs, and just before pluto_auto_transform returns.
+ * construct scheduling constraints. These will be removed before the actual
+ * ILP runs, and just before pluto_auto_transform returns.
  *
  * 2. Pre-process dependence domains to allow a single affine bounding
  * expression to be constructed. Fix this implementation (too brittle).
@@ -1689,8 +1690,8 @@ void normalize_domains(PlutoProg *prog) {
    *
    * Solution: global context should be available
    *
-   * How to construct? Just put together all constraints on parameters alone in
-   * the global context, i.e., eliminate iterators out of each domain and
+   * How to construct? Just put together all constraints on parameters alone
+   * in the global context, i.e., eliminate iterators out of each domain and
    * aggregate constraints on the parameters, and add them to each
    * dependence polyhedron
    */
@@ -2688,7 +2689,8 @@ PlutoConstraints *pluto_stmt_get_schedule(const Stmt *stmt) {
  * domain: set (iterations of stmt) accessing data - in transformed space
  * acc: original access function
  * Input format: [copy_level, stmt->trans->nrows, prog->npar, 1]
- *                or [copy_level, stmt->trans->nrows-copy_level, prog->npar, 1]
+ *                or [copy_level, stmt->trans->nrows-copy_level, prog->npar,
+ * 1]
  *
  * Output format:  [copy_level, acc->nrows, prog->npar + 1]
  * */
