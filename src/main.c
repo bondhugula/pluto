@@ -197,11 +197,8 @@ int main(int argc, char *argv[]) {
   options = pluto_options_alloc();
 
   const struct option pluto_options[] = {
-    /* TODO: Are the first two options necessary for pluto+ ? These need to be
-       removed or added after review*/
-    /* {"disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1},
-     */
-    /* {"disable-neg-coeffs", no_argument, &options->disable_neg_coeffs, 1}, */
+    {"disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1},
+    {"disable-neg-coeffs", no_argument, &options->disable_neg_coeffs, 1},
     {"fast-lin-ind-check", no_argument, &options->flic, 1},
     {"flic", no_argument, &options->flic, 1},
     {"tile", no_argument, &options->tile, 1},

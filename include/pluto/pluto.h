@@ -219,6 +219,12 @@ struct plutoOptions {
 
   /* fast linear independence check */
   int flic;
+
+  /// Disable the negative transformation coefficients.
+  bool disable_neg_coeffs;
+
+  /// Disable the transformation coefficients corresponding to parametric shift.
+  bool disable_param_coeffs;
 };
 typedef struct plutoOptions PlutoOptions;
 
@@ -238,9 +244,12 @@ typedef struct plutoOptions PlutoOptions;
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 
-__isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
-                                         isl_union_map *dependences,
-                                         PlutoOptions *options);
+// Run the Pluto transformation algorithm on the provided domains and
+// dependences. Returns the schedules as an isl_union_map, ownership of which is
+// with the caller.
+isl_union_map *pluto_schedule(isl_union_set *domains,
+                              isl_union_map *dependences,
+                              PlutoOptions *options);
 
 int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
 

@@ -1283,92 +1283,6 @@ PlutoConstraints *get_prog_mod_sum_constraints(PlutoProg *prog) {
   return modsumCst;
 }
 
-/* The following code can be removed once we know that the lower bound for param
- * coeffs are not required. For finding the cone complement the negative value
- * is set in get_coeff_bounding_constraints_for_cone_complement. The callers
- * have been commented out in commit 66275dd*/
-#if 0
-/*
- * Sets the upper and lower bounds for all Pluto+ ILP variables
- * lb_param_coeffs: lower bound for parametric shift coeffs (need a negative
- * value when looking for diamond tiling cone complement)
- */
-PlutoConstraints *get_coeff_bounding_constraints(PlutoProg *prog,
-                                                 int64_t lb_param_coeffs) {
-  int j, i;
-
-  int nvar = prog->nvar;
-  int npar = prog->npar;
-  int bound = prog->options->coeff_bound;
-  int nstmts = prog->nstmts;
-  Stmt **stmts = prog->stmts;
-
-  PlutoConstraints *boundingcst;
-
-  boundingcst = pluto_constraints_alloc(
-      nstmts * (1 + nvar + npar + 1 + 2 + 2 + 2), CST_WIDTH);
-  for (i = 0; i < nstmts; i++) {
-    /* Lower bound for co_eff sum variable */
-    pluto_constraints_add_lb(boundingcst, npar + 1 + i * (nvar + npar + 4), 0);
-
-    /* Upper and lower bounds for the variables */
-    for (j = npar + 1 + i * (nvar + npar + 4) + 1;
-         j < npar + 1 + (i + 1) * (nvar + npar + 4) - 3 - npar; j++) {
-      if (stmts[i]->is_orig_loop[j - npar - 1 - i * (nvar + npar + 4) - 1]) {
-        pluto_constraints_add_lb(boundingcst, j, -bound);
-        pluto_constraints_add_ub(boundingcst, j, bound);
-      }
-    }
-    /* Lower bounds for parameter cofficients */
-    for (j = npar + 1 + i * (nvar + npar + 4) + 1 + nvar;
-         j < npar + 1 + (i + 1) * (nvar + npar + 4) - 3; j++) {
-      pluto_constraints_add_lb(boundingcst, j, lb_param_coeffs);
-    }
-    /* Lower bound for translation coefficient is zero */
-    pluto_constraints_add_lb(boundingcst, j, 0);
-    /* Lower and upper bound for decision variable of non_zero_constraint */
-    pluto_constraints_add_lb(boundingcst, j + 1, 0);
-    pluto_constraints_add_ub(boundingcst, j + 1, 1);
-    /* Lower and upper bound for decision variable of linear_independence
-     * constraints */
-    pluto_constraints_add_lb(boundingcst, j + 2, 0);
-    pluto_constraints_add_ub(boundingcst, j + 2, 1);
-  }
-
-  if (prog->options->disable_param_coeffs) {
-    /* Set coefficients corresponding to parameters to zero */
-    /* This effectively disables parametric shifts */
-    for (i = 0; i < nstmts; i++) {
-      for (j = npar + 1 + i * (nvar + npar + 4) + 1 + nvar;
-           j < npar + 1 + i * (nvar + npar + 4) + 1 + nvar + npar; j++) {
-        pluto_constraints_set_var(boundingcst, j, 0);
-      }
-    }
-  }
-
-  if (prog->options->disable_neg_coeffs) {
-    for (i = 0; i < nstmts; i++) {
-      /* Set all coeff's to >= 0 */
-      for (j = npar + 1 + i * (nvar + npar + 4) + 1;
-           j < npar + 1 + i * (nvar + npar + 4) + 1 + nvar; j++) {
-        if (stmts[i]->is_orig_loop[j - npar - 1 - i * (nvar + npar + 4) - 1]) {
-          pluto_constraints_add_lb(boundingcst, j, 0);
-        }
-      }
-    }
-  }
-
-  for (j = 0; j < npar + 1; j++) {
-    pluto_constraints_add_lb(boundingcst, j, 0);
-  }
-
-  IF_MORE_DEBUG(printf("Coeff bounding constraints \n"););
-  IF_MORE_DEBUG(pluto_constraints_compact_print(stdout, boundingcst););
-
-  return boundingcst;
-}
-#endif
-
 /* Find all linearly independent permutable band of hyperplanes at a level.
  *
  * See sub-functions for hyp_search_mode and lin_ind_mode
@@ -1382,7 +1296,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
   int num_sols_found, j, k;
   int64_t *bestsol;
-  PlutoConstraints *basecst, *nzcst, *boundcst, *modsumCst;
+  PlutoConstraints *basecst, *nzcst, *modsumCst;
   PlutoConstraints *currcst;
 
   int nstmts = prog->nstmts;
@@ -1402,9 +1316,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
 
   /* Don't free basecst */
   basecst = get_permutability_constraints(prog);
-  boundcst = get_coeff_bounding_constraints(prog);
-  pluto_constraints_add(basecst, boundcst);
-  pluto_constraints_free(boundcst);
   // print_polylib_visual_sets("pluto", basecst);
 
   num_sols_found = 0;
@@ -1413,7 +1324,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
    * we will just allocate once and copy each time */
   currcst = pluto_constraints_alloc(basecst->nrows + nstmts + nvar * nstmts,
                                     CST_WIDTH);
-  /* boundcst = get_coeff_bounding_constraints(prog, 0); */
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints_pluto_plus(prog, 0);
   modsumCst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(basecst, boundcst);
   pluto_constraints_add(basecst, modsumCst);

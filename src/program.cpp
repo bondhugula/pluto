@@ -2862,6 +2862,10 @@ PlutoOptions *pluto_options_alloc() {
 
   options->time = 1;
 
+  options->disable_neg_coeffs = 0;
+
+  options->disable_param_coeffs = 0;
+
   return options;
 }
 
