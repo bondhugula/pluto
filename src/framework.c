@@ -244,10 +244,10 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
       /* constant part */
       if (src_stmt == dest_stmt) {
         bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
-            bounding_func_cst->val[k][npar + 1 + nvar + 1];
+            bounding_func_cst->val[k][npar + 1 + nvar + npar + 1];
       } else {
         bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
-            bounding_func_cst->val[k][npar + 1 + 2 * nvar + 2];
+            bounding_func_cst->val[k][npar + 1 + 2 * nvar + 2 * npar + 2];
       }
     }
     pluto_constraints_add(cst, bcst_g);
