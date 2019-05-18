@@ -80,7 +80,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
 
   if (src_stmt != dest_stmt) {
-    phi = pluto_matrix_alloc(2 * nvar + npar + 1, 2 * (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, 2 * (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -89,15 +89,21 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     }
     for (r = nvar; r < 2 * nvar; r++) {
       /* Dest stmt */
-      phi->val[r][(nvar + 1) + (r - nvar)] = 1;
+      phi->val[r][(nvar + npar + 1) + (r - nvar)] = 1;
     }
-    /* No parametric shifts: all zero for 2*nvar to 2*nvar+npar */
+    /* coefficients for parameters */
+    for (r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* Source stmt */
+      phi->val[r][nvar + r - 2 * nvar] = -1;
+      /* Dest stmt */
+      phi->val[r][(nvar + npar + 1) + (nvar + r - 2 * nvar)] = 1;
+    }
 
     /* Translation coefficients */
-    phi->val[2 * nvar + npar][(nvar + 1) + nvar] = 1;
-    phi->val[2 * nvar + npar][nvar] = -1;
+    phi->val[2 * nvar + npar][nvar + npar] = -1;
+    phi->val[2 * nvar + npar][(nvar + npar + 1) + nvar + npar] = 1;
   } else {
-    phi = pluto_matrix_alloc(2 * nvar + npar + 1, (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -108,7 +114,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
       /* Dest stmt */
       phi->val[r][r - nvar] = 1;
     }
-    /* No parametric shifts: so all zero for 2*nvar to 2*nvar+npar-1 */
+    /* Parametric shifts cancel out */
 
     /* Translation coefficients cancel out;
      * so nothing for 2*nvar+npar */
@@ -120,8 +126,8 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   pluto_matrix_free(phi);
 
   if (src_stmt != dest_stmt) {
-    phi =
-        pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + 2 * (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1,
+                             npar + 1 + 2 * (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -130,20 +136,25 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     }
     for (r = nvar; r < 2 * nvar; r++) {
       /* Dest stmt */
-      phi->val[r][npar + 1 + (nvar + 1) + (r - nvar)] = -1;
+      phi->val[r][npar + 1 + (nvar + npar + 1) + (r - nvar)] = -1;
     }
     for (r = 2 * nvar; r < 2 * nvar + npar; r++) {
       /* for \vec{u} - parametric bounding function */
       phi->val[r][r - 2 * nvar] = 1;
+      /* source stmt param shift */
+      phi->val[r][npar + 1 + (nvar + r - 2 * nvar)] = 1;
+      /* dest stmt param shift */
+      phi->val[r][npar + 1 + (nvar + npar + 1) + (nvar + r - 2 * nvar)] = -1;
     }
 
     /* Translation coefficients of statements */
-    phi->val[2 * nvar + npar][npar + 1 + nvar] = 1;
-    phi->val[2 * nvar + npar][npar + 1 + (nvar + 1) + nvar] = -1;
+    phi->val[2 * nvar + npar][npar + 1 + nvar + npar] = 1;
+    phi->val[2 * nvar + npar][npar + 1 + (nvar + npar + 1) + nvar + npar] = -1;
     /* for w */
     phi->val[2 * nvar + npar][npar] = 1;
   } else {
-    phi = pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1,
+                             npar + 1 + (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -157,7 +168,7 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     for (r = 2 * nvar; r < 2 * nvar + npar; r++) {
       /* for u */
       phi->val[r][r - 2 * nvar] = 1;
-      /* No parametric shift coefficients */
+      /* Statement's parametric shift coefficients cancel out */
     }
     /* Statement's translation coefficients cancel out */
 
@@ -181,28 +192,28 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   cst->nrows = 0;
   cst->ncols = CST_WIDTH;
 
-  src_offset = npar + 1 + src_stmt * (nvar + 1);
-  dest_offset = npar + 1 + dest_stmt * (nvar + 1);
+  src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+  dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
 
   /* Permutability constraints */
   if (!IS_RAR(dep->type)) {
     /* Permutability constraints only for non-RAR deps */
     for (unsigned k = 0; k < tiling_valid_cst->nrows; k++) {
       pluto_constraints_add_constraint(cst, tiling_valid_cst->is_eq[k]);
-      for (j = 0; j < nvar + 1; j++) {
+      for (j = 0; j < nvar + npar + 1; j++) {
         cst->val[cst->nrows - 1][src_offset + j] = tiling_valid_cst->val[k][j];
         if (src_stmt != dest_stmt) {
           cst->val[cst->nrows - 1][dest_offset + j] =
-              tiling_valid_cst->val[k][nvar + 1 + j];
+              tiling_valid_cst->val[k][nvar + npar + 1 + j];
         }
       }
       /* constant part */
       if (src_stmt == dest_stmt) {
         cst->val[cst->nrows - 1][cst->ncols - 1] =
-            tiling_valid_cst->val[k][nvar + 1];
+            tiling_valid_cst->val[k][nvar + npar + 1];
       } else {
         cst->val[cst->nrows - 1][cst->ncols - 1] =
-            tiling_valid_cst->val[k][2 * nvar + 2];
+            tiling_valid_cst->val[k][2 * nvar + 2 * npar + 2];
       }
     }
   }
@@ -212,8 +223,8 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     /* Bounding function constraints in global format */
     PlutoConstraints *bcst_g;
 
-    src_offset = npar + 1 + src_stmt * (nvar + 1);
-    dest_offset = npar + 1 + dest_stmt * (nvar + 1);
+    src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+    dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
 
     bcst_g = pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH);
 
@@ -222,12 +233,12 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
       for (j = 0; j < npar + 1; j++) {
         bcst_g->val[bcst_g->nrows - 1][j] = bounding_func_cst->val[k][j];
       }
-      for (j = 0; j < nvar + 1; j++) {
+      for (j = 0; j < nvar + npar + 1; j++) {
         bcst_g->val[bcst_g->nrows - 1][src_offset + j] =
             bounding_func_cst->val[k][npar + 1 + j];
         if (src_stmt != dest_stmt) {
           bcst_g->val[bcst_g->nrows - 1][dest_offset + j] =
-              bounding_func_cst->val[k][npar + 1 + nvar + 1 + j];
+              bounding_func_cst->val[k][npar + 1 + nvar + npar + 1 + j];
         }
       }
       /* constant part */
@@ -455,7 +466,7 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
   PlutoConstraints *dpoly = pluto_constraints_dup(dep->dpolytope);
 
   if (src_stmt != dest_stmt) {
-    phi = pluto_matrix_alloc(2 * nvar + npar + 1, 2 * (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, 2 * (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -464,17 +475,22 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
     }
     for (r = nvar; r < 2 * nvar; r++) {
       /* Dest stmt */
-      phi->val[r][(nvar + 1) + (r - nvar)] = 1;
+      phi->val[r][(nvar + npar + 1) + (r - nvar)] = 1;
     }
-    /* No parametric shifts: all zero for 2*nvar to 2*nvar+npar */
-
+    /* coefficients for parameters */
+    for (r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* Source stmt */
+      phi->val[r][nvar + r - 2 * nvar] = -1;
+      /* Dest stmt */
+      phi->val[r][(nvar + npar + 1) + (nvar + r - 2 * nvar)] = 1;
+    }
     /* Translation coefficients */
-    phi->val[2 * nvar + npar][(nvar + 1) + nvar] = 1;
-    phi->val[2 * nvar + npar][nvar] = -1;
+    phi->val[2 * nvar + npar][nvar + npar] = -1;
+    phi->val[2 * nvar + npar][(nvar + npar + 1) + nvar + npar] = 1;
     /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
-    phi->val[2 * nvar + npar][2 * (nvar + 1)] = -1;
+    phi->val[2 * nvar + npar][2 * (nvar + npar + 1)] = -1;
   } else {
-    phi = pluto_matrix_alloc(2 * nvar + npar + 1, (nvar + 1) + 1);
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, (nvar + npar + 1) + 1);
     pluto_matrix_set(phi, 0);
 
     for (r = 0; r < nvar; r++) {
@@ -485,13 +501,13 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
       /* Dest stmt */
       phi->val[r][r - nvar] = 1;
     }
-    /* No parametric shifts: so all zero for 2*nvar to 2*nvar+npar-1 */
+    /* Parametric shifts cancel out */
 
     /* Translation coefficients cancel out;
      * so nothing for 2*nvar+npar */
 
     /* \phi(t) - \phi(s) - 1 >= 0: this is for the -1 */
-    phi->val[2 * nvar + npar][nvar + 1] = -1;
+    phi->val[2 * nvar + npar][nvar + npar + 1] = -1;
   }
 
   /* Apply Farkas lemma */
@@ -507,28 +523,28 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
   cst->nrows = 0;
   cst->ncols = CST_WIDTH;
 
-  src_offset = npar + 1 + src_stmt * (nvar + 1);
-  dest_offset = npar + 1 + dest_stmt * (nvar + 1);
+  src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+  dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
 
   /* Permutability constraints */
   if (!IS_RAR(dep->type)) {
     /* Permutability constraints only for non-RAR deps */
     for (unsigned k = 0; k < sched_valid_cst->nrows; k++) {
       pluto_constraints_add_constraint(cst, sched_valid_cst->is_eq[k]);
-      for (j = 0; j < nvar + 1; j++) {
+      for (j = 0; j < nvar + npar + 1; j++) {
         cst->val[cst->nrows - 1][src_offset + j] = sched_valid_cst->val[k][j];
         if (src_stmt != dest_stmt) {
           cst->val[cst->nrows - 1][dest_offset + j] =
-              sched_valid_cst->val[k][nvar + 1 + j];
+              sched_valid_cst->val[k][nvar + npar + 1 + j];
         }
       }
       /* constant part */
       if (src_stmt == dest_stmt) {
         cst->val[cst->nrows - 1][cst->ncols - 1] =
-            sched_valid_cst->val[k][nvar + 1];
+            sched_valid_cst->val[k][nvar + npar + 1];
       } else {
         cst->val[cst->nrows - 1][cst->ncols - 1] =
-            sched_valid_cst->val[k][2 * nvar + 2];
+            sched_valid_cst->val[k][2 * nvar + 2 * npar + 2];
       }
     }
   }
@@ -567,8 +583,8 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
   nvar = prog->nvar;
   npar = prog->npar;
 
-  fcst =
-      pluto_constraints_alloc(128, (npar + 1 + prog->nstmts * (nvar + 1) + 1));
+  fcst = pluto_constraints_alloc(
+      128, (npar + 1 + prog->nstmts * (nvar + npar + 4) + 1));
 
   /* Compute the constraints and store them */
   for (i = 0, inc = 0; i < ndeps; i++) {
