@@ -89,6 +89,18 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+TESTS="\
+  test/pluto+/dep-1,1.c \
+  test/pluto+/rev+fusion.c \
+  "
+
+# Pluto+ specific tests (without --pet and without any tiling/parallelization)"
+for file in $TESTS; do
+    printf '%-50s ' $file
+    ./src/pluto --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
+
 # Test libpluto
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c

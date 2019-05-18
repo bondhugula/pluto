@@ -1382,7 +1382,7 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
   int num_sols_found, j, k;
   int64_t *bestsol;
-  PlutoConstraints *basecst, *nzcst, *boundcst, *modsumCst;
+  PlutoConstraints *basecst, *nzcst, *modsumCst;
   PlutoConstraints *currcst;
 
   int nstmts = prog->nstmts;
@@ -1402,9 +1402,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
 
   /* Don't free basecst */
   basecst = get_permutability_constraints(prog);
-  boundcst = get_coeff_bounding_constraints(prog);
-  pluto_constraints_add(basecst, boundcst);
-  pluto_constraints_free(boundcst);
   // print_polylib_visual_sets("pluto", basecst);
 
   num_sols_found = 0;
@@ -1415,9 +1412,9 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                     CST_WIDTH);
   /* boundcst = get_coeff_bounding_constraints(prog, 0); */
   modsumCst = get_prog_mod_sum_constraints(prog);
-  pluto_constraints_add(basecst, boundcst);
+  // pluto_constraints_add(basecst, boundcst);
   pluto_constraints_add(basecst, modsumCst);
-  pluto_constraints_free(boundcst);
+  // pluto_constraints_free(boundcst);
   pluto_constraints_free(modsumCst);
 
   num_sols_found = 0;
