@@ -745,45 +745,6 @@ int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps) {
   return count;
 }
 
-/**
- * Coefficient bounds when finding the cone complement; the cone complement
- * could have (and always has in the case of Pluto as opposed to Pluto+)
- * negative coefficients. So, we can't assume non-negative coefficients as in
- * the remaining Pluto hyperplanes
- */
-static PlutoConstraints *
-get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog) {
-  int i, npar, nstmts, nvar;
-  PlutoConstraints *cst;
-
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
-
-  cst = pluto_constraints_alloc(1, CST_WIDTH);
-
-  /* Lower bound for bounding coefficients */
-  for (i = 0; i < npar + 1; i++) {
-    pluto_constraints_add_lb(cst, i, 0);
-  }
-  /* Lower bound for transformation coefficients */
-  for (int s = 0; s < nstmts; s++) {
-    for (i = 0; i < nvar; i++) {
-      /* Set this to -4 (is enough) */
-      IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding "
-                       "lower bound %d for stmt dim coefficients\n",
-                       -4););
-      pluto_constraints_add_lb(cst, npar + 1 + s * (nvar + 1) + i, -4);
-    }
-    /* Translation coefficients need not be negative */
-    IF_DEBUG2(printf("[pluto_get_coeff_bound_for_cone_complement] Adding lower "
-                     "bound %d for stmt translation coefficient\n",
-                     0););
-    pluto_constraints_add_lb(cst, npar + 1 + s * (nvar + 1) + nvar, 0);
-  }
-  return cst;
-}
-
 PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
                                        const PlutoProg *prog) {
   int npar = prog->npar;
