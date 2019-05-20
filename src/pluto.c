@@ -852,7 +852,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
               -newcst->val[i][stmt_offset + k + 1];
           /* } */
         }
-        stmt_offset += stmts[j]->dim_orig + 1 + nvar + npar + 3;
+        stmt_offset += stmts[j]->dim_orig + 1 + npar + 3;
       }
     }
   }
