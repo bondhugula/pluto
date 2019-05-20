@@ -831,15 +831,6 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
    * hyperplane order is preserved (no strong reason to do this) */
   /* We do not need to permute in case of pluto-lp-dfp */
   if (!options->dfp) {
-    unsigned j = npar + 1;
-    for (i = 0; i < nstmts; i++) {
-      for (unsigned k = j + 1; k < j + (stmts[i]->dim_orig) / 2; k++) {
-        pluto_constraints_interchange_cols(
-            newcst, k, j + 1 + (stmts[i]->dim_orig - 1 - (k - (j + 1))));
-      }
-      j += stmts[i]->dim_orig + 1 + npar + 3;
-    }
-
     for (unsigned i = 0; i < newcst->nrows; i++) {
       unsigned stmt_offset = npar + 1;
       for (unsigned j = 0; j < nstmts; j++) {
@@ -847,10 +838,8 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
           /* Invert the sign of the coefficients in order to prefer positive
            * coeffs over negative ones if the rest of the values in the
            * objective are the same */
-          /* if ((newcst->val[i][stmt_offset + k + 1])) { */
           newcst->val[i][stmt_offset + k + 1] =
               -newcst->val[i][stmt_offset + k + 1];
-          /* } */
         }
         stmt_offset += stmts[j]->dim_orig + 1 + npar + 3;
       }
@@ -927,13 +916,6 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     if (!options->dfp) {
       unsigned j = npar + 1;
       for (i = 0; i < nstmts; i++) {
-        for (unsigned k = j + 1; k < j + (stmts[i]->dim_orig) / 2; k++) {
-          k1 = k;
-          k2 = j + 1 + (stmts[i]->dim_orig - 1 - (k - (j + 1)));
-          tmp = sol[k1];
-          sol[k1] = sol[k2];
-          sol[k2] = tmp;
-        }
         for (unsigned k = 0; k < stmts[i]->dim_orig; k++) {
           sol[j + 1 + k] = -sol[j + 1 + k];
         }
