@@ -839,6 +839,22 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       }
       j += stmts[i]->dim_orig + 1 + npar + 3;
     }
+
+    for (unsigned i = 0; i < newcst->nrows; i++) {
+      unsigned stmt_offset = npar + 1;
+      for (unsigned j = 0; j < nstmts; j++) {
+        for (unsigned k = 0; k < stmts[j]->dim_orig; k++) {
+          /* Invert the sign of the coefficients in order to prefer positive
+           * coeffs over negative ones if the rest of the values in the
+           * objective are the same */
+          /* if ((newcst->val[i][stmt_offset + k + 1])) { */
+          newcst->val[i][stmt_offset + k + 1] =
+              -newcst->val[i][stmt_offset + k + 1];
+          /* } */
+        }
+        stmt_offset += stmts[j]->dim_orig + 1 + nvar + npar + 3;
+      }
+    }
   }
   IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d "
                   "constraints)\n",
@@ -917,6 +933,9 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
           tmp = sol[k1];
           sol[k1] = sol[k2];
           sol[k2] = tmp;
+        }
+        for (unsigned k = 0; k < stmts[i]->dim_orig; k++) {
+          sol[j + 1 + k] = -sol[j + 1 + k];
         }
         j += stmts[i]->dim_orig + 1 + npar + 3;
       }
