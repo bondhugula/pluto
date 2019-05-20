@@ -16,16 +16,13 @@ else
 fi
 }
 
+# Tests with pet with tiling and parallelization disabled
 TESTS="\
   test/matmul.c \
   test/heat-2d.c \
   test/heat-3d.c \
   test/jacobi-3d-25pt.c \
-  test/jacobi-2d-periodic.c \
-  test/multi-stmt-periodic.c \
-  test/multi-stmt-2d-periodic.c \
   "
-# Tests with pet with tiling and parallelization disabled
 for file in $TESTS; do
   printf '%-50s ' $file
   ./src/pluto $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
@@ -89,15 +86,30 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# Pluto+ specific tests (without --pet and without any tiling/parallelization)"
+echo "Test Pluto+ negative coeff's"
 TESTS="\
   test/pluto+/dep-1,1.c \
   test/pluto+/rev+fusion.c \
   "
-
-# Pluto+ specific tests (without --pet and without any tiling/parallelization)"
 for file in $TESTS; do
     printf '%-50s ' $file
     ./src/pluto --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
+
+
+# Test with ISS
+echo "Test ISS"
+echo "========"
+TESTS_ISS="\
+  test/jacobi-2d-periodic.c \
+  test/multi-stmt-periodic.c \
+  test/multi-stmt-2d-periodic.c \
+  "
+for file in $TESTS_ISS; do
+    printf '%-50s ' $file
+    ./src/pluto --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
 
