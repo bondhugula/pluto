@@ -826,7 +826,6 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
       del_count++;
     }
   }
-  /* TODO: To be updated from here */
 
   /* Permute the constraints so that if all else is the same, the original
    * hyperplane order is preserved (no strong reason to do this) */
@@ -834,11 +833,11 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   if (!options->dfp) {
     unsigned j = npar + 1;
     for (i = 0; i < nstmts; i++) {
-      for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
+      for (unsigned k = j + 1; k < j + (stmts[i]->dim_orig) / 2; k++) {
         pluto_constraints_interchange_cols(
-            newcst, k, j + (stmts[i]->dim_orig - 1 - (k - j)));
+            newcst, k, j + 1 + (stmts[i]->dim_orig - 1 - (k - (j + 1))));
       }
-      j += stmts[i]->dim_orig + 1;
+      j += stmts[i]->dim_orig + 1 + npar + 3;
     }
   }
   IF_DEBUG(printf("[pluto] pluto_prog_constraints_lexmin (%d variables, %d "
@@ -912,14 +911,14 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     if (!options->dfp) {
       unsigned j = npar + 1;
       for (i = 0; i < nstmts; i++) {
-        for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
+        for (unsigned k = j + 1; k < j + (stmts[i]->dim_orig) / 2; k++) {
           k1 = k;
-          k2 = j + (stmts[i]->dim_orig - 1 - (k - j));
+          k2 = j + 1 + (stmts[i]->dim_orig - 1 - (k - (j + 1)));
           tmp = sol[k1];
           sol[k1] = sol[k2];
           sol[k2] = tmp;
         }
-        j += stmts[i]->dim_orig + 1;
+        j += stmts[i]->dim_orig + 1 + npar + 3;
       }
     }
 
@@ -1336,6 +1335,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     IF_DEBUG2(pluto_constraints_compact_print(stdout, basecst));
     pluto_constraints_copy(currcst, basecst);
     nzcst = get_non_trivial_sol_constraints_pluto_plus(prog, hyp_search_mode);
+    IF_DEBUG(printf("Non zero constraints\n"););
+    IF_DEBUG(pluto_constraints_cplex_print(stdout, nzcst););
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
