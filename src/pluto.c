@@ -437,8 +437,6 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
   fsol = NULL;
   if (sol) {
-    int k1, k2, q;
-    int64_t tmp;
     /* Permute the solution in line with the permuted cst */
     if (!options->dfp) {
       unsigned j = npar + 1;
@@ -453,7 +451,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     fsol = (int64_t *)malloc((cst->ncols - 1) * sizeof(int64_t));
 
     /* Fill the soln with zeros for the redundant variables */
-    q = 0;
+    int q = 0;
     for (j = 0; j < (int)cst->ncols - 1; j++) {
       fsol[j] = redun[j] ? 0 : sol[q++];
     }
