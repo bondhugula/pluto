@@ -1324,8 +1324,9 @@ void set_glpk_objective_from_pluto_matrix(glp_prob *lp, PlutoMatrix *obj) {
 /* Construct ILP in cplex format. The last four parameters are used for
  * scaling solutions to integers */
 int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                          PlutoMatrix *obj, double **val,
-                                          int **index, int npar, int num_ccs) {
+                                            PlutoMatrix *obj, double **val,
+                                            int **index, int npar,
+                                            int num_ccs) {
   int i, j, is_unsat, num_sols;
   int64_t *sol;
   double *fpsol, *scale_sols;
@@ -1344,7 +1345,7 @@ int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
   set_glpk_objective_from_pluto_matrix(lp, obj);
 
   for (i = 0; i < cst->ncols - 1; i++) {
-    glp_set_col_bnds(lp, i + 1, GLP_LO, 0.0, 0.0);
+    glp_set_col_bnds(lp, i + 1, GLP_FR, 0.0, 0.0);
   }
 
   if (!options->lp) {
