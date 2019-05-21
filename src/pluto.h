@@ -507,21 +507,20 @@ void pluto_compute_satisfaction_vectors(PlutoProg *prog);
 void pluto_compute_dep_directions(PlutoProg *prog);
 void pluto_dep_satisfaction_reset(PlutoProg *prog);
 
-PlutoConstraints **
-get_stmt_lin_ind_constraints(Stmt *stmt, const PlutoProg *prog, int *orthonum);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_scc_permutability_constraints(int, PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
                                                      int);
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-                                              const PlutoConstraints *currcst,
-                                              int *orthonum);
+PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
+                                                const PlutoProg *prog,
+                                                const PlutoConstraints *currcst,
+                                                int *orthonum);
 PlutoConstraints **
-get_stmt_ortho_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
-                                      const PlutoConstraints *currcst,
-                                      int *orthonum);
+get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
+                                        const PlutoConstraints *currcst,
+                                        int *orthonum);
 PlutoConstraints *get_global_independence_cst(PlutoConstraints ***ortho_cst,
                                               int *orthonum,
                                               const PlutoProg *prog);
