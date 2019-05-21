@@ -274,22 +274,24 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
   int nvar = prog->nvar;
   PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols - 1);
   pluto_matrix_set(obj, 0);
+  int b = options->coeff_bound;
 
   /* u */
   for (int j = 0; j < npar; j++) {
-    obj->val[0][j] = 5 * 5 * nvar * prog->nstmts;
+    obj->val[0][j] = 100 * (b + 1) * (b + 1) * nvar * nvar * prog->nstmts;
   }
   /* w */
-  obj->val[0][npar] = 5 * nvar * prog->nstmts;
+  obj->val[0][npar] = (b + 1) * (b + 1) * nvar * nvar * prog->nstmts;
 
   for (int i = 0, j = npar + 1; i < prog->nstmts; i++) {
+    obj->val[0][j++] = (b + 1) * nvar;
     unsigned k;
     for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
       obj->val[0][k] = (nvar + 2) * (prog->stmts[i]->dim_orig - (k - j));
     }
     /* constant shift */
     obj->val[0][k] = 1;
-    j += prog->stmts[i]->dim_orig + 1;
+    j += prog->stmts[i]->dim_orig + 1 + npar + 2;
   }
   return obj;
 }
