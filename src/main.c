@@ -211,10 +211,10 @@ int main(int argc, char *argv[]) {
     {"moredebug", no_argument, &options->moredebug, true},
     {"rar", no_argument, &options->rar, 1},
     {"identity", no_argument, &options->identity, 1},
-    {"nofuse", no_argument, &options->fuse, NO_FUSE},
-    {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
-    {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
-    {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+    {"nofuse", no_argument, (int *)&options->fuse, kNoFuse},
+    {"maxfuse", no_argument, (int *)&options->fuse, kMaximalFuse},
+    {"smartfuse", no_argument, (int *)&options->fuse, kSmartFuse},
+    {"typedfuse", no_argument, (int *)&options->fuse, kTypedFuse},
     {"hybridfuse", no_argument, &options->hybridcut, 1},
     {"delayedcut", no_argument, &options->delayed_cut, 1},
     {"parallel", no_argument, &options->parallel, 1},
@@ -456,10 +456,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
            "option (FCG based approach) only. Disabling clustering \n");
   }
 
-  if (options->fuse == TYPED_FUSE && !options->dfp) {
+  if (options->fuse == kTypedFuse && !options->dfp) {
     printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. "
            "Turning off Typed fuse\n");
-    options->fuse = SMART_FUSE;
+    options->fuse = kSmartFuse;
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
@@ -471,7 +471,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->lastwriter = 1;
   }
   /* Typed fuse is available with clustered FCG approach only */
-  if (options->fuse == TYPED_FUSE && options->dfp && !options->scc_cluster) {
+  if (options->fuse == kTypedFuse && options->dfp && !options->scc_cluster) {
     if (!options->silent) {
       printf("[pluto] Typed fuse supported only with clustered FCG approach. "
              "Turning on SCC clustering\n");

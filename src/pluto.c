@@ -1667,7 +1667,7 @@ int pluto_auto_transform(PlutoProg *prog) {
         fprintf(stdout, "%d ind solns in .precut file\n", num_ind_sols_found));
   } else {
     num_ind_sols_found = 0;
-    if (options->fuse == SMART_FUSE && !options->dfp) {
+    if (options->fuse == kSmartFuse && !options->dfp) {
       cut_scc_dim_based(prog, ddg);
     }
   }
@@ -1677,7 +1677,7 @@ int pluto_auto_transform(PlutoProg *prog) {
 
   if (options->dfp) {
 #if defined GLPK || defined GUROBI
-    if (options->fuse == NO_FUSE) {
+    if (options->fuse == kNoFuse) {
       ddg_compute_scc(prog);
       cut_all_sccs(prog, ddg);
     }
@@ -1749,7 +1749,7 @@ int pluto_auto_transform(PlutoProg *prog) {
        * (maximum across all statements) */
       int num_sols_left;
 
-      if (options->fuse == NO_FUSE) {
+      if (options->fuse == kNoFuse) {
         ddg_compute_scc(prog);
         cut_all_sccs(prog, ddg);
       }
@@ -1803,10 +1803,10 @@ int pluto_auto_transform(PlutoProg *prog) {
         ddg_compute_scc(prog);
 
         if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
-          if (options->fuse == NO_FUSE) {
+          if (options->fuse == kNoFuse) {
             /* No fuse */
             cut_all_sccs(prog, ddg);
-          } else if (options->fuse == SMART_FUSE) {
+          } else if (options->fuse == kSmartFuse) {
             /* Smart fuse (default) */
             cut_smart(prog, ddg);
           } else {
