@@ -1564,9 +1564,9 @@ static void copy_hyperplane(int64_t *h1, int64_t *h2, int ncols) {
 }
 
 /*
- * Top-level automatic transformation algoritm
+ * Top-level automatic transformation algoritm.
  *
- * All dependences are reset to unsatisfied before starting
+ * All dependences are reset to unsatisfied before starting.
  *
  */
 int pluto_auto_transform(PlutoProg *prog) {
@@ -2187,7 +2187,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
 }
 
 /*
- * Diamond Tiling
+ * Diamond tiling.
  */
 int pluto_diamond_tile(PlutoProg *prog) {
   unsigned nbands;
