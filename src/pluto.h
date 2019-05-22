@@ -504,9 +504,10 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_scc_permutability_constraints(int, PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
                                                      int);
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-                                              const PlutoConstraints *currcst,
-                                              int *orthonum);
+PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
+                                                const PlutoProg *prog,
+                                                const PlutoConstraints *currcst,
+                                                int *orthonum);
 PlutoConstraints *get_global_independence_cst(PlutoConstraints ***ortho_cst,
                                               int *orthonum,
                                               const PlutoProg *prog);

@@ -690,7 +690,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_ortho_constraints(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] = get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
     orthosum += orthonum[j];
   }
 
@@ -1564,9 +1564,9 @@ static void copy_hyperplane(int64_t *h1, int64_t *h2, int ncols) {
 }
 
 /*
- * Top-level automatic transformation algoritm
+ * Top-level automatic transformation algoritm.
  *
- * All dependences are reset to unsatisfied before starting
+ * All dependences are reset to unsatisfied before starting.
  *
  */
 int pluto_auto_transform(PlutoProg *prog) {
@@ -1668,7 +1668,7 @@ int pluto_auto_transform(PlutoProg *prog) {
         fprintf(stdout, "%d ind solns in .precut file\n", num_ind_sols_found));
   } else {
     num_ind_sols_found = 0;
-    if (options->fuse == SMART_FUSE && !options->dfp) {
+    if (options->fuse == kSmartFuse && !options->dfp) {
       cut_scc_dim_based(prog, ddg);
     }
   }
@@ -1678,7 +1678,7 @@ int pluto_auto_transform(PlutoProg *prog) {
 
   if (options->dfp) {
 #if defined GLPK || defined GUROBI
-    if (options->fuse == NO_FUSE) {
+    if (options->fuse == kNoFuse) {
       ddg_compute_scc(prog);
       cut_all_sccs(prog, ddg);
     }
@@ -1766,7 +1766,7 @@ int pluto_auto_transform(PlutoProg *prog) {
        * (maximum across all statements) */
       int num_sols_left;
 
-      if (options->fuse == NO_FUSE) {
+      if (options->fuse == kNoFuse) {
         ddg_compute_scc(prog);
         cut_all_sccs(prog, ddg);
       }
@@ -1820,10 +1820,10 @@ int pluto_auto_transform(PlutoProg *prog) {
         ddg_compute_scc(prog);
 
         if (get_num_unsatisfied_inter_scc_deps(prog) >= 1) {
-          if (options->fuse == NO_FUSE) {
+          if (options->fuse == kNoFuse) {
             /* No fuse */
             cut_all_sccs(prog, ddg);
-          } else if (options->fuse == SMART_FUSE) {
+          } else if (options->fuse == kSmartFuse) {
             /* Smart fuse (default) */
             cut_smart(prog, ddg);
           } else {
@@ -1849,7 +1849,7 @@ int pluto_auto_transform(PlutoProg *prog) {
                      get_num_unsatisfied_deps(prog->deps, prog->ndeps));
               printf("\tNumber of unsatisfied inter-scc deps: %d\n",
                      get_num_unsatisfied_inter_scc_deps(prog));
-              fprintf(stdout, "[pluto] WARNING: Unfortunately, pluto cannot "
+              fprintf(stdout, "[pluto] WARNING: Unfortunately, Pluto cannot "
                               "find any more hyperplanes.\n");
               fprintf(stdout, "\tThis is usually a result of (1) a bug in the "
                               "dependence tester,\n");
@@ -2201,7 +2201,7 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
 }
 
 /*
- * Diamond Tiling
+ * Diamond tiling.
  */
 int pluto_diamond_tile(PlutoProg *prog) {
   unsigned nbands;

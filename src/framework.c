@@ -554,7 +554,7 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
 }
 
 /*
- * 1-d affine schedule for a set of statements
+ * 1-d affine schedule for a set of statements.
  */
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
                                                      Stmt **stmts, int nstmts) {
@@ -640,9 +640,10 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
  * If the null space is 0-dimensional, *orthonum will be zero and the return
  * value is NULL
  */
-PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
-                                              const PlutoConstraints *currcst,
-                                              int *orthonum) {
+PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
+                                                const PlutoProg *prog,
+                                                const PlutoConstraints *currcst,
+                                                int *orthonum) {
   int nvar, npar, nstmts;
   PlutoConstraints **orthcst;
   HyperplaneProperties *hProps;
@@ -721,9 +722,8 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
 
   /* All non-negative orthant only */
   /* An optimized version where the constraints are added as
-   * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
-   *
-   * basically look only in the orthogonal space where everything is
+   * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1,
+   * basically, only looking in the orthogonal space where everything is
    * non-negative
    */
 
@@ -783,7 +783,6 @@ PlutoConstraints **get_stmt_ortho_constraints(Stmt *stmt, const PlutoProg *prog,
       isl_basic_set_free(orthcst_i);
     }
     p++;
-    /* assert(p<=nvar-1); */
   }
 
   if (p >= 1) {
@@ -980,7 +979,7 @@ bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, unsigned level) {
 
   pluto_constraints_add(cst, dep->dpolytope);
 
-  /* if no solution exists, the dependence is satisfied, i.e., no points
+  /* If no solution exists, the dependence is satisfied, i.e., no points
    * satisfy \phi(src) - \phi(dest) <= 0 */
   is_empty = pluto_constraints_is_empty(cst);
   pluto_constraints_free(cst);
@@ -1050,8 +1049,7 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
 }
 
 /*
- * A precise dep satisfaction computation
- *
+ * A precise dep satisfaction computation.
  * Returns: number of dependences satisfied
  */
 int pluto_compute_dep_satisfaction_precise(PlutoProg *prog) {
@@ -1132,11 +1130,7 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
   cst = pluto_constraints_alloc(1 + dep->dpolytope->nrows,
                                 src_dim + dest_dim + npar + 1);
 
-  /*
-   * constraint format
-   * \phi(dest) - \phi (src) >= 1
-   */
-
+  /* Constraint format: \phi(dest) - \phi (src) >= 1 */
   cst->is_eq[0] = 0;
   for (j = 0; j < src_dim; j++) {
     cst->val[0][j] = -stmts[src]->trans->val[level][j];
@@ -1349,6 +1343,6 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index,
     stmt_offset += stmts[i]->dim_orig + 1;
   }
 
-  /* This is a safety check.  Can be removed after testing the implementation */
+  /* Safety check. */
   assert(nrows == num_rows);
 }
