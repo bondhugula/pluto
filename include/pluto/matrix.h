@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #ifndef _PLUTO_MATRIX_H
 #define _PLUTO_MATRIX_H
 /* A matrix */

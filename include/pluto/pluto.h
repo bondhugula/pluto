@@ -33,6 +33,26 @@ typedef struct isl_union_map isl_union_map;
 extern "C" {
 #endif
 
+/* Fusion options for options->fuse */
+enum fusionType {
+  /* Do not fuse across SCCs */
+  kNoFuse,
+
+  /* Geared towards maximal fusion, but not really maximal fusion. */
+  kMaximalFuse,
+
+  /* Does not fuse nests with different dimensionality. */
+  kSmartFuse,
+
+  /* Fuses SCCs only if fusion does not result in loss of parallelism. */
+  kTypedFuse,
+
+  /* Typed fuse at outer levels, Max fuse at inner levels. */
+  kHybridFuse
+};
+typedef enum fusionType FusionType;
+
+
 struct plutoOptions {
 
   /* To tile or not? */
@@ -87,7 +107,7 @@ struct plutoOptions {
   int rar;
 
   /* Decides the fusion algorithm (MAXIMAL_FUSE, NO_FUSE, or SMART_FUSE) */
-  int fuse;
+  FusionType fuse;
 
   /* For experimental purposes with dfp */
   int delayed_cut;
@@ -227,19 +247,6 @@ struct plutoOptions {
   bool disable_param_coeffs;
 };
 typedef struct plutoOptions PlutoOptions;
-
-/* Fusion options for options->fuse */
-
-/* Do not fuse across SCCs */
-#define NO_FUSE 0
-/* Geared towards maximal fusion, but not really maximal fusion */
-#define MAXIMAL_FUSE 1
-/* Something in between the above two */
-#define SMART_FUSE 2
-/* Fuses SCCs only if fusion does not result in loss of parallelism */
-#define TYPED_FUSE 3
-/* Typed fuse at outer levels, Max fuse at inner levels */
-#define HYBRID_FUSE 4
 
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
