@@ -289,6 +289,10 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
     for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
       obj->val[0][k] = (nvar + 2) * (prog->stmts[i]->dim_orig - (k - j));
     }
+    for (; k < j + prog->stmts[i]->dim_orig + npar; k++) {
+      obj->val[0][k] = 1;
+    }
+
     /* constant shift */
     obj->val[0][k] = 1;
     j += prog->stmts[i]->dim_orig + 1 + npar + 2;
@@ -1391,9 +1395,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   PlutoConstraints *fcst = get_feautrier_schedule_constraints(
       prog, band->loop->stmts, band->loop->nstmts);
 
-  /* TODO: Check why the lowerbound has to be zero */
-  /* bcst = get_coeff_bounding_constraints(prog, 0); */
-  bcst = get_coeff_bounding_constraints(prog);
+  bcst = get_coeff_bounding_constraints_pluto_plus(prog, 0);
+  /* bcst = get_coeff_bounding_constraints(prog); */
   modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(fcst, bcst);
   pluto_constraints_free(bcst);
@@ -1549,8 +1552,9 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
    */
   con_start_cst = pluto_constraints_dup(basecst);
   /* TODO: Fix this call in case we need lb of -4  */
-  /* boundcst = get_coeff_bounding_constraints(prog, -4); */
-  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
+  PlutoConstraints *boundcst =
+      get_coeff_bounding_constraints_pluto_plus(prog, -4);
+  /* PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog); */
   PlutoConstraints *modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(con_start_cst, modsumcst);
   /* IMPORTANT: boundcst adds a bound on parametric shifts */
