@@ -3396,29 +3396,21 @@ void swap_ilp_sol_with_level(int par_level, int level, int cc_id, int64_t *sol,
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
-  int j, num_sccs, nvar, npar, nstmts, level, ndeps;
-  int initial_cuts, nrows, stmt_offset;
-  Graph *orig_ddg;
-  int64_t *sol;
-  PlutoConstraints *skewingCst, *basecst, *const_dep_check_cst;
-  HyperplaneProperties *hProps;
-  Stmt **stmts;
   bool *src_dims, *skew_dims, tile_preventing_deps[prog->ndeps];
   double tstart;
   bool is_skew_introduced = false;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  stmts = prog->stmts;
-  ndeps = prog->ndeps;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
 
   /* If there are zero or one hyperpane then you dont need to skew */
   if (prog->num_hyperplanes <= 1) {
     return is_skew_introduced;
   }
   assert(prog->hProps != NULL);
-  hProps = prog->hProps;
+  HyperplaneProperties *hProps = prog->hProps;
 
   if (!options->silent) {
     printf("[Pluto]: Tileabilty with skew\n");
@@ -3431,15 +3423,15 @@ bool introduce_skew(PlutoProg *prog) {
   pluto_dep_satisfaction_reset(prog);
 
   Graph *newDDG = ddg_create(prog);
-  orig_ddg = prog->ddg;
+  Graph *orig_ddg = prog->ddg;
   prog->ddg = newDDG;
 
   for (int i = 0; i < prog->ndeps; i++) {
     tile_preventing_deps[i] = 0;
   }
 
-  initial_cuts = 0;
-  level = 0;
+  int initial_cuts = 0;
+  int level = 0;
   for (; level < prog->num_hyperplanes; level++) {
     if (hProps[level].type == H_LOOP) {
       break;
@@ -3452,31 +3444,38 @@ bool introduce_skew(PlutoProg *prog) {
   if (initial_cuts == prog->num_hyperplanes) {
     return is_skew_introduced;
   }
-  basecst = get_permutability_constraints(prog);
+  /* basecst = get_permutability_constraints(prog); */
   ddg_update(newDDG, prog);
 
   assert(level == initial_cuts);
   ddg_compute_scc(prog);
   Scc *sccs = newDDG->sccs;
-  num_sccs = newDDG->num_sccs;
+  int num_sccs = newDDG->num_sccs;
 
-  const_dep_check_cst = pluto_constraints_alloc(ndeps * nvar + 1, CST_WIDTH);
-  nrows = basecst->nrows + nstmts * (nvar + 1);
-  skewingCst = pluto_constraints_alloc(nrows, basecst->ncols);
-  skewingCst->nrows = 0;
-  skewingCst->ncols = CST_WIDTH;
-  pluto_constraints_add(skewingCst, basecst);
-  dep_satisfaction_update(prog, level);
+  /* const_dep_check_cst = pluto_constraints_alloc(ndeps * nvar + 1, CST_WIDTH);
+   */
+  /* pluto_constraints_add(skewingCst, basecst); */
 
   ddg_compute_cc(prog);
   int num_ccs = prog->ddg->num_ccs;
   PlutoConstraints **cc_permute_constraints =
       (PlutoConstraints **)malloc(num_ccs * sizeof(PlutoConstraints *));
+  int nrows = 0;
   for (int i = 0; i < num_ccs; i++) {
     cc_permute_constraints[i] = get_cc_permutability_constraints(i, prog);
+    if (cc_permute_constraints[i] && cc_permute_constraints[i]->nrows > nrows) {
+      nrows = cc_permute_constraints[i]->nrows;
+    }
   }
 
+  nrows += nstmts * (nvar + 1);
+  PlutoConstraints *skewingCst = pluto_constraints_alloc(nrows, CST_WIDTH);
+  skewingCst->nrows = 0;
+  skewingCst->ncols = CST_WIDTH;
+
   compute_scc_vertices(prog->ddg);
+
+  dep_satisfaction_update(prog, level);
 
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
@@ -3487,6 +3486,13 @@ bool introduce_skew(PlutoProg *prog) {
      */
     /*     continue; */
     /* } */
+
+    /* If there are no dependences in for this scc then, no skewing is required
+     */
+    int cc_id = stmts[sccs[i].vertices[0]]->cc_id;
+    if (cc_permute_constraints[i] == NULL) {
+      continue;
+    }
     skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
     src_dims = get_dep_satisfaction_dims(prog, tile_preventing_deps);
     level++;
@@ -3497,7 +3503,8 @@ bool introduce_skew(PlutoProg *prog) {
       }
 
       int skew_dim = 0;
-      for (j = initial_cuts; j < prog->num_hyperplanes; j++) {
+      int j = initial_cuts;
+      for (; j < prog->num_hyperplanes; j++) {
         if (prog->hProps[j].type == H_LOOP && skew_dims[skew_dim] == 1) {
           level = j;
           break;
@@ -3511,11 +3518,12 @@ bool introduce_skew(PlutoProg *prog) {
         break;
       }
 
-      skewingCst->nrows = basecst->nrows;
-      int cc_id = stmts[sccs[i].vertices[0]]->cc_id;
+      skewingCst->nrows = 0;
+      skewingCst =
+          pluto_constraints_add(skewingCst, cc_permute_constraints[cc_id]);
       get_skewing_constraints(src_dims, skew_dims, i, prog, level, skewingCst);
 
-      sol = pluto_prog_constraints_lexmin(skewingCst, prog);
+      int64_t *sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
       if (!sol) {
         /* The loop nest is not tileable */
@@ -3528,7 +3536,7 @@ bool introduce_skew(PlutoProg *prog) {
       } else {
         /* Set the Appropriate coeffs in the transformation matrix */
         for (int j = 0; j < nstmts; j++) {
-          stmt_offset = npar + 1 + j * (nvar + 1);
+          int stmt_offset = npar + 1 + j * (nvar + 1);
           for (int k = 0; k < nvar; k++) {
             stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
           }
@@ -3562,7 +3570,7 @@ bool introduce_skew(PlutoProg *prog) {
     level = initial_cuts;
   }
 
-  pluto_constraints_free(const_dep_check_cst);
+  /* pluto_constraints_free(const_dep_check_cst); */
   pluto_constraints_free(skewingCst);
   prog->ddg = orig_ddg;
   graph_free(newDDG);
