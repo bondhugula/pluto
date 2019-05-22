@@ -1550,10 +1550,8 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
    * No need of non-zero solution constraints
    */
   con_start_cst = pluto_constraints_dup(basecst);
-  /* TODO: Fix this call in case we need lb of -4  */
   PlutoConstraints *boundcst =
       get_coeff_bounding_constraints_pluto_plus(prog, -4);
-  /* PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog); */
   PlutoConstraints *modsumcst = get_prog_mod_sum_constraints(prog);
   pluto_constraints_add(con_start_cst, modsumcst);
   /* IMPORTANT: boundcst adds a bound on parametric shifts */
