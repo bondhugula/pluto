@@ -834,9 +834,10 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
   return orthcst;
 }
 
-/* TODO: Recheck whether linear ind constraints are correct */
 /* Pluto+ constraints that specify a portion of the linearly independent
- * sub-space of the hyperplanes that were already found for each statement
+ * sub-space of the hyperplanes that were already found for each statement.
+ *
+ * TODO: Recheck whether linear ind constraints are correct.
  */
 PlutoConstraints **
 get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
@@ -910,17 +911,6 @@ get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
     orthcst[i]->ncols = CST_WIDTH;
   }
 
-  /* All non-negative orthant only */
-  /* An optimized version where the constraints are added as
-   * c_1 >= 0, c_2 >= 0, ..., c_n >= 0, c_1+c_2+..+c_n >= 1
-   *
-   * basically only look in the orthogonal space where everything is
-   * non-negative
-   *
-   * All of these constraints are added later to
-   * the global constraint matrix
-   */
-
   /* Normalize ortho first */
   for (j = 0; j < ortho->ncols; j++) {
     if (ortho->val[0][j] == 0)
@@ -939,8 +929,6 @@ get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
       }
     }
   }
-  // printf("Ortho matrix\n");
-  // pluto_matrix_print(stdout, ortho);
 
   assert(p == ortho->nrows);
   p = 0;
@@ -954,25 +942,20 @@ get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
         j++;
       }
     }
-    orthcst[p]->nrows = 2; // 1<<nvar+4 rows
+    orthcst[p]->nrows = 2;
     orthcst[p]->val[0][CST_WIDTH - 1] = -1;
     orthcst[p]->val[0][CST_WIDTH - 1] = 0;
 
     p++;
-    /* assert(p<=nvar-1); */
   }
-
-  /* printf("ortho constraints\n"); */
-  /* pluto_constraints_pretty_print(stdout,orthcst[p]); */
 
   /* The ortho matrix constains the "weighted sum" of each coefficient of the
    * set of all possible linearly independent hyperplanes. These are used to
    * generate constraints for equations 5 and 6. The trivial zero soultion is
    * avoided in the same way as we avoided the zero solution.   */
   if (p >= 1) {
-
     stmt_col_offset = npar + 1 + (stmt->id) * (nvar + npar + 4);
-    // coeffs for delta and csum in equations (5) and (6).
+    // Coeffs for delta and csum in equations (5) and (6).
     int nrows = 2;
     orthcst[p]->val[0][stmt_col_offset + nvar + npar + 3] =
         (int)pow((double)(coeff_bound + 1), (double)ortho->ncols);
@@ -987,11 +970,6 @@ get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
     orthcst[p]->val[1][CST_WIDTH - 1] =
         (int)pow((double)(coeff_bound + 1), (double)ortho->ncols) - 1;
 
-    // Constraints on delta added along with bounding constraints
-    /* orthcst[p]->val[2][stmt_col_offset + nvar + npar + 3] = 1; */
-    /* orthcst[p]->val[3][stmt_col_offset + nvar + npar + 3] = -1; */
-    /* orthcst[p]->val[3][CST_WIDTH-1] = 1; */
-
     orthcst[p]->nrows = 2;
 
     for (j = 0; j < CST_WIDTH; j++) {
@@ -999,15 +977,11 @@ get_stmt_lin_ind_constraints_pluto_plus(Stmt *stmt, const PlutoProg *prog,
         orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
       }
     }
-    /* stmt_col_offset=npar+1+(stmt->id)*(nvar+npar+4); */
-    int temp;
     for (i = 1; i <= nvar; i++) {
-      temp = orthcst[p]->val[0][stmt_col_offset + i];
+      int64_t temp = orthcst[p]->val[0][stmt_col_offset + i];
       orthcst[p]->val[0][stmt_col_offset + i] = temp;
       orthcst[p]->val[1][stmt_col_offset + i] = -temp;
     }
-    /* get_linear_ind_mod_sum_constraints(orthcst[p]->val,4,stmt_col_offset,nvar);
-     */
     p++;
   }
 
