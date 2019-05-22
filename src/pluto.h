@@ -502,6 +502,7 @@ void pluto_dep_satisfaction_reset(PlutoProg *prog);
 void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_scc_permutability_constraints(int, PlutoProg *);
+PlutoConstraints *get_cc_permutability_constraints(int, PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
                                                      int);
 PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,

@@ -3387,7 +3387,12 @@ int get_outermost_sat_dim(int scc_id, bool *src_dims, PlutoProg *prog) {
 }
 
 void swap_ilp_sol_with_level(int par_level, int level, int cc_id, int64_t *sol,
-                             PlutoProg *prog) {}
+                             PlutoProg *prog) {
+  /* Does nothing as of now. Needs to be filled in once per CC skewinng
+   * constraints are set up properly in introduce_skew */
+  return;
+}
+
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
@@ -3462,6 +3467,17 @@ bool introduce_skew(PlutoProg *prog) {
   skewingCst->ncols = CST_WIDTH;
   pluto_constraints_add(skewingCst, basecst);
   dep_satisfaction_update(prog, level);
+
+  ddg_compute_cc(prog);
+  int num_ccs = prog->ddg->num_ccs;
+  PlutoConstraints **cc_permute_constraints =
+      (PlutoConstraints **)malloc(num_ccs * sizeof(PlutoConstraints *));
+  for (int i = 0; i < num_ccs; i++) {
+    cc_permute_constraints[i] = get_cc_permutability_constraints(i, prog);
+  }
+
+  compute_scc_vertices(prog->ddg);
+
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
     /* dep_satisfaction_update(prog,level); */
@@ -3496,6 +3512,7 @@ bool introduce_skew(PlutoProg *prog) {
       }
 
       skewingCst->nrows = basecst->nrows;
+      int cc_id = stmts[sccs[i].vertices[0]]->cc_id;
       get_skewing_constraints(src_dims, skew_dims, i, prog, level, skewingCst);
 
       sol = pluto_prog_constraints_lexmin(skewingCst, prog);
@@ -3507,7 +3524,6 @@ bool introduce_skew(PlutoProg *prog) {
 
       if (is_ilp_solution_parallel(sol, nvar)) {
         int par_level = get_outermost_sat_dim(i, src_dims, prog);
-        int cc_id = stmts[sccs[i].vertices[0]]->cc_id;
         swap_ilp_sol_with_level(par_level, level, cc_id, sol, prog);
       } else {
         /* Set the Appropriate coeffs in the transformation matrix */

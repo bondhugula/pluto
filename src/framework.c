@@ -310,6 +310,37 @@ PlutoConstraints *get_scc_permutability_constraints(int scc_id,
   return scc_dep_cst;
 }
 
+/* Computes permutatbility constraints for all the dependences within the input
+ * connected component */
+PlutoConstraints *get_cc_permutability_constraints(int cc_id, PlutoProg *prog) {
+  int ndeps = prog->ndeps;
+
+  PlutoConstraints *cc_dep_cst = NULL;
+
+  for (int i = 0; i < ndeps; i++) {
+    Dep *dep = prog->deps[i];
+    int src = dep->src;
+    int dest = dep->dest;
+    if (dep_is_satisfied(dep)) {
+      continue;
+    }
+    if (prog->stmts[src]->cc_id == cc_id &&
+        prog->stmts[src]->cc_id == prog->stmts[dest]->cc_id) {
+      if (dep->cst == NULL) {
+        compute_permutability_constraints_dep(dep, prog);
+      }
+      if (cc_dep_cst == NULL) {
+        cc_dep_cst = pluto_constraints_alloc((prog->nstmts * dep->cst->nrows),
+                                             dep->cst->ncols);
+        cc_dep_cst->nrows = 0;
+        cc_dep_cst->ncols = dep->cst->ncols;
+      }
+      pluto_constraints_add(cc_dep_cst, dep->cst);
+    }
+  }
+  return cc_dep_cst;
+}
+
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   int nstmts, nvar, npar, ndeps, total_cst_rows;
