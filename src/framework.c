@@ -574,20 +574,16 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
  */
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
                                                      Stmt **stmts, int nstmts) {
-  int i, inc, nvar, npar, ndeps;
-  PlutoConstraints *fcst, *fcst_d;
-  Dep **deps;
+  int ndeps = prog->ndeps;
+  Dep **deps = prog->deps;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
 
-  ndeps = prog->ndeps;
-  deps = prog->deps;
-  nvar = prog->nvar;
-  npar = prog->npar;
-
-  fcst = pluto_constraints_alloc(
+  PlutoConstraints *fcst = pluto_constraints_alloc(
       128, (npar + 1 + prog->nstmts * (nvar + npar + 4) + 1));
 
   /* Compute the constraints and store them */
-  for (i = 0, inc = 0; i < ndeps; i++) {
+  for (int i = 0, inc = 0; i < ndeps; i++) {
     Dep *dep = deps[i];
 
     if (options->rar == 0 && IS_RAR(dep->type)) {
@@ -599,7 +595,8 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
       continue;
     }
 
-    fcst_d = get_feautrier_schedule_constraints_dep(dep, prog);
+    PlutoConstraints *fcst_d =
+        get_feautrier_schedule_constraints_dep(dep, prog);
 
     IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n", i + 1,
                      fcst_d->nrows));
@@ -607,9 +604,9 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
     IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, fcst_d));
 
     pluto_constraints_add(fcst, fcst_d);
+    assert(fcst->nrows >= fcst_d->nrows);
     pluto_constraints_free(fcst_d);
 
-    assert(fcst->nrows >= fcst_d->nrows);
     if (fcst->nrows >= CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000 * inc) &&
         fcst->nrows - fcst_d->nrows <
             CONSTRAINTS_SIMPLIFY_THRESHOLD + (1000 * inc)) {
