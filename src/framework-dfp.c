@@ -2201,7 +2201,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         }
       }
     }
-    int succ_scc_dim = sccs[scc_id].max_dim;
+    int succ_scc_dim = sccs[min_scc_id].max_dim;
     if (options->debug) {
       for (int i = 0; i < succ_scc_dim; i++) {
         printf("Common dims for %d :%d\n", i, common_dims[i]);
