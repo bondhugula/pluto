@@ -2960,8 +2960,8 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   if (options->lpcolour) {
     pluto_matrix_free(dep_dist_mat);
   }
-  for (int i = 0; i < ddg->num_sccs; i++) {
-    free(ddg->sccs[i].vertices);
+  for (int i = 0; i < prog->ddg->num_sccs; i++) {
+    free(prog->ddg->sccs[i].vertices);
   }
   return;
 }
