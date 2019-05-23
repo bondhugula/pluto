@@ -690,7 +690,8 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] =
+        get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
     orthosum += orthonum[j];
   }
 
@@ -2065,9 +2066,11 @@ void ddg_compute_cc(PlutoProg *prog) {
       dfs_vertex(gU, &gU->vertices[i], &time);
       gU->vertices[i].cc_id = cc_id;
     }
+    gU->vertices[i].cc_id = cc_id;
     g->vertices[i].cc_id = gU->vertices[i].cc_id;
     stmt_id = g->vertices[i].id;
     assert(stmt_id == i);
+
     prog->stmts[i]->cc_id = g->vertices[i].cc_id;
   }
   g->num_ccs = num_cc;
