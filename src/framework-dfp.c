@@ -3377,19 +3377,29 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
   return skewCst;
 }
 
-int get_outermost_sat_dim(int scc_id, bool *src_dims, PlutoProg *prog) {
+int get_outermost_sat_level(int scc_id, bool *src_dims, PlutoProg *prog) {
   int max_dim = prog->ddg->sccs[scc_id].max_dim;
-  for (int i = 0; i < max_dim; i++) {
-    if (src_dims[i])
-      return i;
+  for (int i = 0, j = 0; i < prog->num_hyperplanes && j < max_dim; i++) {
+    if (prog->hProps[i].type == H_LOOP) {
+      if (src_dims[j])
+        return i;
+      j++;
+    }
   }
   return -1;
 }
 
-void swap_ilp_sol_with_level(int par_level, int level, int cc_id, int64_t *sol,
-                             PlutoProg *prog) {
-  /* Does nothing as of now. Needs to be filled in once per CC skewinng
-   * constraints are set up properly in introduce_skew */
+void swap_trans_for_cc(int par_level, int level, int cc_id, PlutoProg *prog) {
+  assert(par_level < level);
+  assert(prog->hProps[par_level].type == H_LOOP);
+  assert(prog->hProps[level].type == H_LOOP);
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+  for (int i = 0; i < nstmts; i++) {
+    if (stmts[i]->cc_id != cc_id)
+      continue;
+    pluto_matrix_interchange_rows(stmts[i]->trans, par_level, level);
+  }
   return;
 }
 
@@ -3533,23 +3543,22 @@ bool introduce_skew(PlutoProg *prog) {
         break;
       }
 
-      if (is_ilp_solution_parallel(sol, npar)) {
-        int par_level = get_outermost_sat_dim(i, src_dims, prog);
-        swap_ilp_sol_with_level(par_level, level, cc_id, sol, prog);
-      } else {
-        /* Set the Appropriate coeffs in the transformation matrix */
-        for (int j = 0; j < nstmts; j++) {
-          int stmt_offset = npar + 1 + j * (nvar + 1);
-          for (int k = 0; k < nvar; k++) {
-            stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
-          }
-          /* No parametric Shifts */
-          for (int k = nvar; k < nvar + npar; k++) {
-            stmts[j]->trans->val[level][k] = 0;
-          }
-          /* The constant Shift */
-          stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
+      /* Set the Appropriate coeffs in the transformation matrix */
+      for (int j = 0; j < nstmts; j++) {
+        int stmt_offset = npar + 1 + j * (nvar + 1);
+        for (int k = 0; k < nvar; k++) {
+          stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
         }
+        /* No parametric Shifts */
+        for (int k = nvar; k < nvar + npar; k++) {
+          stmts[j]->trans->val[level][k] = 0;
+        }
+        /* The constant Shift */
+        stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
+      }
+      if (is_ilp_solution_parallel(sol, npar)) {
+        int par_level = get_outermost_sat_level(i, src_dims, prog);
+        swap_trans_for_cc(par_level, level, cc_id, prog);
       }
       free(sol);
       is_skew_introduced = true;
