@@ -112,7 +112,8 @@ void pluto_matrix_resize(PlutoMatrix *mat, int nrows, int ncols) {
   }
 
   for (i = 0; i < alloc_nrows; i++) {
-    mat->val[i] = (int64_t *)realloc(mat->val[i], alloc_ncols * sizeof(int64_t));
+    mat->val[i] =
+        (int64_t *)realloc(mat->val[i], alloc_ncols * sizeof(int64_t));
   }
 
   mat->alloc_nrows = alloc_nrows;
@@ -204,10 +205,10 @@ void pluto_matrix_add_row(PlutoMatrix *mat, int pos) {
 }
 
 void pluto_matrix_interchange_rows(PlutoMatrix *mat, int r1, int r2) {
-  int tmp, j;
+  /* int tmp, j; */
 
-  for (j = 0; j < mat->ncols; j++) {
-    tmp = mat->val[r1][j];
+  for (int j = 0; j < mat->ncols; j++) {
+    int64_t tmp = mat->val[r1][j];
     mat->val[r1][j] = mat->val[r2][j];
     mat->val[r2][j] = tmp;
   }
@@ -537,7 +538,6 @@ void pluto_matrix_reverse_rows(PlutoMatrix *mat) {
   }
 }
 
-
 /*
  * Pretty prints a one-dimensional affine function
  * ndims: number of variables
@@ -595,7 +595,8 @@ void pluto_affine_function_print(FILE *fp, int64_t *func, int ndims,
 }
 
 /* Returned string should be freed with malloc */
-char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars) {
+char *pluto_affine_function_sprint(int64_t *func, int ndims,
+                                   const char **vars) {
   char *var[ndims], *out;
   int j, n;
 
@@ -651,7 +652,6 @@ char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars) 
 
   return out;
 }
-
 
 /*
  * Is row r1 of mat1 parallel to row r2 of mat2
