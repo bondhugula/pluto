@@ -141,6 +141,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   }
 
   pluto_loops_free(ploops, nploops);
+  pluto_bands_free(pbands, npbands);
 }
 
 /*
