@@ -2131,14 +2131,16 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
      * coloured */
     if (num_dims == 0) {
       IF_DEBUG(printf("No colourable dims\n"););
+      free(colourable_dims);
       return -1;
     }
-    for (int i = 0; i < max_dim; i++) {
-      if (colourable_dims[i]) {
-        IF_DEBUG(printf("Dimension %d of Scc %d is colourable\n", i, scc_id););
-      } else {
-        IF_DEBUG(
-            printf("Dimension %d of Scc %d is not colourable\n", i, scc_id););
+    if (options->debug) {
+      for (int i = 0; i < max_dim; i++) {
+        if (colourable_dims[i]) {
+          printf("Dimension %d of Scc %d is colourable\n", i, scc_id);
+        } else {
+          printf("Dimension %d of Scc %d is not colourable\n", i, scc_id);
+        }
       }
     }
     int num_convex_successors;
@@ -2190,6 +2192,9 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
         get_common_dims(min_scc_id, pred_list, num_preds, succ_colourable_dims,
                         succ_dims, colour, current_colour, prog);
 
+    free(pred_list);
+    free(succ_colourable_dims);
+    free(convex_successors);
     /* If there are no common dims then return the first colourable dimension */
     if (common_dims == NULL) {
       for (int i = 0; i < max_dim; i++) {
@@ -2211,10 +2216,13 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
      * predecessors. Find a corresponding dimension in the current scc that can
      * be coloured with this dimension */
     int dim = get_colouring_dim(common_dims, succ_scc_dim);
+    free(common_dims);
     IF_DEBUG(printf("Colouring dim of SCC %d: %d\n", min_scc_id, dim););
     int fcg_vertex = sccs[min_scc_id].fcg_scc_offset + dim;
     for (int i = 0; i < max_dim; i++) {
       if (colourable_dims[i] && !is_adjecent(fcg, scc_offset + i, fcg_vertex)) {
+        /* free(succ_colourable_dims); */
+        free(colourable_dims);
         return scc_offset + i;
       }
     }
@@ -2223,6 +2231,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
      * the current scc */
     for (int i = 0; i < max_dim; i++) {
       if (colourable_dims[i]) {
+        /* free(succ_colourable_dims); */
         free(colourable_dims);
         IF_DEBUG(
             printf("Any colourable dimension has a fusion preventing edge with "
@@ -2253,18 +2262,10 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
 /* Colours an SCC of the FCG in the clustered approach */
 bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
                         PlutoProg *prog) {
-  int max_dim, scc_offset;
-  int i, v;
-  Graph *ddg, *fcg;
-  Scc *sccs;
-  int *disc_list, num_discarded;
-  bool check_parallel;
+  Graph *fcg = prog->fcg;
+  Scc *sccs = prog->ddg->sccs;
 
-  ddg = prog->ddg;
-  fcg = prog->fcg;
-  sccs = ddg->sccs;
-
-  max_dim = ddg->sccs[scc_id].max_dim;
+  int max_dim = prog->ddg->sccs[scc_id].max_dim;
   /* All dimensions of the current SCC have already been coloured */
   if (prog->coloured_dims > max_dim)
     return true;
@@ -2303,21 +2304,23 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
     }
   }
 
-  scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+  int scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
 
-  check_parallel = false;
-  disc_list = (int *)malloc(max_dim * sizeof(int));
-  num_discarded = 0;
+  bool check_parallel = false;
+  int *disc_list = (int *)malloc(max_dim * sizeof(int));
+  int num_discarded = 0;
   do {
-    v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded, disc_list,
-                                        colour, current_colour);
+    int v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded,
+                                            disc_list, colour, current_colour);
     printf("Trying vertex %d for colouring \n", v);
-    if (v == -1)
+    if (v == -1) {
+      free(disc_list);
       return false;
+    }
     assert(v != -1);
     /* v = scc_offset + i; */
     /* Used for debugging purposes */
-    i = v - scc_offset;
+    int i = v - scc_offset;
     if (colour[v] > 0 && colour[v] != current_colour) {
       IF_DEBUG(printf("Dimension %d of SCC %d ", i, scc_id););
       IF_DEBUG(printf("already coloured with colour %d\n", colour[v]););
@@ -2348,11 +2351,13 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
       colour[v] = current_colour;
       IF_DEBUG(printf("Colouring dimension %d of SCC %d ", i, scc_id););
       IF_DEBUG(printf("with colour %d\n", colour[v]););
+      free(disc_list);
       return true;
     }
     disc_list[num_discarded] = v;
     num_discarded++;
   } while (num_discarded != max_dim);
+  free(disc_list);
   return false;
 }
 
