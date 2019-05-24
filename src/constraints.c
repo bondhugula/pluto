@@ -1386,8 +1386,8 @@ int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
       }
     }
 
-    for (j = 0; j < npar + 1; j++) {
-      sol[j] = max_scale_factor;
+    for (int j = 0; j < npar + 1; j++) {
+      sol[j] = max_scale_factor * (int64_t)round(fpsol[j]);
     }
 
     int col_iter = num_ccs;

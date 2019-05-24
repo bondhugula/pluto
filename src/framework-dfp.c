@@ -3463,6 +3463,9 @@ bool introduce_skew(PlutoProg *prog) {
   int nrows = 0;
   for (int i = 0; i < num_ccs; i++) {
     cc_permute_constraints[i] = get_cc_permutability_constraints(i, prog);
+    if (!cc_permute_constraints[i])
+      continue;
+
     if (cc_permute_constraints[i] && cc_permute_constraints[i]->nrows > nrows) {
       nrows = cc_permute_constraints[i]->nrows;
     }
@@ -3489,8 +3492,8 @@ bool introduce_skew(PlutoProg *prog) {
 
     /* If there are no dependences in for this scc then, no skewing is required
      */
-    int cc_id = stmts[sccs[i].vertices[0]]->cc_id;
-    if (cc_permute_constraints[i] == NULL) {
+    int cc_id = newDDG->vertices[sccs[i].vertices[0]].cc_id;
+    if (cc_permute_constraints[cc_id] == NULL) {
       continue;
     }
     skew_dims = dims_to_be_skewed(prog, i, tile_preventing_deps, level);
@@ -3530,7 +3533,7 @@ bool introduce_skew(PlutoProg *prog) {
         break;
       }
 
-      if (is_ilp_solution_parallel(sol, nvar)) {
+      if (is_ilp_solution_parallel(sol, npar)) {
         int par_level = get_outermost_sat_dim(i, src_dims, prog);
         swap_ilp_sol_with_level(par_level, level, cc_id, sol, prog);
       } else {
