@@ -3406,10 +3406,6 @@ void swap_trans_for_cc(int par_level, int level, int cc_id, PlutoProg *prog) {
 /* Introduce loop skewing transformations if necessary.Returns true if
  *  skew was introuduced at some level for some SCC */
 bool introduce_skew(PlutoProg *prog) {
-  bool *src_dims, *skew_dims, tile_preventing_deps[prog->ndeps];
-  double tstart;
-  bool is_skew_introduced = false;
-
   int nvar = prog->nvar;
   int npar = prog->npar;
   int nstmts = prog->nstmts;
@@ -3417,7 +3413,7 @@ bool introduce_skew(PlutoProg *prog) {
 
   /* If there are zero or one hyperpane then you dont need to skew */
   if (prog->num_hyperplanes <= 1) {
-    return is_skew_introduced;
+    return false;
   }
   assert(prog->hProps != NULL);
   HyperplaneProperties *hProps = prog->hProps;
@@ -3427,7 +3423,7 @@ bool introduce_skew(PlutoProg *prog) {
   }
   /* Reset dependence satisfaction */
   /* pluto_dep_satisfaction_reset(prog); */
-  tstart = rtclock();
+  double tstart = rtclock();
   pluto_compute_dep_directions(prog);
 
   pluto_dep_satisfaction_reset(prog);
@@ -3436,6 +3432,7 @@ bool introduce_skew(PlutoProg *prog) {
   Graph *orig_ddg = prog->ddg;
   prog->ddg = newDDG;
 
+  bool tile_preventing_deps[prog->ndeps];
   for (int i = 0; i < prog->ndeps; i++) {
     tile_preventing_deps[i] = 0;
   }
@@ -3452,7 +3449,7 @@ bool introduce_skew(PlutoProg *prog) {
 
   /* Needed to handle the case when there are no loops  */
   if (initial_cuts == prog->num_hyperplanes) {
-    return is_skew_introduced;
+    return false;
   }
   /* basecst = get_permutability_constraints(prog); */
   ddg_update(newDDG, prog);
@@ -3490,6 +3487,9 @@ bool introduce_skew(PlutoProg *prog) {
 
   dep_satisfaction_update(prog, level);
 
+  bool *skew_dims = NULL;
+  bool *src_dims = NULL;
+  bool is_skew_introduced = false;
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
     /* dep_satisfaction_update(prog,level); */
@@ -3584,6 +3584,13 @@ bool introduce_skew(PlutoProg *prog) {
 
   /* pluto_constraints_free(const_dep_check_cst); */
   pluto_constraints_free(skewingCst);
+  for (int i = 0; i < num_ccs; i++) {
+    pluto_constraints_free(cc_permute_constraints[i]);
+  }
+  free(cc_permute_constraints);
+  for (int i = 0; i < num_sccs; i++) {
+    free(sccs[i].vertices);
+  }
   prog->ddg = orig_ddg;
   graph_free(newDDG);
   prog->skew_time += rtclock() - tstart;
