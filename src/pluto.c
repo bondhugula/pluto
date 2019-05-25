@@ -247,8 +247,8 @@ get_coeff_bounding_constraints_for_cone_complement(PlutoProg *prog) {
   return cst;
 }
 
-PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
-                                       const PlutoProg *prog) {
+static PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
+                                              const PlutoProg *prog) {
   int npar = prog->npar;
   int nvar = prog->nvar;
   PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols - 1);
@@ -429,7 +429,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 }
 
 /* Is there an edge between some vertex of SCC1 and some vertex of SCC2? */
-int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2) {
+static int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2) {
   int i, j;
 
   for (i = 0; i < prog->nstmts; i++) {
@@ -618,9 +618,7 @@ void cut_smart(PlutoProg *prog, Graph *ddg) {
     for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
       if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (ddg_sccs_direct_connected(ddg, prog, i, j)) {
-          // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
           num_new_carried += cut_between_sccs(prog, ddg, i, j);
-          // }
         }
       } else {
         cut_all_sccs(prog, ddg);
