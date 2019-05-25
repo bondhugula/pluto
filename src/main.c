@@ -17,6 +17,8 @@
  *
  * A copy of the GNU General Public Licence can be found in the file
  * `LICENSE' in the top-level directory of this distribution.
+ *
+ * Top-level file for 'pluto' executable.
  */
 #include <assert.h>
 #include <getopt.h>
@@ -170,22 +172,13 @@ void usage_message(void) {
 
 static double rtclock() {
   struct timeval Tp;
-  int stat;
-  stat = gettimeofday(&Tp, NULL);
+  int stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
 }
 
 int main(int argc, char *argv[]) {
-  int i;
-  int option;
-  int option_index = 0;
-  int nolastwriter = 0;
-  char *srcFileName;
-  FILE *cloogfp, *outfp;
-  struct pet_scop *pscop;
-
   if (argc <= 1) {
     usage_message();
     return 1;
@@ -194,6 +187,9 @@ int main(int argc, char *argv[]) {
   double t_start_all = rtclock();
 
   options = pluto_options_alloc();
+
+  int option_index = 0;
+  int nolastwriter = 0;
 
   const struct option pluto_options[] = {
     {"disable-param-coeffs", no_argument, &options->disable_param_coeffs, 1},
@@ -276,8 +272,8 @@ int main(int argc, char *argv[]) {
 
   /* Read command-line options */
   while (1) {
-    option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:o:", pluto_options,
-                         &option_index);
+    int option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:o:", pluto_options,
+                             &option_index);
 
     if (option == -1) {
       break;
@@ -355,6 +351,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
   }
 
+  char *srcFileName;
   if (optind <= argc - 1) {
     srcFileName = (char *)alloca(strlen(argv[optind]) + 1);
     strcpy(srcFileName, argv[optind]);
@@ -493,7 +490,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   if (options->pet) {
     // Extract using PET.
     isl_ctx *pctx = isl_ctx_alloc_with_pet_options();
-    pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
+    struct pet_scop *pscop =
+        pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
     if (!pscop) {
       fprintf(
@@ -580,7 +578,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
   int dim_sum = 0;
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     dim_sum += prog->stmts[i]->dim;
   }
 
@@ -712,7 +710,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     strcat(cloogFileName, ".pluto.cloog");
     free(basec);
 
-    cloogfp = fopen(cloogFileName, "w+");
+    FILE *cloogfp = fopen(cloogFileName, "w+");
     if (!cloogfp) {
       fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
       free(cloogFileName);
@@ -722,7 +720,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
     free(cloogFileName);
 
-    outfp = fopen(outFileName, "w");
+    FILE *outfp = fopen(outFileName, "w");
     if (!outfp) {
       fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n",
               outFileName);
@@ -772,8 +770,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     if (options->dfp) {
       printf("[pluto] \tFCG construction time: %0.6lfs\n",
              prog->fcg_const_time);
-      printf("[pluto] \tFCG colouring time: %0.6lfs\n",
-             prog->fcg_colour_time);
+      printf("[pluto] \tFCG colouring time: %0.6lfs\n", prog->fcg_colour_time);
       printf("[pluto] \tscaling + shifting time: %0.6lfs\n",
              prog->fcg_dims_scale_time);
       printf("[pluto] \tskew determination time: %0.6lfs\n", prog->skew_time);
