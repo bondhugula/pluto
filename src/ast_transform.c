@@ -28,8 +28,7 @@
 
 #include "cloog/cloog.h"
 
-/*
- * Clast-based parallel loop marking */
+/// Clast-based parallel loop marking.
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                          CloogOptions *cloogOptions) {
   assert(root != NULL);
@@ -53,21 +52,17 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   unsigned npbands = nploops;
   // clast_pprint(stdout, root, 0, cloogOptions);
 
-  /* iterate over bands and for each loop in the band do the following */
+  /* Iterate over bands and for each loop in the band mark it as parallel. If
+   * the loop is removed by the clast, then recursively mark the inner loop in
+   * the given band until atleast one loop is marked or no parallel loops are
+   * found. */
   /* Note that the number of bands is equal to the number of dominating parallel
-   * loops */
-  //
-  // Band iterator
+   * loops . */
   for (unsigned k = 0; k < npbands; k++) {
     /* Iterate over loops in a band */
     Band *band = pbands[k];
     Ploop *curr_loop = pbands[k]->loop;
-    /* replace this with a do while loop */
     do {
-      /* A scalar dimension can not be parallelized */
-      /* if (pluto_is_depth_scalar(curr_loop, i)) { */
-      /*     continue; */
-      /* } */
       char iter[13];
       sprintf(iter, "t%d", curr_loop->depth + 1);
       int *stmtids = (int *)malloc(curr_loop->nstmts * sizeof(int));
@@ -81,7 +76,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 
       IF_DEBUG(printf("\tLooking for loop\n"););
       IF_DEBUG(pluto_loop_print(curr_loop););
-      // IF_DEBUG(clast_pprint(stdout, root, 0, cloogOptions););
 
       unsigned nloops, nstmts;
       int *stmts;
@@ -90,21 +84,21 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
       clast_filter(root, filter, &loops, (int *)&nloops, &stmts,
                    (int *)&nstmts);
 
-      /* There should be at least one */
+      /* There should be at least one loop.*/
       if (nloops == 0) {
-        /* in this fails, reiterate over the other loops in the band */
         /* Sometimes loops may disappear (1) tile size larger than trip count
          * 2) it's a scalar dimension but can't be determined from the
-         * trans matrix */
+         * trans matrix. */
 
+        /* Reiterate over inner loops in the band. */
         unsigned ninloops;
         Ploop **inloops =
             pluto_get_loops_immediately_inner(curr_loop, prog, &ninloops);
 
-        /* TODO: Fix this. Ideally a cloog clast has to be created for each loop
-         * till it succeeds. Hence a worklist based algrithm is necessary. */
-        /* curr_loop = inloop[0]; */
-        /* No parallel loops in this band */
+        /* TODO: Replace this. Ideally a cloog clast has to be created for each
+         * loop till it succeeds. Hence a worklist based algrithm is necessary.
+         */
+        /* No parallel loops in this band. */
         if (ninloops == 0 ||
             inloops[0]->depth > band->loop->depth + band->width) {
           printf("Warning: parallel poly loop not found in AST\n");
@@ -112,7 +106,6 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         } else {
           curr_loop = inloops[0];
         }
-        /* continue; */
       } else {
         for (unsigned j = 0; j < nloops; j++) {
           loops[j]->parallel = CLAST_PARALLEL_NOT;
@@ -130,7 +123,7 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
           loops[j]->private_vars = strdup(private_vars);
           free(private_vars);
         }
-        /* A loop has been marked parallel. Move to the next band */
+        /* A loop has been marked parallel. Move to the next band. */
         free(stmtids);
         free(loops);
         free(stmts);

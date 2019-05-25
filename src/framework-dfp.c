@@ -1689,22 +1689,19 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
   return convex_successors;
 }
 
-/* Returns SCCs that are convex successors of
- * the given SCC and have a parallel dimension */
+/// Returns SCCs that are convex successors of the given SCC and have a parallel
+/// dimension
 int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
                                     int *num_convex_par_successors) {
-  int i, num, par_successors, num_sccs;
-  int *convex_successors, *convex_par_successors;
-  Scc *sccs;
+  Scc *sccs = prog->ddg->sccs;
+  int num_sccs = prog->ddg->num_sccs;
+  int *convex_par_successors = NULL;
+  int par_successors = 0;
+  int num;
+  int *convex_successors = get_convex_successors(scc_id, prog, &num);
+  IF_DEBUG(printf("Num Convex successors for Scc %d : %d \n", scc_id, num););
 
-  sccs = prog->ddg->sccs;
-  num_sccs = prog->ddg->num_sccs;
-  convex_par_successors = NULL;
-  par_successors = 0;
-  convex_successors = get_convex_successors(scc_id, prog, &num);
-  printf("Num Convex successors for Scc %d : %d \n", scc_id, num);
-
-  for (i = 0; i < num; i++) {
+  for (int i = 0; i < num; i++) {
     if (!sccs[convex_successors[i]].is_parallel)
       continue;
 
@@ -1713,15 +1710,15 @@ int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
     }
     convex_par_successors[par_successors++] = convex_successors[i];
   }
+  free(convex_successors);
   *num_convex_par_successors = par_successors;
   return convex_par_successors;
 }
 
-/* Returns true if there is a parallelism preventing edge between vertex v
- * and any vertex i which has been coloured with the current_colour */
+/// Returns true if there is a parallelism preventing edge between vertex v and
+/// any vertex i which has been coloured with the current_colour.
 bool is_colour_par_preventing(int v, int *colour, int current_colour) {
-  int i;
-  for (i = 0; i < par_preventing_adj_mat->nrows; i++) {
+  for (int i = 0; i < par_preventing_adj_mat->nrows; i++) {
     if (colour[i] == current_colour && (par_preventing_adj_mat->val[v][i] ||
                                         par_preventing_adj_mat->val[i][v])) {
       return true;
@@ -3408,8 +3405,8 @@ void swap_trans_for_cc(int par_level, int level, int cc_id, PlutoProg *prog) {
   return;
 }
 
-/* Introduce loop skewing transformations if necessary.Returns true if
- *  skew was introuduced at some level for some SCC */
+/// Introduce loop skewing transformations if necessary. Returns true if skew
+/// was introuduced at some level for some SCC
 bool introduce_skew(PlutoProg *prog) {
   int nvar = prog->nvar;
   int npar = prog->npar;
@@ -3426,8 +3423,7 @@ bool introduce_skew(PlutoProg *prog) {
   if (!options->silent) {
     printf("[Pluto]: Tileabilty with skew\n");
   }
-  /* Reset dependence satisfaction */
-  /* pluto_dep_satisfaction_reset(prog); */
+
   double tstart = rtclock();
   pluto_compute_dep_directions(prog);
 
@@ -3456,17 +3452,12 @@ bool introduce_skew(PlutoProg *prog) {
   if (initial_cuts == prog->num_hyperplanes) {
     return false;
   }
-  /* basecst = get_permutability_constraints(prog); */
   ddg_update(newDDG, prog);
 
   assert(level == initial_cuts);
   ddg_compute_scc(prog);
   Scc *sccs = newDDG->sccs;
   int num_sccs = newDDG->num_sccs;
-
-  /* const_dep_check_cst = pluto_constraints_alloc(ndeps * nvar + 1, CST_WIDTH);
-   */
-  /* pluto_constraints_add(skewingCst, basecst); */
 
   ddg_compute_cc(prog);
   int num_ccs = prog->ddg->num_ccs;
@@ -3497,15 +3488,7 @@ bool introduce_skew(PlutoProg *prog) {
   bool is_skew_introduced = false;
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
-    /* dep_satisfaction_update(prog,level); */
-    /* if (!constant_deps_in_scc(i, level, const_dep_check_cst, prog)) { */
-    /*  */
-    /*     IF_DEBUG(printf("Scc %d has atleast one non constant dep \n",i););
-     */
-    /*     continue; */
-    /* } */
-
-    /* If there are no dependences in for this scc then, no skewing is required
+    /* If there are no dependences in for this cc then, no skewing is required
      */
     int cc_id = newDDG->vertices[sccs[i].vertices[0]].cc_id;
     if (cc_permute_constraints[cc_id] == NULL) {
@@ -3561,6 +3544,8 @@ bool introduce_skew(PlutoProg *prog) {
         /* The constant Shift */
         stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
       }
+      /* If skewing results in a parallel hyperplane, then swap this hyperplane
+       * with the one that satisfied dependences at this level */
       if (is_ilp_solution_parallel(sol, npar)) {
         int par_level = get_outermost_sat_level(i, src_dims, prog);
         swap_trans_for_cc(par_level, level, cc_id, prog);
@@ -3587,7 +3572,6 @@ bool introduce_skew(PlutoProg *prog) {
     level = initial_cuts;
   }
 
-  /* pluto_constraints_free(const_dep_check_cst); */
   pluto_constraints_free(skewingCst);
   for (int i = 0; i < num_ccs; i++) {
     pluto_constraints_free(cc_permute_constraints[i]);
