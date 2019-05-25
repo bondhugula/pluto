@@ -88,12 +88,12 @@ libpluto_la_SOURCES = \
 		      isl_support.c \
 		      isl_support.h \
 		      iss.c \
-		      libpluto.c \
 		      libpluto_dummy.c \
 		      math_support.c \
 		      math_support.h \
 		      pluto.c \
 		      pluto.h \
+		      plutolib.c \
 		      polyloop.c \
 		      post_transform.c \
 		      post_transform.h \
