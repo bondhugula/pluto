@@ -2309,7 +2309,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   do {
     int v = get_next_min_vertex_scc_cluster(scc_id, prog, num_discarded,
                                             disc_list, colour, current_colour);
-    printf("Trying vertex %d for colouring \n", v);
+    IF_DEBUG(printf("Trying vertex %d for colouring \n", v););
     if (v == -1) {
       free(disc_list);
       return false;
