@@ -47,13 +47,24 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
 
 /**
  *
- * Each constraint row has the following format:
+ * Each constraint row has the following format for Pluto+:
  *
- *      [dep distance bound | mapping coeff.s for S1, S2,... |constant]
- * Size:[       npar+1      | (nvar+npar+1)*nstmts           | 1      ]
+ *      [dep distance bound | coeff.s for S1, S2,...         |constant]
+ * Size:[       npar+1      | (1+nvar+npar+3)*nstmts         | 1      ]
  *
- * npar - number of parameters in whole program
- * nvar - number of parameters in whole program
+ * npar - number of parameters in PlutoProg.
+ * nvar - number of parameters in PlutoProg.
+ *
+ * Each statement's 1 + nvar + npar + 3 variables have the following format:
+ *
+ * [ \c_sum | nvar + npar + 1 coeff's | \delta_2 | \delta_3 ]
+ *
+ * \c_sum: variable to capture and minimize sum of absolute values of the nvar +
+ * npar + 1 transformation coeffecients.
+ *
+ * \delta_2: binary decision variable to avoid the zero solution.
+ * \delta_3: binary decision variable to maintain linear independence.
+ *
  */
 
 /* Builds validity and bounding function constraints for a dependence */
