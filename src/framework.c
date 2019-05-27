@@ -71,7 +71,6 @@ static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
 static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   PlutoConstraints *cst, *tiling_valid_cst, *bounding_func_cst;
   int nstmts, nvar, npar, src_stmt, dest_stmt, j, r;
-  int src_offset, dest_offset;
   PlutoMatrix *phi;
   Stmt **stmts;
 
@@ -203,8 +202,8 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
   cst->nrows = 0;
   cst->ncols = CST_WIDTH;
 
-  src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
-  dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
+  int src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+  int dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
 
   /* Permutability constraints */
   if (!IS_RAR(dep->type)) {
@@ -234,8 +233,8 @@ static void compute_permutability_constraints_dep(Dep *dep, PlutoProg *prog) {
     /* Bounding function constraints in global format */
     PlutoConstraints *bcst_g;
 
-    src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
-    dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
+    int src_offset = npar + 1 + src_stmt * (nvar + npar + 1 + 3) + 1;
+    int dest_offset = npar + 1 + dest_stmt * (nvar + npar + 1 + 3) + 1;
 
     bcst_g = pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH);
 
