@@ -1503,7 +1503,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
    * (excluding the one being evicted: at `evict_pos') */
   for (unsigned s = 0; s < nstmts; s++) {
     Stmt *stmt = band->loop->stmts[s];
-    int stmt_offset1 = npar + 1 + stmt->id * (nvar + npar + 4);
+    int stmt_offset1 = npar + 1 + stmt->id * (nvar + npar + 4) + 1;
     int stmt_offset2 = npar + 1 + prog->nstmts * (nvar + npar + 4) + s * nvar;
     for (int j = 0; j < nvar + npar; j++) {
       pluto_constraints_add_equality(lambda_cst);
