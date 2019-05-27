@@ -268,7 +268,7 @@ int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps) {
   return count;
 }
 
-static PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
+PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
                                               const PlutoProg *prog) {
   int npar = prog->npar;
   int nvar = prog->nvar;
@@ -470,7 +470,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 }
 
 /* Is there an edge between some vertex of SCC1 and some vertex of SCC2? */
-static int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2) {
+int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2) {
   int i, j;
 
   for (i = 0; i < prog->nstmts; i++) {
@@ -659,7 +659,9 @@ void cut_smart(PlutoProg *prog, Graph *ddg) {
     for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
       if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (ddg_sccs_direct_connected(ddg, prog, i, j)) {
+          // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
           num_new_carried += cut_between_sccs(prog, ddg, i, j);
+          // }
         }
       } else {
         cut_all_sccs(prog, ddg);
@@ -1459,85 +1461,77 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   return conc_start_faces;
 }
 
-/*
- * Find hyperplane inside the cone  of previously found hyperplanes
- * and the face allowing concurrent start
- *
- * conc_start_faces[i]: concurrent start face for statement $i$
- *
- * evict_pos: position of the hyperplane to be evicted by the one that will
- * enable concurrent start
- *
- * cone_complement_pos: in case of partial concurrent start, the
- * hyperplane that will form the cone with the conc start hyperplane
- *
- * cone_complement_hyps will set to the cone complement hyperplanes found
- * for statements in the band
- */
+/// Find hyperplane that completes the cone with previously found hyperplanes
+/// such that the face allowing concurrent start lies within it.
+/// conc_start_faces[i]: concurrent start face for statement $i$
+/// evict_pos: position of the hyperplane to be evicted by the one that will
+/// enable concurrent start cone_complement_pos: in case of partial concurrent
+/// start, the hyperplane that will form the cone with the conc start hyperplane
+/// cone_complement_hyps will set to the cone complement hyperplanes found
+/// for statements in the band.
 static int
 find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
                                 unsigned evict_pos, int cone_complement_pos,
                                 PlutoConstraints *basecst, PlutoProg *prog,
                                 PlutoMatrix **cone_complement_hyps) {
-  int s, j, k, lambda_k, nstmts, nvar, npar;
-  int64_t *bestsol;
-  PlutoConstraints *con_start_cst, *lastcst;
-
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = band->loop->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  unsigned nstmts = band->loop->nstmts;
 
   IF_DEBUG(printf("[pluto] find_cone_complement_hyperplane for band\n\t"););
   IF_DEBUG(pluto_band_print(band););
 
-  /* lastcst is the set of additional constraints */
-  lastcst = pluto_constraints_alloc(
+  /* lambda_cst is the set of additional constraints added to find the cone
+   * complement involving the conic combination multipliers. TODO: improve
+   * comment. */
+  PlutoConstraints *lambda_cst = pluto_constraints_alloc(
       (2 * nvar + npar) * nstmts,
       (npar + 1 + prog->nstmts * (nvar + npar + 1 + 3) + 1) + nvar * nstmts);
 
-  /* all lambdas >=1 */
-  for (s = 0; s < nstmts; s++) {
+  /* All lambdas >=1 */
+  for (unsigned s = 0; s < nstmts; s++) {
     int stmt_offset = npar + 1 + prog->nstmts * (nvar + npar + 4) + s * nvar;
-    for (j = 0; j < nvar; j++) {
-      pluto_constraints_add_inequality(lastcst);
-      lastcst->val[lastcst->nrows - 1][stmt_offset + j] = 1;
-      lastcst->val[lastcst->nrows - 1][lastcst->ncols - 1] = -1;
+    for (int j = 0; j < nvar; j++) {
+      pluto_constraints_add_inequality(lambda_cst);
+      lambda_cst->val[lambda_cst->nrows - 1][stmt_offset + j] = 1;
+      lambda_cst->val[lambda_cst->nrows - 1][lambda_cst->ncols - 1] = -1;
     }
   }
 
   /* Now, add the constraints for the new hyperplane to be in the cone
    * of the face and the negatives of the hyperplanes already found
    * (excluding the one being evicted: at `evict_pos') */
-  for (s = 0; s < nstmts; s++) {
+  for (unsigned s = 0; s < nstmts; s++) {
     Stmt *stmt = band->loop->stmts[s];
     int stmt_offset1 = npar + 1 + stmt->id * (nvar + npar + 4);
     int stmt_offset2 = npar + 1 + prog->nstmts * (nvar + npar + 4) + s * nvar;
-    for (j = 0; j < nvar + npar; j++) {
-      pluto_constraints_add_equality(lastcst);
-      lastcst->val[lastcst->nrows - 1][stmt_offset1 + j] = 1;
+    for (int j = 0; j < nvar + npar; j++) {
+      pluto_constraints_add_equality(lambda_cst);
+      lambda_cst->val[lambda_cst->nrows - 1][stmt_offset1 + j] = 1;
 
-      lastcst->val[lastcst->nrows - 1][stmt_offset2] =
+      lambda_cst->val[lambda_cst->nrows - 1][stmt_offset2] =
           -(conc_start_faces->val[s][j]);
 
       /* Unless fulldiamondtile is set, enable concurrent start along
        * only one dimension. */
       if (!options->fulldiamondtile) {
-        lastcst->val[lastcst->nrows - 1][stmt_offset2 + 1] =
+        lambda_cst->val[lambda_cst->nrows - 1][stmt_offset2 + 1] =
             stmt->trans->val[cone_complement_pos][j];
       } else {
         // Full dimensional concurrent start */
-        lambda_k = 0;
+        int lambda_k = 0;
         /* Just for the band depth hyperplanes */
         for (unsigned k = band->loop->depth;
              k < band->loop->depth + band->width; k++) {
           if (k != evict_pos && stmt->hyp_types[k] != H_SCALAR) {
-            lastcst->val[lastcst->nrows - 1][stmt_offset2 + lambda_k + 1] =
+            lambda_cst
+                ->val[lambda_cst->nrows - 1][stmt_offset2 + lambda_k + 1] =
                 stmt->trans->val[k][j];
             lambda_k++;
           }
         }
       }
-      lastcst->val[lastcst->nrows - 1][lastcst->ncols - 1] = 0;
+      lambda_cst->val[lambda_cst->nrows - 1][lambda_cst->ncols - 1] = 0;
     }
   }
 
@@ -1547,7 +1541,8 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
    *
    * No need of non-zero solution constraints
    */
-  con_start_cst = pluto_constraints_dup(basecst);
+  PlutoConstraints *con_start_cst = pluto_constraints_dup(basecst);
+
   PlutoConstraints *boundcst =
       get_coeff_bounding_constraints_pluto_plus(prog, -4);
   PlutoConstraints *modsumcst = get_prog_mod_sum_constraints(prog);
@@ -1557,26 +1552,31 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
   pluto_constraints_free(modsumcst);
   pluto_constraints_free(boundcst);
 
-  for (s = 0; s < nvar * nstmts; s++) {
+  for (int i = 0; i < nvar * nstmts; i++) {
     pluto_constraints_add_dim(con_start_cst, basecst->ncols - 1, NULL);
   }
 
-  pluto_constraints_add(con_start_cst, lastcst);
-  pluto_constraints_free(lastcst);
+  pluto_constraints_add(con_start_cst, lambda_cst);
+  pluto_constraints_free(lambda_cst);
+
+  IF_MORE_DEBUG(printf("Cone complement constraints\n"););
+  IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, con_start_cst););
 
   /* pluto_constraints_lexmin is being called directly */
-  bestsol = pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
+  int64_t *bestsol =
+      pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
   pluto_constraints_free(con_start_cst);
 
   /* pluto_constraints_lexmin is being called directly */
   if (bestsol == NULL) {
-    printf("[pluto] No concurrent start possible\n");
+    printf("[pluto] Cone complement hyperplane not found!\n");
+    printf("[pluto] No tiled concurrent start possible.\n");
   } else {
     IF_DEBUG(printf("[pluto] Concurrent start possible\n"););
-    for (j = 0; j < nstmts; j++) {
+    for (unsigned j = 0; j < nstmts; j++) {
       Stmt *stmt = band->loop->stmts[j];
       cone_complement_hyps[j] = pluto_matrix_alloc(1, nvar + npar + 1);
-      for (k = 0; k < nvar + npar + 1; k++) {
+      for (int k = 0; k < nvar + npar + 1; k++) {
         cone_complement_hyps[j]->val[0][k] =
             bestsol[npar + 1 + stmt->id * (nvar + npar + 4) + 1 + k];
       }
