@@ -735,6 +735,31 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
   return indcst;
 }
 
+// Each CC has its own u and w. Lexmin has to minimize u and w for all ccs
+// equally. Therefore we add new set of u and w which is the component wise sum
+// of u and w of the individual connected component. This is given by the
+// constraints \wedge\limits_{i=0}^{npar+1} u_i = \sigma\limits_{j=0}^{num_ccs}
+// u_i^j
+PlutoConstraints *get_per_cc_obj_sum_constraints(PlutoProg *prog) {
+  int num_ccs = prog->ddg->num_ccs;
+  int npar = prog->npar;
+  int nrows = npar + 1;
+  int nvar = prog->nvar;
+  int nstmts = prog->nstmts;
+  int ncols = (num_ccs * (npar + 1)) + CST_WIDTH;
+  PlutoConstraints *obj_sum_cst = pluto_constraints_alloc(nrows, ncols);
+  obj_sum_cst->nrows = nrows;
+  obj_sum_cst->ncols = ncols;
+
+  for (int i = 0; i < npar + 1; i++) {
+    obj_sum_cst->val[i][i] = 1;
+    for (int j = 1; j <= num_ccs; j++) {
+      obj_sum_cst->val[i][j + i] = -1;
+    }
+  }
+  return obj_sum_cst;
+}
+
 /* Find all linearly independent permutable band of hyperplanes at a level.
  *
  * See sub-functions for hyp_search_mode and lin_ind_mode
@@ -779,6 +804,13 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     pluto_constraints_copy(currcst, basecst);
     PlutoConstraints *nzcst =
         get_non_trivial_sol_constraints(prog, hyp_search_mode);
+    if (options->per_cc_obj) {
+      /* The number of columns to be added is npar+w for dimension wise sum of
+       * per cc u and w  and then u and w for each cc. One set of u and w is
+       * already added.  */
+      int num_dims_to_be_added = (prog->ddg->num_ccs) * (npar + 1);
+      pluto_constraints_add_leading_dims(nzcst, num_dims_to_be_added);
+    }
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
@@ -795,7 +827,16 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
       IF_DEBUG(printf("No linearly independent rows\n"););
       bestsol = NULL;
     } else {
+      if (options->per_cc_obj) {
+        int num_dims_to_be_added = (prog->ddg->num_ccs) * (npar + 1);
+        pluto_constraints_add_leading_dims(indcst, num_dims_to_be_added);
+      }
       pluto_constraints_add(currcst, indcst);
+      if (options->per_cc_obj) {
+        PlutoConstraints *obj_sum_cst = get_per_cc_obj_sum_constraints(prog);
+        pluto_constraints_add(currcst, obj_sum_cst);
+        pluto_constraints_free(obj_sum_cst);
+      }
       IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n",
                       band_depth + 1, num_sols_found + 1));
       // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
