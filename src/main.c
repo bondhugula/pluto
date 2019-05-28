@@ -107,6 +107,10 @@ void usage_message(void) {
                   "(enabled by default)\n");
   fprintf(stdout, "       --full-diamond-tile       Enables full-dimensional "
                   "concurrent start\n");
+  fprintf(
+      stdout,
+      "       --per-cc-obj              Enables separate dependence distance "
+      "upper bounds for dependences from different connected components\n");
   fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) "
                   "vectorization (enabled by default)\n");
   fprintf(stdout, "       --multipar                Extract all degrees of "
@@ -203,6 +207,7 @@ int main(int argc, char *argv[]) {
     {"diamond-tile", no_argument, &options->diamondtile, 1},
     {"nodiamond-tile", no_argument, &options->diamondtile, 0},
     {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
+    {"per-cc-obj", no_argument, &options->per_cc_obj, 1},
     {"debug", no_argument, &options->debug, true},
     {"moredebug", no_argument, &options->moredebug, true},
     {"rar", no_argument, &options->rar, 1},
@@ -478,6 +483,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
              "Turning on SCC clustering\n");
     }
     options->scc_cluster = 1;
+  }
+
+  if (options->dfp && options->per_cc_obj) {
+    printf("[pluto] Per connected component objective is not supported with "
+           "dfp. Turning of per-cc-obj");
+    options->per_cc_obj = 0;
   }
 
   /* Extract polyhedral representation from osl scop */

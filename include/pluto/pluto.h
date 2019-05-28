@@ -52,7 +52,6 @@ enum fusionType {
 };
 typedef enum fusionType FusionType;
 
-
 struct plutoOptions {
 
   /* To tile or not? */
@@ -64,6 +63,9 @@ struct plutoOptions {
   /* Diamond tiling for concurrent startup; enables concurrent startup along
    * one dimension. */
   int diamondtile;
+
+  /* Use per cc u and w instead of single u and w for the whole program*/
+  int per_cc_obj;
 
   /* Extract scop information from libpet*/
   int pet;
