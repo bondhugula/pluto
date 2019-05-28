@@ -1403,12 +1403,17 @@ void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
 
   pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
 
+  int coeff_offset = npar + 1;
+  if (options->per_cc_obj) {
+    coeff_offset += (npar + 1) * prog->ddg->num_ccs;
+  }
+
   for (int j = 0; j < nstmts; j++) {
     Stmt *stmt = stmts[j];
     pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
     for (int k = 0; k < nvar; k++) {
       stmt->trans->val[stmt->trans->nrows - 1][k] =
-          sol[npar + 1 + j * (nvar + 1) + k];
+          sol[coeff_offset + j * (nvar + 1) + k];
     }
     /* No parameteric shifts */
     for (int k = nvar; k < nvar + npar; k++) {
@@ -1416,7 +1421,7 @@ void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
     }
     /* Constant loop shift */
     stmt->trans->val[stmt->trans->nrows - 1][nvar + npar] =
-        sol[npar + 1 + j * (nvar + 1) + nvar];
+        sol[coeff_offset + j * (nvar + 1) + nvar];
 
     stmt->hyp_types[stmt->trans->nrows - 1] =
         pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
