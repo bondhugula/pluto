@@ -690,20 +690,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
                                                 const PlutoProg *prog,
                                                 const PlutoConstraints *currcst,
                                                 int *orthonum) {
-  int nvar, npar, nstmts;
-  PlutoConstraints **orthcst;
-  HyperplaneProperties *hProps;
-  isl_ctx *ctx;
-  isl_mat *h;
-  isl_basic_set *isl_currcst;
-  PlutoOptions *options;
 
-  options = prog->options;
+  PlutoOptions *options = prog->options;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  hProps = prog->hProps;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  HyperplaneProperties *hProps = prog->hProps;
 
   IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id + 1););
 
@@ -732,13 +725,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
     }
   }
 
-  ctx = isl_ctx_alloc();
+  isl_ctx *ctx = isl_ctx_alloc();
   assert(ctx);
 
-  h = isl_mat_alloc(ctx, q, p);
+  isl_mat *h = isl_mat_alloc(ctx, q, p);
 
   p = 0;
-  for (i = 0; i < nvar; i++) {
+  for (int i = 0; i < nvar; i++) {
     if (stmt->is_orig_loop[i]) {
       unsigned q = 0;
       for (unsigned j = 0; j < stmt->trans->nrows; j++) {
@@ -758,12 +751,17 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   isl_mat_free(h);
 
-  orthcst =
+  PlutoConstraints **orthcst =
       (PlutoConstraints **)malloc((nvar + 1) * sizeof(PlutoConstraints *));
 
-  for (i = 0; i < nvar + 1; i++) {
-    orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
-    orthcst[i]->ncols = CST_WIDTH;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+
+  for (int i = 0; i < nvar + 1; i++) {
+    orthcst[i] = pluto_constraints_alloc(1, ncols);
+    orthcst[i]->ncols = ncols;
   }
 
   /* All non-negative orthant only */
@@ -778,8 +776,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
     if (ortho->val[0][j] == 0)
       continue;
     int colgcd = abs(ortho->val[0][j]);
-    unsigned i;
-    for (i = 1; i < ortho->nrows; i++) {
+    for (unsigned i = 1; i < ortho->nrows; i++) {
       if (ortho->val[i][j] == 0)
         break;
       colgcd = gcd(colgcd, abs(ortho->val[i][j]));
@@ -794,6 +791,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
   }
 
   /* Fast linear independence check */
+  isl_basic_set *isl_currcst;
   if (options->flic)
     isl_currcst = NULL;
   else
@@ -801,23 +799,24 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   assert(p == ortho->nrows);
   p = 0;
+  int coeff_offset = npar + 1 + ncols - CST_WIDTH;
   for (unsigned i = 0; i < ortho->ncols; i++) {
     isl_basic_set *orthcst_i;
 
     unsigned j = 0;
     for (int q = 0; q < nvar; q++) {
       if (stmt->is_orig_loop[q]) {
-        orthcst[p]->val[0][npar + 1 + (stmt->id) * (nvar + 1) + q] =
+        orthcst[p]->val[0][coeff_offset + (stmt->id) * (nvar + 1) + q] =
             ortho->val[j][i];
         j++;
       }
     }
     orthcst[p]->nrows = 1;
-    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    orthcst[p]->val[0][ncols - 1] = -1;
     if (!options->flic) {
       orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
     }
-    orthcst[p]->val[0][CST_WIDTH - 1] = 0;
+    orthcst[p]->val[0][ncols - 1] = 0;
 
     if (!options->flic) {
       orthcst_i =
@@ -833,13 +832,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   if (p >= 1) {
     /* Sum of all of the above is the last constraint */
-    for (int j = 0; j < CST_WIDTH; j++) {
+    for (int j = 0; j < ncols; j++) {
       for (unsigned i = 0; i < p; i++) {
         orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
       }
     }
     orthcst[p]->nrows = 1;
-    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    orthcst[p]->val[0][ncols - 1] = -1;
     p++;
   }
 
@@ -853,7 +852,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
   }
 
   /* Free the unnecessary ones */
-  for (i = p; i < nvar + 1; i++) {
+  for (int i = p; i < nvar + 1; i++) {
     pluto_constraints_free(orthcst[i]);
   }
 

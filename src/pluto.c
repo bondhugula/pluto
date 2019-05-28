@@ -694,7 +694,11 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
     orthosum += orthonum[j];
   }
 
-  PlutoConstraints *indcst = pluto_constraints_alloc(1, CST_WIDTH);
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+  PlutoConstraints *indcst = pluto_constraints_alloc(1, ncols);
 
   if (orthosum >= 1) {
     if (lin_ind_mode == EAGER) {
@@ -711,12 +715,12 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
       for (i = 0; i < prog->nstmts; i++) {
         /* Everything was initialized to zero */
         if (orthonum[i] >= 1) {
-          for (j = 0; j < CST_WIDTH - 1; j++) {
+          for (j = 0; j < ncols - 1; j++) {
             indcst->val[0][j] += orthcst[i][orthonum[i] - 1]->val[0][j];
           }
         }
       }
-      indcst->val[0][CST_WIDTH - 1] = -1;
+      indcst->val[0][ncols - 1] = -1;
       indcst->nrows = 1;
       IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
       IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
@@ -826,10 +830,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
       IF_DEBUG(printf("No linearly independent rows\n"););
       bestsol = NULL;
     } else {
-      if (options->per_cc_obj) {
-        int num_dims_to_be_added = (prog->ddg->num_ccs) * (npar + 1);
-        pluto_constraints_add_leading_dims(indcst, num_dims_to_be_added);
-      }
       pluto_constraints_add(currcst, indcst);
       if (options->per_cc_obj) {
         PlutoConstraints *obj_sum_cst = get_per_cc_obj_sum_constraints(prog);
@@ -1803,6 +1803,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       assert(hyp_search_mode == LAZY ||
              num_sols_left == num_ind_sols_req - num_ind_sols_found);
 
+      if (options->per_cc_obj) {
+        ddg_compute_cc(prog);
+      }
       nsols = find_permutable_hyperplanes(prog, hyp_search_mode, num_sols_left,
                                           depth);
 
