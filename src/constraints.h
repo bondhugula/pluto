@@ -102,8 +102,7 @@ void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
                                const char *name);
-void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims,
-                                        const char *name);
+void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims);
 void pluto_constraints_remove_row(PlutoConstraints *, unsigned);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 

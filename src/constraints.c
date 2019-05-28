@@ -1632,8 +1632,7 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
 // inefficient implemetation of the routine. The constraints can be resized at
 // one go and the initialization of these dimensions can be done to zero instead
 // of calling pluto_constraints_add_dim num_dims times
-void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims,
-                                        const char *name) {
+void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims) {
   for (int i = 0; i < num_dims; i++) {
     pluto_constraints_add_dim(cst, 0, NULL);
   }
