@@ -425,8 +425,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
     }
 
     /* Subsequent calls can just use the old ones */
-    PlutoConstraints *newcst = pluto_constraints_dup(dep->cst);
     if (options->per_cc_obj) {
+      PlutoConstraints *newcst = pluto_constraints_dup(dep->cst);
       int num_cols_to_add = (npar + 1) * (prog->ddg->num_ccs);
       pluto_constraints_add_leading_dims(newcst, num_cols_to_add);
       int cc_id = prog->stmts[dep->src]->cc_id;
@@ -436,9 +436,11 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
         pluto_constraints_interchange_cols(newcst, source_col_offset + j,
                                            target_col_offset + j);
       }
+      pluto_constraints_add(globcst, newcst);
+      pluto_constraints_free(newcst);
+    } else {
+      pluto_constraints_add(globcst, dep->cst);
     }
-    pluto_constraints_add(globcst, newcst);
-    pluto_constraints_free(newcst);
     /* print_polylib_visual_sets("global", dep->cst); */
 
     IF_DEBUG(fprintf(stdout, "\tAfter dep %d; num_constraints: %d\n", i + 1,
