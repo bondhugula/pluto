@@ -516,6 +516,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
 int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog);
+void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog);
 
 int pluto_auto_transform(PlutoProg *prog);
 int pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);

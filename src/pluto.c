@@ -746,13 +746,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
  * */
 int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
-  int num_sols_found, j, k;
-  int64_t *bestsol;
-  PlutoConstraints *basecst, *nzcst, *boundcst;
-  PlutoConstraints *currcst;
-
   int nstmts = prog->nstmts;
-  Stmt **stmts = prog->stmts;
   int nvar = prog->nvar;
   int npar = prog->npar;
 
@@ -767,22 +761,24 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     return 0;
 
   /* Don't free basecst */
-  basecst = get_permutability_constraints(prog);
-  boundcst = get_coeff_bounding_constraints(prog);
+  PlutoConstraints *basecst = get_permutability_constraints(prog);
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
   pluto_constraints_add(basecst, boundcst);
   pluto_constraints_free(boundcst);
   // print_polylib_visual_sets("pluto", basecst);
 
-  num_sols_found = 0;
+  int num_sols_found = 0;
   /* We don't expect to add a lot to basecst - just ortho constraints
    * and trivial soln avoidance constraints; instead of duplicating basecst,
    * we will just allocate once and copy each time */
-  currcst = pluto_constraints_alloc(basecst->nrows + nstmts + nvar * nstmts,
-                                    CST_WIDTH);
+  PlutoConstraints *currcst = pluto_constraints_alloc(
+      basecst->nrows + nstmts + nvar * nstmts, CST_WIDTH);
 
+  int64_t *bestsol;
   do {
     pluto_constraints_copy(currcst, basecst);
-    nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
+    PlutoConstraints *nzcst =
+        get_non_trivial_sol_constraints(prog, hyp_search_mode);
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
@@ -812,26 +808,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
           stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
       num_sols_found++;
 
-      pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+      pluto_add_hyperplane_from_ilp_solution(bestsol, prog);
 
-      for (j = 0; j < nstmts; j++) {
-        Stmt *stmt = stmts[j];
-        pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
-        for (k = 0; k < nvar; k++) {
-          stmt->trans->val[stmt->trans->nrows - 1][k] =
-              bestsol[npar + 1 + j * (nvar + 1) + k];
-        }
-        /* No parameteric shifts */
-        for (k = nvar; k < nvar + npar; k++) {
-          stmt->trans->val[stmt->trans->nrows - 1][k] = 0;
-        }
-        stmt->trans->val[stmt->trans->nrows - 1][nvar + npar] =
-            bestsol[npar + 1 + j * (nvar + 1) + nvar];
-
-        stmt->hyp_types[stmt->trans->nrows - 1] =
-            pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
-                                                                     : H_LOOP;
-      }
       free(bestsol);
       IF_DEBUG(
           pluto_transformation_print_level(prog, prog->num_hyperplanes - 1););
@@ -1401,7 +1379,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
   IF_DEBUG(pluto_band_print(band););
 
   // lambda_cst is the set of additional constraints added to find the cone
-  // complement involving the conic combination multipliers. 
+  // complement involving the conic combination multipliers.
   // TODO: improve comment by including info on the constraints that are added.
   PlutoConstraints *lambda_cst = pluto_constraints_alloc(
       2 * nvar * nstmts,

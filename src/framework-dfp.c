@@ -2558,42 +2558,6 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
   }
 }
 
-/* Adds a hyperplane (H_LOOP) from the solution an ILP solution.
- * This method can also be moved to framework.c (or pluto.c) and
- * appropriate changes can be made. */
-void add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
-  int j, k;
-  int nvar, npar, nstmts;
-  Stmt **stmts;
-
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  stmts = prog->stmts;
-
-  pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
-
-  for (j = 0; j < nstmts; j++) {
-    Stmt *stmt = stmts[j];
-    pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
-    for (k = 0; k < nvar; k++) {
-      stmt->trans->val[stmt->trans->nrows - 1][k] =
-          sol[npar + 1 + j * (nvar + 1) + k];
-    }
-    /* No parameteric shifts */
-    for (k = nvar; k < nvar + npar; k++) {
-      stmt->trans->val[stmt->trans->nrows - 1][k] = 0;
-    }
-    /* Constant loop shift */
-    stmt->trans->val[stmt->trans->nrows - 1][nvar + npar] =
-        sol[npar + 1 + j * (nvar + 1) + nvar];
-
-    stmt->hyp_types[stmt->trans->nrows - 1] =
-        pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
-                                                                 : H_LOOP;
-  }
-}
-
 /* Colours all scc's with a colour c. Returns the current colouring of the fcg.
  */
 int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
@@ -3127,31 +3091,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
 
   if (sol != NULL) {
     IF_DEBUG(printf("[pluto]: found a hyperplane\n"));
-    /* num_sols_found++; */
-
-    /* if (options->varliberalize) { */
-    /*     for (j=0; j<ndeps; j++) { */
-    /*         #<{(| Check if it has to be c or c+1 |)}># */
-    /*         if (deps[j]->temp_across && c < deps[j]->fuse_depth  */
-    /*                 &&
-     * pluto_domain_equality(stmts[deps[j]->src],stmts[deps[j]->dest])) { */
-    /*             for (k=0;k<nvar;k++) { */
-    /*                 if (sol[npar+1+(deps[j]->src)*(nvar+1)+k] !=
-     * sol[npar+1+(deps[j]->dest)*(nvar+1)+k]) */
-    /*                     break; */
-    /*             } */
-    /*             if (k!=nvar ||
-     * (sol[npar+1+(deps[j]->src)*(nvar+1)+nvar]!=sol[npar+1+(deps[j]->dest)*(nvar+1)+nvar]))
-     * { */
-    /*                 printf("Cutting between SCCs to prevent illegal
-     * transformation with var-lib"); */
-    /*                 cut_between_sccs(prog,ddg,stmts[deps[j]->src]->scc_id,
-     * stmts[deps[j]->dest]->scc_id); */
-    /*             } */
-    /*         } */
-    /*     } */
-    /* } */
-    add_hyperplane_from_ilp_solution(sol, prog);
+    pluto_add_hyperplane_from_ilp_solution(sol, prog);
     prog->scaling_cst_sol_time += rtclock() - t_start;
     free(sol);
     IF_DEBUG(
@@ -3167,7 +3107,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
       coeffcst = pluto_constraints_add(coeffcst, basecst);
       sol = pluto_prog_constraints_lexmin(coeffcst, prog);
       if (sol != NULL) {
-        add_hyperplane_from_ilp_solution(sol, prog);
+        pluto_add_hyperplane_from_ilp_solution(sol, prog);
         prog->scaling_cst_sol_time += rtclock() - t_start;
         free(sol);
         IF_DEBUG(
