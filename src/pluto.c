@@ -280,38 +280,36 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
  *   permutation/substitution of variables
  */
 int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
-  Stmt **stmts;
-  int i, j;
-  int nstmts, nvar, npar, del_count;
-  int64_t *sol, *fsol;
-  PlutoConstraints *newcst;
-  double t_start;
+  Stmt **stmts = prog->stmts;
+  int nstmts = prog->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int num_ccs = prog->ddg->num_ccs;
 
-  stmts = prog->stmts;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
-  sol = NULL;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * num_ccs;
+  }
+  assert((int)cst->ncols - 1 == ncols - 1);
 
-  assert((int)cst->ncols - 1 == CST_WIDTH - 1);
-
+  unsigned coeff_offset = npar + 1 + ncols - CST_WIDTH;
   /* Remove redundant variables - that don't appear in your outer loops */
-  int redun[npar + 1 + nstmts * (nvar + 1) + 1];
-  for (i = 0; i < npar + 1; i++) {
+  int redun[coeff_offset + nstmts * (nvar + 1) + 1];
+  for (unsigned i = 0; i < coeff_offset; i++) {
     redun[i] = 0;
   }
 
-  for (i = 0; i < nstmts; i++) {
-    for (j = 0; j < nvar; j++) {
-      redun[npar + 1 + i * (nvar + 1) + j] = !stmts[i]->is_orig_loop[j];
+  for (int i = 0; i < nstmts; i++) {
+    for (int j = 0; j < nvar; j++) {
+      redun[coeff_offset + i * (nvar + 1) + j] = !stmts[i]->is_orig_loop[j];
     }
-    redun[npar + 1 + i * (nvar + 1) + nvar] = 0;
+    redun[coeff_offset + i * (nvar + 1) + nvar] = 0;
   }
-  redun[npar + 1 + nstmts * (nvar + 1)] = 0;
+  redun[coeff_offset + nstmts * (nvar + 1)] = 0;
 
-  del_count = 0;
-  newcst = pluto_constraints_dup(cst);
-  for (j = 0; j < (int)cst->ncols - 1; j++) {
+  int del_count = 0;
+  PlutoConstraints *newcst = pluto_constraints_dup(cst);
+  for (int j = 0; j < (int)cst->ncols - 1; j++) {
     if (redun[j]) {
       pluto_constraints_remove_dim(newcst, j - del_count);
       del_count++;
@@ -322,8 +320,8 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
    * hyperplane order is preserved (no strong reason to do this) */
   /* We do not need to permute in case of pluto-lp-dfp */
   if (!options->dfp) {
-    unsigned j = npar + 1;
-    for (i = 0; i < nstmts; i++) {
+    unsigned j = coeff_offset;
+    for (int i = 0; i < nstmts; i++) {
       for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
         pluto_constraints_interchange_cols(
             newcst, k, j + (stmts[i]->dim_orig - 1 - (k - j)));
@@ -335,9 +333,10 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
                   "constraints)\n",
                   cst->ncols - 1, cst->nrows););
 
+  int64_t *sol = NULL;
   /* Solve the constraints using chosen solvers*/
   if (options->islsolve) {
-    t_start = rtclock();
+    double t_start = rtclock();
     sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   } else if (options->glpk || options->lp || options->dfp || options->gurobi) {
@@ -364,7 +363,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 #endif
     }
 
-    t_start = rtclock();
+    double t_start = rtclock();
     if (options->glpk) {
 #ifdef GLPK
       sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar,
@@ -380,7 +379,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
     pluto_matrix_free(obj);
     if (options->lp) {
-      for (i = 0; i < nrows; i++) {
+      for (int i = 0; i < nrows; i++) {
         free(val[i]);
         free(index[i]);
       }
@@ -389,19 +388,19 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     }
   } else {
     /* Use PIP */
-    t_start = rtclock();
+    double t_start = rtclock();
     sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   }
 
-  fsol = NULL;
+  int64_t *fsol = NULL;
   if (sol) {
     int k1, k2, q;
     int64_t tmp;
     /* Permute the solution in line with the permuted cst */
     if (!options->dfp) {
-      unsigned j = npar + 1;
-      for (i = 0; i < nstmts; i++) {
+      unsigned j = coeff_offset;
+      for (int i = 0; i < nstmts; i++) {
         for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
           k1 = k;
           k2 = j + (stmts[i]->dim_orig - 1 - (k - j));
@@ -417,7 +416,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
     /* Fill the soln with zeros for the redundant variables */
     q = 0;
-    for (j = 0; j < (int)cst->ncols - 1; j++) {
+    for (int j = 0; j < (int)cst->ncols - 1; j++) {
       fsol[j] = redun[j] ? 0 : sol[q++];
     }
     free(sol);
