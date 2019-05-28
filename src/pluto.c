@@ -1380,126 +1380,119 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   return conc_start_faces;
 }
 
-/*
- * Find hyperplane inside the cone  of previously found hyperplanes
- * and the face allowing concurrent start
- *
- * conc_start_faces[i]: concurrent start face for statement $i$
- *
- * evict_pos: position of the hyperplane to be evicted by the one that will
- * enable concurrent start
- *
- * cone_complement_pos: in case of partial concurrent start, the
- * hyperplane that will form the cone with the conc start hyperplane
- *
- * cone_complement_hyps will set to the cone complement hyperplanes found
- * for statements in the band
- */
+/// Find hyperplane that completes the cone with previously found hyperplanes
+/// such that the face allowing concurrent start lies within it.
+/// conc_start_faces[i]: concurrent start face for statement $i$
+/// evict_pos: position of the hyperplane to be evicted by the one that will
+/// enable concurrent start cone_complement_pos: in case of partial concurrent
+/// start, the hyperplane that will form the cone with the conc start hyperplane
+/// cone_complement_hyps will set to the cone complement hyperplanes found
+/// for statements in the band.
 static int
 find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
                                 unsigned evict_pos, int cone_complement_pos,
                                 PlutoConstraints *basecst, PlutoProg *prog,
                                 PlutoMatrix **cone_complement_hyps) {
-  int i, s, j, k, lambda_k, nstmts, nvar, npar;
-  int64_t *bestsol;
-  PlutoConstraints *con_start_cst, *lastcst;
-
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = band->loop->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  unsigned nstmts = band->loop->nstmts;
 
   IF_DEBUG(printf("[pluto] find_cone_complement_hyperplane for band\n\t"););
   IF_DEBUG(pluto_band_print(band););
 
-  /* lastcst is the set of additional constraints */
-  lastcst = pluto_constraints_alloc(2 * nvar * nstmts,
-                                    (npar + 1 + prog->nstmts * (nvar + 1) + 1) +
-                                        nvar * nstmts);
+  // lambda_cst is the set of additional constraints added to find the cone
+  // complement involving the conic combination multipliers. 
+  // TODO: improve comment by including info on the constraints that are added.
+  PlutoConstraints *lambda_cst = pluto_constraints_alloc(
+      2 * nvar * nstmts,
+      (npar + 1 + prog->nstmts * (nvar + 1) + 1) + nvar * nstmts);
 
-  /* all lambdas >=1 */
-  for (i = 0; i < nstmts; i++) {
+  /* All lambdas >=1 */
+  for (unsigned i = 0; i < nstmts; i++) {
     int stmt_offset = npar + 1 + prog->nstmts * (nvar + 1) + i * nvar;
-    for (j = 0; j < nvar; j++) {
-      pluto_constraints_add_inequality(lastcst);
-      lastcst->val[lastcst->nrows - 1][stmt_offset + j] = 1;
-      lastcst->val[lastcst->nrows - 1][lastcst->ncols - 1] = -1;
+    for (int j = 0; j < nvar; j++) {
+      pluto_constraints_add_inequality(lambda_cst);
+      lambda_cst->val[lambda_cst->nrows - 1][stmt_offset + j] = 1;
+      lambda_cst->val[lambda_cst->nrows - 1][lambda_cst->ncols - 1] = -1;
     }
   }
 
   /* Now, add the constraints for the new hyperplane to be in the cone
    * of the face and the negatives of the hyperplanes already found
-   * (excluding the one being evicted: at `evict_pos') */
-  for (s = 0; s < nstmts; s++) {
+   * (excluding the one being evicted: at `evict_pos'). */
+  for (unsigned s = 0; s < nstmts; s++) {
     Stmt *stmt = band->loop->stmts[s];
-    int stmt_offset1 = npar + 1 + stmt->id * (nvar + 1);
-    int stmt_offset2 = npar + 1 + prog->nstmts * (nvar + 1) + s * nvar;
-    for (j = 0; j < nvar; j++) {
-      pluto_constraints_add_equality(lastcst);
-      lastcst->val[lastcst->nrows - 1][stmt_offset1 + j] = 1;
+    int trans_coeff_offset = npar + 1 + stmt->id * (nvar + 1);
+    int lambda_offset = npar + 1 + prog->nstmts * (nvar + 1) + s * nvar;
+    for (int j = 0; j < nvar; j++) {
+      pluto_constraints_add_equality(lambda_cst);
+      lambda_cst->val[lambda_cst->nrows - 1][trans_coeff_offset + j] = 1;
 
-      lastcst->val[lastcst->nrows - 1][stmt_offset2] =
+      lambda_cst->val[lambda_cst->nrows - 1][lambda_offset] =
           -(conc_start_faces->val[s][j]);
 
       /* Unless fulldiamondtile is set, enable concurrent start along
        * only one dimension. */
       if (!options->fulldiamondtile) {
-        lastcst->val[lastcst->nrows - 1][stmt_offset2 + 1] =
+        lambda_cst->val[lambda_cst->nrows - 1][lambda_offset + 1] =
             stmt->trans->val[cone_complement_pos][j];
       } else {
-        // Full dimensional concurrent start */
-        lambda_k = 0;
+        // Full dimensional concurrent start. */
+        int lambda_k = 0;
         /* Just for the band depth hyperplanes */
         for (unsigned k = band->loop->depth;
              k < band->loop->depth + band->width; k++) {
           if (k != evict_pos && stmt->hyp_types[k] != H_SCALAR) {
-            lastcst->val[lastcst->nrows - 1][stmt_offset2 + lambda_k + 1] =
+            lambda_cst
+                ->val[lambda_cst->nrows - 1][lambda_offset + lambda_k + 1] =
                 stmt->trans->val[k][j];
             lambda_k++;
           }
         }
       }
-      lastcst->val[lastcst->nrows - 1][lastcst->ncols - 1] = 0;
+      lambda_cst->val[lambda_cst->nrows - 1][lambda_cst->ncols - 1] = 0;
     }
   }
 
   /*
-   * con_start_cst serves the same purpose as Pluto ILP formulation, but
-   * with expanded constraint-width to incorporate lambdas
-   *
-   * No need of non-zero solution constraints
+   * con_start_cst serves the same purpose as Pluto's ILP formulation, but
+   * with expanded constraint-width to incorporate lambdas.
+   * No need of non-zero solution constraints here.
    */
-  con_start_cst = pluto_constraints_dup(basecst);
-
+  PlutoConstraints *con_start_cst = pluto_constraints_dup(basecst);
   PlutoConstraints *boundcst =
       get_coeff_bounding_constraints_for_cone_complement(prog);
   pluto_constraints_add(con_start_cst, boundcst);
   pluto_constraints_free(boundcst);
 
-  for (i = 0; i < nvar * nstmts; i++) {
+  for (int i = 0; i < nvar * nstmts; i++) {
     pluto_constraints_add_dim(con_start_cst, basecst->ncols - 1, NULL);
   }
 
-  pluto_constraints_add(con_start_cst, lastcst);
-  pluto_constraints_free(lastcst);
+  pluto_constraints_add(con_start_cst, lambda_cst);
+  pluto_constraints_free(lambda_cst);
 
-  /* pluto_constraints_lexmin is being called directly */
-  bestsol = pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
+  IF_MORE_DEBUG(printf("Cone complement constraints\n"););
+  IF_MORE_DEBUG(pluto_constraints_pretty_print(stdout, con_start_cst););
+
+  int64_t *bestsol =
+      pluto_constraints_lexmin(con_start_cst, ALLOW_NEGATIVE_COEFF);
   pluto_constraints_free(con_start_cst);
 
-  /* pluto_constraints_lexmin is being called directly */
   if (bestsol == NULL) {
-    printf("[pluto] No concurrent start possible\n");
+    printf("[pluto] Cone complement hyperplane not found!\n");
+    printf("[pluto] No tiled concurrent start possible.\n");
   } else {
-    IF_DEBUG(printf("[pluto] Concurrent start possible\n"););
-    for (j = 0; j < nstmts; j++) {
+    IF_DEBUG(printf("[pluto] Tiled concurrent start possible.\n"););
+    for (unsigned j = 0; j < nstmts; j++) {
       Stmt *stmt = band->loop->stmts[j];
       cone_complement_hyps[j] = pluto_matrix_alloc(1, stmt->dim + npar + 1);
-      for (k = 0; k < nvar; k++) {
+      for (int k = 0; k < nvar; k++) {
         cone_complement_hyps[j]->val[0][k] =
             bestsol[npar + 1 + stmt->id * (nvar + 1) + k];
       }
-      /* No parametric shifts */
-      for (k = nvar; k < nvar + npar; k++) {
+      /* No parametric shifts. */
+      for (int k = nvar; k < nvar + npar; k++) {
         cone_complement_hyps[j]->val[0][k] = 0;
       }
       cone_complement_hyps[j]->val[0][nvar + npar] =
