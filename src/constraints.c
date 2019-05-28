@@ -1814,10 +1814,11 @@ void pluto_constraints_project_out(PlutoConstraints *cst, int start, int num) {
 
 void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
                                         int col2) {
-  int r, tmp;
+  if (col1 == col2)
+    return;
 
-  for (r = 0; r < cst->nrows; r++) {
-    tmp = cst->val[r][col1];
+  for (unsigned r = 0; r < cst->nrows; r++) {
+    int tmp = cst->val[r][col1];
     cst->val[r][col1] = cst->val[r][col2];
     cst->val[r][col2] = tmp;
   }
