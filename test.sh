@@ -86,6 +86,11 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# Test per cc objective
+printf '%-50s ' test-per-cc-obj.c
+./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
+check_ret_val_emit_status
+
 # Test libpluto
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
