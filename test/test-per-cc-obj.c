@@ -8,6 +8,10 @@
 // CC-OBJ-CHECK: T(S3): (1, i+1, 0, 0)
 // CC-OBJ-CHECK: T(S4): (1, i, 0, 1)
 // CHECK: Output written
+
+/* If per cc objective was not used, then Pluto would have found the solution
+ * T(S3): (1, i, 0, 0), T(S4): (1, i, 0, 1), which is not parallel for
+ * statements S3 and S4 */
 #pragma scop
 for (k = 0; k < N; k++) {
   for (i = 0; i < N; i++) {
