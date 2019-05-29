@@ -873,48 +873,51 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
  */
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                                                   bool hyp_search_mode) {
-  PlutoConstraints *nzcst;
-  int i, j, stmt_offset, nvar, npar, nstmts;
-
   Stmt **stmts = prog->stmts;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
+  int nstmts = prog->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
 
-  nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
-  nzcst->ncols = CST_WIDTH;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+  PlutoConstraints *nzcst = pluto_constraints_alloc(nstmts, ncols);
+  nzcst->ncols = ncols;
+
+  int coeff_offset = npar + 1 + ncols - CST_WIDTH;
 
   if (hyp_search_mode == EAGER) {
-    for (i = 0; i < nstmts; i++) {
+    for (int i = 0; i < nstmts; i++) {
       /* Don't add the constraint if enough solutions have been found */
       if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
         IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
         continue;
       }
-      stmt_offset = npar + 1 + i * (nvar + 1);
-      for (j = 0; j < nvar; j++) {
+      int stmt_offset = coeff_offset + i * (nvar + 1);
+      for (int j = 0; j < nvar; j++) {
         if (stmts[i]->is_orig_loop[j] == 1) {
           nzcst->val[nzcst->nrows][stmt_offset + j] = 1;
         }
       }
-      nzcst->val[nzcst->nrows][CST_WIDTH - 1] = -1;
+      nzcst->val[nzcst->nrows][ncols - 1] = -1;
       nzcst->nrows++;
     }
   } else {
     assert(hyp_search_mode == LAZY);
-    for (i = 0; i < nstmts; i++) {
+    for (int i = 0; i < nstmts; i++) {
       /* Don't add the constraint if enough solutions have been found */
       if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
         IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
         continue;
       }
-      stmt_offset = npar + 1 + i * (nvar + 1);
-      for (j = 0; j < nvar; j++) {
+      int stmt_offset = coeff_offset + i * (nvar + 1);
+      for (int j = 0; j < nvar; j++) {
         if (stmts[i]->is_orig_loop[j] == 1) {
           nzcst->val[0][stmt_offset + j] = 1;
         }
       }
-      nzcst->val[0][CST_WIDTH - 1] = -1;
+      nzcst->val[0][ncols - 1] = -1;
     }
     nzcst->nrows = 1;
   }

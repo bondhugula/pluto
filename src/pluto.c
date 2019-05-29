@@ -807,13 +807,6 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     pluto_constraints_copy(currcst, basecst);
     PlutoConstraints *nzcst =
         get_non_trivial_sol_constraints(prog, hyp_search_mode);
-    if (options->per_cc_obj) {
-      /* The number of columns to be added is npar+w for dimension wise sum of
-       * per cc u and w  and then u and w for each cc. One set of u and w is
-       * already added.  */
-      int num_dims_to_be_added = (prog->ddg->num_ccs) * (npar + 1);
-      pluto_constraints_add_leading_dims(nzcst, num_dims_to_be_added);
-    }
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
