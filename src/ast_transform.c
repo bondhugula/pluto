@@ -177,6 +177,9 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
        * trans matrix */
       printf("[pluto] pluto_mark_vector: WARNING: vectorizable poly loop not "
              "found in AST\n");
+      free(stmtids);
+      free(loops);
+      free(stmts);
       continue;
     }
     for (j = 0; j < nloops; j++) {
