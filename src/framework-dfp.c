@@ -59,32 +59,27 @@ static double rtclock() {
 /// Constructs linear independence constraints for each statement in SCC scc_id.
 PlutoConstraints *dfp_get_scc_ortho_constraints(int *colour, int scc_id,
                                                 PlutoProg *prog) {
-  int nvar, npar, nstmts, i, j, q, stmt_offset;
-  Stmt **stmts;
-  PlutoConstraints *indcst;
-  bool has_dim_to_be_coloured;
-  has_dim_to_be_coloured = false;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  PlutoConstraints *indcst = NULL;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  indcst = NULL;
+  Stmt **stmts = prog->stmts;
+  int q = 0;
 
-  stmts = prog->stmts;
-  q = 0;
+  int coeff_offset = npar + 1;
+  bool has_dim_to_be_coloured = false;
 
-  stmt_offset = npar + 1;
-
-  for (i = 0; i < nstmts; i++) {
+  for (int i = 0; i < nstmts; i++) {
     if (stmts[i]->scc_id == scc_id) {
-      for (j = 0; j < stmts[i]->dim_orig; j++) {
+      for (int j = 0; j < stmts[i]->dim_orig; j++) {
         if (colour[q] == 0) {
           if (indcst == NULL) {
             indcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
             indcst->nrows = 0;
             indcst->ncols = CST_WIDTH;
           }
-          indcst->val[indcst->nrows][stmt_offset + i * (nvar + 1) + j] = 1;
+          indcst->val[indcst->nrows][coeff_offset + i * (nvar + 1) + j] = 1;
           has_dim_to_be_coloured = true;
         }
         q++;
@@ -105,9 +100,8 @@ PlutoConstraints *dfp_get_scc_ortho_constraints(int *colour, int scc_id,
 /// zero, then each component of u is scaled up by 100 just to indicate a large
 /// value.
 static int64_t get_dep_dist_from_pluto_sol(double *sol, int npar) {
-  unsigned int i;
   int64_t sum = 0;
-  for (i = 0; i < npar; i++) {
+  for (int i = 0; i < npar; i++) {
     sum = sum + 100 * ceil(sol[i]);
   }
   sum = sum + ceil(sol[npar]);
@@ -141,21 +135,16 @@ static inline bool is_ilp_solution_parallel(int64_t *sol, int npar) {
 /// Routine to mark parallel SCCs. This is called in dfp approach when to
 /// identify parallel SCC clustering is disabled.
 void mark_parallel_sccs(int *colour, PlutoProg *prog) {
-  int i, num_sccs;
-  PlutoConstraints *indcst, *boundcst, *permutecst;
-  PlutoMatrix *obj;
-  double *sol;
+  int num_sccs = prog->ddg->num_sccs;
 
-  num_sccs = prog->ddg->num_sccs;
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
+  PlutoMatrix *obj = construct_cplex_objective(boundcst, prog);
 
-  boundcst = get_coeff_bounding_constraints(prog);
-  obj = construct_cplex_objective(boundcst, prog);
-
-  for (i = 0; i < num_sccs; i++) {
+  for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("[pluto] Checking parallelism for SCC %d\n", i););
-    sol = NULL;
-    permutecst = get_scc_permutability_constraints(i, prog);
-    indcst = dfp_get_scc_ortho_constraints(colour, i, prog);
+    double *sol = NULL;
+    PlutoConstraints *permutecst = get_scc_permutability_constraints(i, prog);
+    PlutoConstraints *indcst = dfp_get_scc_ortho_constraints(colour, i, prog);
 
     /* If there are no deps or if there are no linear independence
      * constraints then the scc is parallel*/
@@ -188,7 +177,7 @@ void mark_parallel_sccs(int *colour, PlutoProg *prog) {
       assert(sol != NULL);
       if (is_lp_solution_parallel(sol, prog->npar)) {
         prog->ddg->sccs[i].is_parallel = 1;
-        printf("SCC %d is parallel \n", i);
+        IF_DEBUG(printf("SCC %d is parallel \n", i););
       } else {
         prog->ddg->sccs[i].is_parallel = 0;
       }
@@ -209,10 +198,9 @@ void mark_parallel_sccs(int *colour, PlutoProg *prog) {
 
 /// Print ids and number of parallel SCCs
 void print_parallel_sccs(Graph *ddg) {
-  int i, num_par_sccs;
-  num_par_sccs = 0;
+  unsigned num_par_sccs = 0;
   printf("Ids Parallel SCCs:");
-  for (i = 0; i < ddg->num_sccs; i++) {
+  for (int i = 0; i < ddg->num_sccs; i++) {
     if (ddg->sccs[i].is_parallel) {
       printf(" %d", i);
       num_par_sccs++;
