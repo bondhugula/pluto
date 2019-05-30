@@ -1750,12 +1750,12 @@ void colour_convex_successors(int k, int *convex_successors, int num_successors,
   }
 }
 
-/* This routine implements the greedy clustering heuristic in typed fuse.
- * The scc being coloured has atleast one  parallel dimension. It looks at the
- * successors that are convex with the current SCC (scc_id) and finds the
- * parallel dimensions that are common with dimensions of the current SCC
- * and can be coloured. The dimension of the SCC scc_id with the maximum
- * common successors is chosen for colouring */
+/// This routine implements the greedy clustering heuristic in typed fuse. The
+/// scc being coloured has atleast one  parallel dimension. It looks at the
+/// successors that are convex with the current SCC (scc_id) and finds the
+/// parallel dimensions that are common with dimensions of the current SCC and
+/// can be coloured. The dimension of the SCC scc_id with the maximum common
+/// successors is chosen for colouring.
 bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
                                PlutoProg *prog) {
   Graph *ddg, *fcg;
@@ -1864,7 +1864,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
   return true;
 }
 
-/* Cuts the SCC given by scc_id from its immediate predecessor. */
+/// Cuts the SCC given by scc_id from its immediate predecessor.
 void cut_from_predecessor(int scc_id, PlutoProg *prog) {
   int i;
   Graph *ddg;
@@ -1876,8 +1876,8 @@ void cut_from_predecessor(int scc_id, PlutoProg *prog) {
   }
 }
 
-/* Returns a convex successor with the smallest scc_id that is (directly)
- * connected to the current scc */
+/// Returns a convex successor with the smallest scc_id that is (directly)
+/// connected to the current scc.
 int get_min_convex_successor(int scc_id, PlutoProg *prog) {
   int i, num, *convex_successors;
   int min_scc_id;
@@ -1896,6 +1896,8 @@ int get_min_convex_successor(int scc_id, PlutoProg *prog) {
   return min_scc_id;
 }
 
+/// Returns the dimension in SCC1 that has minimum dependence distance when
+/// fused with some dimension in SCC2.
 int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
                                int num_discarded, int *discarded_list) {
   Graph *fcg = prog->fcg;
@@ -1924,9 +1926,9 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
   return min;
 }
 
-/* Returns the list of vertices of the FCG corresponding the dimensions of the
- * current scc that can possibly be  coloured. Discarded list is the vertices of
- * the current scc that are chosen to be not suitable for colouring. */
+/// Returns the list of vertices of the FCG corresponding the dimensions of the
+/// current scc that can possibly be  coloured. Discarded list is the vertices
+/// of the current scc that are chosen to be not suitable for colouring.
 bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
                           int *discarded_list, int num_discarded, int *num) {
   int num_col_dims, max_dim, scc_offset;
@@ -1954,9 +1956,9 @@ bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
   return colourable_dims;
 }
 
-/* For each dimension i of current scc (scc_id), it returns the number of sccs
- * in scc_list that can be fused with i. The returned array is NULL if none of
- * the Sccs in the scc_list is fuseable with any dimension of the current scc */
+/// For each dimension i of current scc (scc_id), it returns the number of sccs
+/// in scc_list that can be fused with i. The returned array is NULL if none of
+/// the Sccs in the scc_list is fuseable with any dimension of the current scc.
 int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
                      bool *colourable_dims, int num_dims, int *colour,
                      int current_colour, PlutoProg *prog) {
@@ -2000,6 +2002,9 @@ int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
   return common_dims;
 }
 
+/// Returns the convex predecessors of min_scc_idd which are convex successors
+/// of scc_id. Min_scc_id is a convex successor of scc_id. Hence scc_id will be
+/// present in the list of returned convex predecessors.
 int *get_convex_preds_from_convex_successors(int min_scc_id, int scc_id,
                                              int *convex_successors,
                                              int num_convex_successors,
@@ -2021,8 +2026,7 @@ int *get_convex_preds_from_convex_successors(int min_scc_id, int scc_id,
   return pred_list;
 }
 
-/* Returns a dimension of an SCC (vetex in the FCG)
- * that can be colored next. */
+/// Returns a dimension of an SCC (vetex in the FCG) that can be colored next.
 int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
                                     int num_discarded, int *discarded_list,
                                     int *colour, int current_colour) {
@@ -2166,7 +2170,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
   return -1;
 }
 
-/* Colours an SCC of the FCG in the clustered approach */
+/// Colours an SCC of the FCG in the clustered approach.
 bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
                         PlutoProg *prog) {
   Graph *fcg = prog->fcg;
@@ -2268,8 +2272,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   return false;
 }
 
-/* Returns colours corresponding vertices of the original FCG
- * from the colours of vertices of scc clustered FCG */
+/// Returns colours corresponding vertices of the original FCG from the colours
+/// of vertices of scc clustered FCG.
 int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
                                        int *has_parallel_hyperplane) {
   int i, j, scc_offset, scc_id;
@@ -2298,10 +2302,10 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
   return stmt_colour;
 }
 
-/* Returns colours corresponding to clustered FCG from the colours of
- * the statement. The routine picks the colour of the statement whose
- * dimensionality is same as the dimensionality of the SCC as the colour
- * of the SCC */
+/// Returns colours corresponding to clustered FCG from the colours of the
+/// statement. The routine picks the colour of the statement whose
+/// dimensionality is same as the dimensionality of the SCC as the colour of the
+/// SCC.
 int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
                                          int current_colour, int nvertices,
                                          int *has_parallel_hyperplane) {
@@ -2345,10 +2349,9 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
   return scc_colour;
 }
 
-/* Routine to rebuild FCG in the clustered approach.
- * As SCC ids may change when SCC's are recomputed,
- * the colours for each statement is computed and then
- * the colours for the updated sccs are obtained using statement colours. */
+/// Routine to rebuild FCG in the clustered approach.  As SCC ids may change
+/// when SCC's are recomputed, the colours for each statement is computed and
+/// then the colours for the updated sccs are obtained using statement colours.
 int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   int *stmt_colour, nvertices, i, num_sccs;
   int *scc_colour;
@@ -2405,8 +2408,8 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   return scc_colour;
 }
 
-/* The routine checks if the two SCCs are fused in the till the current level.
- * If yes it returns true else returns false */
+/// The routine checks if the two SCCs are fused in the till the current level.
+/// If yes it returns true else returns false
 bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
   int i, num_hyperplanes, stmt1, stmt2, nvar, npar;
   Scc *sccs;
@@ -2439,10 +2442,9 @@ bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
   return sccs_fused;
 }
 
-/* Routine adds a scalar hyperplane between two SCCs.
- * Note that SCCs might not be connected. Ideally this routine
- * can be moved to pluto.c (or framework.c) and approprite
- * changes can be made in DDG cut routines */
+/// Routine adds a scalar hyperplane between two SCCs. Note that SCCs might not
+/// be connected. Ideally this routine can be moved to pluto.c (or framework.c)
+/// and approprite changes can be made in DDG cut routines.
 void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
                                                int scc2) {
   int i, j, nstmts, nvar, npar;
@@ -2468,8 +2470,7 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
   }
 }
 
-/* Colours all scc's with a colour c. Returns the current colouring of the fcg.
- */
+/// Colours all scc's with a colour c. Returns the current colouring of the FCG.
 int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
   int i, j, nsccs, prev_scc;
   bool is_distributed, is_successful;
@@ -2720,22 +2721,21 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
   return colour;
 }
 
-/* Resets that an scc has coloured. This is called after permutation
- * found at the current level is scaled and shifted, thus enabling
- * colouring at the next level. */
+/// Resets is_scc_coloured for each scc. This is called after permutation found
+/// at the current level is scaled and shifted, thus enabling colouring at the
+/// next level.
 void reset_scc_colouring(Graph *ddg) {
-  int nsccs, i;
-  nsccs = ddg->num_sccs;
+  int nsccs = ddg->num_sccs;
 
-  for (i = 0; i < nsccs; i++) {
+  for (int i = 0; i < nsccs; i++) {
     ddg->sccs[i].is_scc_coloured = false;
   }
   return;
 }
 
-/* Routine to find permutable hyperplanes in the FCG based approach.
- * Colouring is done on a per SCC basis. Natural number ordering of the
- * scc ids is used to ensure convexity. */
+/// Routine to find permutable hyperplanes in the FCG based approach. Colouring
+/// is done on a per SCC basis. Natural number ordering of the scc ids is used
+/// to ensure convexity.
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   int num_coloured_dims, max_colours;
   Stmt **stmts;
@@ -2843,11 +2843,12 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
 }
 
 /*************************** Scaling Routines ******************/
-/* Set the lower bounds for statements that are coloured with colour c.
- * These are used to find the scaling and shifting factors.
- * When vertices of FCG are clustered lower bound of dimensions of all
- * statements in the SCC is set to 1 if and only if the corresponding
- * vertex of the FCG is coloured with colour c */
+
+/// Set the lower bounds for statements that are coloured with colour c. These
+/// are used to find the scaling and shifting factors. When vertices of FCG are
+/// clustered lower bound of dimensions of all statements in the SCC is set to 1
+/// if and only if the corresponding vertex of the FCG is coloured with colour
+/// c.
 void add_coeff_constraints_from_scc_clustered_fcg_colouring(
     PlutoConstraints *coeffcst, int *colour, int c, PlutoProg *prog) {
   int i, j, k, num_sccs, stmt_id, nvar, npar, scc_offset;
@@ -2902,8 +2903,8 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring(
   }
 }
 
-/* Set the lower bounds for statements that are coloured with colour c.
- * These are used to find the scaling and shifting factors. */
+/// Set the lower bounds for statements that are coloured with colour c. These
+/// are used to find the scaling and shifting factors.
 void add_coeff_constraints_from_fcg_colouring(PlutoConstraints *coeffcst,
                                               int *colour, int c,
                                               PlutoProg *prog) {
@@ -2940,10 +2941,9 @@ void add_coeff_constraints_from_fcg_colouring(PlutoConstraints *coeffcst,
   }
 }
 
-/* Once the permutation is found, it finds the scling and shifting factors for
- * the permtation
- * Scales the dimensions in the with colour c+1. Returns 1 if scaling
- * was successful. Else returns 0. */
+/// Once the permutation is found, it finds the scling and shifting factors for
+/// the permtation Scales the dimensions in the with colour c+1. Returns 1 if
+/// scaling was successful. Else returns 0.
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   int select;
   int nvar, npar, nrows;
@@ -3032,8 +3032,8 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   }
 }
 
-/* Routines that introduce loop skewing after loop permutations, loop skewing
- * and loop shifting transfomations have been found. */
+/// Routines that introduce loop skewing after loop permutations, loop skewing
+/// and loop shifting transfomations have been found.
 bool get_negative_components(Dep *dep, bool *dims_with_neg_components,
                              PlutoProg *prog, int level) {
   int i;
@@ -3065,11 +3065,11 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components,
   return has_negative_comp;
 }
 
-/* Checks if there are any non constant dependences in the loop nest.
- * This is done by computing \vec{d}.\vec{h} and the resultant \vec{u}
- * has to be zero in pluto's cost function. Constraints to ensure u
- * is zero is added and if the resulting LP formulation is unsat, then
- * there are non constant deps in the SCC  */
+/// Checks if there are any non constant dependences in the loop nest.  This is
+/// done by computing \vec{d}.\vec{h} and the resultant \vec{u} has to be zero
+/// in pluto's cost function. Constraints to ensure u is zero is added and if
+/// the resulting LP formulation is unsat, then there are non constant deps in
+/// the SCC.
 bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
                           PlutoProg *prog) {
   int i, j, ndeps, nstmts, nvar, npar;
@@ -3128,9 +3128,9 @@ bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
   return true;
 }
 
-/* Returns a boolean array in which the vales that are set represent
- * the dimensions of the current SCC that have to be skewed in order
- * the make the loop nest tileable */
+/// Returns a boolean array in which the vales that are set represent the
+/// dimensions of the current SCC that have to be skewed in order the make the
+/// loop nest tileable.
 bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
                         int level) {
   int i, ndeps, nvar;
@@ -3163,8 +3163,7 @@ bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
   return dims_with_neg_components;
 }
 
-/* Returns the dimensions at which tiling preventing dependences are satisfied
- */
+/// Returns the dimensions that satisfy the preventing dependences.
 bool *get_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps) {
   int ndeps, loop_dims;
   Dep *dep;
@@ -3194,15 +3193,14 @@ bool *get_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps) {
   return sat_dim;
 }
 
-/* Returns skewing constraints. The lower bounds of the
- * dimensions that satisfy tiling preventing dependences are set to 1 */
+/// Returns skewing constraints. The lower bounds of the dimensions that satisfy
+/// tiling preventing dependences are set to 1.
 PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
                                           int scc_id, PlutoProg *prog,
                                           int level,
                                           PlutoConstraints *skewCst) {
   int nvar, npar, nstmts;
   Stmt **stmts;
-  /* PlutoConstraints *skewCst, *boundcst; */
 
   nvar = prog->nvar;
   npar = prog->npar;
@@ -3229,6 +3227,9 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
   return skewCst;
 }
 
+/// The level at which tiling preventing dependences were satisfied are given by
+/// src_dims. The routine returns the dimension corresponding to the outermost
+/// level in src_dims.
 int get_outermost_sat_level(int scc_id, bool *src_dims, PlutoProg *prog) {
   int max_dim = prog->ddg->sccs[scc_id].max_dim;
   for (int i = 0, j = 0; i < prog->num_hyperplanes && j < max_dim; i++) {
@@ -3241,6 +3242,8 @@ int get_outermost_sat_level(int scc_id, bool *src_dims, PlutoProg *prog) {
   return -1;
 }
 
+/// The routine swaps the rows of the transformation matrices at levels
+/// par_level and level for all statements of the given connected component.
 void swap_trans_for_cc(int par_level, int level, int cc_id, PlutoProg *prog) {
   assert(par_level < level);
   assert(prog->hProps[par_level].type == H_LOOP);
