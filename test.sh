@@ -91,15 +91,18 @@ printf '%-50s ' test-per-cc-obj.c
 ./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
 check_ret_val_emit_status
 
-# Test typed fusion with dfp
+# Test typed fusion with dfp. This cases are executed only when glpk or gurobi
+# is enabled. Either of these solvers is required by the dfp framework.
 TESTS="test/dfp/typed-fuse-1.c\
        test/dfp/typed-fuse-2.c\
        "
-for file in $TESTS; do
-printf '%-50s '  $file
-./src/pluto --notile --noparallel --dfp --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
-check_ret_val_emit_status
-done
+if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
+   for file in $TESTS; do
+   printf '%-50s '  $file
+   ./src/pluto --notile --noparallel --dfp --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+   check_ret_val_emit_status
+   done
+fi
 
 # Test libpluto
 printf '%-50s ' test_libpluto
