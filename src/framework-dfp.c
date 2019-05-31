@@ -2657,27 +2657,22 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
 /// c.
 void add_coeff_constraints_from_scc_clustered_fcg_colouring(
     PlutoConstraints *coeffcst, int *colour, int c, PlutoProg *prog) {
-  int i, j, k, num_sccs, stmt_id, nvar, npar, scc_offset;
-  Stmt **stmts;
-  Graph *ddg;
-  Scc *sccs;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  Graph *ddg = prog->ddg;
+  int num_sccs = ddg->num_sccs;
+  Scc *sccs = ddg->sccs;
+  Stmt **stmts = prog->stmts;
+  int scc_offset = 0;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  ddg = prog->ddg;
-  num_sccs = ddg->num_sccs;
-  sccs = ddg->sccs;
-  stmts = prog->stmts;
-  scc_offset = 0;
-
-  for (j = 0; j < num_sccs; j++) {
+  for (int j = 0; j < num_sccs; j++) {
     /* If the Scc's dimesionality is greater less c, then all vertices
      * of this scc are coloured. Hence set the lower bound of the
      * transformation coefficients of this SCC to zero.*/
     if (sccs[j].max_dim < c) {
-      for (i = 0; i < sccs[j].size; i++) {
-        stmt_id = sccs[j].vertices[i];
-        for (k = 0; k < sccs[j].max_dim; k++) {
+      for (int i = 0; i < sccs[j].size; i++) {
+        int stmt_id = sccs[j].vertices[i];
+        for (int k = 0; k < sccs[j].max_dim; k++) {
           if (stmts[stmt_id]->is_orig_loop[k]) {
             pluto_constraints_add_lb(coeffcst,
                                      npar + 1 + stmt_id * (nvar + 1) + k, 0);
@@ -2691,9 +2686,9 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring(
       scc_offset += sccs[j].max_dim;
       continue;
     }
-    for (i = 0; i < sccs[j].size; i++) {
-      stmt_id = sccs[j].vertices[i];
-      for (k = 0; k < sccs[j].max_dim; k++) {
+    for (int i = 0; i < sccs[j].size; i++) {
+      int stmt_id = sccs[j].vertices[i];
+      for (int k = 0; k < sccs[j].max_dim; k++) {
         if (colour[scc_offset + k] == c && stmts[stmt_id]->is_orig_loop[k]) {
           pluto_constraints_add_lb(coeffcst,
                                    npar + 1 + stmt_id * (nvar + 1) + k, 1);
@@ -2714,28 +2709,25 @@ void add_coeff_constraints_from_scc_clustered_fcg_colouring(
 void add_coeff_constraints_from_fcg_colouring(PlutoConstraints *coeffcst,
                                               int *colour, int c,
                                               PlutoProg *prog) {
-  int j, k, nstmts, nvar, npar, stmt_offset;
-  Stmt **stmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+  int stmt_offset = 0;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  stmts = prog->stmts;
-  stmt_offset = 0;
-
-  for (j = 0; j < nstmts; j++) {
+  for (int j = 0; j < nstmts; j++) {
     /* If a statements's dimesionality is less than c, then all
      * dimensions of this statement are coloured. Hence set the
      *  lower bound of the transformation coefficients of this
      *  statement to zero.*/
     if (stmts[j]->dim_orig < c) {
-      for (k = 0; k < stmts[j]->dim_orig; k++) {
+      for (int k = 0; k < stmts[j]->dim_orig; k++) {
         pluto_constraints_add_lb(coeffcst, npar + 1 + j * (nvar + 1) + k, 1);
       }
       stmt_offset += stmts[j]->dim_orig;
       continue;
     }
-    for (k = 0; k < nvar; k++) {
+    for (int k = 0; k < nvar; k++) {
       if (stmts[j]->is_orig_loop[k] && colour[stmt_offset + k] == c) {
         pluto_constraints_add_lb(coeffcst, npar + 1 + j * (nvar + 1) + k, 1);
       } else {
@@ -2751,23 +2743,16 @@ void add_coeff_constraints_from_fcg_colouring(PlutoConstraints *coeffcst,
 /// the permtation Scales the dimensions in the with colour c+1. Returns 1 if
 /// scaling was successful. Else returns 0.
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
-  int select;
-  int nvar, npar, nrows;
-  int nstmts;
-  double t_start;
-  PlutoConstraints *basecst, *coeffcst, *boundcst;
-  int64_t *sol;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-
-  basecst = get_permutability_constraints(prog);
+  PlutoConstraints *basecst = get_permutability_constraints(prog);
   assert(basecst->ncols == CST_WIDTH);
 
-  boundcst = get_coeff_bounding_constraints(prog);
-  nrows = basecst->nrows + boundcst->nrows + (nstmts * nvar);
-  coeffcst = pluto_constraints_alloc(nrows, basecst->ncols);
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
+  unsigned nrows = basecst->nrows + boundcst->nrows + (nstmts * nvar);
+  PlutoConstraints *coeffcst = pluto_constraints_alloc(nrows, basecst->ncols);
   coeffcst->nrows = 0;
   coeffcst->ncols = basecst->ncols;
   assert(coeffcst->ncols == CST_WIDTH);
@@ -2785,7 +2770,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   pluto_constraints_free(boundcst);
 
   /* Pick a colour that you would start */
-  select = c + 1;
+  int select = c + 1;
   IF_DEBUG(printf("[pluto] Finding Scaling factors for colour %d\n", select););
 
   /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set
@@ -2801,9 +2786,9 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   coeffcst = pluto_constraints_add(coeffcst, basecst);
 
   /* Solve the constraints to find the hyperplane at this level */
-  t_start = rtclock();
+  double t_start = rtclock();
 
-  sol = pluto_prog_constraints_lexmin(coeffcst, prog);
+  int64_t *sol = pluto_prog_constraints_lexmin(coeffcst, prog);
 
   if (sol != NULL) {
     IF_DEBUG(printf("[pluto]: found a hyperplane\n"));
@@ -2842,15 +2827,10 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
 /// and loop shifting transfomations have been found.
 bool get_negative_components(Dep *dep, bool *dims_with_neg_components,
                              PlutoProg *prog, int level) {
-  int i;
-  bool has_negative_comp;
-  HyperplaneProperties *hProps;
-  int loop_dims;
-
-  hProps = prog->hProps;
-  has_negative_comp = false;
-  loop_dims = 0;
-  for (i = 0; i < prog->num_hyperplanes; i++) {
+  HyperplaneProperties *hProps = prog->hProps;
+  bool has_negative_comp = false;
+  int loop_dims = 0;
+  for (int i = 0; i < prog->num_hyperplanes; i++) {
     if (hProps[i].type == H_SCALAR && i < level) {
       continue;
     }
@@ -2878,39 +2858,34 @@ bool get_negative_components(Dep *dep, bool *dims_with_neg_components,
 /// the SCC.
 bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
                           PlutoProg *prog) {
-  int i, j, ndeps, nstmts, nvar, npar;
-  int src_id, dest_id;
-  Stmt **stmts;
-  Dep **deps;
-
-  ndeps = prog->ndeps;
-  nstmts = prog->nstmts;
-  npar = prog->npar;
-  nvar = prog->nvar;
-  deps = prog->deps;
-  stmts = prog->stmts;
+  int ndeps = prog->ndeps;
+  int nstmts = prog->nstmts;
+  int npar = prog->npar;
+  int nvar = prog->nvar;
+  Dep **deps = prog->deps;
+  Stmt **stmts = prog->stmts;
 
   basecst->nrows = 0;
   basecst->ncols = CST_WIDTH;
-  for (i = 0; i < ndeps; i++) {
+  for (int i = 0; i < ndeps; i++) {
     Dep *dep = deps[i];
-    src_id = stmts[dep->src]->scc_id;
-    dest_id = stmts[dep->dest]->scc_id;
+    int src_id = stmts[dep->src]->scc_id;
+    int dest_id = stmts[dep->dest]->scc_id;
     if ((src_id == scc_id) && (dest_id == scc_id)) {
       pluto_constraints_add(basecst, dep->cst);
     }
   }
   /* If deps are constant then \vec{u} is zero vector.
    * Hence set the value of u to be zero */
-  for (i = 0; i < npar; i++) {
+  for (int i = 0; i < npar; i++) {
     pluto_constraints_add_equality(basecst);
     basecst->val[basecst->nrows - 1][i] = 1;
   }
   pluto_constraints_add_lb(basecst, npar, 0);
   /* Set the transformation coefficients to be equalities with
    * same values as in the input permutation */
-  for (i = 0; i < nstmts; i++) {
-    for (j = 0; j < nvar + 1; j++) {
+  for (int i = 0; i < nstmts; i++) {
+    for (int j = 0; j < nvar + 1; j++) {
       pluto_constraints_add_equality(basecst);
       basecst->val[basecst->nrows - 1][npar + 1 + i * (nvar + 1) + j] = 1;
       basecst->val[basecst->nrows - 1][basecst->ncols - 1] =
@@ -2939,21 +2914,16 @@ bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
 /// loop nest tileable.
 bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
                         int level) {
-  int i, ndeps, nvar;
-  Stmt **stmts;
-  Dep *dep;
-  bool *dims_with_neg_components;
+  int nvar = prog->nvar;
+  int ndeps = prog->ndeps;
+  Stmt **stmts = prog->stmts;
 
-  nvar = prog->nvar;
-  ndeps = prog->ndeps;
-  stmts = prog->stmts;
-
-  dims_with_neg_components = (bool *)malloc(nvar * sizeof(bool *));
+  bool *dims_with_neg_components = (bool *)malloc(nvar * sizeof(bool *));
   bzero(dims_with_neg_components, nvar * sizeof(bool));
 
   /* For each dep find whether it is satisfied by a cut or loop; */
-  for (i = 0; i < ndeps; i++) {
-    dep = prog->deps[i];
+  for (int i = 0; i < ndeps; i++) {
+    Dep *dep = prog->deps[i];
     if (!options->rar && IS_RAR(dep->type))
       continue;
     if (!(stmts[dep->src]->scc_id == scc_id) ||
@@ -2971,19 +2941,14 @@ bool *dims_to_be_skewed(PlutoProg *prog, int scc_id, bool *tile_preventing_deps,
 
 /// Returns the dimensions that satisfy the preventing dependences.
 bool *get_dep_satisfaction_dims(PlutoProg *prog, bool *tile_preventing_deps) {
-  int ndeps, loop_dims;
-  Dep *dep;
-  bool *sat_dim;
-  HyperplaneProperties *hProps;
-
-  sat_dim = (bool *)malloc(prog->nvar * sizeof(bool));
+  bool *sat_dim = (bool *)malloc(prog->nvar * sizeof(bool));
   bzero(sat_dim, (prog->nvar) * sizeof(bool));
-  ndeps = prog->ndeps;
-  hProps = prog->hProps;
+  int ndeps = prog->ndeps;
+  HyperplaneProperties *hProps = prog->hProps;
 
   for (int i = 0; i < ndeps; i++) {
-    dep = prog->deps[i];
-    loop_dims = 0;
+    Dep *dep = prog->deps[i];
+    int loop_dims = 0;
     if (!tile_preventing_deps[i]) {
       continue;
     }
@@ -3005,13 +2970,10 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
                                           int scc_id, PlutoProg *prog,
                                           int level,
                                           PlutoConstraints *skewCst) {
-  int nvar, npar, nstmts;
-  Stmt **stmts;
-
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  stmts = prog->stmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
 
   assert(skewCst->ncols == CST_WIDTH);
 
