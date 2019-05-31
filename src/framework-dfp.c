@@ -1130,18 +1130,16 @@ void pluto_print_colours(int *colour, PlutoProg *prog) {
 /// is_parallel set if parallelism preventing edges is supposed to be considered
 /// while colouring.
 bool is_valid_colour(int v, int c, Graph *fcg, int *colour, bool is_parallel) {
-  int i, fcg_nVertices;
-  bool par_preventing_edge;
-  fcg_nVertices = fcg->nVertices;
-  for (i = 0; i < fcg_nVertices; i++) {
+  int fcg_nVertices = fcg->nVertices;
+  for (int i = 0; i < fcg_nVertices; i++) {
     if ((fcg->adj->val[i][v] == 1 || fcg->adj->val[v][i] == 1) &&
         colour[i] == c) {
       return false;
     }
 
     if (is_parallel) {
-      par_preventing_edge = par_preventing_adj_mat->val[v][i] ||
-                            par_preventing_adj_mat->val[i][v];
+      bool par_preventing_edge = par_preventing_adj_mat->val[v][i] ||
+                                 par_preventing_adj_mat->val[i][v];
       if (par_preventing_edge && colour[i] == c) {
         return false;
       }
@@ -1168,23 +1166,18 @@ bool is_discarded(int v, int *list, int num) {
 /// belongs.
 int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num,
                         int pv, PlutoProg *prog) {
-  int i, min, npar, nvar, stmt_offset;
-  Stmt **stmts;
-  int scc_id;
-  double *sol;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  Stmt **stmts = prog->stmts;
+  int min = 0;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  stmts = prog->stmts;
-  min = 0;
-
-  for (i = 0; i < stmts[stmt_id]->dim_orig; i++) {
+  for (int i = 0; i < stmts[stmt_id]->dim_orig; i++) {
     if (!is_discarded(fcg_stmt_offset + i, list, num)) {
       if (options->lpcolour) {
-        scc_id = stmts[stmt_id]->scc_id;
-        sol = prog->ddg->sccs[scc_id].sol;
+        int scc_id = stmts[stmt_id]->scc_id;
+        double *sol = prog->ddg->sccs[scc_id].sol;
         assert(sol != NULL);
-        stmt_offset = npar + 1 + (nvar + 1) * stmt_id + i;
+        int stmt_offset = npar + 1 + (nvar + 1) * stmt_id + i;
         if (sol[stmt_offset] == 0.0f) {
           continue;
         }
@@ -1204,22 +1197,17 @@ int get_next_min_vertex(int fcg_stmt_offset, int stmt_id, int *list, int num,
  * non zero component in the LP solution representing the parallel hyperplanes
  * of scc1 and scc2*/
 int *get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog) {
-  int i, j, stmt1, stmt2, npar, nvar, stmt_offset;
-  int *parallel_dims;
-  Stmt **stmts;
-  Graph *ddg;
-  ddg = prog->ddg;
+  Graph *ddg = prog->ddg;
+  int nvar = prog->nvar;
+  Stmt **stmts = prog->stmts;
+  int npar = prog->npar;
 
-  nvar = prog->nvar;
-  stmts = prog->stmts;
-  npar = prog->npar;
+  int stmt1 = -1;
+  int stmt2 = -1;
+  int *parallel_dims = NULL;
 
-  stmt1 = -1;
-  stmt2 = -1;
-  parallel_dims = NULL;
-
-  for (i = 0; (i < scc1.size) && (stmt1 == -1); i++) {
-    for (j = 0; j < scc2.size; j++) {
+  for (int i = 0; (i < scc1.size) && (stmt1 == -1); i++) {
+    for (int j = 0; j < scc2.size; j++) {
       if (is_adjecent(ddg, scc1.vertices[i], scc2.vertices[j])) {
         stmt1 = scc1.vertices[i];
         stmt2 = scc2.vertices[j];
@@ -1229,8 +1217,8 @@ int *get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog) {
   }
   assert((stmt1 >= 0) && (stmt2 >= 0));
 
-  stmt_offset = npar + 1;
-  for (i = 0; i < nvar; i++) {
+  int stmt_offset = npar + 1;
+  for (int i = 0; i < nvar; i++) {
     if (stmts[stmt1]->is_orig_loop[i] && stmts[stmt2]->is_orig_loop[i]) {
       if ((scc1.sol[stmt_offset + stmt1 * (nvar + 1) + i] > 0.0f) &&
           (scc2.sol[stmt_offset + stmt2 * (nvar + 1) + i] > 0.0f)) {
@@ -1248,9 +1236,9 @@ int *get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog) {
 /// Returns the first successor SCC that is directly connected to the current
 /// SCC.
 int get_min_succ_scc(int scc_id, Graph *ddg, PlutoProg *prog) {
-  int i, num_sccs;
-  num_sccs = ddg->num_sccs;
-  for (i = scc_id + 1; i < num_sccs; i++) {
+  int num_sccs = ddg->num_sccs;
+  int i = scc_id + 1;
+  for (; i < num_sccs; i++) {
     if (ddg_sccs_direct_connected(ddg, prog, scc_id, i))
       break;
   }
@@ -1270,10 +1258,8 @@ int get_max_pred_scc(int scc_id, Graph *ddg, PlutoProg *prog) {
 
 /// Returns true if SCC2 is a convex successor of SCC 1.
 bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg *prog) {
-  int succ_id, pred_id;
-
-  succ_id = get_min_succ_scc(scc1, ddg, prog);
-  pred_id = get_max_pred_scc(scc2, ddg, prog);
+  int succ_id = get_min_succ_scc(scc1, ddg, prog);
+  int pred_id = get_max_pred_scc(scc2, ddg, prog);
 
   if (pred_id < succ_id) {
     return true;
@@ -1284,10 +1270,8 @@ bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg *prog) {
 /// This cuts disconnects the SCC from other vertices in the DDG by cutting all
 /// incoming and outgoing edges from the given SCC.
 void cut_around_scc(int scc_id, PlutoProg *prog) {
-  int j;
-  Graph *ddg;
-  ddg = prog->ddg;
-  for (j = 0; j < ddg->num_sccs; j++) {
+  Graph *ddg = prog->ddg;
+  for (int j = 0; j < ddg->num_sccs; j++) {
 
     if (scc_id == j)
       continue;
@@ -1331,18 +1315,10 @@ void cut_around_scc(int scc_id, PlutoProg *prog) {
 /// false.
 bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
                 PlutoProg *prog) {
-  int j, v, fcg_offset, stmt_id, nvar;
-  Graph *ddg, *fcg;
-  Scc *sccs;
-
-  nvar = prog->nvar;
-  ddg = prog->ddg;
-  fcg = prog->fcg;
-  sccs = ddg->sccs;
-
-  int list[nvar];
-  int num_discarded = 0;
-  bool is_parallel = false;
+  int nvar = prog->nvar;
+  Graph *ddg = prog->ddg;
+  Graph *fcg = prog->fcg;
+  Scc *sccs = ddg->sccs;
 
   /* ToDo: Check if this condition can really happen.  */
   if (stmt_pos >= sccs[scc_id].size) {
@@ -1361,20 +1337,8 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
      * a dep edge between these scc's then cut between these scc's. The cut has
      * to respect the existing dependence. */
 
-    /* This is just for experimental purposes. The following if code can
-     * be removed if the assert never fails */
-    if (sccs[scc_id].size != 1) {
-      printf("SCC %d has size %d\n", scc_id, sccs[scc_id].size);
-      int i;
-      for (i = 0; i < sccs[scc_id].size; i++) {
-        printf("S%d,", sccs[scc_id].vertices[i]);
-      }
-      printf("\n");
-    }
-    assert(sccs[scc_id].size == 1);
-
     if (sccs[scc_id].size == 1) {
-      for (j = 0; j < ddg->num_sccs; j++) {
+      for (int j = 0; j < ddg->num_sccs; j++) {
         if (scc_id != j) {
           if ((j < scc_id) && ddg_sccs_direct_connected(ddg, prog, j, scc_id)) {
             IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n", j,
@@ -1384,11 +1348,11 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
             } else {
               cut_between_sccs(prog, ddg, j, scc_id);
               /* You also need to cut between a successor node as well */
-              for (j = scc_id + 1; j < ddg->num_sccs; j++) {
-                if (ddg_sccs_direct_connected(ddg, prog, scc_id, j)) {
+              for (int k = scc_id + 1; k < ddg->num_sccs; k++) {
+                if (ddg_sccs_direct_connected(ddg, prog, scc_id, k)) {
                   IF_DEBUG(
                       printf("[colour SCC]: Cutting between scc %d and %d\n",
-                             scc_id, j););
+                             scc_id, k););
                   cut_all_sccs(prog, ddg);
                   break;
                 }
@@ -1412,11 +1376,15 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
     return true;
   }
 
-  stmt_id = sccs[scc_id].vertices[stmt_pos];
-  fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+  int stmt_id = sccs[scc_id].vertices[stmt_pos];
+  int fcg_offset = ddg->vertices[stmt_id].fcg_stmt_offset;
+  int list[nvar];
+  int num_discarded = 0;
+  bool is_parallel = false;
 
   while (num_discarded != nvar) {
-    j = get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
+    int j =
+        get_next_min_vertex(fcg_offset, stmt_id, list, num_discarded, pv, prog);
     if (options->scc_cluster) {
       IF_DEBUG(printf("[Colour SCC] Trying Colouring dimension %d of scc %d "
                       "with colour %d\n",
@@ -1427,7 +1395,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
                       j, stmt_id, c););
     }
 
-    v = fcg_offset + j;
+    int v = fcg_offset + j;
 
     /* If the dimension is already coloured with a different colour.
      * Else it tries to check if the existing colour is fine. This is done
@@ -1486,19 +1454,15 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
 /// Returns SCCs that are convex successors of the input SCC.
 int *get_convex_successors(int scc_id, PlutoProg *prog,
                            int *num_convex_successors) {
-  int i, num_successors, num_sccs;
-  Graph *ddg;
   int *convex_successors = NULL;
+  Graph *ddg = prog->ddg;
+  int num_sccs = ddg->num_sccs;
 
-  ddg = prog->ddg;
-  num_sccs = ddg->num_sccs;
+  int num_successors = 0;
 
-  num_successors = 0;
-
-  for (i = scc_id + 1; i < num_sccs; i++) {
+  for (int i = scc_id + 1; i < num_sccs; i++) {
 
     if (is_convex_scc(scc_id, i, ddg, prog)) {
-      printf("SCC %d and %d are convex\n", scc_id, i);
       if (convex_successors == NULL) {
         convex_successors = (int *)malloc(num_sccs * sizeof(int));
       }
@@ -1554,27 +1518,21 @@ int *get_common_parallel_dims(int scc_id, int *convex_successors,
                               int num_convex_successors, int *colour,
                               int current_colour, bool *is_colourable,
                               PlutoProg *prog) {
-  int i, j, k, v;
-  Graph *ddg, *fcg;
-  Scc *sccs;
-  int scc_offset, succ_scc_offset, succ_scc;
-  int *common_dims;
   bool is_parallel = true;
+  Graph *ddg = prog->ddg;
+  Graph *fcg = prog->fcg;
+  Scc *sccs = ddg->sccs;
 
-  ddg = prog->ddg;
-  fcg = prog->fcg;
-  sccs = ddg->sccs;
-
-  common_dims = NULL;
-  scc_offset = sccs[scc_id].fcg_scc_offset;
-  for (k = 0; k < sccs[scc_id].max_dim; k++) {
+  int *common_dims = NULL;
+  int scc_offset = sccs[scc_id].fcg_scc_offset;
+  for (int k = 0; k < sccs[scc_id].max_dim; k++) {
     if (colour[scc_offset + k] != 0 || !is_colourable[k])
       continue;
-    for (i = 0; i < num_convex_successors; i++) {
-      succ_scc = convex_successors[i];
-      succ_scc_offset = sccs[succ_scc].fcg_scc_offset;
-      for (j = 0; j < sccs[succ_scc].max_dim; j++) {
-        v = succ_scc_offset + j;
+    for (int i = 0; i < num_convex_successors; i++) {
+      int succ_scc = convex_successors[i];
+      int succ_scc_offset = sccs[succ_scc].fcg_scc_offset;
+      for (int j = 0; j < sccs[succ_scc].max_dim; j++) {
+        int v = succ_scc_offset + j;
         /* The vertex can be coloured if there is no self edge on j,
          * no edge between dimension j and k in the fcg, and there is
          * no vertex adjecent to j that is already coloured. Also
@@ -1608,13 +1566,13 @@ int *get_common_parallel_dims(int scc_id, int *convex_successors,
 /// sccessors. This is the greedy choice in the DFP framework. If there are no
 /// common dims, then it returns -1.
 int get_colouring_dim(int *common_dims, int max_dim) {
-  int i, dim, max;
-  max = 0;
-  dim = -1;
   if (common_dims == NULL) {
-    return dim;
+    return -1;
   }
-  for (i = 0; i < max_dim; i++) {
+
+  int max = 0;
+  int dim = -1;
+  for (int i = 0; i < max_dim; i++) {
     if (common_dims[i] > max) {
       max = common_dims[i];
       dim = i;
@@ -1628,22 +1586,17 @@ int get_colouring_dim(int *common_dims, int max_dim) {
 void colour_convex_successors(int k, int *convex_successors, int num_successors,
                               int *colour, int current_colour,
                               PlutoProg *prog) {
-  Graph *fcg;
-  Scc *sccs;
-  int i, j, v, max_dim, scc_offset, scc_id;
-  bool colourable_successor, is_parallel;
+  Graph *fcg = prog->fcg;
+  Scc *sccs = prog->ddg->sccs;
+  bool is_parallel = true;
 
-  fcg = prog->fcg;
-  sccs = prog->ddg->sccs;
-  is_parallel = true;
-
-  for (i = 0; i < num_successors; i++) {
-    scc_id = convex_successors[i];
-    max_dim = sccs[scc_id].max_dim;
-    scc_offset = sccs[scc_id].fcg_scc_offset;
-    for (j = 0; j < max_dim; j++) {
-      v = scc_offset + j;
-      colourable_successor =
+  for (int i = 0; i < num_successors; i++) {
+    int scc_id = convex_successors[i];
+    int max_dim = sccs[scc_id].max_dim;
+    int scc_offset = sccs[scc_id].fcg_scc_offset;
+    for (int j = 0; j < max_dim; j++) {
+      int v = scc_offset + j;
+      bool colourable_successor =
           colour[v] == 0 && !fcg->adj->val[v][v] &&
           !par_preventing_adj_mat->val[v][k] &&
           !par_preventing_adj_mat->val[v][v] &&
@@ -1669,31 +1622,24 @@ void colour_convex_successors(int k, int *convex_successors, int num_successors,
 /// successors is chosen for colouring.
 bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
                                PlutoProg *prog) {
-  Graph *ddg, *fcg;
-  Scc *sccs;
-  int i, v, max_dim, num_convex_successors, num_parallel_dims;
-  bool *parallel_dims, is_dim_parallel, is_parallel;
-  int *convex_successors, *common_dims, colouring_dim;
+  Graph *ddg = prog->ddg;
+  Graph *fcg = prog->fcg;
+  Scc *sccs = ddg->sccs;
 
-  ddg = prog->ddg;
-  fcg = prog->fcg;
-  sccs = ddg->sccs;
-
-  v = sccs[scc_id].fcg_scc_offset;
-  max_dim = sccs[scc_id].max_dim;
-  num_convex_successors = 0;
-  common_dims = NULL;
+  int v = sccs[scc_id].fcg_scc_offset;
+  int max_dim = sccs[scc_id].max_dim;
+  int num_convex_successors = 0;
 
   /* Get parallel dimensions of the input scc */
-  parallel_dims = (bool *)malloc(max_dim * sizeof(bool));
+  bool *parallel_dims = (bool *)malloc(max_dim * sizeof(bool));
   bzero(parallel_dims, max_dim * sizeof(bool));
 
-  is_parallel = true;
+  bool is_parallel = true;
 
   /* find parallel dims for the current SCC */
-  num_parallel_dims = 0;
-  for (i = 0; i < max_dim; i++) {
-    is_dim_parallel =
+  int num_parallel_dims = 0;
+  for (int i = 0; i < max_dim; i++) {
+    bool is_dim_parallel =
         (colour[v + i] == 0 && !fcg->adj->val[v + i][v + i] &&
          !par_preventing_adj_mat->val[v + i][v + i] &&
          is_valid_colour(v + i, current_colour, fcg, colour, is_parallel));
@@ -1708,12 +1654,12 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     return false;
   }
 
-  convex_successors =
+  int *convex_successors =
       get_convex_parallel_successors(scc_id, prog, &num_convex_successors);
 
   /* If there are no convex successors, colour this scc */
   if (num_convex_successors == 0) {
-    for (i = 0; i < max_dim; i++) {
+    for (int i = 0; i < max_dim; i++) {
       if (parallel_dims[i]) {
         colour[v + i] = current_colour;
         sccs[scc_id].is_scc_coloured = true;
@@ -1726,6 +1672,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
     }
   }
 
+  int *common_dims = NULL;
   /* get common dims that can be coloured with current_colour */
   common_dims =
       get_common_parallel_dims(scc_id, convex_successors, num_convex_successors,
@@ -1733,7 +1680,7 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
   if (options->debug) {
     printf("common dims for SCC %d\n", scc_id);
     if (common_dims != NULL) {
-      for (i = 0; i < max_dim; i++) {
+      for (int i = 0; i < max_dim; i++) {
         printf("%d, %d\n", i, common_dims[i]);
       }
     }
@@ -1741,14 +1688,11 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
 
   /* Choose the colouring dimension. If there are no common dims with the
    * colouring SCC, one of the parallel dims */
-  colouring_dim = get_colouring_dim(common_dims, max_dim);
+  int colouring_dim = get_colouring_dim(common_dims, max_dim);
 
-  if (common_dims != NULL) {
-    free(common_dims);
-  }
-
+  free(common_dims);
   if (colouring_dim == -1) {
-    for (i = 0; i < max_dim; i++) {
+    for (int i = 0; i < max_dim; i++) {
       if (parallel_dims[i]) {
         colour[v + i] = current_colour;
         sccs[scc_id].is_scc_coloured = true;
@@ -1777,10 +1721,8 @@ bool colour_scc_cluster_greedy(int scc_id, int *colour, int current_colour,
 
 /// Cuts the SCC given by scc_id from its immediate predecessor.
 void cut_from_predecessor(int scc_id, PlutoProg *prog) {
-  int i;
-  Graph *ddg;
-  ddg = prog->ddg;
-  for (i = scc_id - 1; i >= 0; i--) {
+  Graph *ddg = prog->ddg;
+  for (int i = scc_id - 1; i >= 0; i--) {
     if (ddg_sccs_direct_connected(ddg, prog, i, scc_id)) {
       cut_between_sccs(prog, ddg, i, scc_id);
     }
@@ -1790,13 +1732,12 @@ void cut_from_predecessor(int scc_id, PlutoProg *prog) {
 /// Returns a convex successor with the smallest scc_id that is (directly)
 /// connected to the current scc.
 int get_min_convex_successor(int scc_id, PlutoProg *prog) {
-  int i, num, *convex_successors;
-  int min_scc_id;
-  min_scc_id = -1;
-  convex_successors = get_convex_successors(scc_id, prog, &num);
-  /* TODO: Fix this by iterating over the list of convex successors and look for
-     an SCC that has atleast one dimension that is not coloured */
-  for (i = 0; i < num; i++) {
+  int min_scc_id = -1;
+  int num;
+  int *convex_successors = get_convex_successors(scc_id, prog, &num);
+  /* TODO: Replace this by iterating over the list of convex successors and look
+     for an SCC that has atleast one dimension that is not coloured */
+  for (int i = 0; i < num; i++) {
     min_scc_id = convex_successors[i];
     if (ddg_sccs_direct_connected(prog->ddg, prog, scc_id, min_scc_id))
       break;
@@ -1842,15 +1783,11 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
 /// of the current scc that are chosen to be not suitable for colouring.
 bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
                           int *discarded_list, int num_discarded, int *num) {
-  int num_col_dims, max_dim, scc_offset;
-  bool *colourable_dims;
-  Graph *fcg;
-
-  fcg = prog->fcg;
-  max_dim = prog->ddg->sccs[scc_id].max_dim;
-  num_col_dims = 0;
-  scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
-  colourable_dims = (bool *)malloc(max_dim * sizeof(bool));
+  Graph *fcg = prog->fcg;
+  int max_dim = prog->ddg->sccs[scc_id].max_dim;
+  int num_col_dims = 0;
+  int scc_offset = prog->ddg->sccs[scc_id].fcg_scc_offset;
+  bool *colourable_dims = (bool *)malloc(max_dim * sizeof(bool));
   bzero(colourable_dims, max_dim * sizeof(bool));
   IF_DEBUG(printf("Num vertices discarded till now %d\n", num_discarded););
 
@@ -1873,17 +1810,12 @@ bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
 int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
                      bool *colourable_dims, int num_dims, int *colour,
                      int current_colour, PlutoProg *prog) {
-  int max_dim, scc_offset;
-  int *common_dims;
-  Graph *fcg;
-  Scc *sccs;
   bool check_parallel = false;
-
-  sccs = prog->ddg->sccs;
-  fcg = prog->fcg;
-  common_dims = NULL;
-  scc_offset = sccs[scc_id].fcg_scc_offset;
-  max_dim = sccs[scc_id].max_dim;
+  Scc *sccs = prog->ddg->sccs;
+  Graph *fcg = prog->fcg;
+  int *common_dims = NULL;
+  int scc_offset = sccs[scc_id].fcg_scc_offset;
+  int max_dim = sccs[scc_id].max_dim;
 
   for (int i = 0; i < max_dim; i++) {
     if (!colourable_dims[i])
@@ -1893,8 +1825,7 @@ int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
       int scc2 = scc_list[j];
       int scc2_offset = sccs[scc2].fcg_scc_offset;
       for (int k = 0; k < sccs[scc2].max_dim; k++) {
-        int v2;
-        v2 = scc2_offset + k;
+        int v2 = scc2_offset + k;
         if (colour[v2] != 0)
           continue;
         if (is_adjecent(fcg, v, v2) || fcg->adj->val[v2][v2])
@@ -2187,23 +2118,17 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
 /// of vertices of scc clustered FCG.
 int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
                                        int *has_parallel_hyperplane) {
-  int i, j, scc_offset, scc_id;
-  int nvar, nstmts;
-  int *stmt_colour;
-  Scc *sccs;
-  Stmt **stmts;
+  int nvar = prog->nvar;
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+  Scc *sccs = prog->ddg->sccs;
 
-  nvar = prog->nvar;
-  nstmts = prog->nstmts;
-  stmts = prog->stmts;
-  sccs = prog->ddg->sccs;
-
-  stmt_colour = (int *)malloc(nstmts * (nvar) * sizeof(int));
+  int *stmt_colour = (int *)malloc(nstmts * (nvar) * sizeof(int));
   bzero(stmt_colour, nvar * nstmts * sizeof(int));
-  for (i = 0; i < nstmts; i++) {
-    scc_id = stmts[i]->scc_id;
-    scc_offset = sccs[scc_id].fcg_scc_offset;
-    for (j = 0; j < stmts[i]->dim_orig; j++) {
+  for (int i = 0; i < nstmts; i++) {
+    int scc_id = stmts[i]->scc_id;
+    int scc_offset = sccs[scc_id].fcg_scc_offset;
+    for (int j = 0; j < stmts[i]->dim_orig; j++) {
       stmt_colour[i * (nvar) + j] = colour[scc_offset + j];
     }
     if (options->fuse == kTypedFuse) {
@@ -2220,32 +2145,26 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
 int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
                                          int current_colour, int nvertices,
                                          int *has_parallel_hyperplane) {
-  int i, j, scc_offset, stmt_id;
-  int nvar, num_sccs;
-  int *scc_colour;
-  Scc *sccs;
-  Stmt **stmts;
+  int nvar = prog->nvar;
+  Stmt **stmts = prog->stmts;
+  int num_sccs = prog->ddg->num_sccs;
+  Scc *sccs = prog->ddg->sccs;
 
-  nvar = prog->nvar;
-  stmts = prog->stmts;
-  num_sccs = prog->ddg->num_sccs;
-  sccs = prog->ddg->sccs;
-
-  scc_colour = (int *)malloc(nvertices * sizeof(int));
+  int *scc_colour = (int *)malloc(nvertices * sizeof(int));
   bzero(scc_colour, nvertices * sizeof(int));
 
-  scc_offset = 0;
-  stmt_id = -1;
+  int scc_offset = 0;
+  int stmt_id = -1;
 
-  for (i = 0; i < num_sccs; i++) {
+  for (int i = 0; i < num_sccs; i++) {
     sccs[i].is_scc_coloured = false;
-    for (j = 0; j < sccs[i].size; j++) {
+    for (int j = 0; j < sccs[i].size; j++) {
       stmt_id = sccs[i].vertices[j];
       if (sccs[i].max_dim == stmts[stmt_id]->dim)
         break;
     }
     assert(stmt_id >= 0);
-    for (j = 0; j < sccs[i].max_dim; j++) {
+    for (int j = 0; j < sccs[i].max_dim; j++) {
       if (stmt_colour[(stmt_id * nvar) + j] == current_colour) {
         sccs[i].is_scc_coloured = true;
       }
@@ -2264,18 +2183,14 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
 /// when SCC's are recomputed, the colours for each statement is computed and
 /// then the colours for the updated sccs are obtained using statement colours.
 int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
-  int *stmt_colour, nvertices, i, num_sccs;
-  int *scc_colour;
-  Graph *ddg, *fcg;
   int *has_parallel_hyperplane = NULL;
-
-  fcg = prog->fcg;
-  ddg = prog->ddg;
+  Graph *fcg = prog->fcg;
+  Graph *ddg = prog->ddg;
 
   if (options->fuse == kTypedFuse) {
     has_parallel_hyperplane = (int *)malloc((prog->nstmts) * sizeof(int));
   }
-  stmt_colour =
+  int *stmt_colour =
       get_vertex_colour_from_scc_colour(prog, colour, has_parallel_hyperplane);
   free_scc_vertices(ddg);
 
@@ -2287,15 +2202,15 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
   ddg_compute_scc(prog);
   compute_scc_vertices(ddg);
-  num_sccs = prog->ddg->num_sccs;
+  int num_sccs = prog->ddg->num_sccs;
 
-  nvertices = 0;
+  int nvertices = 0;
 
-  for (i = 0; i < num_sccs; i++) {
+  for (int i = 0; i < num_sccs; i++) {
     nvertices += prog->ddg->sccs[i].max_dim;
   }
 
-  scc_colour = get_scc_colours_from_vertex_colours(
+  int *scc_colour = get_scc_colours_from_vertex_colours(
       prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
   if (options->fuse == kTypedFuse) {
     pluto_matrix_free(par_preventing_adj_mat);
@@ -2322,28 +2237,23 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
 /// The routine checks if the two SCCs are fused in the till the current level.
 /// If yes it returns true else returns false
 bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
-  int i, num_hyperplanes, stmt1, stmt2, nvar, npar;
-  Scc *sccs;
-  Stmt **stmts;
+  int num_hyperplanes = prog->num_hyperplanes;
+  Scc *sccs = prog->ddg->sccs;
+  Stmt **stmts = prog->stmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+
+  int stmt1 = sccs[scc1].vertices[0];
+  int stmt2 = sccs[scc2].vertices[0];
+
   bool sccs_fused = true;
-  int cut_id1, cut_id2;
-
-  num_hyperplanes = prog->num_hyperplanes;
-  sccs = prog->ddg->sccs;
-  stmts = prog->stmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
-
-  stmt1 = sccs[scc1].vertices[0];
-  stmt2 = sccs[scc2].vertices[0];
-
-  for (i = 0; i < num_hyperplanes; i++) {
+  for (int i = 0; i < num_hyperplanes; i++) {
     if (prog->hProps[i].type == H_LOOP) {
       continue;
     }
 
-    cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
-    cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
+    int cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
+    int cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
 
     if (cut_id1 != cut_id2) {
       sccs_fused = false;
@@ -2358,19 +2268,16 @@ bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
 /// and approprite changes can be made in DDG cut routines.
 void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
                                                int scc2) {
-  int i, j, nstmts, nvar, npar;
-  Stmt **stmts;
-
-  stmts = prog->stmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
 
   pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
 
-  for (i = 0; i < nstmts; i++) {
+  for (int i = 0; i < nstmts; i++) {
     pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
-    for (j = 0; j < nvar + npar; j++) {
+    for (int j = 0; j < nvar + npar; j++) {
       stmts[i]->trans->val[stmts[i]->trans->nrows - 1][j] = 0;
     }
     if (stmts[i]->scc_id < scc2) {
@@ -2383,22 +2290,14 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
 
 /// Colours all scc's with a colour c. Returns the current colouring of the FCG.
 int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
-  int i, j, nsccs, prev_scc;
-  bool is_distributed, is_successful;
-  Graph *ddg, *fcg;
-  double t_start;
-  bool is_parallel_scc_coloured, hybrid_cut;
+  Graph *ddg = prog->ddg;
+  Graph *fcg = prog->fcg;
+  int nsccs = ddg->num_sccs;
+  bool is_parallel_scc_coloured = false;
+  int prev_scc = -1;
 
-  ddg = prog->ddg;
-  fcg = prog->fcg;
-  nsccs = ddg->num_sccs;
-
-  is_distributed = false;
-  is_parallel_scc_coloured = false;
-  prev_scc = -1;
-
-  for (i = 0; i < nsccs; i++) {
-    t_start = rtclock();
+  for (int i = 0; i < nsccs; i++) {
+    double t_start = rtclock();
 
     /* In clustering approach, when FCG is rebuilt, DDG is upadated.
      * However, if some Sccs were previously coloured before the rebuilding
@@ -2417,8 +2316,12 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
     IF_DEBUG(
         printf("Trying colouring Scc %d of Size %d ", i, ddg->sccs[i].size););
     IF_DEBUG(printf("with colour %d\n", c););
+
+    bool is_successful = false;
+    bool is_distributed = false;
     if (options->scc_cluster) {
-      hybrid_cut = options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
+      bool hybrid_cut =
+          options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
       if (options->fuse == kTypedFuse) {
         /* case when the previous scc that was coloured was parallel
          * and the current one is seqential */
@@ -2458,9 +2361,6 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         }
       }
       is_successful = colour_scc_cluster(i, colour, c, prog);
-      /* } else if (options->fuse ==kTypedFuse && ddg->sccs[i].is_parallel) { */
-      /* is_successful = colour_scc_from_lp_solution_with_parallelism(i, colour,
-       * prog, c); */
     } else {
       is_successful = colour_scc(i, colour, c, 0, -1, prog);
     }
@@ -2532,7 +2432,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
               /* TODO: Update this call testing is done */
               update_fcg_between_sccs(fcg, 0, 0, prog);
             } else {
-              for (j = prev_scc; j >= 0; j--) {
+              for (int j = prev_scc; j >= 0; j--) {
                 if (ddg_sccs_direct_connected(ddg, prog, j, i)) {
 
                   IF_DEBUG(printf("[colour_fcg_scc_based]:Cutting between SCC "
@@ -2569,7 +2469,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
           cut_all_sccs(prog, ddg);
           update_fcg_between_sccs(fcg, 0, 0, prog);
         } else {
-          for (j = prev_scc; j >= 0; j--) {
+          for (int j = prev_scc; j >= 0; j--) {
             if (ddg_sccs_direct_connected(ddg, prog, j, i)) {
               cut_between_sccs(prog, ddg, j, i);
               break;
@@ -2648,13 +2548,8 @@ void reset_scc_colouring(Graph *ddg) {
 /// is done on a per SCC basis. Natural number ordering of the scc ids is used
 /// to ensure convexity.
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
-  int num_coloured_dims, max_colours;
-  Stmt **stmts;
-  Graph *ddg;
-  double t_start;
-
-  max_colours = prog->nvar;
-  stmts = prog->stmts;
+  int max_colours = prog->nvar;
+  Stmt **stmts = prog->stmts;
 
   if (options->fuse == kTypedFuse && options->scc_cluster) {
     for (int i = 0; i < prog->ddg->num_sccs; i++) {
@@ -2672,9 +2567,9 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     }
     colour = colour_fcg_scc_based(i, colour, prog);
 
-    t_start = rtclock();
+    double t_start = rtclock();
 
-    num_coloured_dims = scale_shift_permutations(prog, colour, i - 1);
+    int num_coloured_dims = scale_shift_permutations(prog, colour, i - 1);
 
     prog->fcg_dims_scale_time += rtclock() - t_start;
     if (num_coloured_dims == 0) {
@@ -2703,7 +2598,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
     prog->fcg->to_be_rebuilt = 1;
 
     /* Recompute the SCC's in the updated DDG */
-    ddg = prog->ddg;
+    Graph *ddg = prog->ddg;
 
     if (options->lpcolour) {
       for (int j = 0; j < ddg->num_sccs; j++) {
