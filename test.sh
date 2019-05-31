@@ -91,6 +91,16 @@ printf '%-50s ' test-per-cc-obj.c
 ./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
 check_ret_val_emit_status
 
+# Test typed fusion with dfp
+TESTS="test/dfp/typed-fuse-1.c\
+       test/dfp/typed-fuse-2.c\
+       "
+for file in $TESTS; do
+printf '%-50s '  $file
+./src/pluto --notile --noparallel --dfp --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+check_ret_val_emit_status
+done
+
 # Test libpluto
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
