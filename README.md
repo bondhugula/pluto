@@ -15,7 +15,9 @@ be fine if you have GNU utilities.
 
 - LLVM/Clang (2.9 or higher) along with its development/header files is needed 
   for the pet submodule. These packages are available in distribution 
-  repositories, or could be installed by building LLVM and Clang from sources.
+  repositories, or could be installed by building LLVM and Clang from sources.  
+  On a Fedora distribution, these could be typically installed with:
+  $ dnf -y install llvm-devel clang-devel
 
 - LLVM FileCheck is used for Pluto's test suite. (On a Fedora, this is part of 
   the 'llvm' package.)
