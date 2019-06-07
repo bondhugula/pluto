@@ -334,7 +334,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
                   cst->ncols - 1, cst->nrows););
 
   int64_t *sol = NULL;
-  /* Solve the constraints using chosen solvers*/
+  /* Solve the constraints using the chosen solver. */
   if (options->islsolve) {
     double t_start = rtclock();
     sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
