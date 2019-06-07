@@ -1627,11 +1627,11 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
   }
 }
 
-// Adds dimensions to the constraints at the beginning. The corresponding
-// coefficients of the new variables are nitialized to zero. This is a very
-// inefficient implemetation of the routine. The constraints can be resized at
-// one go and the initialization of these dimensions can be done to zero instead
-// of calling pluto_constraints_add_dim num_dims times
+/// Adds dimensions to the constraints at the beginning. The corresponding
+/// coefficients of the new variables are nitialized to zero. This is a very
+/// inefficient implemetation of the routine. The constraints can be resized at
+/// one go and the initialization of these dimensions can be done to zero
+/// instead of calling pluto_constraints_add_dim num_dims times
 void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims) {
   for (int i = 0; i < num_dims; i++) {
     pluto_constraints_add_dim(cst, 0, NULL);
@@ -1818,7 +1818,7 @@ void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
     return;
 
   for (unsigned r = 0; r < cst->nrows; r++) {
-    int tmp = cst->val[r][col1];
+    int64_t tmp = cst->val[r][col1];
     cst->val[r][col1] = cst->val[r][col2];
     cst->val[r][col2] = tmp;
   }

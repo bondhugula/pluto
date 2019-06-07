@@ -309,8 +309,8 @@ PlutoConstraints *get_scc_permutability_constraints(int scc_id,
   return scc_dep_cst;
 }
 
-/* Computes permutatbility constraints for all the dependences within the input
- * connected component */
+/// Computes permutatbility constraints for all the dependences within the input
+/// connected component.
 PlutoConstraints *get_cc_permutability_constraints(int cc_id, PlutoProg *prog) {
   int ndeps = prog->ndeps;
 

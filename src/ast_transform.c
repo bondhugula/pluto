@@ -32,13 +32,9 @@
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                          CloogOptions *cloogOptions) {
   assert(root != NULL);
-
-  // int filter[1] = {1};
-
   unsigned nploops;
   Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
   Band **pbands = (Band **)malloc(nploops * sizeof(Band *));
-  // pluto_print_depsat_vectors(prog->deps, prog->ndeps, prog->num_hyperplanes);
 
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
@@ -50,14 +46,12 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
     assert(pbands[i]->width > 0);
   }
   unsigned npbands = nploops;
-  // clast_pprint(stdout, root, 0, cloogOptions);
 
   /* Iterate over bands and for each loop in the band mark it as parallel. If
    * the loop is removed by the clast, then recursively mark the inner loop in
    * the given band until atleast one loop is marked or no parallel loops are
-   * found. */
-  /* Note that the number of bands is equal to the number of dominating parallel
-   * loops . */
+   * found. Note that the number of bands is equal to the number of dominating
+   * parallel loops. */
   for (unsigned k = 0; k < npbands; k++) {
     /* Iterate over loops in a band */
     Band *band = pbands[k];
@@ -98,9 +92,9 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
         /* TODO: Replace this. Ideally a cloog clast has to be created for each
          * loop till it succeeds. Hence a worklist based algrithm is necessary.
          */
-        /* No parallel loops in this band. */
         if (ninloops == 0 ||
             inloops[0]->depth > band->loop->depth + band->width) {
+          /* No parallel loops in this band. */
           printf("Warning: parallel poly loop not found in AST\n");
           curr_loop = NULL;
         } else {

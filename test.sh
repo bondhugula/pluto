@@ -87,11 +87,11 @@ for file in $TESTS; do
 done
 
 # Test per cc objective
-printf '%-50s ' test-per-cc-obj.c
+printf '%-50s ' test/test-per-cc-obj.c
 ./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
 check_ret_val_emit_status
 
-# Test typed fusion with dfp. This cases are executed only when glpk or gurobi
+# Test typed fusion with dfp. These cases are executed only when glpk or gurobi
 # is enabled. Either of these solvers is required by the dfp framework.
 TESTS="test/dfp/typed-fuse-1.c\
        test/dfp/typed-fuse-2.c\

@@ -2,7 +2,7 @@
 // CC-OBJ-CHECK: T(S2): (0, i, k, 3)
 // CC-OBJ-CHECK: T(S3): (1, i+1, 0, 0)
 // CC-OBJ-CHECK: T(S4): (1, i, 0, 1)
-// After intra-tile optimize
+// CHECK: After intra-tile optimize
 // CC-OBJ-CHECK: T(S1): (0, k, i, 2)
 // CC-OBJ-CHECK: T(S2): (0, k, i, 3)
 // CC-OBJ-CHECK: T(S3): (1, i+1, 0, 0)
