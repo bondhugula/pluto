@@ -360,7 +360,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     return 5;
   }
 
-  /* Make options consistent */
+  /* Make options consistent. */
   if (options->isldep && options->candldep) {
     printf("[pluto] ERROR: only one of isldep and candldep should be "
            "specified)\n");
@@ -387,7 +387,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->lastwriter = 0;
   }
 
-  /* Make options consistent */
   if (options->diamondtile == 1 && options->tile == 0) {
     options->diamondtile = 0;
   }
@@ -434,11 +433,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
     options->glpk = 1;
   }
+
   if (options->glpk) {
     /* Turn off islsolve */
     options->islsolve = 0;
+    options->pipsolve = 0;
   }
 #endif
+
+  // If --pipsolve is provided, disable islsolve.
+  if (options->pipsolve)
+    options->islsolve = 0;
 
   if (options->dfp && !(options->glpk || options->gurobi)) {
     printf("[pluto] ERROR: DFP framework is currently supported with GLPK or "
