@@ -35,10 +35,10 @@ BUILDING PLUTO
 
 Stable release
 
-$ tar zxvf pluto-0.11.4.tar.gz
-$ cd pluto-0.11.4/
-$ ./configure
-$ make
+$ tar zxvf pluto-0.11.4.tar.gz  
+$ cd pluto-0.11.4/  
+$ ./configure  
+$ make  
 $ make test
 
 configure can be provided --with-isl-prefix=<isl install location> to 
@@ -46,13 +46,13 @@ build with another isl, otherwise the bundled isl is used.
 
 Development version from Git
 
-$ git clone git://repo.or.cz/pluto.git
-$ cd pluto/
-$ git submodule init 
-$ git submodule update
-$ ./autogen.sh
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
-$ make
+$ git clone git://repo.or.cz/pluto.git  
+$ cd pluto/  
+$ git submodule init  
+$ git submodule update  
+$ ./autogen.sh  
+$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]  
+$ make  
 $ make test
 
 * --with-isl-prefix=<location> to compile and link with an already installed 
