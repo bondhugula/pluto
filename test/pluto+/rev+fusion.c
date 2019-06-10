@@ -1,5 +1,5 @@
-// CHECK: T(S1): (i, 0)
-// CHECK: T(S2): (N-i-1, 1)
+// CHECK: T(S1): (i+1, 0)
+// CHECK: T(S2): (-i+N, 1)
 int main() {
   long N = 1000;
   int a[N];
