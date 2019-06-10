@@ -4171,7 +4171,7 @@ Stmt *pluto_stmt_dup(const Stmt *stmt) {
   }
 
   for (int i = 0; i < stmt->nwrites; i++) {
-    nstmt->writes[i] = pluto_access_dup(stmt->reads[i]);
+    nstmt->writes[i] = pluto_access_dup(stmt->writes[i]);
   }
 
   return nstmt;
