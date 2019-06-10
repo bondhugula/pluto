@@ -50,7 +50,6 @@ TESTS="\
   test/mxv-seq.c \
   test/mxv-seq3.c \
   test/matmul-seq.c \
-  test/matmul-seq3.c \
   test/doitgen.c \
   test/polynomial.c \
   test/1dloop-invar.c \
@@ -75,10 +74,8 @@ TESTS="\
   test/tricky2.c \
   test/tricky3.c \
   test/tricky4.c \
-  test/tce-4index-transform.c \
   test/wavefront.c \
   "
-
 # Tests without --pet and without any tiling and parallelization "
 for file in $TESTS; do
     printf '%-50s ' $file
@@ -87,7 +84,8 @@ for file in $TESTS; do
 done
 
 # Pluto+ specific tests (without --pet and without any tiling/parallelization)"
-echo "Test Pluto+ negative coeff's"
+echo -e "\nTest Pluto+ negative coeff's"
+echo "==============================="
 TESTS="\
   test/pluto+/dep-1,1.c \
   test/pluto+/rev+fusion.c \
@@ -98,9 +96,22 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# These tests fail with the default islsolve but pass with GLPK or PIP.
+# Pluto+ specific tests (without --pet and without any tiling/parallelization)"
+echo -e "\nTests with PIP solve"
+echo "========"
+TESTS="\
+  test/matmul-seq3.c
+  test/tce-4index-transform.c \
+  "
+for file in $TESTS; do
+    printf '%-50s ' $file
+    ./src/pluto --pipsolve --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
 
 # Test with ISS
-echo "Test ISS"
+echo -e "\nTest ISS"
 echo "========"
 TESTS_ISS="\
   test/jacobi-2d-periodic.c \
