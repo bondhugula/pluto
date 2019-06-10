@@ -269,7 +269,7 @@ int num_inter_scc_deps(Stmt *stmts, Dep *deps, int ndeps) {
 }
 
 PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
-                                              const PlutoProg *prog) {
+                                       const PlutoProg *prog) {
   int npar = prog->npar;
   int nvar = prog->nvar;
   PlutoMatrix *obj = pluto_matrix_alloc(1, cst->ncols - 1);
@@ -284,7 +284,8 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
   obj->val[0][npar] = (b + 1) * (b + 1) * nvar * nvar * prog->nstmts;
 
   for (int i = 0, j = npar + 1; i < prog->nstmts; i++) {
-    obj->val[0][j++] = (b + 1) * nvar;
+    /* C_sum */
+    obj->val[0][j++] = (b + 1) * nvar * prog->stmts[i]->dim_orig;
     unsigned k;
     for (k = j; k < j + prog->stmts[i]->dim_orig; k++) {
       obj->val[0][k] = (nvar + 2) * (prog->stmts[i]->dim_orig - (k - j));
@@ -731,7 +732,8 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_lin_ind_constraints_pluto_plus(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] = get_stmt_lin_ind_constraints_pluto_plus(stmts[j], prog, cst,
+                                                         &orthonum[j]);
     orthosum += orthonum[j];
   }
 
@@ -1482,7 +1484,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
   IF_DEBUG(pluto_band_print(band););
 
   // lambda_cst is the set of additional constraints added to find the cone
-  // complement involving the conic combination multipliers. 
+  // complement involving the conic combination multipliers.
   // TODO: improve comment by including info on the constraints that are added.
   PlutoConstraints *lambda_cst = pluto_constraints_alloc(
       (2 * nvar + npar) * nstmts,
