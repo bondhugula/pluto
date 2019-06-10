@@ -116,13 +116,27 @@ echo "========"
 TESTS_ISS="\
   test/jacobi-2d-periodic.c \
   test/multi-stmt-periodic.c \
-  test/multi-stmt-2d-periodic.c \
   "
 for file in $TESTS_ISS; do
     printf '%-50s ' $file
     ./src/pluto --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
+
+# Test with ISS + GLPK
+# auto-transforms takes nearly 34s with islsolve on this, but just about 0.3s with GLPK.
+echo -e "\nTest ISS with GLPK"
+echo "======================="
+TESTS_ISS="\
+  test/multi-stmt-2d-periodic.c \
+  "
+for file in $TESTS_ISS; do
+    printf '%-50s ' $file
+    ./src/pluto --pet --glpk --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
+
+
 
 # Test libpluto (disabling due to issue #48)
 # printf '%-50s ' test_libpluto
