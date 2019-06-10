@@ -99,7 +99,7 @@ done
 # These tests fail with the default islsolve but pass with GLPK or PIP.
 # Pluto+ specific tests (without --pet and without any tiling/parallelization)"
 echo -e "\nTests with PIP solve"
-echo "========"
+echo "========================="
 TESTS="\
   test/matmul-seq3.c
   test/tce-4index-transform.c \
@@ -124,10 +124,10 @@ for file in $TESTS_ISS; do
     check_ret_val_emit_status
 done
 
-# Test libpluto
-printf '%-50s ' test_libpluto
-./test_libpluto | FileCheck test/test_libpluto.c
-check_ret_val_emit_status
+# Test libpluto (disabling due to issue #48)
+# printf '%-50s ' test_libpluto
+# ./test_libpluto | FileCheck test/test_libpluto.c
+# check_ret_val_emit_status
 
 # Unit tests
 printf '%-50s ' unit_tests
