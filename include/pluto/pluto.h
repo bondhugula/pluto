@@ -22,12 +22,13 @@
 #ifndef __LIBPLUTO__
 #define __LIBPLUTO__
 
-typedef struct isl_union_set isl_union_set;
-typedef struct isl_union_map isl_union_map;
+#include <stdbool.h>
 
 #include "osl/scop.h"
-
 #include "pluto/matrix.h"
+
+typedef struct isl_union_set isl_union_set;
+typedef struct isl_union_map isl_union_map;
 
 #if defined(__cplusplus)
 extern "C" {
