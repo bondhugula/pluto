@@ -2,8 +2,6 @@
 #include "isl/union_map.h"
 #include "isl/union_set.h"
 
-PlutoOptions *options;
-
 void run_test_and_cleanup(const char *domains_str, const char *deps_str,
                           PlutoOptions *options, __isl_take isl_ctx *ctx) {
 
@@ -40,7 +38,7 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
 // CHECK: T(S1): (i0, 0, 0)
 // CHECK: T(S2): (i0, 1, i1)
 // CHECK: T(S3): (i0, 2, 0)
-void test1() {
+void test1(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 1 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -62,7 +60,7 @@ void test1() {
 // CHECK-LABEL: *** TEST CASE 2 ***
 // CHECK: T(S1): (i0, 1024i0)
 // CHECK: T(S2): (i0, 1024i0+i1)
-int test2() {
+int test2(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 2 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -87,7 +85,7 @@ int test2() {
 
 // CHECK-LABEL: *** TEST CASE 3 ***
 // CHECK: T(S1): (i0-i1, i0+i1)
-void test_diamond_tiling() {
+void test_diamond_tiling(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 3 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -106,7 +104,7 @@ void test_diamond_tiling() {
 
 // CHECK-LABEL: *** TEST CASE 4 ***
 // CHECK: T(S1): (i0+i1, i0)
-void test4() {
+void test4(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 4 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -123,7 +121,7 @@ void test4() {
 // CHECK-LABEL: *** TEST CASE 5 ***
 // CHECK: T(S1): (i0, i1, 0)
 // CHECK: T(S2): (i0+1, i1+1, 1)
-void test5() {
+void test5(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 5 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -143,7 +141,7 @@ void test5() {
 
 // CHECK-LABEL: *** TEST CASE 6
 // CHECK: T(S1): (i0, i1+i2, i1)
-void test6_diamond_tiling_with_scalar_dimension() {
+void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 6\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -162,7 +160,7 @@ void test6_diamond_tiling_with_scalar_dimension() {
 }
 
 int main() {
-  options = pluto_options_alloc();
+  PlutoOptions *options = pluto_options_alloc();
   options->tile = 1;
   options->parallel = 1;
   options->debug = 0;
@@ -171,12 +169,12 @@ int main() {
   options->diamondtile = 1;
   options->fulldiamondtile = 0;
 
-  test1();
-  test2();
-  test_diamond_tiling();
-  test4();
-  test5();
-  test6_diamond_tiling_with_scalar_dimension();
+  test1(options);
+  test2(options);
+  test_diamond_tiling(options);
+  test4(options);
+  test5(options);
+  test6_diamond_tiling_with_scalar_dimension(options);
 
   pluto_options_free(options);
 }
