@@ -857,12 +857,12 @@ void pluto_mark_vec_stmts(FILE *cloogfp, PlutoProg *prog) {
   state = cloog_state_malloc();
   cloogOptions = cloog_options_malloc(state);
 
-  cloogOptions->fs = malloc(nstmts * sizeof(int));
-  cloogOptions->ls = malloc(nstmts * sizeof(int));
+  cloogOptions->fs = (int *)malloc(nstmts * sizeof(int));
+  cloogOptions->ls = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->fs_ls_size = nstmts;
+  cloogOptions->quiet = !options->debug;
 
-  int i;
-  for (i = 0; i < nstmts; i++) {
+  for (int i = 0; i < nstmts; i++) {
     cloogOptions->fs[i] = -1;
     cloogOptions->ls[i] = -1;
   }
@@ -905,6 +905,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   cloogOptions->fs = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->ls = (int *)malloc(nstmts * sizeof(int));
   cloogOptions->fs_ls_size = nstmts;
+  cloogOptions->quiet = !options->debug;
 
   for (i = 0; i < nstmts; i++) {
     cloogOptions->fs[i] = -1;
@@ -1233,9 +1234,9 @@ void print_dynsched_file(char *srcFileName, FILE *cloogfp, FILE *outfp,
 
   cloogOptions->name = "CLooG file produced by PLUTO for dynamic scheduling";
   cloogOptions->compilable = 0;
-  cloogOptions->esp =
-      0; // !!!roshan not sure if this needs to be enforced - can 1 be used?
-  cloogOptions->quiet = options->silent;
+  // !!!roshan: not sure if this needs to be enforced - can 1 be used?
+  cloogOptions->esp = 0; 
+  cloogOptions->quiet = !options->debug;
   cloogOptions->backtrack = 1; /* Generates better code in general */
 
   /* Generate a file that has a function to create DAG

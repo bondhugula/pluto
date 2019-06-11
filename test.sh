@@ -86,6 +86,18 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# Distmem tests.
+DISTMEM_TESTS="\
+  test/matmul.c \
+  "
+for file in $DISTMEM_TESTS; do
+    printf '%-50s ' $file
+    ./src/pluto --distmem --mpiomp --tile --timereport --isldep \
+    --lastwriter --indent --cloogsh --timereport $file -o test_temp_out.pluto.c \
+    | FileCheck --check-prefix DISTMEM-CHECK $file
+    check_ret_val_emit_status
+done
+
 # Test libpluto
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c

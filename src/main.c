@@ -1045,7 +1045,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
     rewind(cloogfp);
 
-    /* Very important: Dont change the order of calls to print_dynsched_file
+    /* Very important: Don't change the order of calls to print_dynsched_file
      * between pluto_gen_cloog_file() and pluto_*_codegen()
      */
     if (options->dynschedule_graph_old) {
@@ -1066,8 +1066,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       fprintf(outfp, "#include \"%s\"\n", headerFileName);
       pluto_dynschedule_graph_codegen(prog, sigmafp, outfp, headerfp);
     } else {
-      if (options->distmem) { // no parallel loops to distribute
-        // ensure only one processor will output the data
+      if (options->distmem) {
+        // No parallel loops to distribute;  ensure only one processor will
+        // output data.
         fprintf(outfp, "#include <mpi.h>\n\n");
         fprintf(outfp, "#define MPI \n\n");
         fprintf(outfp, "\n##ifndef GLOBAL_MY_RANK\n\tint my_rank;\n##endif\n");
@@ -1075,6 +1076,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
         fprintf(outfp, "\tMPI_Comm_rank(MPI_COMM_WORLD, &my_rank);\n");
         fprintf(outfp, "\tMPI_Finalize();\n");
       }
+      // Standard multicore code generation. 
       t_start = rtclock();
       pluto_multicore_codegen(
           cloogfp, (options->dynschedule_graph_old) ? dynschedfp : outfp, prog);
@@ -1143,91 +1145,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     fclose(cloogfp);
     fclose(outfp);
     free(headerFileName);
-
-    if (options->out_file == NULL) {
-      /* Get basename, remove .c extension and append a new one */
-      basec = strdup(srcFileName);
-      bname = basename(basec);
-
-      /* max size when tiled.* */
-      outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
-
-      if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-        memcpy(outFileName, bname, strlen(bname) - 2);
-        outFileName[strlen(bname) - 2] = '\0';
-      } else {
-        outFileName = (char *)malloc(strlen(bname) + strlen(".pluto.c") + 1);
-        strcpy(outFileName, bname);
-      }
-      strcat(outFileName, ".pluto.c");
-    } else {
-      basec = strdup(options->out_file);
-      bname = basename(basec);
-
-      outFileName = (char *)malloc(strlen(options->out_file) + 1);
-      strcpy(outFileName, options->out_file);
-    }
-
-    if (strlen(bname) >= 2 && !strcmp(bname + strlen(bname) - 2, ".c")) {
-      cloogFileName =
-          (char *)malloc(strlen(bname) - 2 + strlen(".pluto.cloog") + 1);
-      strcpy(cloogFileName, bname);
-      cloogFileName[strlen(bname) - 2] = '\0';
-    } else {
-      cloogFileName =
-          (char *)malloc(strlen(bname) + strlen(".pluto.cloog") + 1);
-      strcpy(cloogFileName, bname);
-    }
-    strcat(cloogFileName, ".pluto.cloog");
-    free(basec);
-
-    cloogfp = fopen(cloogFileName, "w+");
-    if (!cloogfp) {
-      fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
-      free(cloogFileName);
-      pluto_options_free(options);
-      pluto_prog_free(prog);
-      return 9;
-    }
-    free(cloogFileName);
-
-    outfp = fopen(outFileName, "w");
-    if (!outfp) {
-      fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n",
-              outFileName);
-      free(outFileName);
-      pluto_options_free(options);
-      pluto_prog_free(prog);
-      fclose(cloogfp);
-      return 10;
-    }
-
-    /* Generate .cloog file */
-    pluto_gen_cloog_file(cloogfp, prog);
-    /* Add the <irregular> tag from clan, if any */
-    if (!options->pet) {
-      if (irroption) {
-        fprintf(cloogfp, "<irregular>\n%s\n</irregular>\n\n", irroption);
-        free(irroption);
-      }
-    }
-    rewind(cloogfp);
-
-    /* Generate code using Cloog and add necessary stuff before/after code */
-    t_start = rtclock();
-    pluto_multicore_codegen(cloogfp, outfp, prog);
-    t_c = rtclock() - t_start;
-
-    tmpfp = fopen(".outfilename", "w");
-    if (tmpfp) {
-      fprintf(tmpfp, "%s\n", outFileName);
-      fclose(tmpfp);
-      PLUTO_MESSAGE(printf("[Pluto] Output written to %s\n", outFileName););
-    }
-    free(outFileName);
-
-    fclose(cloogfp);
-    fclose(outfp);
   }
   osl_scop_free(scop);
 

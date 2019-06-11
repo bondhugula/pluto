@@ -1,5 +1,7 @@
 // CHECK: T(S1): (i, j, k)
 // TILE-PARALLEL: T(S1): (i/32, j/32, k/32, i, j, k)
+// TODO: do proper testing for distmem.
+// DISTMEM-CHECK: Output written to
 
 #define M 2048
 #define N 2048
