@@ -283,7 +283,7 @@ int64_t get_max_scale_factor(double *sol, int num_ccs) {
   return max;
 }
 
-/* Finds the lexmin solution for the constraints */
+/// Finds the lexmin solution for the constraints.
 int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                               PlutoMatrix *obj, double **val,
                                               int **index, int npar,
@@ -301,10 +301,11 @@ int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
 
   double *grb_obj = get_gurobi_objective_from_pluto_matrix(obj);
 
-  /* Default type is GRB_CONTINIOUS - that is reals */
+  /* Default type of all variables in the model is GRB_CONTINIOUS, i.e, reals.
+   */
   char *vtype = NULL;
 
-  /* Set integer constraints on all variables of the ILP */
+  /* Set integer constraints on all variables of the ILP. */
   if (!options->lp) {
     vtype = (char *)malloc(sizeof(char) * num_vars);
     for (int i = 0; i < num_vars; i++) {
@@ -312,17 +313,25 @@ int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     }
   }
 
-  /* Create gurobi model. Add objective and variable types during creation of
-   * the object itself */
-  GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, NULL, NULL, vtype, NULL);
+  /* Default lower bound is zero. In pluto+ set it to negative infinity.
+   * Bounding constraints will further constrain it. */
+  double *lb = (double *)malloc(sizeof(double) * num_vars);
+  for (int i = 0; i < num_vars; i++) {
+    vtype[i] = GRB_INTEGER;
+    lb[i] = -GRB_INFINITY;
+  }
 
-  /* Set objective direction to minimization */
+  /* Create gurobi model. Add objective and variable types during creation of
+   * the object itself. */
+  GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, lb, NULL, vtype, NULL);
+
+  /* Set objective direction to minimization. */
   GRBsetdblattr(lp, GRB_INT_ATTR_MODELSENSE, GRB_MINIMIZE);
 
   set_gurobi_constraints_from_pluto_constraints(lp, cst);
 
   if (options->debug) {
-    GRBwrite(lp, "pluto.lp");
+    GRBwrite(lp, "pluto-debug-gurobi.lp");
   }
 
   bool is_unsat = pluto_constraints_solve_gurobi(lp, 1e-7);
