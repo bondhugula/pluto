@@ -295,7 +295,7 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog,
   src_scc_id = ddg->vertices[v1].scc_id;
   dest_scc_id = ddg->vertices[v2].scc_id;
 
-  if (options->fuse == TYPED_FUSE && (src_scc_id != dest_scc_id) &&
+  if (options->fuse == kTypedFuse && (src_scc_id != dest_scc_id) &&
       (sccs[src_scc_id].is_parallel || sccs[dest_scc_id].is_parallel)) {
     check_parallel = true;
   } else {
@@ -470,7 +470,7 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
 
       inter_scc_cst = get_inter_scc_dep_constraints(scc1, scc2, prog);
       if ((sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
-          options->fuse == TYPED_FUSE) {
+          options->fuse == kTypedFuse) {
         check_parallel = true;
       }
 
@@ -839,7 +839,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph *fcg, int *colour,
                 printf("Dimension %d of scc %d is not permutable\n", j, i););
             fcg->adj->val[fcg_scc_offset + j][fcg_scc_offset + j] = 1;
           } else {
-            if (options->fuse == TYPED_FUSE) {
+            if (options->fuse == kTypedFuse) {
               if (!is_lp_solution_parallel(sol, prog->npar)) {
                 par_preventing_adj_mat
                     ->val[fcg_scc_offset + j][fcg_scc_offset + j] = 1;
@@ -885,7 +885,7 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2,
   num_sccs = ddg->num_sccs;
   assert(scc1 != scc2);
 
-  if (options->fuse == NO_FUSE) {
+  if (options->fuse == kNoFuse) {
     for (i = 0; i < num_sccs; i++) {
       scc1_fcg_offset = sccs[i].fcg_scc_offset;
       for (dim1 = 0; dim1 <= sccs[i].max_dim; dim1++) {
@@ -912,7 +912,7 @@ void update_scc_cluster_fcg_between_sccs(Graph *fcg, int scc1, int scc2,
           for (dim2 = 0; dim2 < sccs[j].max_dim; dim2++) {
             fcg->adj->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 0;
             fcg->adj->val[scc2_fcg_offset + dim2][scc1_fcg_offset + dim1] = 0;
-            if (options->fuse == TYPED_FUSE) {
+            if (options->fuse == kTypedFuse) {
               par_preventing_adj_mat
                   ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] = 0;
               par_preventing_adj_mat
@@ -942,7 +942,7 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog) {
   ddg = prog->ddg;
   stmts = prog->stmts;
 
-  if (!(options->fuse == TYPED_FUSE)) {
+  if (!(options->fuse == kTypedFuse)) {
     /* This assertion might not hold in case of typed fuse */
     assert(fcg->to_be_rebuilt == false);
   }
@@ -958,7 +958,7 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog) {
     return;
   }
   /* Assumes that the DDG has already been cut. */
-  if (options->fuse == NO_FUSE) {
+  if (options->fuse == kNoFuse) {
     for (i = 1; i < nstmts; i++) {
       for (j = 0; j < i; j++) {
         if (stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] !=
@@ -1041,10 +1041,10 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
 
   fcg = graph_alloc(num_nodes);
 
-  if (options->fuse == TYPED_FUSE) {
+  if (options->fuse == kTypedFuse) {
     par_preventing_adj_mat = pluto_matrix_alloc(num_nodes, num_nodes);
     for (i = 0; i < num_nodes; i++) {
-      bzero(par_preventing_adj_mat->val[i], num_nodes * sizeof(int64));
+      bzero(par_preventing_adj_mat->val[i], num_nodes * sizeof(int64_t));
     }
   }
 
@@ -1092,7 +1092,7 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   }
 
   /* Add inter statement fusion and permute preventing edges.  */
-  if (options->fuse == TYPED_FUSE && !options->scc_cluster) {
+  if (options->fuse == kTypedFuse && !options->scc_cluster) {
     /* The lp solutions are found and the parallel sccs are marked.
      * However marking is only used in parallel case of typed fuse only */
     mark_parallel_sccs(colour, prog);
@@ -1304,7 +1304,7 @@ bool is_convex_scc(int scc1, int scc2, Graph *ddg, PlutoProg *prog) {
   for (i = scc1 + 1; i < scc2; i++) {
     if (ddg_sccs_direct_connected(ddg, prog, i, scc2)) {
       /* In case of typed fuse, this scc may have already been coloured */
-      if (options->fuse == TYPED_FUSE && sccs[i].is_scc_coloured) {
+      if (options->fuse == kTypedFuse && sccs[i].is_scc_coloured) {
         continue;
       }
       return false;
@@ -1387,7 +1387,7 @@ void cut_around_scc(int scc_id, PlutoProg *prog) {
     if ((j < scc_id) && ddg_sccs_direct_connected(ddg, prog, j, scc_id)) {
       IF_DEBUG(
           printf("[colour SCC]: Cutting between scc %d and %d\n", j, scc_id););
-      if (options->fuse == NO_FUSE) {
+      if (options->fuse == kNoFuse) {
         cut_all_sccs(prog, ddg);
       } else {
         cut_between_sccs(prog, ddg, j, scc_id);
@@ -1408,7 +1408,7 @@ void cut_around_scc(int scc_id, PlutoProg *prog) {
       IF_DEBUG(
           printf("[colour SCC]: Cutting between scc %d and %d\n", scc_id, j););
 
-      if (options->fuse == NO_FUSE) {
+      if (options->fuse == kNoFuse) {
         cut_all_sccs(prog, ddg);
       } else {
         cut_between_sccs(prog, ddg, scc_id, j);
@@ -1473,7 +1473,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
           if ((j < scc_id) && ddg_sccs_direct_connected(ddg, prog, j, scc_id)) {
             IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n", j,
                             scc_id););
-            if (options->fuse == NO_FUSE) {
+            if (options->fuse == kNoFuse) {
               cut_all_sccs(prog, ddg);
             } else {
               cut_between_sccs(prog, ddg, j, scc_id);
@@ -1496,7 +1496,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
             IF_DEBUG(printf("[colour SCC]: Cutting between scc %d and %d\n",
                             scc_id, j););
 
-            if (options->fuse == NO_FUSE) {
+            if (options->fuse == kNoFuse) {
               cut_all_sccs(prog, ddg);
             } else {
               cut_between_sccs(prog, ddg, scc_id, j);
@@ -1861,7 +1861,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
   /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid,
    * then look max_fuse instead of greedy typed fuse heuristic */
-  if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel && !hybrid_cut) {
+  if (options->fuse == kTypedFuse && sccs[scc_id].is_parallel && !hybrid_cut) {
     if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
       sccs[scc_id].has_parallel_hyperplane = true;
       return true;
@@ -1906,7 +1906,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
      * In case of typed fuse it checks if there is an adjecent vertex
      * with the same colour and has a parallelism preventing edge  */
     if (is_valid_colour(v, current_colour, fcg, colour)) {
-      if (options->fuse == TYPED_FUSE && sccs[scc_id].is_parallel &&
+      if (options->fuse == kTypedFuse && sccs[scc_id].is_parallel &&
           is_colour_par_preventing(v, colour, current_colour)) {
         continue;
       }
@@ -1942,7 +1942,7 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
     for (j = 0; j < stmts[i]->dim_orig; j++) {
       stmt_colour[i * (nvar) + j] = colour[scc_offset + j];
     }
-    if (options->fuse == TYPED_FUSE) {
+    if (options->fuse == kTypedFuse) {
       has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
     }
   }
@@ -1989,7 +1989,7 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
     }
     sccs[i].fcg_scc_offset = scc_offset;
     scc_offset += sccs[i].max_dim;
-    if (options->fuse == TYPED_FUSE) {
+    if (options->fuse == kTypedFuse) {
       sccs[i].has_parallel_hyperplane = has_parallel_hyperplane[stmt_id];
     }
   }
@@ -2009,7 +2009,7 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   fcg = prog->fcg;
   ddg = prog->ddg;
 
-  if (options->fuse == TYPED_FUSE) {
+  if (options->fuse == kTypedFuse) {
     has_parallel_hyperplane = (int *)malloc((prog->nstmts) * sizeof(int));
   }
   stmt_colour =
@@ -2034,7 +2034,7 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
 
   scc_colour = get_scc_colours_from_vertex_colours(
       prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
-  if (options->fuse == TYPED_FUSE) {
+  if (options->fuse == kTypedFuse) {
     pluto_matrix_free(par_preventing_adj_mat);
   }
   prog->fcg = build_fusion_conflict_graph(prog, scc_colour, nvertices, c);
@@ -2119,7 +2119,7 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
 /* Adds a hyperplane (H_LOOP) from the solution an ILP solution.
  * This method can also be moved to framework.c (or pluto.c) and
  * appropriate changes can be made. */
-void add_hyperplane_from_ilp_solution(int64 *sol, PlutoProg *prog) {
+void add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
   int j, k;
   int nvar, npar, nstmts;
   Stmt **stmts;
@@ -2191,7 +2191,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
     IF_DEBUG(printf("with colour %d\n", c););
     if (options->scc_cluster) {
       hybrid_cut = options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
-      if (options->fuse == TYPED_FUSE) {
+      if (options->fuse == kTypedFuse) {
         /* case when the previous scc that was coloured was parallel
          * and the current one is seqential */
         if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured) {
@@ -2231,7 +2231,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         }
       }
       is_successful = colour_scc_cluster(i, colour, c, prog);
-      /* } else if (options->fuse ==TYPED_FUSE && ddg->sccs[i].is_parallel) { */
+      /* } else if (options->fuse ==kTypedFuse && ddg->sccs[i].is_parallel) { */
       /* is_successful = colour_scc_from_lp_solution_with_parallelism(i, colour,
        * prog, c); */
     } else {
@@ -2258,7 +2258,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         IF_DEBUG(printf("FCG Before Reconstruction\n"););
         IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
 
-        if (options->fuse == NO_FUSE) {
+        if (options->fuse == kNoFuse) {
           cut_all_sccs(prog, ddg);
         }
         prog->fcg_colour_time += rtclock() - t_start;
@@ -2300,7 +2300,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
             IF_DEBUG(printf("FCG Before Updating\n"););
             IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
 
-            if (options->fuse == NO_FUSE) {
+            if (options->fuse == kNoFuse) {
               cut_all_sccs(prog, ddg);
               /* TODO: Update this call testing is done */
               update_fcg_between_sccs(fcg, 0, 0, prog);
@@ -2338,7 +2338,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         IF_DEBUG(printf("FCG Before Updating\n"););
         IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
         IF_DEBUG(printf("[Pluto] Colour_fcg_dim_based: Updating FCG\n"););
-        if (options->fuse == NO_FUSE) {
+        if (options->fuse == kNoFuse) {
           cut_all_sccs(prog, ddg);
           update_fcg_between_sccs(fcg, 0, 0, prog);
         } else {
@@ -2417,7 +2417,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   max_colours = prog->nvar;
   stmts = prog->stmts;
 
-  if (options->fuse == TYPED_FUSE && options->scc_cluster) {
+  if (options->fuse == kTypedFuse && options->scc_cluster) {
     for (i = 0; i < prog->ddg->num_sccs; i++) {
       prog->ddg->sccs[i].has_parallel_hyperplane = 0;
     }
@@ -2504,7 +2504,7 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   IF_DEBUG(pluto_print_colours(colour, prog););
 
   free(colour);
-  if (options->fuse == TYPED_FUSE) {
+  if (options->fuse == kTypedFuse) {
     pluto_matrix_free(par_preventing_adj_mat);
   }
   return;
@@ -2587,7 +2587,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   int nstmts;
   double t_start;
   PlutoConstraints *basecst, *coeffcst, *boundcst;
-  int64 *sol;
+  int64_t *sol;
 
   nvar = prog->nvar;
   npar = prog->npar;
@@ -2776,7 +2776,7 @@ bool constant_deps_in_scc(int scc_id, int level, PlutoConstraints *basecst,
   IF_DEBUG(pluto_constraints_cplex_print(stdout, basecst););
 
   /* Replace this with LP call */
-  int64 *sol = pluto_prog_constraints_lexmin(basecst, prog);
+  int64_t *sol = pluto_prog_constraints_lexmin(basecst, prog);
   if (sol == NULL) {
     return false;
   }
@@ -2896,7 +2896,7 @@ void introduce_skew(PlutoProg *prog) {
   int i, j, num_sccs, nvar, npar, nstmts, level, ndeps;
   int initial_cuts, nrows, stmt_offset;
   Graph *orig_ddg;
-  int64 *sol;
+  int64_t *sol;
   PlutoConstraints *skewingCst, *basecst, *const_dep_check_cst;
   HyperplaneProperties *hProps;
   Stmt **stmts;

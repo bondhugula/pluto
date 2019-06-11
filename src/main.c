@@ -18,6 +18,7 @@
  * A copy of the GNU General Public Licence can be found in the file
  * `LICENSE' in the top-level directory of this distribution.
  *
+ * Top-level file for 'pluto' executable.
  */
 #include <assert.h>
 #include <getopt.h>
@@ -221,28 +222,13 @@ void usage_message(void) {
 
 static double rtclock() {
   struct timeval Tp;
-  int stat;
-  stat = gettimeofday(&Tp, NULL);
+  int stat = gettimeofday(&Tp, NULL);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
 }
 
 int main(int argc, char *argv[]) {
-  int i;
-  int option;
-  int option_index = 0;
-  int nolastwriter = 0;
-  char *srcFileName;
-
-  FILE *cloogfp, *outfp, *dynschedfp, *sigmafp, *headerfp;
-
-  struct pet_scop *pscop;
-
-  dynschedfp = NULL;
-  sigmafp = NULL;
-  headerfp = NULL;
-
   if (argc <= 1) {
     usage_message();
     return 1;
@@ -251,6 +237,9 @@ int main(int argc, char *argv[]) {
   double t_start_all = rtclock();
 
   options = pluto_options_alloc();
+
+  int option_index = 0;
+  int nolastwriter = 0;
 
   const struct option pluto_options[] = {
     {"fast-lin-ind-check", no_argument, &options->flic, 1},
@@ -273,10 +262,10 @@ int main(int argc, char *argv[]) {
     {"moredebug", no_argument, &options->moredebug, true},
     {"rar", no_argument, &options->rar, 1},
     {"identity", no_argument, &options->identity, 1},
-    {"nofuse", no_argument, &options->fuse, NO_FUSE},
-    {"maxfuse", no_argument, &options->fuse, MAXIMAL_FUSE},
-    {"smartfuse", no_argument, &options->fuse, SMART_FUSE},
-    {"typedfuse", no_argument, &options->fuse, TYPED_FUSE},
+    {"nofuse", no_argument, (int *)&options->fuse, kNoFuse},
+    {"maxfuse", no_argument, (int *)&options->fuse, kMaximalFuse},
+    {"smartfuse", no_argument, (int *)&options->fuse, kSmartFuse},
+    {"typedfuse", no_argument, (int *)&options->fuse, kTypedFuse},
     {"hybridfuse", no_argument, &options->hybridcut, 1},
     {"delayedcut", no_argument, &options->delayed_cut, 1},
     {"parallel", no_argument, &options->parallel, 1},
@@ -366,8 +355,8 @@ int main(int argc, char *argv[]) {
 
   /* Read command-line options */
   while (1) {
-    option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:o:", pluto_options,
-                         &option_index);
+    int option = getopt_long(argc, argv, "bhiqvf:l:F:L:c:o:", pluto_options,
+                             &option_index);
 
     if (option == -1) {
       break;
@@ -454,6 +443,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
   }
 
+  char *srcFileName;
   if (optind <= argc - 1) {
     srcFileName = (char *)alloca(strlen(argv[optind]) + 1);
     strcpy(srcFileName, argv[optind]);
@@ -476,7 +466,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     return 7;
   }
 
-  /* Make options consistent */
+  /* Make options consistent. */
   if (options->isldep && options->candldep) {
     printf("[pluto] ERROR: only one of isldep and candldep should be "
            "specified)\n");
@@ -530,7 +520,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->parallel = 1;
   }
 
-  /* Make options consistent */
   if (options->diamondtile == 1 && options->tile == 0) {
     options->diamondtile = 0;
   }
@@ -624,11 +613,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
     options->glpk = 1;
   }
+
   if (options->glpk) {
     /* Turn off islsolve */
     options->islsolve = 0;
+    options->pipsolve = 0;
   }
 #endif
+
+  // If --pipsolve is provided, disable islsolve.
+  if (options->pipsolve)
+    options->islsolve = 0;
 
   if (options->dfp && !(options->glpk || options->gurobi)) {
     printf("[pluto] ERROR: DFP framework is currently supported with GLPK or "
@@ -643,10 +638,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
            "option (FCG based approach) only. Disabling clustering \n");
   }
 
-  if (options->fuse == TYPED_FUSE && !options->dfp) {
+  if (options->fuse == kTypedFuse && !options->dfp) {
     printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. "
            "Turning off Typed fuse\n");
-    options->fuse = SMART_FUSE;
+    options->fuse = kSmartFuse;
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
@@ -658,7 +653,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->lastwriter = 1;
   }
   /* Typed fuse is available with clustered FCG approach only */
-  if (options->fuse == TYPED_FUSE && options->dfp && !options->scc_cluster) {
+  if (options->fuse == kTypedFuse && options->dfp && !options->scc_cluster) {
     if (!options->silent) {
       printf("[pluto] Typed fuse supported only with clustered FCG approach. "
              "Turning on SCC clustering\n");
@@ -678,7 +673,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   if (options->pet) {
     // Extract using PET.
     isl_ctx *pctx = isl_ctx_alloc_with_pet_options();
-    pscop = pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
+    struct pet_scop *pscop =
+        pet_scop_extract_from_C_source(pctx, srcFileName, NULL);
 
     if (!pscop) {
       fprintf(
@@ -765,7 +761,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
 
   int dim_sum = 0;
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     dim_sum += prog->stmts[i]->dim;
   }
 
@@ -848,6 +844,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
   double t_c = 0.0;
 
+  FILE *sigmafp = NULL;
+
   if (!options->pet && !strcmp(srcFileName, "stdin")) {
     // input stdin == output stdout
     pluto_populate_scop(scop, prog, options);
@@ -870,6 +868,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
                                 // options->dynschedule_graph
     char *piFileName = NULL;    // used only by options->distmem
     char *bname, *basec;
+
+    FILE *dynschedfp = NULL;
+    FILE *headerfp = NULL;
+
     if (options->out_file == NULL) {
       /* Get basename, remove .c extension and append a new one */
       basec = strdup(srcFileName);
@@ -916,7 +918,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     strcat(dynschedFileName, ".pluto.append.c");
     free(basec);
 
-    cloogfp = fopen(cloogFileName, "w+");
+    FILE *cloogfp = fopen(cloogFileName, "w+");
     if (!cloogfp) {
       fprintf(stderr, "[Pluto] Can't open .cloog file: '%s'\n", cloogFileName);
       free(cloogFileName);
@@ -926,7 +928,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
     free(cloogFileName);
 
-    outfp = fopen(outFileName, "w");
+    FILE *outfp = fopen(outFileName, "w");
     if (!outfp) {
       fprintf(stderr, "[Pluto] Can't open file '%s' for writing\n",
               outFileName);
@@ -978,7 +980,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       if (options->data_dist)
         fprintf(headerfp, "#include \"buffer_manager.h\"\n");
 
-      piFileName = malloc(strlen("pi_") + strlen(outFileName) + 1);
+      piFileName = (char *)malloc(strlen("pi_") + strlen(outFileName) + 1);
       strcpy(piFileName, "pi_");
       strcat(piFileName, outFileName);
 
@@ -1237,13 +1239,12 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
            t_d);
     printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
     if (options->dfp) {
-      printf("[pluto] \t\tTotal FCG Construction Time: %0.6lfs\n",
+      printf("[pluto] \tFCG construction time: %0.6lfs\n",
              prog->fcg_const_time);
-      printf("[pluto] \t\tTotal FCG Colouring Time: %0.6lfs\n",
-             prog->fcg_colour_time);
-      printf("[pluto] \t\tTotal Scaling + Shifting time: %0.6lfs\n",
+      printf("[pluto] \tFCG colouring time: %0.6lfs\n", prog->fcg_colour_time);
+      printf("[pluto] \tscaling + shifting time: %0.6lfs\n",
              prog->fcg_dims_scale_time);
-      printf("[pluto] \t\tTotal Skewing time: %0.6lfs\n", prog->skew_time);
+      printf("[pluto] \tskew determination time: %0.6lfs\n", prog->skew_time);
     }
     printf("[pluto] \t\tTotal constraint solving time (LP/MIP/ILP) time: "
            "%0.6lfs\n",

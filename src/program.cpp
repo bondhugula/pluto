@@ -537,12 +537,12 @@ void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
   }
 
   // generate scatt names
-  osl_strings_p newnames = osl_strings_generate((char *)"t", nb_scatt);
+  osl_strings_p newnames = osl_strings_generate("t", nb_scatt);
   osl_scatnames_p scatt = osl_scatnames_malloc();
   scatt->names = newnames;
 
   // replace the old scatnames with new one
-  osl_generic_remove(&scop->extension, (char *)OSL_URI_SCATNAMES);
+  osl_generic_remove(&scop->extension, OSL_URI_SCATNAMES);
   osl_generic_p gen = osl_generic_shell(scatt, osl_scatnames_interface());
   osl_generic_add(&scop->extension, gen);
 
@@ -3168,7 +3168,7 @@ PlutoOptions *pluto_options_alloc() {
   options->multipar = 0;
   options->l2tile = 0;
   options->prevector = 1;
-  options->fuse = SMART_FUSE;
+  options->fuse = kSmartFuse;
 
   /* Experimental */
   options->delayed_cut = 0;
@@ -4720,7 +4720,7 @@ Stmt *pluto_stmt_dup(const Stmt *stmt) {
   }
 
   for (int i = 0; i < stmt->nwrites; i++) {
-    nstmt->writes[i] = pluto_access_dup(stmt->reads[i]);
+    nstmt->writes[i] = pluto_access_dup(stmt->writes[i]);
   }
 
   return nstmt;
