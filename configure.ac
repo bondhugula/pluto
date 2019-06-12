@@ -103,6 +103,15 @@ dnl check for gurobi
 AC_ARG_ENABLE(gurobi,
               [  --enable-gurobi  enable ILP solving with GUROBI], gurobi="true")
 
+dnl Offer --with-glpk-prefix.
+AC_ARG_WITH(glpk-prefix,
+            AC_HELP_STRING([--with-glpk-prefix=DIR],
+                           [DIR location of GLPK package]),
+                           [CPPFLAGS="${CPPFLAGS} -I$withval/include";
+                            LDFLAGS="${LDFLAGS} -L$withval/lib";
+                            GLPK_PREFIX="$withval";
+                            ])
+
 if test $glpk = "true"; then
     dnl check for glpk
     AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[GLPK solver for solving ILP])]
