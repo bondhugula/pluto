@@ -49,7 +49,7 @@ int get_num_unsatisfied_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_stmt_deps(Dep **deps, int ndeps);
 int get_num_unsatisfied_inter_scc_deps(PlutoProg *prog);
 
-int pluto_diamond_tile(PlutoProg *prog);
+bool pluto_diamond_tile(PlutoProg *prog);
 
 static double rtclock() {
   struct timeval Tp;
@@ -1568,14 +1568,14 @@ static void copy_hyperplane(int64_t *h1, int64_t *h2, int ncols) {
   }
 }
 
-/*
- * Top-level automatic transformation algoritm.
+/**
+ * Top-level automatic transformation algoritm. Returns 0 on success.
  *
  * All dependences are reset to unsatisfied before starting.
  *
  */
 int pluto_auto_transform(PlutoProg *prog) {
-  int i, j, s, nsols, conc_start_found, depth;
+  int i, j, s, nsols, depth;
   /* The maximum number of linearly independent solutions needed across all
    * statements */
   int num_ind_sols_req;
@@ -1679,7 +1679,7 @@ int pluto_auto_transform(PlutoProg *prog) {
   }
 
   /* For diamond tiling */
-  conc_start_found = 0;
+  bool conc_start_found = false;
 
   if (options->dfp) {
 #if defined GLPK || defined GUROBI
@@ -2210,15 +2210,11 @@ int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
   return (num == 1);
 }
 
-/*
- * Diamond tiling.
- */
-int pluto_diamond_tile(PlutoProg *prog) {
-  unsigned nbands;
-
+/// Diamond tiling. Returns true if diamond tiling transformation was applied.
+bool pluto_diamond_tile(PlutoProg *prog) {
   IF_DEBUG(printf("[pluto] pluto_diamond_tile\n"));
 
-  int conc_start_enabled = 0;
+  bool conc_start_enabled = false;
 
   /* Get the permutability constraints since a call to
    * detect_transformation_properties with update dep satisfaction levels
@@ -2230,20 +2226,19 @@ int pluto_diamond_tile(PlutoProg *prog) {
   pluto_compute_dep_directions(prog);
   pluto_compute_dep_satisfaction(prog);
 
+  unsigned nbands;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
   for (unsigned b = 0; b < nbands; b++) {
     PlutoMatrix **cone_complement_hyps;
     Band *band = bands[b];
-    int evict_pos;
-    int first_loop_hyp, cone_complement_pos;
-    unsigned ni;
 
     /* Band should not have outer parallelism */
     if (pluto_loop_is_parallel(prog, band->loop))
       continue;
 
     /* Band should have inner parallelism */
+    unsigned ni;
     Ploop **iloops = pluto_get_loops_immediately_inner(band->loop, prog, &ni);
     unsigned i;
     for (i = 0; i < ni; i++) {
@@ -2299,17 +2294,17 @@ int pluto_diamond_tile(PlutoProg *prog) {
       cone_complement_hyps[i] = NULL;
     }
 
-    first_loop_hyp = band->loop->depth;
+    int first_loop_hyp = band->loop->depth;
     /*
      * Find hyperplane that will be replaced by the newly found
      * hyperplane
      * Concurrent start pertains to the first band alone
      */
-    evict_pos = find_hyperplane_to_be_evicted(band, conc_start_faces);
+    int evict_pos = find_hyperplane_to_be_evicted(band, conc_start_faces);
 
     /* If we haven't yet found the cone_complement_pos, just
      * choose the first one as the cone_complement_pos */
-    cone_complement_pos = first_loop_hyp;
+    int cone_complement_pos = first_loop_hyp;
 
     /* If first_loop_hyp hyperplane itself is to be replaced,
      * choose the next one as cone_complement_pos */

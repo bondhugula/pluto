@@ -26,7 +26,7 @@ void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog);
 void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
                      PlutoProg *prog);
 void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
-                                int l2);
+                                bool l2);
 void pluto_reschedule_tile(PlutoProg *prog);
 void pluto_interchange(PlutoProg *prog, int level1, int level2);
 void pluto_sink_transformation(Stmt *stmt, unsigned pos);
