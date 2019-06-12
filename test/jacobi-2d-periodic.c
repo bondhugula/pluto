@@ -4,10 +4,11 @@
 //
 // CHECK: 2i-N = 0
 // CHECK: 2j-N = 0
-// CHECK: T(S1): (t, t+i, t+j)
-// CHECK: T(S2): (t, t-i+N, t+j)
-// CHECK: T(S3): (t, t+i, t-j+N)
-// CHECK: T(S4): (t, t-i+N, t-j+N)
+// The pieces may appear in any order.
+// CHECK-DAG: T(S{{[1-4]}}): (t, t+i, t+j)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t-i+N, t+j)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t+i, t-j+N)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t-i+N, t-j+N)
 int u[2][1000][1000];
 
 int main() {

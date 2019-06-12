@@ -1,10 +1,10 @@
 // CHECK: 2i-N = 0
 // CHECK: [iss] Splitting S1 into 2 statements
 // CHECK: [iss] Splitting S2 into 2 statements
-// CHECK: T(S1): (t, t+i)
-// CHECK: T(S2): (t, t-i+N)
-// CHECK: T(S3): (t, t+i)
-// CHECK: T(S4): (t, t-i+N)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t+i)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t-i+N)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t+i)
+// CHECK-DAG: T(S{{[1-4]}}): (t, t-i+N)
 //
 int u[2][1000];
 int v[2][1000];
