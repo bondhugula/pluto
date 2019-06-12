@@ -145,9 +145,6 @@ if test $gurobi = "true"; then
                  , [AC_ERROR([Gurobi library not found])])
 fi
 
-dnl check for glpk
-AC_CHECK_HEADER([glpk.h], [], [AC_ERROR([glpk.h header not found])])
-AC_CHECK_LIB([glpk], [glp_create_prob], [], [AC_ERROR([glpk library not found])])
 dnl Offer --with-gmp-prefix.
 AC_ARG_WITH(gmp-prefix,
             AC_HELP_STRING([--with-gmp-prefix=DIR],
