@@ -1749,8 +1749,8 @@ int pluto_auto_transform(PlutoProg *prog) {
     if (is_skewed && options->diamondtile) {
       conc_start_found = pluto_diamond_tile(prog);
     }
-    /* if there are any unsatisfied deps, they have to be
-     * distributed at the inner most level */
+    /* If there are any unsatisfied deps, they have to be
+     * distributed at the inner most level. */
     pluto_dep_satisfaction_reset(prog);
     for (int i = 0; i < prog->num_hyperplanes; i++) {
       dep_satisfaction_update(prog, i);

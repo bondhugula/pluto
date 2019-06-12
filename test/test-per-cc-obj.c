@@ -9,7 +9,7 @@
 // CC-OBJ-CHECK: T(S4): (1, i, 0, 1)
 // CHECK: Output written
 
-/* If per cc objective was not used, then Pluto would have found the solution
+/* Had per CC objective not been used, then Pluto would have found the solution
  * T(S3): (1, i, 0, 0), T(S4): (1, i, 0, 1), which is not parallel for
  * statements S3 and S4 */
 #pragma scop

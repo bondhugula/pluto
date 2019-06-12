@@ -1,5 +1,4 @@
 /*
-    printf("Depth: %d\n", depth);
  * PLUTO: An automatic parallelizer and locality optimizer
  *
  * Copyright (C) 2007 Uday Bondhugula
