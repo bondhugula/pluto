@@ -324,11 +324,10 @@ int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     }
   }
 
-  /* Default lower bound is zero. In pluto+ set it to negative infinity.
-   * Bounding constraints will further constrain it. */
+  /* The default lower bound of Gurobi is set to zero for pluto and -inf for
+   * pluto+. Bounding constraints will further constrain it. */
   double *lb = (double *)malloc(sizeof(double) * num_vars);
   for (int i = 0; i < num_vars; i++) {
-    vtype[i] = GRB_INTEGER;
     lb[i] = -GRB_INFINITY;
   }
 
@@ -360,9 +359,7 @@ int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
     double *fpsol = get_lp_solution_from_gurobi_problem(lp);
     int num_sols = num_vars;
     GRBfreemodel(lp);
-    /* GRBfreeenv(env); */
 
-    /* GRBloadenv(&env, NULL); */
     lp = get_scaling_lp_gurobi(fpsol, num_sols, val, index, npar, num_ccs, env);
 
     if (options->debug) {
