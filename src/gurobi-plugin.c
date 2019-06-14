@@ -106,7 +106,8 @@ int64_t *get_ilp_solution_from_gurobi_problem(GRBmodel *lp) {
 
   for (int i = 0; i < num_cols; i++) {
     double x;
-    error = GRBgetdblattrelement(lp, GRB_DBL_ATTR_X, i, &x);
+    int error = GRBgetdblattrelement(lp, GRB_DBL_ATTR_X, i, &x);
+    check_error_gurobi(lp, error);
     IF_DEBUG(printf("c%d = %ld, ", i, (int64_t)round(x)););
     sol[i] = (int64_t)round(x);
   }
@@ -164,6 +165,14 @@ bool pluto_constraints_solve_gurobi(GRBmodel *lp, double tol) {
     printf("[Pluto]: Unbounded model. This appears to be a problem in Pluto's "
            "ILP/LP construction. Aborting\n");
     exit(1);
+  }
+
+  /* The model is proven either to be infeasible or unbounded. Return as unsat
+   * in such cases. For debugging purposes, one can set DualReductions to zero
+   * to 0 for a conclusive result. Both of these are actually undesireable in
+   * our case. */
+  if (optim_status == GRB_INF_OR_UNBD) {
+    return 1;
   }
 
   double objval;
@@ -283,7 +292,9 @@ int64_t get_max_scale_factor(double *sol, int num_ccs) {
   return max;
 }
 
-/* Finds the lexmin solution for the constraints */
+/// Finds the lexmin solution for the constraints using Gurobi. It returns an
+/// integer solution if the constraints are feasible and the ILP problem is
+/// bounded; else it returns null.
 int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                               PlutoMatrix *obj, double **val,
                                               int **index, int npar,
@@ -313,7 +324,7 @@ int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
   }
 
   /* Create gurobi model. Add objective and variable types during creation of
-   * the object itself */
+   * the object itself. By default all variables have a lower bound of 0 */
   GRBnewmodel(env, &lp, NULL, num_vars, grb_obj, NULL, NULL, vtype, NULL);
 
   /* Set objective direction to minimization */

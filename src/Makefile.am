@@ -87,6 +87,7 @@ libpluto_la_SOURCES = \
 		      ddg.h \
 		      framework.c \
 		      framework-dfp.c \
+		      gurobi-plugin.c \
 		      isl_support.c \
 		      isl_support.h \
 		      iss.c \

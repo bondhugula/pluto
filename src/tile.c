@@ -1021,20 +1021,20 @@ void pluto_tile(PlutoProg *prog) {
     assert(options->ft <= options->lt);
 
     /* L1 tiling */
-    pluto_tile_scattering_dims(prog, bands, nbands, 0);
+    pluto_tile_scattering_dims(prog, bands, nbands, false);
     num_tiled_levels++;
 
     if (options->l2tile) {
-      pluto_tile_scattering_dims(prog, bands, nbands, 1);
+      pluto_tile_scattering_dims(prog, bands, nbands, true);
       num_tiled_levels++;
     }
   } else {
     /* L1 tiling */
-    pluto_tile_scattering_dims(prog, bands, nbands, 0);
+    pluto_tile_scattering_dims(prog, bands, nbands, false);
     num_tiled_levels++;
     if (options->l2tile) {
       /* L2 tiling */
-      pluto_tile_scattering_dims(prog, bands, nbands, 1);
+      pluto_tile_scattering_dims(prog, bands, nbands, true);
       num_tiled_levels++;
     }
   }
@@ -1093,9 +1093,10 @@ void pluto_tile(PlutoProg *prog) {
   pluto_bands_free(ibands, n_ibands);
 }
 
-/* Tiles scattering functions for all bands; l2=1 => perform l2 tiling */
+/// Tiles scattering functions for all bands; if l2 is true, perform another
+/// level of tiling.
 void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
-                                int l2) {
+                                bool l2) {
   int i, j, b;
   int tile_sizes[prog->num_hyperplanes];
   int l2_tile_size_ratios[prog->num_hyperplanes];
@@ -1145,11 +1146,8 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
   pluto_detect_hyperplane_types_stmtwise(prog);
 }
 
-/* Transform a band of dimensions to get a wavefront
- * (a wavefront of tiles typically)
- *
- * Return: true if something was done, false otherwise
- */
+/// Transform a band of dimensions to get a wavefront (a wavefront of tiles
+/// typically). Returns true if something was done, false otherwise.
 bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
   /* No need to create tile schedule */
   if (pluto_loop_is_parallel(prog, band->loop))
@@ -1157,12 +1155,9 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
 
   /* A band can have scalar dimensions; it starts from a loop */
   int loop_depths[band->width];
-  /* Number of dimensions which are loops for all statements in this
-   * band */
-  int nloops;
-
   loop_depths[0] = band->loop->depth;
-  nloops = 1;
+  /* Number of dimensions which are loops for all statements in this band. */
+  int nloops = 1;
   for (unsigned depth = band->loop->depth + 1;
        depth < band->loop->depth + band->width; depth++) {
     unsigned j;
@@ -1238,17 +1233,15 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
   return true;
 }
 
+/// Returns true if something was done.
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands) {
-  int i;
-  bool retval = 0;
-
   IF_DEBUG(printf("creating tile schedule for bands: \n"););
   IF_DEBUG(pluto_bands_print(bands, nbands););
 
-  for (i = 0; i < nbands; i++) {
+  bool retval = false;
+  for (int i = 0; i < nbands; i++) {
     retval |= pluto_create_tile_schedule_band(prog, bands[i]);
   }
-
   return retval;
 }
 

@@ -1227,7 +1227,13 @@ int pluto_constraints_solve_glpk(glp_prob *lp) {
 
   int ilp_status = glp_mip_status(lp);
 
-  if (ilp_status == GLP_INFEAS || ilp_status == GLP_UNDEF) {
+  /* ILP optimization can return any of these exit codes representing cases
+   * where the problem is infeasible (or not feasible) undefined or unbounded.
+   * All these cases are undesireable. If the solution is read when the lp
+   * problem returns with any of these exit codes, then a zero solution will be
+   * obtained */
+  if (ilp_status == GLP_INFEAS || ilp_status == GLP_UNDEF ||
+      ilp_status == GLP_NOFEAS || ilp_status == GLP_UNBND) {
     glp_delete_prob(lp);
     return 1;
   }

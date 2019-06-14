@@ -47,7 +47,6 @@ fi
 
 AC_PROG_LIBTOOL
 AC_PROG_SED
-AC_CHECK_PROG(LD,ld,ld)
 AC_PROG_INSTALL
 AC_PROG_LN_S
 
@@ -102,6 +101,15 @@ gurobi="false"
 dnl check for gurobi
 AC_ARG_ENABLE(gurobi,
               [  --enable-gurobi  enable ILP solving with GUROBI], gurobi="true")
+
+dnl Offer --with-glpk-prefix.
+AC_ARG_WITH(glpk-prefix,
+            AC_HELP_STRING([--with-glpk-prefix=DIR],
+                           [DIR location of GLPK package]),
+                           [CPPFLAGS="${CPPFLAGS} -I$withval/include";
+                            LDFLAGS="${LDFLAGS} -L$withval/lib";
+                            GLPK_PREFIX="$withval";
+                            ])
 
 if test $glpk = "true"; then
     dnl check for glpk

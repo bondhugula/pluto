@@ -523,6 +523,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   if (options->diamondtile == 1 && options->tile == 0) {
     options->diamondtile = 0;
   }
+
   if (options->fulldiamondtile == 1 && options->tile == 0) {
     options->diamondtile = 0;
     options->fulldiamondtile = 0;
