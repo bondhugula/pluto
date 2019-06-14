@@ -3,6 +3,9 @@
  * Adapted from Pochoir test bench
  *
  * Irshad Pananilath: irshad@csa.iisc.ernet.in
+ *
+ * This is the alternate version used for distributed memory code generation,
+ * since accesses with modulo's aren't supported with distmem.
  */
 
 #include <stdio.h>
