@@ -118,7 +118,6 @@ done
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
 echo "============================="
->>>>>>> origin/master
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
