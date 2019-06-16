@@ -112,18 +112,16 @@ int osl_relation_get_row_id_for_nth_dimension(osl_relation_p relation,
  * Converts a [eq A c] relation to [A c] Pluto constraints
  */
 PlutoConstraints *osl_relation_to_pluto_constraints(osl_relation_p rln) {
-
-  PlutoConstraints *cst;
-
   if (rln == NULL)
     return NULL;
 
   if (rln->nb_local_dims) {
-    fprintf(stderr, "Cannot handle Local Dimensions in a relation.\n");
+    fprintf(stderr, "[osl_relation_to_pluto_constraints] Cannot handle Local "
+                    "Dimensions in a relation.\n");
     exit(1);
   }
 
-  cst = pluto_constraints_alloc(rln->nb_rows, rln->nb_columns - 1);
+  PlutoConstraints *cst = pluto_constraints_alloc(rln->nb_rows, rln->nb_columns - 1);
   cst->nrows = rln->nb_rows;
 
   // copy matrix values

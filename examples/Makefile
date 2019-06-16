@@ -6,9 +6,12 @@ DIRS = \
        dsyr2k \
        fdtd-2d \
        gemver \
+       heat-1d \
+       heat-2d \
+       heat-3d \
        heat-1dp \
        heat-2dp \
-       heat-3dp
+       heat-3dp \
        jacobi-1d-imper \
        jacobi-2d-imper \
        lu \
