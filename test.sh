@@ -6,6 +6,7 @@
 num_succ=0
 num_fail=0
 
+# Test helper.
 check_ret_val_emit_status() {
 if [ $? -ne 0 ]; then
   echo -e "[\e[31mFailed\e[0m]" " $file"!
@@ -15,27 +16,6 @@ else
   num_succ=$(($num_succ + 1))
 fi
 }
-
-TESTS="\
-  test/matmul.c \
-  test/heat-2d.c \
-  test/heat-3d.c \
-  test/jacobi-3d-25pt.c \
-  "
-# Tests with pet with tiling and parallelization disabled
-for file in $TESTS; do
-  printf '%-50s ' $file
-  ./src/pluto $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
-  check_ret_val_emit_status
-done
-
-# Tests with pet.
-for file in $TESTS; do
-    printf '%-50s ' "$file with --tile --parallel"
-    ./src/pluto $file --pet -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
-    check_ret_val_emit_status
-done
-
 
 TESTS="\
   test/1dloop-invar.c \
@@ -77,15 +57,34 @@ TESTS="\
   test/tricky4.c \
   test/wavefront.c \
   "
-
-# Tests without --pet and without any tiling and parallelization "
+# Tests without --pet and without any tiling and parallelization.
 for file in $TESTS; do
     printf '%-50s ' $file
     ./src/pluto --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
 
-# Test libpluto
+TESTS_PET="\
+  test/heat-2d.c \
+  test/heat-3d.c \
+  test/jacobi-3d-25pt.c \
+  test/matmul.c \
+  "
+# Tests with pet frontend with tiling and parallelization disabled.
+for file in $TESTS_PET; do
+  printf '%-50s ' $file
+  ./src/pluto $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
+  check_ret_val_emit_status
+done
+
+# Tests with pet frontend with tiling and parallelization enabled.
+for file in $TESTS; do
+    printf '%-50s ' "$file with --tile --parallel"
+    ./src/pluto $file --pet -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    check_ret_val_emit_status
+done
+
+# Test libpluto interface.
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
