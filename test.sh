@@ -50,7 +50,6 @@ TESTS="\
   test/seidel.c \
   test/seq.c \
   test/shift.c \
-  test/simple.c \
   test/tce-4index-transform.c \
   test/tricky1.c \
   test/tricky2.c \
@@ -64,6 +63,20 @@ for file in $TESTS; do
     ./src/pluto --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
+
+TESTS_TILE_PARALLEL="\
+  test/dep-1,1.c \
+  test/diamond-tile-example.c
+  "
+echo -e "\nTest without pet frontend but with tiling / parallelization"
+echo "============================================================"
+for file in $TESTS_TILE_PARALLEL; do
+    printf '%-50s ' "$file with --tile --parallel"
+    ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    check_ret_val_emit_status
+done
+
+# Test libpluto interface.
 
 TESTS_PET="\
   test/heat-2d.c \
