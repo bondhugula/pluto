@@ -38,6 +38,7 @@ TESTS="\
   test/matmul.c \
   test/matmul-seq.c \
   test/matmul-seq3.c \
+  test/multi-loop-param.c \
   test/mvt.c \
   test/mxv.c \
   test/mxv-seq.c \
@@ -71,31 +72,37 @@ TESTS_PET="\
   test/matmul.c \
   "
 # Tests with pet frontend with tiling and parallelization disabled.
+echo -e "\nTest with pet frontend with no tiling / parallelization"
+echo "============================================================"
 for file in $TESTS_PET; do
   printf '%-50s ' $file
   ./src/pluto $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
   check_ret_val_emit_status
 done
-
 # Tests with pet frontend with tiling and parallelization enabled.
-for file in $TESTS; do
+echo -e "\nTest with pet frontend with tiling / parallelization"
+echo "============================================================"
+for file in $TESTS_PET; do
     printf '%-50s ' "$file with --tile --parallel"
     ./src/pluto $file --pet -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
 # Test libpluto interface.
+echo -e "\nTest libpluto interface"
+echo "============================="
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
 check_ret_val_emit_status
 
 # Unit tests
+echo -e "\nUnit tests"
+echo "==============="
 printf '%-50s ' unit_tests
 # Filter out all "// " comments from unit_tests.in when sending input to
 # 'unit_tests'.
 cat test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck test/unit_tests.in
 check_ret_val_emit_status
-
 
 # TODO: add tests that check the generated code for certain things (like stmt
 # body source esp. while using --pet).
