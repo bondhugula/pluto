@@ -35,6 +35,8 @@ TESTS="\
   test/gemver.c \
   test/jacobi-1d-imper.c \
   test/jacobi-2d-imper.c \
+  test/intratileopt1.c \
+  test/intratileopt2.c \
   test/matmul.c \
   test/matmul-seq.c \
   test/matmul-seq3.c \
