@@ -468,8 +468,8 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   if (options->fuse == kTypedFuse && !options->dfp) {
-    printf("[Pluto] WARNING: Typed Fuse Available with dfp framework only. "
-           "Turning off Typed fuse\n");
+    printf("[Pluto] WARNING: Typed fusion available with DFP framework only. "
+           "Turning off typed fusion.\n");
     options->fuse = kSmartFuse;
   }
 
