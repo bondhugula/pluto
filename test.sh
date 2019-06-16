@@ -38,22 +38,10 @@ done
 
 
 TESTS="\
-  test/matmul.c \
-  test/jacobi-1d-imper.c \
-  test/jacobi-2d-imper.c \
-  test/matmul.c \
-  test/costfunc.c \
-  test/fdtd-2d.c \
-  test/gemver.c \
-  test/mvt.c \
-  test/mxv.c \
-  test/mxv-seq.c \
-  test/mxv-seq3.c \
-  test/matmul-seq.c \
-  test/matmul-seq3.c \
-  test/doitgen.c \
-  test/polynomial.c \
   test/1dloop-invar.c \
+  test/costfunc.c \
+  test/doitgen.c \
+  test/fdtd-2d.c \
   test/fusion1.c \
   test/fusion2.c \
   test/fusion3.c \
@@ -64,18 +52,29 @@ TESTS="\
   test/fusion8.c \
   test/fusion9.c \
   test/fusion10.c \
+  test/gemver.c \
+  test/jacobi-1d-imper.c \
+  test/jacobi-2d-imper.c \
+  test/matmul.c \
+  test/matmul-seq.c \
+  test/matmul-seq3.c \
+  test/mvt.c \
+  test/mxv.c \
+  test/mxv-seq.c \
+  test/mxv-seq3.c \
   test/negparam.c \
   test/nodep.c \
   test/noloop.c \
+  test/polynomial.c \
   test/seidel.c \
   test/seq.c \
   test/shift.c \
   test/simple.c \
+  test/tce-4index-transform.c \
   test/tricky1.c \
   test/tricky2.c \
   test/tricky3.c \
   test/tricky4.c \
-  test/tce-4index-transform.c \
   test/wavefront.c \
   "
 
