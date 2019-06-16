@@ -39,6 +39,7 @@ TESTS="\
   test/matmul-seq.c \
   test/matmul-seq3.c \
   test/multi-loop-param.c \
+  test/multi-stmt-stencil-seq.c \
   test/mvt.c \
   test/mxv.c \
   test/mxv-seq.c \
