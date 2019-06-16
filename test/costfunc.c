@@ -1,5 +1,5 @@
 // This validates Pluto's cost function. (i+j) leads to a constant amount of
-// communication/boundary misses (i.e., u = 0)
+// communication/boundary misses, i.e., u = 0.
 // CHECK: T(S1): (i+j, i)
 #pragma scop
 
