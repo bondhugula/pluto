@@ -20,6 +20,7 @@
  *
  */
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include "pluto.h"
@@ -248,9 +249,8 @@ int gen_unroll_file(PlutoProg *prog) {
   return 0;
 }
 
-/*
- * is_tiled: is band tiled?
- */
+/// Optimize the intra-tile loop order for locality and vectorization.
+/// 
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
   /* Band has to be the innermost band as well */
@@ -263,7 +263,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
       band->loop->stmts, band->loop->nstmts,
       band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
 
-  int max_score = 0;
+  int max_score = INT_MIN;
   Ploop *best_loop = NULL;
   for (unsigned l = 0; l < nloops; l++) {
     int a, s, t, v, score;
@@ -303,12 +303,12 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
 
 /* is_tiled: is the band tiled */
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
-  unsigned i, nbands;
+  unsigned nbands;
   int retval;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
   retval = 0;
-  for (i = 0; i < nbands; i++) {
+  for (unsigned i = 0; i < nbands; i++) {
     retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog);
   }
   pluto_bands_free(bands, nbands);

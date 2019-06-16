@@ -51,6 +51,7 @@ TESTS="\
   test/seidel.c \
   test/seq.c \
   test/shift.c \
+  test/spatial.c \
   test/tce-4index-transform.c \
   test/tricky1.c \
   test/tricky2.c \
