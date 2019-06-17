@@ -37,6 +37,8 @@ TESTS="\
   test/jacobi-2d-imper.c \
   test/intratileopt1.c \
   test/intratileopt2.c \
+  test/intratileopt3.c \
+  test/intratileopt4.c \
   test/matmul.c \
   test/matmul-seq.c \
   test/matmul-seq3.c \
