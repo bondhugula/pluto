@@ -2977,19 +2977,38 @@ PlutoConstraints *get_skewing_constraints(bool *src_dims, bool *skew_dims,
 
   assert(skewCst->ncols == CST_WIDTH);
 
+  int outer_skew_dim = 0;
+  for (int i = 0; i < nvar; i++) {
+    if (skew_dims[outer_skew_dim])
+      break;
+    outer_skew_dim++;
+  }
+
   for (int i = 0; i < nstmts; i++) {
+    /* If all linearly independent hyperplanes have already been found, then set
+     * the lower bound of every transformation coefficient to 0. */
+    if (outer_skew_dim >= stmts[i]->dim_orig && stmts[i]->scc_id == scc_id) {
+      for (int j = 0; j < stmts[i]->dim_orig; j++) {
+        pluto_constraints_add_lb(skewCst, npar + 1 + i * (nvar + 1) + j, 0);
+      }
+      /* Lower bound for constant shift. */
+      pluto_constraints_add_lb(skewCst, npar + 1 + i * (nvar + 1) + nvar, 0);
+      continue;
+    }
+
     for (int j = 0; j < stmts[i]->dim_orig; j++) {
       if (src_dims[j] && stmts[i]->scc_id == scc_id) {
         pluto_constraints_add_lb(skewCst, npar + 1 + i * (nvar + 1) + j, 1);
       } else {
         pluto_constraints_add_equality(skewCst);
         skewCst->val[skewCst->nrows - 1][npar + 1 + i * (nvar + 1) + j] = 1;
-        /* Set the value of the current coeff to the one that you have already
-         * found */
+        /* Set the value of the current coeff to the one that has already been
+         * found. */
         skewCst->val[skewCst->nrows - 1][CST_WIDTH - 1] =
             -stmts[i]->trans->val[level][j];
       }
     }
+    /* Lower bound for constant shift. */
     pluto_constraints_add_lb(skewCst, npar + 1 + i * (nvar + 1) + nvar, 0);
   }
   return skewCst;
