@@ -104,7 +104,10 @@ TEST_MORE_INTRA_TILE_OPT="\
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
     printf '%-50s ' "$file with --maxfuse"
-    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck $file
+    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-TILE $file
+    check_ret_val_emit_status
+    printf '%-50s ' "$file with --maxfuse --notile"
+    ./src/pluto --maxfuse --notile $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-NOTILE $file
     check_ret_val_emit_status
 done
 
