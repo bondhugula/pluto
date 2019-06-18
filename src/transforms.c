@@ -107,7 +107,12 @@ void pluto_sink_transformation(Stmt *stmt, unsigned pos) {
   stmt->hyp_types[pos] = H_SCALAR;
 }
 
-/* Make loop the innermost loop; all loops below move up by one */
+/// Make loop the innermost loop; all loops below move up by one. If the loop
+/// nest is tiled, then the loop can be  moved acorss scalar hyperplanes
+/// in the innermost permutable band by setting the boolean variable
+/// move_across_scalar_hyperplanes in the caller. The maximum depth to which a
+/// loop can be moved is given by last_level, which is set to the last level in
+/// the band containing the loop, in case of a tiled loop nest.
 void pluto_make_innermost_loop(Ploop *loop, unsigned last_level,
                                bool move_across_scalar_hyperplanes,
                                PlutoProg *prog) {
