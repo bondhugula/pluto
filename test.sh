@@ -99,6 +99,14 @@ for file in $TESTS_TILE_PARALLEL; do
     ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
+TEST_MORE_INTRA_TILE_OPT="\
+    test/intratileopt5.c
+"
+for file in $TEST_MORE_INTRA_TILE_OPT; do
+    printf '%-50s ' "$file with --maxfuse"
+    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
 
 TESTS_PET="\
   test/heat-2d.c \
