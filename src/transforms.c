@@ -108,24 +108,21 @@ void pluto_sink_transformation(Stmt *stmt, unsigned pos) {
 }
 
 /* Make loop the innermost loop; all loops below move up by one */
-void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog) {
+void pluto_make_innermost_loop(Ploop *loop, unsigned last_level,
+                               PlutoProg *prog) {
   assert(prog->num_hyperplanes >= 1);
-  unsigned last_depth = prog->num_hyperplanes - 1;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    Stmt *stmt = loop->stmts[i];
-    unsigned d;
-    for (d = loop->depth; d < stmt->trans->nrows; d++) {
-      if (pluto_is_hyperplane_scalar(stmt, d)) {
-        break;
-      }
-    }
-    last_depth = PLMIN(last_depth, d - 1);
-  }
+  assert(last_level <= prog->num_hyperplanes);
+  unsigned last_depth = last_level;
 
   for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
-    for (unsigned d = loop->depth; d < last_depth; d++) {
-      pluto_stmt_loop_interchange(stmt, d, d + 1);
+    /* Current level that has to be made the innermost. */
+    unsigned current_level = loop->depth;
+    for (unsigned d = loop->depth + 1; d < last_depth; d++) {
+      if (pluto_is_hyperplane_scalar(stmt, d))
+        continue;
+      pluto_stmt_loop_interchange(stmt, current_level, d);
+      current_level = d;
     }
   }
 }

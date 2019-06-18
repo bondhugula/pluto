@@ -250,7 +250,6 @@ int gen_unroll_file(PlutoProg *prog) {
 }
 
 /// Optimize the intra-tile loop order for locality and vectorization.
-/// 
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
   /* Band has to be the innermost band as well */
@@ -289,10 +288,17 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     IF_DEBUG(pluto_loop_print(loops[l]));
   }
 
+  printf("Best loop\n");
+  pluto_loop_print(best_loop);
   if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
     IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
     IF_DEBUG(pluto_loop_print(best_loop););
-    pluto_make_innermost_loop(best_loop, prog);
+
+    /* The last level in the innermost permutable band. This is true only if the
+     * outermost permutable band and innermost permutable band are the same. */
+    unsigned last_level =
+        band->loop->depth + num_tiled_levels * band->width + band->width;
+    pluto_make_innermost_loop(best_loop, last_level, prog);
     pluto_loops_free(loops, nloops);
     return 1;
   }
