@@ -31,6 +31,7 @@ void pluto_reschedule_tile(PlutoProg *prog);
 void pluto_interchange(PlutoProg *prog, int level1, int level2);
 void pluto_sink_transformation(Stmt *stmt, unsigned pos);
 void pluto_make_innermost_loop(Ploop *loop, unsigned last_level,
+                               bool move_across_scalar_hyperplanes,
                                PlutoProg *prog);
 void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2);
 

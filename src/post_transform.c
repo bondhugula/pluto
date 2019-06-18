@@ -294,11 +294,18 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
     IF_DEBUG(pluto_loop_print(best_loop););
 
+    printf("Num tiled levels: %d\n", num_tiled_levels);
     /* The last level in the innermost permutable band. This is true only if the
      * outermost permutable band and innermost permutable band are the same. */
     unsigned last_level =
         band->loop->depth + num_tiled_levels * band->width + band->width;
-    pluto_make_innermost_loop(best_loop, last_level, prog);
+    bool move_across_scalar_hyperplanes = false;
+    /* Tile across scalar hyperplanes only if the loop nest is tiled */
+    if (num_tiled_levels > 0) {
+      move_across_scalar_hyperplanes = true;
+    }
+    pluto_make_innermost_loop(best_loop, last_level,
+                              move_across_scalar_hyperplanes, prog);
     pluto_loops_free(loops, nloops);
     return 1;
   }
