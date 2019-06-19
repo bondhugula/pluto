@@ -82,8 +82,8 @@ void usage_message(void) {
                   "instead of LP\n");
   fprintf(stdout, "       --lpcolor                 Color FCG based on the "
                   "solutions of the lp-problem [disabled by default]\n");
-  fprintf(stdout, "       --clusterscc              Cluster the statemtns of "
-                  "an SCC. This is supported only availabe with decoupled "
+  fprintf(stdout, "       --clusterscc              Cluster the statements of "
+                  "an SCC. This is supported only available with decoupled "
                   "approach [disabled by default]\n");
 #endif
   fprintf(stdout, "\n");
@@ -128,11 +128,14 @@ void usage_message(void) {
   fprintf(stdout, "       --smartfuse [default]     Heuristic (in between "
                   "nofuse and maxfuse)\n");
   fprintf(stdout, "       --typedfuse               Typed fusion. Fuses SCCs "
-                  "only when there is no loss of parallelism\n");
+                  "only when there is no loss of parallelism [uses dfp "
+                  "framework and requires glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "       --hybridfuse              Typed fusion at outer "
-                  "levels and max fuse at inner level\n");
+                  "levels and max fuse at inner level [uses dfp framework and "
+                  "requires glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "       --delayedcut              Delays the cut between "
-                  "SCCs of different dimensionalities in dfp approach\n");
+                  "SCCs of different dimensionalities in dfp approach [uses "
+                  "glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "\n   Index Set Splitting        \n");
   fprintf(stdout, "       --iss                  \n");
   fprintf(
@@ -467,10 +470,28 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->fuse = kTypedFuse;
   }
 
+#if defined GLPK || defined GUROBI
+  /* Enable dfp framework with typedfuse or hybridfuse */
+  if ((options->fuse == kTypedFuse || options->delayed_cut) && !options->dfp) {
+    printf(
+        "[pluto] Typed or hybrid fusion is available with DFP framework only. "
+        "Using the dfp framework.\n");
+    options->dfp = 1;
+  }
+#endif
+
   if (options->fuse == kTypedFuse && !options->dfp) {
-    printf("[Pluto] WARNING: Typed fusion available with DFP framework only. "
-           "Turning off typed fusion.\n");
+    printf("[pluto] WARNING: Typed or hybrid fusion is available with dfp "
+           "framework only which requires an LP solver. Configure pluto with "
+           "--enable-glpk or --enable-gurobi\n");
     options->fuse = kSmartFuse;
+    options->hybridcut = 0;
+  }
+  if (options->delayed_cut && !options->dfp) {
+    printf("[pluto] WARNING: Delayedcut is available with dfp "
+           "framework only which requires an LP solver. Configure pluto with "
+           "--enable-glpk or --enable-gurobi\n");
+    options->delayed_cut = 0;
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
