@@ -26,7 +26,7 @@
 
 #include "assert.h"
 
-/* Sink statement (domain); depth: 0-indexed */
+/// Sink statement (domain); depth: 0-indexed.
 void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
   assert(stmt->dim == stmt->domain->ncols - prog->npar - 1);
 
@@ -39,8 +39,8 @@ void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
   stmt->is_orig_loop[depth] = false;
 }
 
-/* Stripmine 'dim'th time dimension of stmt by stripmine factor; use
- * 'supernode' as the name of the supernode in the domain */
+/// Stripmine 'dim'th time dimension of stmt by stripmine factor; use
+/// 'supernode' as the name of the supernode in the domain.
 void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
                      PlutoProg *prog) {
   pluto_stmt_add_dim(stmt, 0, dim, supernode, H_TILE_SPACE_LOOP, prog);
@@ -63,7 +63,7 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
   domain->val[domain->nrows - 1][stmt->trans->ncols] += factor;
 }
 
-/* Interchange loops for a stmt */
+/// Interchange loops for a stmt.
 void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
   for (unsigned j = 0; j < stmt->trans->ncols; j++) {
     int64_t tmp = stmt->trans->val[level1][j];
@@ -73,17 +73,14 @@ void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
 }
 
 void pluto_interchange(PlutoProg *prog, int level1, int level2) {
-  int k;
-  HyperplaneProperties hTmp;
-
   Stmt **stmts = prog->stmts;
   int nstmts = prog->nstmts;
 
-  for (k = 0; k < nstmts; k++) {
+  for (int k = 0; k < nstmts; k++) {
     pluto_stmt_loop_interchange(stmts[k], level1, level2);
   }
 
-  hTmp = prog->hProps[level1];
+  HyperplaneProperties hTmp = prog->hProps[level1];
   prog->hProps[level1] = prog->hProps[level2];
   prog->hProps[level2] = hTmp;
 }
