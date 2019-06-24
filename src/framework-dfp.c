@@ -381,6 +381,8 @@ PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
 
   PlutoConstraints *inter_scc_dep_cst = NULL;
 
+  IF_DEBUG2(printf("Computing inter-scc dep constraints for SCCs %d and %d\n",
+                   scc1, scc2););
   for (int i = 0; i < ndeps; i++) {
     Dep *dep = deps[i];
     if (options->rar == 0 && IS_RAR(dep->type)) {
@@ -397,8 +399,6 @@ PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
     int dest_scc = stmts[dest_stmt]->scc_id;
     if ((src_scc == scc1 || src_scc == scc2) &&
         (dest_scc == scc1 || dest_scc == scc2)) {
-      IF_DEBUG(printf("Computing Inter Scc deps for SCCs %d and %d\n", src_scc,
-                      dest_scc););
       if (dep->cst == NULL) {
         compute_pairwise_permutability(dep, prog);
       }
@@ -629,6 +629,8 @@ PlutoConstraints *compute_intra_scc_dep_cst(int scc_id, PlutoProg *prog) {
   Stmt **stmts = prog->stmts;
   PlutoConstraints *intra_scc_dep_cst = NULL;
 
+  IF_DEBUG2(
+      printf("Computing intra-scc dep constraints for Scc: %d\n", scc_id););
   for (int i = 0; i < ndeps; i++) {
     Dep *dep = deps[i];
     if (options->rar == 0 && IS_RAR(dep->type)) {
@@ -642,7 +644,6 @@ PlutoConstraints *compute_intra_scc_dep_cst(int scc_id, PlutoProg *prog) {
     int src_scc = stmts[dep->src]->scc_id;
     int dest_scc = stmts[dep->dest]->scc_id;
     if (src_scc == scc_id && dest_scc == scc_id) {
-      IF_DEBUG(printf("Computing intra scc deps for Scc: %d\n", scc_id););
       if (dep->cst == NULL) {
         compute_pairwise_permutability(dep, prog);
       }
@@ -1094,6 +1095,10 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
 
   IF_DEBUG(printf("FCG \n"););
   IF_DEBUG(pluto_matrix_print(stdout, fcg->adj));
+  if (options->fuse == kTypedFuse && options->debug) {
+    printf("Parallelism preventing edges\n");
+    pluto_matrix_print(stdout, par_preventing_adj_mat);
+  }
 
   IF_DEBUG(printf("[Pluto] Build FCG: Total number of LP calls in building the "
                   "FCG: %ld\n",
@@ -2315,9 +2320,8 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
       continue;
     }
 
-    IF_DEBUG(
-        printf("Trying colouring Scc %d of Size %d ", i, ddg->sccs[i].size););
-    IF_DEBUG(printf("with colour %d\n", c););
+    IF_DEBUG(printf("Trying colouring Scc %d of Size %d with colour %d\n", i,
+                    ddg->sccs[i].size, c););
 
     bool is_successful = false;
     bool is_distributed = false;
@@ -2325,14 +2329,14 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
       bool hybrid_cut =
           options->hybridcut && ddg->sccs[i].has_parallel_hyperplane;
       if (options->fuse == kTypedFuse) {
-        /* case when the previous scc that was coloured was parallel
-         * and the current one is seqential */
+        /* Case when the previous scc that was coloured was parallel
+         * and the current one is seqential. */
         if (!ddg->sccs[i].is_parallel && is_parallel_scc_coloured &&
             prev_scc != -1) {
           if (are_sccs_fused(prog, prev_scc, i)) {
-            /* distribute the loops here. Note that
+            /* Distribute the loops here. Note that
              * sccs may not be connected at all. However we still
-             * need to cut to preserve parallelism */
+             * need to cut to preserve parallelism. */
             if (ddg_sccs_direct_connected(ddg, prog, prev_scc, i)) {
               cut_between_sccs(prog, ddg, prev_scc, i);
               update_fcg_between_sccs(fcg, prev_scc, i, prog);
@@ -2343,9 +2347,6 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         } else if (ddg->sccs[i].is_parallel && !hybrid_cut &&
                    !is_parallel_scc_coloured && prev_scc != -1) {
           if (are_sccs_fused(prog, prev_scc, i)) {
-            /* distribute the loops here. Note that
-             * sccs may not be connected at all. However we still
-             * need to cut to preserve parallelism */
             if (ddg_sccs_direct_connected(ddg, prog, prev_scc, i)) {
               cut_between_sccs(prog, ddg, prev_scc, i);
               update_fcg_between_sccs(fcg, prev_scc, i, prog);
@@ -2355,7 +2356,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
             }
           }
         }
-        /* Set that a parallel SCC is being coloured */
+        /* Set that a parallel SCC is being coloured. */
         if (ddg->sccs[i].is_parallel) {
           is_parallel_scc_coloured = true;
         } else {
@@ -2372,17 +2373,13 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
 
       fcg = prog->fcg;
       /* In case of first scc, no inter scc deps can be satisfied. A permute
-       * preventing dependence has prevented colouring.
-       * Update the DDG whenever an inter SCC is satisfied dependence is
-       * satisfied.  Note that dependencies that are satisfied by previous
-       * dimensions
-       * are updated in the DDG.  However, updating the FCG is delayed in order
-       * to
-       * account for permute preventing dependences.  Whenever the colouring
-       * fails,
-       * one has to update FCG with respect to the dependences that have already
-       * been
-       * satisfied along with the dependences those satisfied by the cut*/
+       * preventing dependence has prevented colouring.  Update the DDG whenever
+       * an inter SCC is satisfied dependence is satisfied. Note that
+       * dependences that are satisfied by previous dimensions are updated in
+       * the DDG.  However, updating the FCG is delayed in order to account for
+       * permute preventing dependences.  Whenever the colouring fails, one has
+       * to update FCG with respect to the dependences that have already been
+       * satisfied along with the dependences those satisfied by the cut. */
       if (fcg->to_be_rebuilt == true || i == 0) {
         IF_DEBUG(printf("FCG Before Reconstruction\n"););
         IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
@@ -2391,15 +2388,15 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
           cut_all_sccs(prog, ddg);
         }
         prog->fcg_colour_time += rtclock() - t_start;
-        /* Current colour that is being used to colour the fcg is c */
+        /* Current colour that is being used to colour the fcg is c. */
         if (options->scc_cluster) {
           colour = rebuild_scc_cluster_fcg(prog, colour, c);
-          /* rebuliding the cluster_fcg will update ddg, hence number of sccs
-           * can increase */
+          /* Re-buliding the cluster_fcg will update ddg, hence number of sccs
+           * can increase. */
           nsccs = prog->ddg->num_sccs;
           fcg = prog->fcg;
 
-          /* Sccs will be renumbered; hence all sccs have to be revisited; */
+          /* Sccs will be renumbered; hence all sccs have to be revisited. */
           i = -1;
           prev_scc = -1;
           continue;
@@ -2410,13 +2407,13 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
 
         t_start = rtclock();
         prog->fcg->num_coloured_vertices = fcg->num_coloured_vertices;
-        /* need not update the FCG till the next hyperplane is found */
+        /* Need not update the FCG till the next hyperplane is found. */
         prog->fcg->to_be_rebuilt = false;
         graph_free(fcg);
         fcg = prog->fcg;
         IF_DEBUG(printf("[Pluto]: Fcg After reconstruction\n"););
         IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
-        /* Needed only if it is not the first SCC */
+        /* Needed only if it is not the first SCC. */
         if (i != 0) {
           if (options->scc_cluster) {
             is_distributed = colour_scc_cluster(i, colour, c, prog);
@@ -2425,13 +2422,12 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
           }
           if (!is_distributed) {
             /* Colouring was prevented by a fusion preventing dependence.
-             * Therefore cut DDG then update FCG and then colour */
+             * Therefore cut DDG then update FCG and then colour. */
             IF_DEBUG(printf("FCG Before Updating\n"););
             IF_DEBUG(pluto_matrix_print(stdout, fcg->adj););
 
             if (options->fuse == kNoFuse) {
               cut_all_sccs(prog, ddg);
-              /* TODO: Update this call testing is done */
               update_fcg_between_sccs(fcg, 0, 0, prog);
             } else {
               for (int j = prev_scc; j >= 0; j--) {
@@ -2460,7 +2456,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
             }
           }
         } else {
-          /* If the colouring of first SCC had failed previously */
+          /* If the colouring of first SCC had failed previously. */
           is_distributed = colour_scc(i, colour, c, 0, -1, prog);
         }
       } else {
@@ -2489,14 +2485,13 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
           is_distributed = colour_scc(i, colour, c, 0, -1, prog);
         }
       }
-      /* Needed in case of partial satisfaction */
+      /* Needed in case of partial satisfaction. */
       if (is_distributed == false) {
         printf("Num Deps satisfied with precise check %d\n",
                pluto_compute_dep_satisfaction_precise(prog));
 
         pluto_transformations_pretty_print(prog);
         pluto_compute_dep_directions(prog);
-        /* pluto_compute_dep_satisfaction(prog); */
         pluto_print_dep_directions(prog);
 
         prog->fcg_colour_time += rtclock() - t_start;
@@ -2506,7 +2501,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
         t_start = rtclock();
         prog->fcg->num_coloured_vertices = fcg->num_coloured_vertices;
 
-        /* need not update the FCG till the next hyperplane is found */
+        /* Need not update the FCG till the next hyperplane is found. */
         prog->fcg->to_be_rebuilt = false;
         graph_free(fcg);
         fcg = prog->fcg;
