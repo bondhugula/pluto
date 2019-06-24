@@ -484,14 +484,17 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     printf("[pluto] WARNING: Typed or hybrid fusion is available with dfp "
            "framework only which requires an LP solver. Configure pluto with "
            "--enable-glpk or --enable-gurobi\n");
-    options->fuse = kSmartFuse;
-    options->hybridcut = 0;
+    pluto_options_free(options);
+    usage_message();
+    return 1;
   }
   if (options->delayed_cut && !options->dfp) {
     printf("[pluto] WARNING: Delayedcut is available with dfp "
            "framework only which requires an LP solver. Configure pluto with "
            "--enable-glpk or --enable-gurobi\n");
-    options->delayed_cut = 0;
+    pluto_options_free(options);
+    usage_message();
+    return 1;
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
