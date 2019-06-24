@@ -539,11 +539,13 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
               dep_dist_mat
                   ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2] =
                   get_dep_dist_from_pluto_sol(sol, npar);
-              printf("Dependence distance between dims %d and %d\n of SCCs %d "
-                     "and %d: %ld\n",
-                     dim1, dim2, scc1, scc2,
-                     dep_dist_mat
-                         ->val[scc1_fcg_offset + dim1][scc2_fcg_offset + dim2]);
+              IF_DEBUG(
+                  printf(
+                      "Dependence distance between dims %d and %d\n of SCCs %d "
+                      "and %d: %ld\n",
+                      dim1, dim2, scc1, scc2,
+                      dep_dist_mat->val[scc1_fcg_offset + dim1]
+                                       [scc2_fcg_offset + dim2]););
             }
             if (check_parallel && !is_lp_solution_parallel(sol, npar)) {
               IF_DEBUG(printf("Adding Parallelism preventing edge"););
