@@ -79,11 +79,12 @@ check_ret_val_emit_status
 # is enabled. Either of these solvers is required by the dfp framework.
 TESTS="test/dfp/typed-fuse-1.c\
        test/dfp/typed-fuse-2.c\
+       test/dfp/typed-fuse-3.c\
        "
 if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
    for file in $TESTS; do
    printf '%-50s '  $file
-   ./src/pluto --notile --noparallel --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+   ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
    check_ret_val_emit_status
    done
 fi
