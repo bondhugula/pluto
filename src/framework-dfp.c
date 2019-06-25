@@ -802,6 +802,7 @@ void fcg_scc_cluster_add_permute_preventing_edges(Graph *fcg, int *colour,
 
               } else {
                 sccs[i].is_parallel = 1;
+                IF_DEBUG(printf("Dimension %d of Scc %d is parallel\n", j, i););
               }
             }
             IF_DEBUG(printf("Dimension %d of scc %d is permutable\n", j, i););
@@ -2234,6 +2235,15 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   prog->total_coloured_stmts[c - 1] = 0;
   prog->fcg->to_be_rebuilt = false;
 
+  if (options->fuse == kTypedFuse && options->debug) {
+    printf("Parallel Sccs:");
+    for (int i = 0; i < num_sccs; i++) {
+      if (prog->ddg->sccs[i].is_parallel)
+        printf("%d,", i);
+    }
+    printf("\n");
+  }
+
   graph_free(fcg);
   free(colour);
   free(stmt_colour);
@@ -2310,13 +2320,13 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
      * However, if some Sccs were previously coloured before the rebuilding
      * the FCG, we dont have to re-colour those SCCs again. If fcg has to
      * be rebuilt, then SCC ids would not have changed from previous
-     * colouring */
-    if (options->scc_cluster && prog->ddg->sccs[i].is_scc_coloured) {
+     * colouring. */
+    if (options->scc_cluster &&
+        (prog->ddg->sccs[i].is_scc_coloured || ddg->sccs[i].max_dim < c)) {
       fcg->num_coloured_vertices += ddg->sccs[i].max_dim;
       prog->total_coloured_stmts[c - 1] += ddg->sccs[i].size;
       prev_scc = i;
       prog->fcg_colour_time += rtclock() - t_start;
-      /* pluto_print_colours(colour, prog); */
       continue;
     }
 
