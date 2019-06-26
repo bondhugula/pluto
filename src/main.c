@@ -481,7 +481,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 #endif
 
   if (options->fuse == kTypedFuse && !options->dfp) {
-    printf("[pluto] WARNING: Typed or hybrid fusion is available with dfp "
+    printf("[pluto] ERROR: Typed or hybrid fusion is available with dfp "
            "framework only which requires an LP solver. Configure pluto with "
            "--enable-glpk or --enable-gurobi\n");
     pluto_options_free(options);
@@ -489,7 +489,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     return 1;
   }
   if (options->delayed_cut && !options->dfp) {
-    printf("[pluto] WARNING: Delayedcut is available with dfp "
+    printf("[pluto] ERROR: Delayedcut is available with dfp "
            "framework only which requires an LP solver. Configure pluto with "
            "--enable-glpk or --enable-gurobi\n");
     pluto_options_free(options);
