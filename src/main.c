@@ -82,9 +82,10 @@ void usage_message(void) {
                   "instead of LP\n");
   fprintf(stdout, "       --lpcolor                 Color FCG based on the "
                   "solutions of the lp-problem [disabled by default]\n");
-  fprintf(stdout, "       --clusterscc              Cluster the statements of "
-                  "an SCC. This is supported only available with decoupled "
-                  "approach [disabled by default]\n");
+  fprintf(stdout,
+          "       --clusterscc              Cluster the statements of "
+          "an SCC. This is supported only available with dfp framework only. "
+          "(Requires GLPK or Gurobi as the LP solver) [disabled by default]\n");
 #endif
   fprintf(stdout, "\n");
 #ifdef GUROBI
@@ -415,16 +416,30 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->parallel = 1;
   }
 
-  if (options->gurobi) {
-    options->islsolve = 0;
+  if (options->hybridcut && !(options->fuse == kTypedFuse)) {
+    options->fuse = kTypedFuse;
   }
-#ifdef GLPK
+
+#if defined GLPK || defined GUROBI
   if (options->lp && !(options->glpk || options->gurobi)) {
     if (!options->silent) {
       printf("[pluto] LP option available with a LP solver only. Using GLPK "
              "for lp solving\n");
     }
     options->glpk = 1;
+  }
+
+  /* Enable dfp framework with typedfuse or hybridfuse */
+  if ((options->fuse == kTypedFuse || options->delayed_cut) && !options->dfp) {
+    printf(
+        "[pluto] Typed or hybrid fusion is available with DFP framework only. "
+        "Using the dfp framework.\n");
+    options->dfp = 1;
+  }
+
+  if (options->scc_cluster && !options->dfp) {
+    printf("[pluto] WARNING: SCC clustering heuristics available wit DFP "
+           "framework only.  Using the dfp framework\n");
   }
 
   /* By default Pluto-dfp uses lp. */
@@ -442,7 +457,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->glpk = 1;
   }
 
-  if (options->glpk) {
+  if (options->glpk || options->gurobi) {
     /* Turn off islsolve */
     options->islsolve = 0;
     options->pipsolve = 0;
@@ -461,24 +476,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     usage_message();
     return 1;
   }
-  if (options->scc_cluster && !options->dfp) {
-    printf("[pluto] Warning: SCC clustering heuristics available with dfp "
-           "option (FCG based approach) only. Disabling clustering \n");
-  }
-
-  if (options->hybridcut && !(options->fuse == kTypedFuse)) {
-    options->fuse = kTypedFuse;
-  }
-
-#if defined GLPK || defined GUROBI
-  /* Enable dfp framework with typedfuse or hybridfuse */
-  if ((options->fuse == kTypedFuse || options->delayed_cut) && !options->dfp) {
-    printf(
-        "[pluto] Typed or hybrid fusion is available with DFP framework only. "
-        "Using the dfp framework.\n");
-    options->dfp = 1;
-  }
-#endif
 
   if (options->fuse == kTypedFuse && !options->dfp) {
     printf("[pluto] ERROR: Typed or hybrid fusion is available with dfp "
@@ -498,13 +495,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
-   * hence reduces FCG construction time */
+   * hence reduces FCG construction time. */
   if (options->dfp && !options->lastwriter) {
     if (!options->silent) {
       printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
     }
     options->lastwriter = 1;
   }
+
   /* Typed fuse is available with clustered FCG approach only */
   if (options->fuse == kTypedFuse && options->dfp && !options->scc_cluster) {
     if (!options->silent) {
@@ -515,9 +513,10 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   if (options->dfp && options->per_cc_obj) {
-    printf("[pluto] Per connected component objective is not supported with "
-           "dfp. Turning of per-cc-obj");
-    options->per_cc_obj = 0;
+    printf("[pluto] ERROR: Per CC connected component objective is not "
+           "supported with DFP framework.\n");
+    pluto_options_free(options);
+    return 1;
   }
 
   /* Extract polyhedral representation from osl scop */
