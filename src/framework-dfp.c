@@ -2729,7 +2729,7 @@ void add_coeff_constraints_from_fcg_colouring(PlutoConstraints *coeffcst,
      *  statement to zero.*/
     if (stmts[j]->dim_orig < c) {
       for (int k = 0; k < stmts[j]->dim_orig; k++) {
-        pluto_constraints_add_lb(coeffcst, npar + 1 + j * (nvar + 1) + k, 1);
+        pluto_constraints_add_lb(coeffcst, npar + 1 + j * (nvar + 1) + k, 0);
       }
       stmt_offset += stmts[j]->dim_orig;
       continue;
@@ -2768,7 +2768,7 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
                   prog->total_coloured_stmts[c]););
 
   if (prog->total_coloured_stmts[c] != nstmts) {
-    IF_DEBUG(printf("Not All statements have been coloured\n"););
+    IF_DEBUG(printf("Not all statements have been coloured\n"););
     pluto_constraints_free(coeffcst);
     return 0;
   }
@@ -2776,13 +2776,13 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   coeffcst = pluto_constraints_copy(coeffcst, boundcst);
   pluto_constraints_free(boundcst);
 
-  /* Pick a colour that you would start */
+  /* The permutation to be scaled and shifted at the current level is coloured
+   * with colour c+1. */
   int select = c + 1;
   IF_DEBUG(printf("[pluto] Finding Scaling factors for colour %d\n", select););
 
   /* Add CST_WIDTH number of cols and set appropriate constraints to 1 and set
-   * the rest to 0
-   * These redundant cols are then removed. */
+   * the rest to 0. These redundant cols are then removed. */
 
   if (options->scc_cluster) {
     add_coeff_constraints_from_scc_clustered_fcg_colouring(coeffcst, colour,
@@ -2792,13 +2792,13 @@ int scale_shift_permutations(PlutoProg *prog, int *colour, int c) {
   }
   coeffcst = pluto_constraints_add(coeffcst, basecst);
 
-  /* Solve the constraints to find the hyperplane at this level */
+  /* Solve the constraints to find the hyperplane at this level. */
   double t_start = rtclock();
 
   int64_t *sol = pluto_prog_constraints_lexmin(coeffcst, prog);
 
   if (sol != NULL) {
-    IF_DEBUG(printf("[pluto]: found a hyperplane\n"));
+    IF_DEBUG(printf("[pluto] Found a hyperplane\n"));
     pluto_add_hyperplane_from_ilp_solution(sol, prog);
     prog->scaling_cst_sol_time += rtclock() - t_start;
     free(sol);
@@ -3068,7 +3068,7 @@ bool introduce_skew(PlutoProg *prog) {
   HyperplaneProperties *hProps = prog->hProps;
 
   if (!options->silent) {
-    printf("[Pluto]: Tileabilty with skew\n");
+    printf("[pluto] Looking for tileabilty with loop skewing\n");
   }
 
   double tstart = rtclock();
@@ -3230,9 +3230,6 @@ bool introduce_skew(PlutoProg *prog) {
   prog->ddg = orig_ddg;
   graph_free(newDDG);
   prog->skew_time += rtclock() - tstart;
-  if (!options->silent) {
-    printf("[Pluto]: Post processing skewing complete\n");
-  }
   return is_skew_introduced;
 }
 #endif

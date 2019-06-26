@@ -1739,7 +1739,7 @@ int pluto_auto_transform(PlutoProg *prog) {
     find_permutable_dimensions_scc_based(colour, prog);
 
     if (!options->silent && options->debug) {
-      printf("[Pluto]: Transformations before skewing \n");
+      printf("[pluto] Transformations before skewing \n");
       pluto_transformations_pretty_print(prog);
     }
 
