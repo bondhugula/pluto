@@ -3342,10 +3342,7 @@ void pluto_stmt_free(Stmt *stmt) {
   pluto_matrix_free(stmt->trans);
 
   free(stmt->hyp_types);
-
-  if (stmt->text != NULL) {
-    free(stmt->text);
-  }
+  free(stmt->text);
 
   for (unsigned j = 0; j < stmt->dim; j++) {
     if (stmt->iterators[j] != NULL) {
