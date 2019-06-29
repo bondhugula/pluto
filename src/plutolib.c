@@ -463,11 +463,11 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
   pluto_bands_free(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
   pluto_bands_free(ibands, n_ibands);
 
   if (options->tile) {
