@@ -50,28 +50,33 @@
 #include "pet.h"
 
 struct acc_info {
-  char *prefix;
-  int acc_num;
-  isl_union_map **new_maps;
-  isl_union_map **schedule;
+  // Prefix for the access.
+  const char *prefix;
+  // Access number.
+  unsigned acc_num;
+  // Output argument: named access maps (S_r_%d, S_w_%d).
+  isl_union_map **acc_maps_with_names;
+  // Schedules with access info encoded.
+  isl_union_map **schedules_acc_wise;
+  // Statement-wise (access indepedent) schedules.
   isl_map *base_schedule;
 };
 
-static isl_stat set_tuple_name(__isl_take isl_map *map, void *usr) {
-  char *name;
-
+// Set the tuple name for read/write accesses and schedules so that the
+// schedules are on a per-access basis.
+static isl_stat set_tuple_name(__isl_take isl_map *acc_map, void *usr) {
   struct acc_info *info = (struct acc_info *)usr;
-  name = (char *)malloc(strlen(info->prefix) + 4);
-  sprintf(name, "%s%d", info->prefix, info->acc_num);
-  map = isl_map_set_tuple_name(map, isl_dim_in, name);
+  char *name = (char *)malloc(strlen(info->prefix) + 4);
+  sprintf(name, "%s%u", info->prefix, info->acc_num);
+  acc_map = isl_map_set_tuple_name(acc_map, isl_dim_in, name);
   info->acc_num++;
 
-  *info->new_maps =
-      isl_union_map_union(*info->new_maps, isl_union_map_from_map(map));
+  *info->acc_maps_with_names = isl_union_map_union(
+      *info->acc_maps_with_names, isl_union_map_from_map(acc_map));
   isl_map *schedule_i = isl_map_copy(info->base_schedule);
   schedule_i = isl_map_set_tuple_name(schedule_i, isl_dim_in, name);
-  *info->schedule =
-      isl_union_map_union(*info->schedule, isl_union_map_from_map(schedule_i));
+  *info->schedules_acc_wise = isl_union_map_union(
+      *info->schedules_acc_wise, isl_union_map_from_map(schedule_i));
   free(name);
 
   return isl_stat_ok;
@@ -80,8 +85,7 @@ static isl_stat set_tuple_name(__isl_take isl_map *map, void *usr) {
 /* Compute dependences based on the domain, scheduling, and access
  * information in "pscop", and put the result in "prog".
  */
-static void compute_deps_pet(struct pet_scop *pscop,
-                             isl_map **stmt_wise_schedules, PlutoProg *prog,
+static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
                              PlutoOptions *options) {
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
 
@@ -99,16 +103,19 @@ static void compute_deps_pet(struct pet_scop *pscop,
 
   isl_union_map *reads = isl_union_map_copy(empty);
   isl_union_map *writes = isl_union_map_copy(empty);
-  isl_union_map *schedule = isl_union_map_copy(empty);
+  // Schedules with read/write access info encoded into domains.
+  isl_union_map *schedules = isl_union_map_copy(empty);
 
-  isl_union_map *schedules = isl_schedule_get_map(pscop->schedule);
+  isl_union_map *base_schedules = isl_schedule_get_map(pscop->schedule);
 
+  // Collect read and writes accesses, and construct schedules with read/write
+  // access number encoded in the domain information.
   for (int i = 0; i < prog->nstmts; i++) {
     struct pet_stmt *pstmt = prog->stmts[i]->pstmt;
     Stmt *stmt = prog->stmts[i];
 
     isl_union_map *s_umap = isl_union_map_intersect_domain(
-        isl_union_map_copy(schedules),
+        isl_union_map_copy(base_schedules),
         isl_union_set_from_set(isl_set_copy(pstmt->domain)));
 
     isl_map *s_map = isl_map_from_union_map(s_umap);
@@ -118,23 +125,25 @@ static void compute_deps_pet(struct pet_scop *pscop,
     isl_union_map *lwrites = pet_stmt_collect_accesses(
         pstmt, pet_expr_access_may_write, 0, isl_space_copy(space));
 
+    // Encode read/write access information into the domain.
     char name[20];
-    sprintf(name, "S_%d_r", stmt->id);
-    struct acc_info rinfo = {name, 0, &reads, &schedule, s_map};
+    sprintf(name, "S_%u_r", stmt->id);
+    struct acc_info rinfo = {name, 0, &reads, &schedules, s_map};
+    // Iterate to construct 'reads', 'writes', and 'schedules'.
     isl_union_map_foreach_map(lreads, &set_tuple_name, &rinfo);
-    sprintf(name, "S_%d_w", stmt->id);
-    struct acc_info winfo = {name, 0, &writes, &schedule, s_map};
+    sprintf(name, "S_%u_w", stmt->id);
+    struct acc_info winfo = {name, 0, &writes, &schedules, s_map};
     isl_union_map_foreach_map(lwrites, &set_tuple_name, &winfo);
 
     isl_map_free(s_map);
     isl_union_map_free(lreads);
     isl_union_map_free(lwrites);
   }
-  isl_union_map_free(schedules);
+  isl_union_map_free(base_schedules);
   isl_space_free(space);
 
-  compute_deps_isl(reads, writes, schedule, empty, &dep_raw, &dep_war, &dep_waw,
-                   &dep_rar, &trans_dep_war, &trans_dep_waw);
+  compute_deps_isl(reads, writes, schedules, empty, &dep_raw, &dep_war,
+                   &dep_waw, &dep_rar, &trans_dep_war, &trans_dep_waw);
 
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
@@ -163,7 +172,7 @@ static void compute_deps_pet(struct pet_scop *pscop,
 
   isl_union_map_free(writes);
   isl_union_map_free(reads);
-  isl_union_map_free(schedule);
+  isl_union_map_free(schedules);
   isl_union_map_free(empty);
 }
 
@@ -701,7 +710,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   }
 
   /* Compute dependences */
-  compute_deps_pet(pscop, NULL, prog, options);
+  compute_deps_pet(pscop, prog, options);
 
   /* Add hyperplanes */
   if (prog->nstmts >= 1) {
