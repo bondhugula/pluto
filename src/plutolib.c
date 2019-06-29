@@ -274,11 +274,11 @@ __isl_give isl_union_map *pluto_transform(__isl_keep isl_union_set *domains,
 
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   Band **ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
   pluto_bands_free(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
   pluto_bands_free(ibands, n_ibands);
 
   if (options->tile) {
@@ -364,7 +364,7 @@ __isl_give isl_union_map *pluto_transform(__isl_keep isl_union_set *domains,
   return schedules;
 }
 
-__isl_give isl_union_map *pluto_schedule(__isl_keep isl_union_map *schedules,
+__isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
                                          __isl_keep isl_union_map *reads,
                                          __isl_keep isl_union_map *writes,
                                          PlutoOptions *options_l) {
@@ -383,6 +383,9 @@ __isl_give isl_union_map *pluto_schedule(__isl_keep isl_union_map *schedules,
 
   isl_union_map *pluto_schedules =
       pluto_transform(domains, dependences, options_l);
+
+  pluto_schedules = isl_union_map_intersect_domain(
+      pluto_schedules, isl_union_map_domain(schedules));
 
   isl_union_map_free(empty);
   isl_union_set_free(domains);
@@ -694,10 +697,10 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
 
   if (options->tile) {
     pluto_tile(prog);
