@@ -50,7 +50,7 @@
 
 #include "pet.h"
 
-PlutoOptions *options;
+PlutoOptions *options = NULL;
 
 void usage_message(void) {
   fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");

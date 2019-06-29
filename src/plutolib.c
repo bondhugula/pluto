@@ -38,7 +38,7 @@
 #include "pluto/pluto.h"
 #include "program.h"
 
-PlutoOptions *options;
+PlutoOptions *options = NULL;
 
 static double rtclock() {
   struct timeval Tp;
