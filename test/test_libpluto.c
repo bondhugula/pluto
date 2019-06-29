@@ -29,7 +29,7 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
   isl_union_map *deps = isl_union_map_read_from_str(ctx, deps_str);
 
-  isl_union_map *schedule = pluto_schedule(domains, deps, options);
+  isl_union_map *schedule = pluto_transform(domains, deps, options);
   if (schedule) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     printer = isl_printer_print_union_map(printer, schedule);
@@ -81,7 +81,7 @@ void test1(PlutoOptions *options) {
 // CHECK-LABEL: *** TEST CASE 2 ***
 // CHECK: T(S1): (i0, 1024i0)
 // CHECK: T(S2): (i0, 1024i0+i1)
-int test2(PlutoOptions *options) {
+void test2(PlutoOptions *options) {
   printf("\n\n*** TEST CASE 2 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -111,7 +111,8 @@ void test_diamond_tiling(PlutoOptions *options) {
 
   isl_ctx *ctx = isl_ctx_alloc();
 
-  const char *domains_str = " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 <= i1 <= R - 1; }";
+  const char *domains_str =
+      " [R, T] -> { S_0[i0, i1] : 0 <= i0 <= T and 0 <= i1 <= R - 1; }";
   // Dependences (1,-1) and (1,1).
   const char *deps_str =
       "[R, T] -> {"
@@ -180,6 +181,45 @@ void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
   run_test_and_cleanup(domains_str, deps_str, options, ctx);
 }
 
+// CHECK-LABEL: *** TEST CASE test_lib_pluto_schedule ***
+// CHECK: [p1, p2, p0] -> { S_0[i0, i1] -> [i1, i0, 0]; S_1[i0, i1, i2] -> [i2, i0, i1] }
+void test_lib_pluto_schedule(PlutoOptions *options) {
+  printf("\n\n*** TEST CASE test_lib_pluto_schedule ***\n\n");
+
+  isl_ctx *ctx = isl_ctx_alloc();
+
+  isl_union_map *schedules = isl_union_map_read_from_str(
+      ctx,
+      "[p1, p2, p0] -> { S_0[i0, i1] -> [o0, o1, o2, o3] : o0 = 0 and o1 = "
+      "0 and o2 = i0 and o3 = 0 and i0 >= 0 and i0 < p0 and i1 >= 0 and "
+      "i1 < p1; S_1[i0, i1, i2] -> [o0, o1, o2, o3] : o0 = 1 and o1 = i0 "
+      "and o2 = i1 and o3 = i2 and i0 >= 0 and i0 < p1 and i1 >= 0 and i1 "
+      "< p2 and i2 >= 0 and i2 <= 100 }");
+
+  isl_union_map *reads = isl_union_map_read_from_str(
+      ctx,
+      "[p1, p2, p0] -> { S_0[i0, i1]->M0[o0, o1] : o0 = i0 and o1 = i1;    "
+      " S_1[i0, i1, i2]->M0[o0, o1] : o0 = i0 and o1 = i2 }");
+
+  isl_union_map *writes = isl_union_map_read_from_str(
+      ctx, "[p1, p2] -> { S_1[i0, i1, i2]->M1[o0, o1] : o0 = i2 and o1 = i0}");
+
+  isl_union_map *result = pluto_schedule(schedules, reads, writes, options);
+
+  if (result) {
+    isl_printer *printer = isl_printer_to_file(ctx, stdout);
+    printer = isl_printer_print_union_map(printer, result);
+    printf("\n");
+    isl_printer_free(printer);
+  }
+
+  isl_union_map_free(reads);
+  isl_union_map_free(writes);
+  isl_union_map_free(schedules);
+  isl_union_map_free(result);
+  isl_ctx_free(ctx);
+}
+
 int main() {
   PlutoOptions *options = pluto_options_alloc();
   options->tile = 1;
@@ -196,6 +236,11 @@ int main() {
   test4(options);
   test5(options);
   test6_diamond_tiling_with_scalar_dimension(options);
+
+  options->tile = 0;
+  options->diamondtile = 0;
+  options->fulldiamondtile = 0;
+  test_lib_pluto_schedule(options);
 
   pluto_options_free(options);
 }

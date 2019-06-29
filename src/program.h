@@ -130,11 +130,11 @@ void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
 
 void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
-                             isl_union_map *schedule, isl_union_map *empty,
-                             isl_union_map **dep_raw, isl_union_map **dep_war,
-                             isl_union_map **dep_waw, isl_union_map **dep_rar,
-                             isl_union_map **trans_dep_war,
-                             isl_union_map **trans_dep_waw);
+                      isl_union_map *schedule, isl_union_map *empty,
+                      isl_union_map **dep_raw, isl_union_map **dep_war,
+                      isl_union_map **dep_waw, isl_union_map **dep_rar,
+                      isl_union_map **trans_dep_war,
+                      isl_union_map **trans_dep_waw);
 
 isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
