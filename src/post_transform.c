@@ -280,7 +280,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
      */
     score = (2 * s + 4 * t + 8 * v - 16 * (a - s - t)) * loops[l]->nstmts;
     /* Using >= since we'll take the last one if all else is the same */
-    if (score >= max_score) {
+    if (score > max_score) {
       max_score = score;
       best_loop = loops[l];
     }
