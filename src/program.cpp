@@ -2081,6 +2081,7 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
       pluto_matrix_free(func_onedim);
       isl_pw_aff_free(pw_aff);
     } else {
+      // Multi-valued map for access function? Setting this to zero.
       pluto_matrix_add_row(func, 0);
       pluto_matrix_zero_row(func, 0);
     }
