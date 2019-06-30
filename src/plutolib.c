@@ -38,7 +38,7 @@
 #include "pluto/pluto.h"
 #include "program.h"
 
-PlutoOptions *options;
+PlutoOptions *options = NULL;
 
 static double rtclock() {
   struct timeval Tp;
@@ -77,7 +77,8 @@ static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   return isl_stat_ok;
 }
 
-/* Used by libpluto interface */
+/* Used by libpluto interface. Expects that stmts[idx] have been initialized to
+ * NULL.  */
 static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
   Stmt **stmts = (Stmt **)user;
 
@@ -95,6 +96,8 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
   assert(name[1] == '_');
   assert(isdigit(name[2]));
   unsigned id = atoi(isl_set_get_tuple_name(set) + 2);
+
+  assert(stmts[id] == NULL && "stmt already initialized - repeated domain?");
 
   stmts[id] = pluto_stmt_alloc(dim - npar, NULL, trans);
 
@@ -132,9 +135,23 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
 }
 
 /* Used by libpluto interface */
-static int extract_stmts(__isl_keep isl_union_set *domains, Stmt **stmts) {
-  isl_union_set_foreach_set(domains, &extract_stmt, stmts);
-  return 0;
+static void extract_stmts(__isl_keep isl_union_set *domains, PlutoProg *prog) {
+  prog->nstmts = isl_union_set_n_set(domains);
+
+  if (prog->nstmts > 0) {
+    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
+  } else {
+    prog->stmts = NULL;
+  }
+
+  for (int i = 0; i < prog->nstmts; i++) {
+    prog->stmts[i] = NULL;
+  }
+
+  isl_union_set_foreach_set(domains, &extract_stmt, prog->stmts);
+
+  for (int i = 0; i < prog->nstmts; i++)
+    assert(prog->stmts[i] && "statement extraction failed; invalid domains?");
 }
 
 /*
@@ -180,12 +197,11 @@ PlutoConstraints *normalize_domain_schedule(Stmt *stmt, PlutoProg *prog) {
 
 /*
  * Output schedules are isl relations that have dims in the order
- * isl_dim_out, isl_dim_in, div, param, const
+ * isl_dim_out, isl_dim_in, div, param, const.
  */
-__isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
-                                         isl_union_map *dependences,
-                                         PlutoOptions *options_l) {
-  int i;
+__isl_give isl_union_map *pluto_transform(__isl_keep isl_union_set *domains,
+                                          __isl_keep isl_union_map *dependences,
+                                          PlutoOptions *options_l) {
   unsigned nbands, n_ibands;
   double t_t, t_all, t_start;
 
@@ -199,21 +215,11 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   options = options_l;
 
   prog->nvar = -1;
-  prog->nstmts = isl_union_set_n_set(domains);
 
-  if (prog->nstmts >= 1) {
-    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
-  } else {
-    prog->stmts = NULL;
-  }
+  extract_stmts(domains, prog);
 
-  for (i = 0; i < prog->nstmts; i++) {
-    prog->stmts[i] = NULL;
-  }
-
-  extract_stmts(domains, prog->stmts);
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
+    assert(prog->stmts[i] && "statement not extracted");
     prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 
@@ -224,7 +230,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   } else
     prog->npar = 0;
 
-  for (i = 0; i < prog->npar; i++) {
+  for (int i = 0; i < prog->npar; i++) {
     char *param = (char *)malloc(13);
     sprintf(param, "p%d", i);
     prog->params[i] = param;
@@ -234,7 +240,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   isl_union_map_foreach_map(dependences, &isl_map_count, &prog->ndeps);
 
   prog->deps = (Dep **)malloc(prog->ndeps * sizeof(Dep *));
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     prog->deps[i] = pluto_dep_alloc();
   }
   extract_deps(prog->deps, 0, prog->stmts, dependences, OSL_DEPENDENCE_RAW);
@@ -268,11 +274,11 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   Band **ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
   pluto_bands_free(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
   pluto_bands_free(ibands, n_ibands);
 
   if (options->tile) {
@@ -316,7 +322,7 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
 
   /* Construct isl_union_map for pluto schedules */
   isl_union_map *schedules = isl_union_map_empty(isl_space_copy(space));
-  for (i = 0; i < prog->nstmts; i++) {
+  for (int i = 0; i < prog->nstmts; i++) {
     isl_basic_map *bmap;
     isl_map *map;
     Stmt *stmt = prog->stmts[i];
@@ -358,6 +364,36 @@ __isl_give isl_union_map *pluto_schedule(isl_union_set *domains,
   return schedules;
 }
 
+__isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
+                                         __isl_keep isl_union_map *reads,
+                                         __isl_keep isl_union_map *writes,
+                                         PlutoOptions *options_l) {
+  isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
+
+  options = options_l;
+
+  isl_union_map *empty = isl_union_map_empty(isl_union_map_get_space(reads));
+
+  compute_deps_isl(reads, writes, schedules, empty, &dep_raw, &dep_war,
+                   &dep_waw, &dep_rar, NULL, NULL);
+
+  isl_union_map *dependences = isl_union_map_union(dep_raw, dep_war);
+  dependences = isl_union_map_union(dependences, dep_waw);
+  isl_union_set *domains = isl_union_map_domain(isl_union_map_copy(schedules));
+
+  isl_union_map *pluto_schedules =
+      pluto_transform(domains, dependences, options_l);
+
+  pluto_schedules = isl_union_map_intersect_domain(
+      pluto_schedules, isl_union_map_domain(schedules));
+
+  isl_union_map_free(empty);
+  isl_union_set_free(domains);
+  isl_union_map_free(dependences);
+
+  return pluto_schedules;
+}
+
 Remapping *pluto_get_remapping(isl_union_set *domains,
                                isl_union_map *dependences,
                                PlutoOptions *options_l) {
@@ -373,19 +409,8 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
   options = options_l;
 
   prog->nvar = -1;
-  prog->nstmts = isl_union_set_n_set(domains);
 
-  if (prog->nstmts >= 1) {
-    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
-  } else {
-    prog->stmts = NULL;
-  }
-
-  for (int i = 0; i < prog->nstmts; i++) {
-    prog->stmts[i] = NULL;
-  }
-
-  extract_stmts(domains, prog->stmts);
+  extract_stmts(domains, prog);
 
   for (int i = 0; i < prog->nstmts; i++) {
     prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
@@ -441,11 +466,11 @@ Remapping *pluto_get_remapping(isl_union_set *domains,
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
   pluto_bands_free(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
   pluto_bands_free(ibands, n_ibands);
 
   if (options->tile) {
@@ -613,19 +638,8 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
   options = options_l;
 
   prog->nvar = -1;
-  prog->nstmts = isl_union_set_n_set(domains);
 
-  if (prog->nstmts >= 1) {
-    prog->stmts = (Stmt **)malloc(prog->nstmts * sizeof(Stmt *));
-  } else {
-    prog->stmts = NULL;
-  }
-
-  for (int i = 0; i < prog->nstmts; i++) {
-    prog->stmts[i] = NULL;
-  }
-
-  extract_stmts(domains, prog->stmts);
+  extract_stmts(domains, prog);
 
   for (int i = 0; i < prog->nstmts; i++) {
     prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
@@ -683,10 +697,10 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
-  printf("Outermost tilable bands: %d bands\n", nbands);
-  pluto_bands_print(bands, nbands);
-  printf("Innermost tilable bands: %d bands\n", n_ibands);
-  pluto_bands_print(ibands, n_ibands);
+  IF_DEBUG(printf("Outermost tilable bands: %d bands\n", nbands));
+  IF_DEBUG(pluto_bands_print(bands, nbands));
+  IF_DEBUG(printf("Innermost tilable bands: %d bands\n", n_ibands));
+  IF_DEBUG(pluto_bands_print(ibands, n_ibands));
 
   if (options->tile) {
     pluto_tile(prog);
@@ -792,9 +806,9 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
 }
 
 /* pluto_schedule_str is a wrapper method around
- * pluto_parallel_schedule_with_remapping().
- * This method accepts domain, dependence and PlutoOptions as string
- * and returns a transformed schedule, remapping and parallel loops.
+ * pluto_parallel_schedule_with_remapping(). This method accepts domain,
+ * dependence and PlutoOptions as string and returns a transformed schedule,
+ * remapping and parallel loops.
  */
 void pluto_schedule_str(const char *domains_str, const char *dependences_str,
                         char **schedules_str_buffer_ptr, char **p_loops,
@@ -855,8 +869,7 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 }
 
 void pluto_get_remapping_str(const char *domains_str,
-                             const char *dependences_str,
-                             PlutoOptions *options,
+                             const char *dependences_str, PlutoOptions *options,
                              Remapping *remapping) {
 
   isl_ctx *ctx = isl_ctx_alloc();
