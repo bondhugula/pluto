@@ -2059,11 +2059,7 @@ static isl_stat map_extract_dep(__isl_take isl_map *map, void *user) {
 /* Extract a Pluto access function from isl_basic_map */
 static isl_stat
 isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
-  int i;
-
-  isl_map *map;
-
-  map = isl_map_from_basic_map(bmap);
+  isl_map *map = isl_map_from_basic_map(bmap);
 
   int dim = isl_map_dim(map, isl_dim_out);
   int ncols =
@@ -2071,7 +2067,7 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
 
   PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
 
-  for (i = 0; i < dim; i++) {
+  for (int i = 0; i < dim; i++) {
     PlutoMatrix *func_onedim = NULL;
     if (isl_map_dim_is_single_valued(map, i)) {
       isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
@@ -2087,16 +2083,12 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
     }
   }
   struct pluto_access_meta_info *info = (struct pluto_access_meta_info *)user;
-
   (*info->accs)[info->index] = (PlutoAccess *)malloc(sizeof(PlutoAccess));
   PlutoAccess *acc = (*info->accs)[info->index];
   acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
   acc->mat = func;
-
   info->index++;
-
   isl_map_free(map);
-
   return isl_stat_ok;
 }
 
@@ -4334,32 +4326,19 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
                                         PlutoConstraints *domain2, Dep *dep1,
                                         Dep *dep2, PlutoProg *prog,
                                         PlutoMatrix *access_matrix) {
-  int i, *divs;
-  isl_ctx *ctx;
-  isl_space *dim;
-  isl_space *param_space;
-  isl_set *context;
-  isl_union_map *empty;
-  isl_union_map *write;
-  isl_union_map *read;
-  isl_union_map *schedule;
-  isl_union_map *dep_raw;
-
-  ctx = isl_ctx_alloc();
+  isl_ctx *ctx = isl_ctx_alloc();
   assert(ctx);
 
-  dim = isl_space_set_alloc(ctx, prog->npar, 0);
+  isl_space *dim = isl_space_set_alloc(ctx, prog->npar, 0);
   dim = set_names(dim, isl_dim_param, prog->params);
-  param_space = isl_space_params(isl_space_copy(dim));
-  context = osl_relation_list_to_isl_set(
+  isl_space *param_space = isl_space_params(isl_space_copy(dim));
+  isl_set *context = osl_relation_list_to_isl_set(
       pluto_constraints_to_osl_domain(prog->context, prog->npar), param_space);
 
-  empty = isl_union_map_empty(isl_space_copy(dim));
-  write = isl_union_map_empty(isl_space_copy(dim));
-  read = isl_union_map_empty(isl_space_copy(dim));
-  schedule = isl_union_map_empty(dim);
-
-  isl_set *dom;
+  isl_union_map *empty = isl_union_map_empty(isl_space_copy(dim));
+  isl_union_map *write = isl_union_map_empty(isl_space_copy(dim));
+  isl_union_map *read = isl_union_map_empty(isl_space_copy(dim));
+  isl_union_map *schedule = isl_union_map_empty(dim);
 
   // Add the source iterators of dep1 and corresponding access function to isl
   PlutoConstraints *source_iterators = domain2;
@@ -4368,7 +4347,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
   int domain_dim = source_iterators->ncols - prog->npar - 1;
   char **iter = (char **)malloc(domain_dim * sizeof(char *));
 
-  for (i = 0; i < domain_dim; i++) {
+  for (int i = 0; i < domain_dim; i++) {
     iter[i] = (char *)malloc(12 * sizeof(char));
     sprintf(iter[i], "d%d", i + 1);
   }
@@ -4387,7 +4366,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
   dim = set_names(dim, isl_dim_set, iter);
   dim = isl_space_set_tuple_name(dim, isl_dim_set, name);
 
-  dom = osl_relation_list_to_isl_set(
+  isl_set *dom = osl_relation_list_to_isl_set(
       pluto_constraints_list_to_osl_domain(source_iterators, prog->npar), dim);
 
   dom = isl_set_intersect_params(dom, isl_set_copy(context));
@@ -4400,6 +4379,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
   PlutoMatrix *i_schedule = get_identity_schedule_new(domain_dim, prog->npar);
   schedule_i = pluto_matrix_schedule_to_isl_map(i_schedule, dim);
 
+  int *divs = NULL;
   if (access_matrix == NULL)
     read_pos = pluto_basic_access_to_isl_union_map(
         pluto_get_new_access_func(s, access->mat, &divs), access->name, dom);
@@ -4411,7 +4391,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
   schedule = isl_union_map_union(schedule, isl_union_map_from_map(schedule_i));
 
-  for (i = 0; i < domain_dim; i++) {
+  for (int i = 0; i < domain_dim; i++) {
     free(iter[i]);
   }
 
@@ -4425,7 +4405,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
   iter = (char **)malloc(domain_dim * sizeof(char *));
 
-  for (i = 0; i < domain_dim; i++) {
+  for (int i = 0; i < domain_dim; i++) {
     iter[i] = (char *)malloc(12 * sizeof(char));
     sprintf(iter[i], "d%d", i + 1);
   }
@@ -4453,12 +4433,11 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
   write_pos = pluto_basic_access_to_isl_union_map(
       pluto_get_new_access_func(s, access->mat, &divs), access->name, dom);
-  // write_pos = pluto_basic_access_to_isl_union_map(access_matrix,access->name,
-  // dom);
   write = isl_union_map_union(write, isl_union_map_from_map(write_pos));
 
   schedule = isl_union_map_union(schedule, isl_union_map_from_map(schedule_i));
 
+  isl_union_map *dep_raw;
   isl_union_map_compute_flow(
       isl_union_map_copy(read), isl_union_map_copy(empty),
       isl_union_map_copy(write), isl_union_map_copy(schedule), NULL, &dep_raw,
@@ -4474,14 +4453,14 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
   }
 
   Dep **deps = (Dep **)malloc(ndeps * sizeof(Dep *));
-  for (i = 0; i < ndeps; i++) {
+  for (int i = 0; i < ndeps; i++) {
     deps[i] = pluto_dep_alloc();
   }
   ndeps = 0;
   ndeps += extract_deps(deps, ndeps, prog->stmts, dep_raw, OSL_DEPENDENCE_RAW);
 
   PlutoConstraints *tdpoly = NULL;
-  for (i = 0; i < ndeps; i++) {
+  for (int i = 0; i < ndeps; i++) {
     if (tdpoly == NULL)
       tdpoly = pluto_constraints_dup(deps[i]->dpolytope);
     else
@@ -4498,7 +4477,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 
   isl_ctx_free(ctx);
 
-  for (i = 0; i < domain_dim; i++) {
+  for (int i = 0; i < domain_dim; i++) {
     free(iter[i]);
   }
 
