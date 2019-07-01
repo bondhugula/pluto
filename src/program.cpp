@@ -2097,9 +2097,7 @@ isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
   /* Extract a PlutoAccess from every isl_basic_map */
   isl_stat r =
       isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
-
   isl_map_free(map);
-
   return r;
 }
 

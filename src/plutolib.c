@@ -429,18 +429,15 @@ __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
 
   compute_deps_isl(reads, writes, schedules, empty, &dep_raw, &dep_war,
                    &dep_waw, &dep_rar, NULL, NULL);
+  isl_union_map_free(empty);
 
   isl_union_map *dependences = isl_union_map_union(dep_raw, dep_war);
   dependences = isl_union_map_union(dependences, dep_waw);
-  isl_union_set *domains = isl_union_map_domain(isl_union_map_copy(schedules));
+  isl_union_set *domains = isl_union_map_domain(schedules);
 
-  isl_union_map *pluto_schedules =
-      pluto_transform(domains, dependences, reads, writes, options_l);
-
-  pluto_schedules = isl_union_map_intersect_domain(
-      pluto_schedules, isl_union_map_domain(schedules));
-
-  isl_union_map_free(empty);
+  isl_union_map *pluto_schedules = pluto_transform(
+      isl_union_set_copy(domains), dependences, reads, writes, options_l);
+  pluto_schedules = isl_union_map_intersect_domain(pluto_schedules, domains);
 
   return pluto_schedules;
 }
