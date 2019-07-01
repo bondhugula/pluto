@@ -30,7 +30,7 @@
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
   assert(depth <= (int)newacc->ncols - 1);
   unsigned i;
   for (i = 0; i < newacc->nrows; i++) {
@@ -46,7 +46,7 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
   assert(depth <= (int)newacc->ncols - 1);
 
   /* Scalars */

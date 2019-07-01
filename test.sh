@@ -82,8 +82,6 @@ for file in $TESTS_TILE_PARALLEL; do
     check_ret_val_emit_status
 done
 
-# Test libpluto interface.
-
 TESTS_PET="\
   test/heat-2d.c \
   test/heat-3d.c \
@@ -109,6 +107,7 @@ done
 
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
+file=test/test_libpluto.c
 echo "============================="
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c

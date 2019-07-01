@@ -244,12 +244,13 @@ typedef struct plutoOptions PlutoOptions;
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 
-// Run the Pluto transformation algorithm on the provided domains and
-// dependences. Returns the schedules as an isl_union_map, ownership of which is
-// with the caller.
+/// Run the Pluto transformation algorithm on the provided domains and
+/// dependences. Read and writes accesses can be optionally provided (NULL)
+/// otherwise). Returns the schedules as an isl_union_map, ownership of which is
+/// with the caller.
 isl_union_map *pluto_transform(isl_union_set *domains,
-                               isl_union_map *dependences,
-                               PlutoOptions *options);
+                               isl_union_map *dependences, isl_union_map *reads,
+                               isl_union_map *writes, PlutoOptions *options);
 
 isl_union_map *pluto_schedule(isl_union_map *schedules, isl_union_map *reads,
                               isl_union_map *writes, PlutoOptions *options_l);

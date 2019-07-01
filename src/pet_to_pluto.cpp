@@ -346,30 +346,8 @@ static Stmt **pet_to_pluto_stmts(
         pstmt, pet_expr_access_may_read, 0, isl_space_copy(space));
     isl_union_map *writes =
         pet_stmt_collect_accesses(pstmt, pet_expr_access_may_write, 0, space);
-    isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
-    isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
-    struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
-    struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim,
-                                              npar};
-
-    if (stmt->nreads >= 1) {
-      stmt->reads =
-          (PlutoAccess **)malloc(stmt->nreads * sizeof(PlutoAccess *));
-    }
-    if (stmt->nwrites >= 1) {
-      stmt->writes =
-          (PlutoAccess **)malloc(stmt->nwrites * sizeof(PlutoAccess *));
-    }
-    for (j = 0; j < stmt->nreads; j++) {
-      stmt->reads[j] = NULL;
-    }
-    for (j = 0; j < stmt->nwrites; j++) {
-      stmt->writes[j] = NULL;
-    }
-
-    isl_union_map_foreach_map(reads, &isl_map_extract_access_func, &e_reads);
-    isl_union_map_foreach_map(writes, &isl_map_extract_access_func, &e_writes);
+    extract_accesses_for_pluto_stmt(stmt, reads, writes);
 
     isl_union_map_free(reads);
     isl_union_map_free(writes);

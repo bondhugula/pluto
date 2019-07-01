@@ -29,26 +29,27 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
   isl_union_map *deps = isl_union_map_read_from_str(ctx, deps_str);
 
-  isl_union_map *schedule = pluto_transform(domains, deps, NULL, NULL, options);
-  if (schedule) {
+  isl_union_map *schedules =
+      pluto_transform(isl_union_set_copy(domains), deps, NULL, NULL, options);
+  if (schedules) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
-    printer = isl_printer_print_union_map(printer, schedule);
+    printer = isl_printer_print_union_map(printer, schedules);
     printf("\n");
     isl_printer_free(printer);
 
     // Check if the schedule can be applied to the domain.
-    domains = isl_union_set_apply(domains, schedule);
+    domains = isl_union_set_apply(domains, schedules);
   } else {
     printf("No schedule found!\n");
+    isl_union_map_free(schedules);
   }
+  isl_union_set_free(domains);
 
   // Test remapping.
   // TODO: test it properly instead of just checking it doesn't crash.
   Remapping remapping;
   pluto_get_remapping_str(domains_str, deps_str, options, &remapping);
-
-  isl_union_set_free(domains);
-  isl_union_map_free(deps);
+  pluto_remapping_free(remapping);
 
   isl_ctx_free(ctx);
 }
@@ -182,9 +183,8 @@ void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
 }
 
 // CHECK-LABEL: *** TEST CASE test_lib_pluto_schedule ***
-// CHECK: [pluto] After intra-tile optimize
-// CHECK: T(S1): (i1, i0, 0)
-// CHECK: T(S2): (i2, i0, i1)
+// CHECK: T(S1): (i0, i1, 0)
+// CHECK: T(S2): (i0, i2, i1)
 void test_lib_pluto_schedule(PlutoOptions *options) {
   printf("\n\n*** TEST CASE test_lib_pluto_schedule ***\n\n");
 
@@ -204,7 +204,8 @@ void test_lib_pluto_schedule(PlutoOptions *options) {
       " S_1[i0, i1, i2]->M0[o0, o1] : o0 = i0 and o1 = i2 }");
 
   isl_union_map *writes = isl_union_map_read_from_str(
-      ctx, "[p1, p2] -> { S_1[i0, i1, i2]->M1[o0, o1] : o0 = i2 and o1 = i0}");
+      ctx,
+      "[p1, p2, p0] -> { S_1[i0, i1, i2]->M1[o0, o1] : o0 = i2 and o1 = i0}");
 
   isl_union_map *result = pluto_schedule(schedules, reads, writes, options);
 
@@ -215,9 +216,6 @@ void test_lib_pluto_schedule(PlutoOptions *options) {
     isl_printer_free(printer);
   }
 
-  isl_union_map_free(reads);
-  isl_union_map_free(writes);
-  isl_union_map_free(schedules);
   isl_union_map_free(result);
   isl_ctx_free(ctx);
 }
