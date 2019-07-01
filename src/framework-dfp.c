@@ -2060,7 +2060,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
       }
       /* Colouring the cluster has failed due to a permute
        * or fusion preventing edge. Hence FCG has to be rebuilt. */
-      printf("Unable to colour scc %d\n", scc_id);
+      IF_DEBUG(printf("Unable to colour scc %d\n", scc_id););
       return false;
     }
   }
