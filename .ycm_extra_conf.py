@@ -41,7 +41,6 @@ flags = [
         '-I./src/',
          '-DLIB_PLUTO',
          '-DSCOPLIB_INT_T_IS_LONGLONG',
-         '-DCLOOG_INT_GMP',
          '-I./include',
          '-I./piplib/include',
          '-I./clan/include',

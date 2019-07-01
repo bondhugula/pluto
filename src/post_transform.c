@@ -30,7 +30,7 @@
 
 int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
   assert(depth <= (int)newacc->ncols - 1);
   unsigned i;
   for (i = 0; i < newacc->nrows; i++) {
@@ -46,7 +46,7 @@ int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
   assert(depth <= (int)newacc->ncols - 1);
 
   /* Scalars */
@@ -279,7 +279,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
      */
     score = (2 * s + 4 * t + 8 * v - 16 * (a - s - t)) * loops[l]->nstmts;
     /* Using >= since we'll take the last one if all else is the same */
-    if (score >= max_score) {
+    if (score > max_score) {
       max_score = score;
       best_loop = loops[l];
     }

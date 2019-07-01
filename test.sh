@@ -100,6 +100,7 @@ for file in $TESTS_TILE_PARALLEL; do
     ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
+
 TEST_MORE_INTRA_TILE_OPT="\
     test/intratileopt5.c
 "
@@ -137,6 +138,7 @@ done
 
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
+file=test/test_libpluto.c
 echo "============================="
 printf '%-50s ' test_libpluto
 ./test_libpluto | FileCheck test/test_libpluto.c
