@@ -1309,8 +1309,6 @@ void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt) {
 }
 
 void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
-  int i;
-
   fprintf(fp, "S%d \"%s\"\n", stmt->id + 1, stmt->text);
 
   fprintf(fp, "ndims: %d; orig_depth: %d\n", stmt->dim, stmt->dim_orig);
@@ -1322,7 +1320,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
     fprintf(fp, "No Read accesses\n");
   } else {
     fprintf(fp, "Read accesses\n");
-    for (i = 0; i < stmt->nreads; i++) {
+    for (int i = 0; i < stmt->nreads; i++) {
       pluto_access_print(fp, stmt->reads[i], stmt);
     }
   }
@@ -1331,7 +1329,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
     fprintf(fp, "No write access\n");
   } else {
     fprintf(fp, "Write accesses\n");
-    for (i = 0; i < stmt->nwrites; i++) {
+    for (int i = 0; i < stmt->nwrites; i++) {
       pluto_access_print(fp, stmt->writes[i], stmt);
     }
   }
