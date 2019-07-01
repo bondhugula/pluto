@@ -29,7 +29,7 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
   isl_union_map *deps = isl_union_map_read_from_str(ctx, deps_str);
 
-  isl_union_map *schedule = pluto_transform(domains, deps, options);
+  isl_union_map *schedule = pluto_transform(domains, deps, NULL, NULL, options);
   if (schedule) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     printer = isl_printer_print_union_map(printer, schedule);
@@ -182,7 +182,9 @@ void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
 }
 
 // CHECK-LABEL: *** TEST CASE test_lib_pluto_schedule ***
-// CHECK: [p1, p2, p0] -> { S_0[i0, i1] -> [i1, i0, 0]; S_1[i0, i1, i2] -> [i2, i0, i1] }
+// CHECK: [pluto] After intra-tile optimize
+// CHECK: T(S1): (i1, i0, 0)
+// CHECK: T(S2): (i2, i0, i1)
 void test_lib_pluto_schedule(PlutoOptions *options) {
   printf("\n\n*** TEST CASE test_lib_pluto_schedule ***\n\n");
 
@@ -229,6 +231,7 @@ int main() {
   options->islsolve = 1;
   options->diamondtile = 1;
   options->fulldiamondtile = 0;
+  options->isldepaccesswise = 0;
 
   test1(options);
   test2(options);
