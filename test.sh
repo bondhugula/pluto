@@ -38,6 +38,8 @@ TESTS="\
   test/jacobi-2d-imper.c \
   test/intratileopt1.c \
   test/intratileopt2.c \
+  test/intratileopt3.c \
+  test/intratileopt4.c \
   test/matmul.c \
   test/matmul-seq.c \
   test/multi-loop-param.c \
@@ -161,6 +163,7 @@ done
 
 # Test libpluto (disabling due to issue #48)
 # echo -e "\nTest libpluto interface"
+# file=test/test_libpluto.c
 # echo "============================="
 # printf '%-50s ' test_libpluto
 # ./test_libpluto | FileCheck test/test_libpluto.c

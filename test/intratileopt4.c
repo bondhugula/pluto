@@ -1,4 +1,5 @@
-// More accesses with spatial locality with (i, j) order.
+// Outer parallelism + intra-tile locality: while the (i, j) loop order is
+// better for coarse-grained parallelism, the (j, i) is better for locality.
 //
 // CHECK: T(S1): (i, j)
 // CHECK: [pluto] After intra-tile optimize
@@ -14,7 +15,7 @@
 #pragma scop
 for (i = 0; i < N; i++) {
   for (j = 0; j < M; j++) {
-    d[j][i] = d[j][i] + a[i][j];
+    a[i] += b[j]*c[j][i];
   }
 }
 #pragma endscop

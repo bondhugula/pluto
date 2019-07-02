@@ -7,9 +7,11 @@ Until present
   and C++11 for all future development
 - 'pet' branch merged into master
 - Submodules pet, cloog-isl, isl, clan, candl, openscop - all updated to
-  their most recent releases or git master tips
+  their most recent releases or git master tips. The previous versions were
+  several years old in some cases (isl, pet, in particular).
 - --tile and --parallel enabled by default
 - Diamond tiling enabled by default
+- libpluto interface updated.
 
 - PLUTO+: a major update to modeling of the space of transformations (cf
   PPoPP'15 paper)

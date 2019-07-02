@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 
+#include "isl/ctx.h"
 #include "osl/scop.h"
 #include "pluto/matrix.h"
 
@@ -52,7 +53,6 @@ enum fusionType {
   kHybridFuse
 };
 typedef enum fusionType FusionType;
-
 
 struct plutoOptions {
 
@@ -252,18 +252,32 @@ typedef struct plutoOptions PlutoOptions;
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 
-// Run the Pluto transformation algorithm on the provided domains and
-// dependences. Returns the schedules as an isl_union_map, ownership of which is
-// with the caller.
-isl_union_map *pluto_schedule(isl_union_set *domains,
-                              isl_union_map *dependences,
-                              PlutoOptions *options);
+/// Run the Pluto transformation algorithm on the provided domains and
+/// dependences. Read and writes accesses can be optionally provided (NULL
+/// otherwise); if they are provided, they are exploited for certain late
+/// transformations (for intra-tile optimization in particular). Returns the
+/// schedules as an isl_union_map, ownership of which is with the caller.
+__isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
+                                          __isl_take isl_union_map *dependences,
+                                          __isl_take isl_union_map *reads,
+                                          __isl_take isl_union_map *writes,
+                                          PlutoOptions *options);
+
+/// Use the Pluto transformation algorithm on the domains cum schedules provided
+/// in `schedules' and with the read and writes access relations provided in
+/// `reads' and `writes' respectively. Returns the schedules as an
+/// isl_union_map, ownership of which is with the caller. Note that the returned
+/// schedules encode both the mapping and the set information.
+__isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
+                                         __isl_take isl_union_map *reads,
+                                         __isl_take isl_union_map *writes,
+                                         PlutoOptions *options_l);
 
 int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
 
 /*
- * Structure to hold Remapping information
- * Consists of number of statements, Remapping pluto matrix and divs.
+ * Structure to hold iterator remapping information ---
+ * consists of number of statements, remapping matrix and divs.
  */
 struct remapping {
   unsigned nstmts;
@@ -272,29 +286,23 @@ struct remapping {
 };
 typedef struct remapping Remapping;
 
-/*
-This function is a HACK. The reason this exists is to allow for easy FFI
-between PolyMage and Pluto. Sending isl objects between PyIsl to libpluto is
-hard (because PyIsl does not seem to have a way to access the underlying C
-object pointer).
-
-Hence, the solution is to convert everything to strings, and return the
-generated schedule as a string as well, which is then converted back to an
-isl object.
-*/
+// This function is a HACK. The reason this exists is to allow for easy FFI
+// between PolyMage and Pluto. Sending isl objects between PyIsl to libpluto is
+// hard (because PyIsl does not seem to have a way to access the underlying C
+// object pointer). Hence, the solution is to convert everything to strings,
+// and return the generated schedule as a string as well, which is then
+// converted back to an ISL object.
 void pluto_schedule_str(const char *domains_str, const char *dependences_str,
                         char **schedules_str_buffer_ptr, char **p_loops,
                         Remapping **remapping_ptr, PlutoOptions *options);
-
-void pluto_remapping_free(Remapping *);
 
 void pluto_get_remapping_str(const char *domains_str,
                              const char *dependences_str, PlutoOptions *options,
                              Remapping *remapping);
 
-/*
-Free the string stored in schedules_str_buffer_ptr
-*/
+void pluto_remapping_free(Remapping remapping);
+
+/// Free the string stored in schedules_str_buffer_ptr.
 void pluto_schedules_strbuf_free(char *schedules_str_buffer);
 
 #if defined(__cplusplus)

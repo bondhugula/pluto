@@ -96,7 +96,7 @@ int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
 void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, unsigned pos);
-PlutoMatrix *pluto_get_new_access_func(const Stmt *stmt, const PlutoMatrix *acc,
+PlutoMatrix *pluto_get_new_access_func(const PlutoMatrix *acc, const Stmt *stmt,
                                        int **divs);
 
 int extract_deps(Dep **deps, int first, Stmt **stmts,
@@ -130,12 +130,14 @@ void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
 
 void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
-                             isl_union_map *schedule, isl_union_map *empty,
-                             isl_union_map **dep_raw, isl_union_map **dep_war,
-                             isl_union_map **dep_waw, isl_union_map **dep_rar,
-                             isl_union_map **trans_dep_war,
-                             isl_union_map **trans_dep_waw);
+                      isl_union_map *schedule, isl_union_map *empty,
+                      isl_union_map **dep_raw, isl_union_map **dep_war,
+                      isl_union_map **dep_waw, isl_union_map **dep_rar,
+                      isl_union_map **trans_dep_war,
+                      isl_union_map **trans_dep_waw);
 
+void extract_accesses_for_pluto_stmt(Stmt *stmt, isl_union_map *reads,
+                                     isl_union_map *writes);
 isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context);
