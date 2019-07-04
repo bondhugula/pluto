@@ -2235,7 +2235,7 @@ PlutoConstraints *pluto_compute_region_data(const Stmt *stmt,
   assert((stmt->trans->nrows + npar + 1 == domain->ncols) ||
          (copy_level + stmt->trans->nrows + npar + 1 == domain->ncols));
 
-  PlutoMatrix *newacc = pluto_get_new_access_func(stmt, acc->mat, &divs);
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
 
   PlutoConstraints *datadom = pluto_constraints_dup(domain);
 
@@ -2367,7 +2367,7 @@ bool pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
   /// Find the deepest loop hyperplane for the first statement.
   int d;
   for (d = prog->num_hyperplanes - 1; d >= 0; --d) {
-    if (!pluto_is_hyperplane_scalar(stmts[0], d)) 
+    if (!pluto_is_hyperplane_scalar(stmts[0], d))
       break;
   }
   if (d < 0)
