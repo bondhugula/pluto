@@ -683,7 +683,7 @@ PlutoConstraints *pluto_find_dependence(PlutoConstraints *domain1,
 PlutoDepList *pluto_dep_list_alloc(Dep *dep);
 
 int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
-int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
+bool pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog);
 
 void pluto_iss_dep(PlutoProg *prog);
 PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
