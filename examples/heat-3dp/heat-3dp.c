@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i <= _N; i++) {
       for (int j = 0; j <= _N; j++) {
 #pragma ivdep
-        for (k = 0; k <= _N; k++) {
+        for (int k = 0; k <= _N; k++) {
           A[(t + 1) % 2][i][j][k] =
               0.125 * (A[t % 2][i == _N ? 0 : i + 1][j][k] -
                        2.0 * A[t % 2][i][j][k] +
