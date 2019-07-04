@@ -3818,15 +3818,15 @@ PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog) {
   return a;
 }
 
-int pluto_is_hyperplane_scalar(const Stmt *stmt, int level) {
+bool pluto_is_hyperplane_scalar(const Stmt *stmt, int level) {
   assert(level <= (int)stmt->trans->nrows - 1);
 
   for (unsigned j = 0; j < stmt->dim; j++) {
     if (stmt->trans->val[level][j] != 0)
-      return 0;
+      return false;
   }
 
-  return 1;
+  return true;
 }
 
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level) {
