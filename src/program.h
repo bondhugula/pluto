@@ -91,7 +91,7 @@ void pluto_separate_stmt(PlutoProg *prog, const Stmt *stmt, int level);
 void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level,
                           int offset);
 
-int pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
+bool pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
 int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);

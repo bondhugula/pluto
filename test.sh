@@ -141,6 +141,7 @@ echo "========"
 TESTS_ISS="\
   test/jacobi-2d-periodic.c \
   test/multi-stmt-periodic.c \
+  test/heat-2dp.c \
   "
 for file in $TESTS_ISS; do
     printf '%-50s ' $file
