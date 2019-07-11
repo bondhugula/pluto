@@ -414,8 +414,9 @@ void pluto_iss_dep(PlutoProg *prog) {
       return;
     }
   }
-  if (!pluto_are_stmts_fused(prog->stmts, prog->nstmts, prog))
+  if (!pluto_are_stmts_fused(prog->stmts, prog->nstmts, prog)) {
     return;
+  }
 
   if (ndeps == 0)
     return;

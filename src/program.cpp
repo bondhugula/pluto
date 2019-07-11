@@ -1309,8 +1309,6 @@ void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt) {
 }
 
 void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
-  int i;
-
   fprintf(fp, "S%d \"%s\"\n", stmt->id + 1, stmt->text);
 
   fprintf(fp, "ndims: %d; orig_depth: %d\n", stmt->dim, stmt->dim_orig);
@@ -1322,7 +1320,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
     fprintf(fp, "No Read accesses\n");
   } else {
     fprintf(fp, "Read accesses\n");
-    for (i = 0; i < stmt->nreads; i++) {
+    for (int i = 0; i < stmt->nreads; i++) {
       pluto_access_print(fp, stmt->reads[i], stmt);
     }
   }
@@ -1331,7 +1329,7 @@ void pluto_stmt_print(FILE *fp, const Stmt *stmt) {
     fprintf(fp, "No write access\n");
   } else {
     fprintf(fp, "Write accesses\n");
-    for (i = 0; i < stmt->nwrites; i++) {
+    for (int i = 0; i < stmt->nwrites; i++) {
       pluto_access_print(fp, stmt->writes[i], stmt);
     }
   }
@@ -2097,9 +2095,7 @@ isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
   /* Extract a PlutoAccess from every isl_basic_map */
   isl_stat r =
       isl_map_foreach_basic_map(map, &isl_basic_map_extract_access_func, user);
-
   isl_map_free(map);
-
   return r;
 }
 
@@ -3819,15 +3815,15 @@ PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog) {
   return a;
 }
 
-int pluto_is_hyperplane_scalar(const Stmt *stmt, int level) {
+bool pluto_is_hyperplane_scalar(const Stmt *stmt, int level) {
   assert(level <= (int)stmt->trans->nrows - 1);
 
   for (unsigned j = 0; j < stmt->dim; j++) {
     if (stmt->trans->val[level][j] != 0)
-      return 0;
+      return false;
   }
 
-  return 1;
+  return true;
 }
 
 int pluto_is_hyperplane_loop(const Stmt *stmt, int level) {

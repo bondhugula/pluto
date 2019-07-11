@@ -183,8 +183,8 @@ void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
 }
 
 // CHECK-LABEL: *** TEST CASE test_lib_pluto_schedule ***
-// CHECK: T(S1): (i0, i1, 0)
-// CHECK: T(S2): (i0, i2, i1)
+// CHECK: T(S1): (1, i0, i1, 0)
+// CHECK: T(S2): (0, i0, i2, i1)
 void test_lib_pluto_schedule(PlutoOptions *options) {
   printf("\n\n*** TEST CASE test_lib_pluto_schedule ***\n\n");
 
@@ -207,16 +207,16 @@ void test_lib_pluto_schedule(PlutoOptions *options) {
       ctx,
       "[p1, p2, p0] -> { S_1[i0, i1, i2]->M1[o0, o1] : o0 = i2 and o1 = i0}");
 
-  isl_union_map *result = pluto_schedule(schedules, reads, writes, options);
+  schedules = pluto_schedule(schedules, reads, writes, options);
 
-  if (result) {
+  if (schedules) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
-    printer = isl_printer_print_union_map(printer, result);
+    printer = isl_printer_print_union_map(printer, schedules);
     printf("\n");
     isl_printer_free(printer);
   }
 
-  isl_union_map_free(result);
+  isl_union_map_free(schedules);
   isl_ctx_free(ctx);
 }
 
@@ -241,6 +241,7 @@ int main() {
   options->tile = 0;
   options->diamondtile = 0;
   options->fulldiamondtile = 0;
+  options->fuse = kNoFuse;
   test_lib_pluto_schedule(options);
 
   pluto_options_free(options);

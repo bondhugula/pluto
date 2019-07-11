@@ -2196,15 +2196,21 @@ void pluto_update_deps(Stmt *stmt, PlutoConstraints *cst, PlutoProg *prog) {
   }
 }
 
-/* Are these statements completely fused until the innermost level */
-int pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
+/// Returns true if these statements completely fused until the innermost level.
+/// This assumes one-to-one transformations for statements.
+bool pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
+  /// Find the deepest loop hyperplane for the first statement.
+  int d;
+  for (d = prog->num_hyperplanes - 1; d >= 0; --d) {
+    if (!pluto_is_hyperplane_scalar(stmts[0], d)) 
+      break;
+  }
+  if (d < 0)
+    // No loop hyperplanes at all for at least one statement.
+    return false;
+
   unsigned num;
-
-  if (prog->num_hyperplanes <= 1)
-    return 1;
-
-  Ploop **loops = pluto_get_loops_under(stmts, nstmts,
-                                        prog->num_hyperplanes - 2, prog, &num);
+  Ploop **loops = pluto_get_loops_under(stmts, nstmts, d, prog, &num);
   pluto_loops_free(loops, num);
 
   return (num == 1);

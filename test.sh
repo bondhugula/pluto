@@ -136,6 +136,20 @@ for file in $TESTS_PET; do
     check_ret_val_emit_status
 done
 
+# Test with ISS
+echo -e "\nTest ISS"
+echo "========"
+TESTS_ISS="\
+  test/jacobi-2d-periodic.c \
+  test/multi-stmt-periodic.c \
+  test/heat-2dp.c \
+  "
+for file in $TESTS_ISS; do
+    printf '%-50s ' $file
+    ./src/pluto --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
+
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
 file=test/test_libpluto.c

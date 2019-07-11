@@ -1,4 +1,9 @@
-
+// With index set splitting along the center for both i and j, the domain is
+// split into four parts. The +ve half along each of those dimensions is
+// reversed.
+//
+// CHECK: 2i-N = 0
+// CHECK: 2j-N = 0
 int u[2][1000][1000];
 
 int main() {
