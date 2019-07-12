@@ -149,6 +149,17 @@ for file in $TESTS_ISS; do
     check_ret_val_emit_status
 done
 
+echo -e "\nTest ISS with post tile distribution"
+echo "========================================="
+TESTS_ISS_POST_TILE="\
+  test/heat-2dp.c \
+  "
+for file in $TESTS_ISS_POST_TILE; do
+    printf '%-50s ' $file
+    ./src/pluto --pet --iss $file -o test_temp_out.pluto.c | FileCheck --check-prefix=CHECK-POST-TILE $file
+    check_ret_val_emit_status
+done
+
 # Test with ISS + GLPK
 # auto-transforms takes nearly 34s with islsolve on this, but just about 0.3s with GLPK.
 echo -e "\nTest ISS with GLPK"

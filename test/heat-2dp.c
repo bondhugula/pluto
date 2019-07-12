@@ -1,9 +1,11 @@
-/*
- * Discretized 2D heat equation stencil with non periodic boundary conditions
- * Adapted from Pochoir test bench
- *
- * Irshad Pananilath: irshad@csa.iisc.ernet.in
- */
+// CHECK: 2i-_N = 0
+// CHECK: 2j-_N = 0
+// CHECK: [iss] Splitting S1 into 4 statements
+// CHECK-POST-TILE: [pluto] After post-tile distribution
+// CHECK-POST-TILE: T(S1): ((t-i)/32, (t+i)/32, (t+j)/32, t, 1, t+i, t+j)
+// CHECK-POST-TILE: T(S2): ((t+i-_N)/32, (t-i+_N)/32, (t+j)/32, t, 2, t-i+_N, t+j)
+// CHECK-POST-TILE: T(S3): ((t-i)/32, (t+i)/32, (t-j+_N)/32, t, 3, t+i, t-j+_N)
+// CHECK-POST-TILE: T(S4): ((t+i-_N)/32, (t-i+_N)/32, (t-j+_N)/32, t, 4, t-i+_N, t-j+_N)
 
 #define N 1600L
 #define T 500L
@@ -11,9 +13,6 @@
 /* Define our arrays */
 double A[2][N][N];
 
-// CHECK: 2i-_N = 0
-// CHECK: 2j-_N = 0
-// CHECK: [iss] Splitting S1 into 4 statements
 int main(int argc, char *argv[]) {
   short _N = N - 1;
   int _T = T;
