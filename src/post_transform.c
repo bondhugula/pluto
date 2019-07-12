@@ -300,13 +300,12 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   return 0;
 }
 
-/* is_tiled: is the band tiled */
+/// `is_tiled': true if the band had been tiled.
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
   unsigned nbands;
-  int retval;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
-  retval = 0;
+  int retval = 0;
   for (unsigned i = 0; i < nbands; i++) {
     retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog);
   }
@@ -342,11 +341,6 @@ int get_outermost_parallel_loop(const PlutoProg *prog) {
   return parallel_loop;
 }
 
-/* TODO: The remaining segment of code is to distribute loops at the innermost
- * level. This appeared to give perfomance behifits with iss in case of higer
- * 2d/ 3d stencils. However this does not seem to be called anywhere at the
- * moment*/
-#if 0
 /* Any reuse between s1 and s2 at hyperplane depth 'depth' */
 static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
   int i;
@@ -363,19 +357,17 @@ static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
   return 0;
 }
 
-/* See comments for pluto_post_tile_distribute */
+// See comments for pluto_post_tile_distribute.
 int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
-  int i, j, rscore, depth, last_loop_depth;
-
   if (band->loop->nstmts == 1)
     return 0;
 
-  last_loop_depth = band->loop->depth + 2 * band->width - 1;
+  int last_loop_depth = band->loop->depth + 2 * band->width - 1;
 
   // printf("last loop depth %d\n", last_loop_depth);
 
   /* Find depth to distribute statements */
-  depth = last_loop_depth;
+  int depth = last_loop_depth;
 
   /* This doesn't strictly check for validity of distribution, but only finds a
    * set
@@ -397,14 +389,13 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
 
   /* Look for the first loop with reuse score = 0 */
   for (; depth <= last_loop_depth; depth++) {
-    rscore = 0;
-    for (i = 0; i < band->loop->nstmts; i++) {
-      for (j = i + 1; j < band->loop->nstmts; j++) {
+    int rscore = 0;
+    for (int i = 0; i < band->loop->nstmts; i++) {
+      for (int j = i + 1; j < band->loop->nstmts; j++) {
         rscore +=
             has_reuse(band->loop->stmts[i], band->loop->stmts[j], depth, prog);
       }
     }
-    // printf("rscore: %d\n", rscore);
     if (rscore == 0)
       break;
   }
@@ -417,23 +408,18 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
 
   /* Distribute statements */
   pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
-  // pluto_transformations_pretty_print(prog);
 
   return 1;
 }
 
-/*
- * Distribute statements that are fused in the innermost level of a tile if
- * there is no reuse between them (when valid); this is mainly to take care of
- * cache capacity misses / pollution after index set splitting has been
- * performed using mid-point cutting
- */
+/// Distribute statements that are fused in the innermost level of a tile if
+/// there is no reuse between them (when valid); this is mainly to take care of
+/// cache capacity misses / pollution after index set splitting has been
+/// performed using mid-point cutting.
 int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
                                int num_tiled_levels) {
-  int i, retval;
-
-  retval = 0;
-  for (i = 0; i < nbands; i++) {
+  int retval = 0;
+  for (int i = 0; i < nbands; i++) {
     retval |= pluto_post_tile_distribute_band(bands[i], prog);
   }
 
@@ -449,4 +435,3 @@ int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
 
   return retval;
 }
-#endif

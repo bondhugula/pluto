@@ -312,6 +312,9 @@ void pluto_tile(PlutoProg *prog) {
     }
   }
 
+  /* Late distribution */
+  pluto_post_tile_distribute(prog, bands, nbands, num_tiled_levels);
+
   if (options->parallel) {
     int retval = pluto_create_tile_schedule(prog, bands, nbands);
     if (retval && !options->silent) {
