@@ -295,6 +295,10 @@ void pluto_tile(PlutoProg *prog) {
     }
   }
 
+  if (options->intra_tile_distribute) {
+    pluto_post_tile_distribute(prog, bands, nbands, num_tiled_levels);
+  }
+
   if (options->intratileopt) {
     int retval = 0;
     for (i = 0; i < nbands; i++) {
