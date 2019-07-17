@@ -353,3 +353,96 @@ int get_outermost_parallel_loop(const PlutoProg *prog) {
 
   return parallel_loop;
 }
+
+/// Any reuse between s1 and s2 at hyperplane depth 'depth'
+static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
+  for (int i = 0; i < prog->ndeps; i++) {
+    Dep *dep = prog->deps[i];
+    if (((dep->src == s1->id && dep->dest == s2->id) ||
+         (dep->src == s2->id && dep->dest == s1->id)) &&
+        dep->satvec[depth]) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+/// See comments for pluto_post_tile_distribute.
+int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
+  if (band->loop->nstmts == 1)
+    return 0;
+
+  int last_loop_depth = band->loop->depth + 2 * band->width - 1;
+
+  // printf("last loop depth %d\n", last_loop_depth);
+
+  /* Find depth to distribute statements */
+  int depth = last_loop_depth;
+
+  /* This doesn't strictly check for validity of distribution, but only finds a
+   * set
+   * of loops from innermost which do not satisfy any inter-statement
+   * dependences -- this is sufficient to distribute on the outermost among
+   * those. Strictly speaking, should have checked whether there is a cycle
+   * of dependences between statements at a given depth and all deeper
+   * depths (both loops and scalar dims)
+   */
+  for (depth = band->loop->depth + band->width; depth <= last_loop_depth;
+       depth++) {
+    if (!pluto_satisfies_inter_stmt_dep(prog, band->loop, depth))
+      break;
+  }
+
+  if (depth == last_loop_depth + 1) {
+    return 0;
+  }
+
+  /* Look for the first loop with reuse score = 0 */
+  for (; depth <= last_loop_depth; depth++) {
+    int rscore = 0;
+    for (int i = 0; i < band->loop->nstmts; i++) {
+      for (int j = i + 1; j < band->loop->nstmts; j++) {
+        rscore +=
+            has_reuse(band->loop->stmts[i], band->loop->stmts[j], depth, prog);
+      }
+    }
+    if (rscore == 0)
+      break;
+  }
+
+  if (depth > last_loop_depth)
+    return 0;
+
+  IF_DEBUG(printf("[pluto] post_tile_distribute on band\n\t"););
+  IF_DEBUG(pluto_band_print(band););
+
+  /* Distribute statements */
+  pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
+
+  return 1;
+}
+
+/// Distribute statements that are fused in the innermost level of a tile if
+/// there is no reuse between them (when valid); this is mainly to take care of
+/// cache capacity misses / pollution after index set splitting has been
+/// performed using mid-point cutting.
+int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
+                               int num_tiled_levels) {
+  int retval = 0;
+  for (int i = 0; i < nbands; i++) {
+    retval |= pluto_post_tile_distribute_band(bands[i], prog);
+  }
+
+  if (retval) {
+    /* Detect properties again */
+    pluto_compute_dep_directions(prog);
+    pluto_compute_dep_satisfaction(prog);
+    if (!options->silent) {
+      printf("[pluto] After post-tile distribution\n");
+      pluto_transformations_pretty_print(prog);
+    }
+  }
+
+  return retval;
+}
