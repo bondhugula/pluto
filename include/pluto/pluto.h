@@ -57,11 +57,10 @@ enum depType {
   PLUTO_DEP_RAW,
   PLUTO_DEP_WAR,
   PLUTO_DEP_WAW,
-	PLUTO_DEP_RAR,
-	PLUTO_DEP_UNDEFINED
+  PLUTO_DEP_RAR,
+  PLUTO_DEP_UNDEFINED
 };
 typedef enum depType PlutoDepType;
-
 
 struct plutoOptions {
 
@@ -125,6 +124,9 @@ struct plutoOptions {
 
   /* For experimental purposes with dfp */
   int delayed_cut;
+
+  /* For experimental purposes */
+  int intra_tile_distribute;
 
   /* Tyepd fuse at outer levels, max fuse at inner levels */
   int hybridcut;

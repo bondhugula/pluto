@@ -854,6 +854,7 @@ PlutoOptions *pluto_options_alloc() {
   /* Experimental */
   options->delayed_cut = 0;
   options->hybridcut = 0;
+  options->intra_tile_distribute = 0;
 
   /* Default context is no context */
   options->codegen_context = -1;

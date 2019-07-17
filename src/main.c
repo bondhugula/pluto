@@ -136,6 +136,8 @@ void usage_message(void) {
   fprintf(stdout, "       --delayedcut              Delays the cut between "
                   "SCCs of different dimensionalities in dfp approach [uses "
                   "glpk or gurobi for solving LPs]\n");
+  fprintf(stdout,
+          "       --intratiledist Distribute statements at inside a tile\n");
   fprintf(stdout, "\n   Index Set Splitting        \n");
   fprintf(stdout, "       --iss                  \n");
   fprintf(
@@ -219,6 +221,7 @@ int main(int argc, char *argv[]) {
     {"typedfuse", no_argument, (int *)&options->fuse, kTypedFuse},
     {"hybridfuse", no_argument, &options->hybridcut, 1},
     {"delayedcut", no_argument, &options->delayed_cut, 1},
+    {"intratiledist", no_argument, &options->intra_tile_distribute, 1},
     {"parallel", no_argument, &options->parallel, 1},
     {"parallelize", no_argument, &options->parallel, 1},
     {"innerpar", no_argument, &options->innerpar, 1},
