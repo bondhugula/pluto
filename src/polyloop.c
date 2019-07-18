@@ -23,6 +23,7 @@
  *
  */
 #include <assert.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "pluto.h"
@@ -589,17 +590,18 @@ void pluto_bands_free(Band **bands, unsigned nbands) {
   free(bands);
 }
 
-int pluto_is_depth_scalar(Ploop *loop, int depth) {
-  int i;
+/// Returns true, if all statements under the loop have a scalar hyperplane at
+/// depth 'depth'.
+bool pluto_is_depth_scalar(Ploop *loop, int depth) {
 
   assert(depth >= loop->depth);
 
-  for (i = 0; i < loop->nstmts; i++) {
+  for (int i = 0; i < loop->nstmts; i++) {
     if (!pluto_is_hyperplane_scalar(loop->stmts[i], depth))
-      return 0;
+      return false;
   }
 
-  return 1;
+  return true;
 }
 
 /* Returns a non-trivial permutable band starting from this loop; NULL
