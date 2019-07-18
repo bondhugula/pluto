@@ -368,6 +368,24 @@ static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
   return 0;
 }
 
+/// Given a band, the routine returns the first non-scalar depth (among the
+/// intra tile iterators) at which some statement has a scalar hyperplane.
+unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
+  unsigned last_loop_depth = band->loop->depth + 2 * band->width - 1;
+  Ploop *loop = band->loop;
+  for (unsigned i = loop->depth + band->width; i <= last_loop_depth; i++) {
+    if (pluto_is_depth_scalar(loop, i)) {
+      continue;
+    }
+    for (int j = 0; j < loop->nstmts; j++) {
+      if (pluto_is_hyperplane_scalar(prog->stmts[j], i)) {
+        return i;
+      }
+    }
+  }
+  return last_loop_depth + 1;
+}
+
 /// See comments for pluto_post_tile_distribute.
 int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
   if (band->loop->nstmts == 1)
@@ -388,13 +406,21 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
    * of dependences between statements at a given depth and all deeper
    * depths (both loops and scalar dims)
    */
+
+  /* Assumption that the innermost and outerost bands are the same ?  */
   for (depth = band->loop->depth + band->width; depth <= last_loop_depth;
        depth++) {
     if (!pluto_satisfies_inter_stmt_dep(prog, band->loop, depth))
       break;
   }
 
+  IF_DEBUG(pluto_band_print(band););
+  IF_DEBUG(printf("band_loop_depth %d, depth %d, last_loop_depth %d\n",
+                  band->loop->depth, depth, last_loop_depth););
+
   if (depth == last_loop_depth + 1) {
+    unsigned first_scalar_depth = get_first_scalar_hyperplane(band, prog);
+    IF_DEBUG(printf("First scalar depth %d\n", first_scalar_depth););
     return 0;
   }
 
