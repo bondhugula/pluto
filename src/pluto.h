@@ -661,9 +661,11 @@ Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num);
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
-int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
+int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog,
+                                   unsigned num_levels_introduced);
 
-int pluto_is_band_innermost(const Band *band, int is_tiled);
+int pluto_is_band_innermost(const Band *band, int is_tiled,
+                            unsigned num_levels_introduced);
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog, const Ploop *loop,

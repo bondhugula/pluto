@@ -295,15 +295,17 @@ void pluto_tile(PlutoProg *prog) {
     }
   }
 
+  unsigned num_levels_introduced = 0;
   if (options->intra_tile_distribute) {
-    pluto_post_tile_distribute(prog, bands, nbands, num_tiled_levels);
+    num_levels_introduced =
+        pluto_post_tile_distribute(prog, bands, nbands, num_tiled_levels);
   }
 
   if (options->intratileopt) {
     int retval = 0;
     for (i = 0; i < nbands; i++) {
-      retval |=
-          pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);
+      retval |= pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog,
+                                               num_levels_introduced);
     }
     if (retval) {
       pluto_compute_dep_directions(prog);

@@ -813,12 +813,15 @@ int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog) {
   return (num == 0);
 }
 
-/* Does this band have any loops under it */
-int pluto_is_band_innermost(const Band *band, int num_tiling_levels) {
-  int i, j;
-  for (i = 0; i < band->loop->nstmts; i++) {
-    int firstd = band->loop->depth + (num_tiling_levels + 1) * band->width;
-    for (j = firstd; j < band->loop->stmts[i]->trans->nrows; j++) {
+/// Does this band have any loops under it. Num levels introduced is the number
+/// of scalar dimensions introduced by post tile distribution. The routine
+/// returns 1 if the band is innermost. Else it returns false.
+int pluto_is_band_innermost(const Band *band, int num_tiling_levels,
+                            unsigned num_levels_introduced) {
+  for (int i = 0; i < band->loop->nstmts; i++) {
+    int firstd = band->loop->depth + (num_tiling_levels + 1) * band->width +
+                 num_levels_introduced;
+    for (int j = firstd; j < band->loop->stmts[i]->trans->nrows; j++) {
       if (pluto_is_hyperplane_loop(band->loop->stmts[i], j))
         return 0;
     }
@@ -860,7 +863,7 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
   nbands = 0;
   for (i = 0; i < num; i++) {
     Band *band = pluto_get_permutable_band(loops[i], prog);
-    if (band != NULL && pluto_is_band_innermost(band, 0)) {
+    if (band != NULL && pluto_is_band_innermost(band, 0, 0)) {
       bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
       bands[nbands] = band;
       nbands++;

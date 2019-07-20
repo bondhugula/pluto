@@ -252,9 +252,12 @@ int gen_reg_tile_file(PlutoProg *prog) {
 
 /// Optimize the intra-tile loop order for locality and vectorization.
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
-                                   PlutoProg *prog) {
+                                   PlutoProg *prog,
+                                   unsigned num_levels_introduced) {
   /* Band has to be the innermost band as well */
-  if (!pluto_is_band_innermost(band, num_tiled_levels)) {
+  if (!pluto_is_band_innermost(band, num_tiled_levels, num_levels_introduced)) {
+    pluto_band_print(band);
+    printf("Not innermost band");
     return 0;
   }
 
@@ -295,8 +298,8 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
 
     /* The last level in the innermost permutable band. This is true only if the
      * outermost permutable band and innermost permutable band are the same. */
-    unsigned last_level =
-        band->loop->depth + num_tiled_levels * band->width + band->width;
+    unsigned last_level = band->loop->depth + num_tiled_levels * band->width +
+                          band->width + num_levels_introduced;
     bool move_across_scalar_hyperplanes = false;
     /* Move loop across scalar hyperplanes only if the loop nest is tiled.*/
     if (num_tiled_levels > 0) {
@@ -312,15 +315,25 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   return 0;
 }
 
-/* is_tiled: is the band tiled */
+/// This routine is called only when the band is not tiled ?
+// is_tiled: is the band tiled
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
   unsigned nbands;
   int retval;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
 
   retval = 0;
+
+  /* This assertion is required because the num_levels_introduced is set to
+   * zero. If this routine is called on a tiled loopnest then
+   * num_levels_introduced should be set to the number of scalar hyperplanes
+   * introduced by post tile distribution */
+  assert(is_tiled == false);
+  unsigned num_levels_introduced = 0;
+
   for (unsigned i = 0; i < nbands; i++) {
-    retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog);
+    retval |= pluto_intra_tile_optimize_band(bands[i], is_tiled, prog,
+                                             num_levels_introduced);
   }
   pluto_bands_free(bands, nbands);
 
@@ -378,7 +391,7 @@ unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
       continue;
     }
     for (int j = 0; j < loop->nstmts; j++) {
-      if (pluto_is_hyperplane_scalar(prog->stmts[j], i)) {
+      if (pluto_is_hyperplane_scalar(loop->stmts[j], i)) {
         return i;
       }
     }
@@ -387,11 +400,13 @@ unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
 }
 
 /// See comments for pluto_post_tile_distribute.
-int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
+int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
+                                    int num_tiled_levels) {
   if (band->loop->nstmts == 1)
     return 0;
 
-  int last_loop_depth = band->loop->depth + 2 * band->width - 1;
+  int last_loop_depth =
+      band->loop->depth + (num_tiled_levels + 1) * band->width - 1;
 
   // printf("last loop depth %d\n", last_loop_depth);
 
@@ -414,13 +429,14 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
       break;
   }
 
-  IF_DEBUG(pluto_band_print(band););
-  IF_DEBUG(printf("band_loop_depth %d, depth %d, last_loop_depth %d\n",
-                  band->loop->depth, depth, last_loop_depth););
+  pluto_band_print(band);
+  printf("band_loop_depth %d, depth %d, last_loop_depth %d\n",
+         band->loop->depth, depth, last_loop_depth);
 
   if (depth == last_loop_depth + 1) {
-    unsigned first_scalar_depth = get_first_scalar_hyperplane(band, prog);
-    IF_DEBUG(printf("First scalar depth %d\n", first_scalar_depth););
+    /* unsigned first_scalar_depth = get_first_scalar_hyperplane(band, prog); */
+    unsigned first_scalar_depth = band->loop->depth + band->width;
+    printf("First scalar depth %d\n", first_scalar_depth);
     return 0;
   }
 
@@ -455,9 +471,13 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog) {
 /// performed using mid-point cutting.
 int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
                                int num_tiled_levels) {
+  if (num_tiled_levels == 0) {
+    return 0;
+  }
   int retval = 0;
+  printf("num_bands %d\n", nbands);
   for (int i = 0; i < nbands; i++) {
-    retval |= pluto_post_tile_distribute_band(bands[i], prog);
+    retval += pluto_post_tile_distribute_band(bands[i], prog, num_tiled_levels);
   }
 
   if (retval) {
