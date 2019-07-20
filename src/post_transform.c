@@ -262,9 +262,11 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   }
 
   unsigned nloops;
-  Ploop **loops = pluto_get_loops_under(
-      band->loop->stmts, band->loop->nstmts,
-      band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
+  Ploop **loops =
+      pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
+                            band->loop->depth + num_tiled_levels * band->width +
+                                num_levels_introduced,
+                            prog, &nloops);
 
   int max_score = INT_MIN;
   Ploop *best_loop = NULL;
