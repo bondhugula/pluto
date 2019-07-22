@@ -414,14 +414,18 @@ unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
   return last_loop_depth + 1;
 }
 
-/// See comments for pluto_post_tile_distribute.
+/// See comments for pluto_post_tile_distribute. num_levels_introduced indicates
+/// the number of scalar dimensions introduced by the distributing the intratile
+/// iterators of the previous bands.
 int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
-                                    int num_tiled_levels) {
+                                    int num_tiled_levels,
+                                    int num_levels_introduced) {
   if (band->loop->nstmts == 1)
     return 0;
 
-  int last_loop_depth =
-      band->loop->depth + (num_tiled_levels + 1) * band->width - 1;
+  int last_loop_depth = band->loop->depth +
+                        (num_tiled_levels + 1) * band->width - 1 +
+                        num_levels_introduced;
 
   // printf("last loop depth %d\n", last_loop_depth);
 
@@ -438,8 +442,8 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
    */
 
   /* Assumption that the innermost and outerost bands are the same ?  */
-  for (depth = band->loop->depth + band->width; depth <= last_loop_depth;
-       depth++) {
+  for (depth = band->loop->depth + band->width + num_levels_introduced;
+       depth <= last_loop_depth; depth++) {
     if (!pluto_satisfies_inter_stmt_dep(prog, band->loop, depth))
       break;
   }
@@ -494,7 +498,8 @@ int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
   }
   int retval = 0;
   for (int i = 0; i < nbands; i++) {
-    retval += pluto_post_tile_distribute_band(bands[i], prog, num_tiled_levels);
+    retval += pluto_post_tile_distribute_band(bands[i], prog, num_tiled_levels,
+                                              retval);
   }
 
   if (retval) {
