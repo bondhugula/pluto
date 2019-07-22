@@ -381,6 +381,21 @@ static int has_reuse(Stmt *s1, Stmt *s2, int depth, PlutoProg *prog) {
   return 0;
 }
 
+/// Returns the DDG after removing the deps satisfied by the outermost scalar
+/// dimensions.
+Graph *get_ddg_for_outermost_non_scalar_level(PlutoProg *prog, Band *band) {
+  pluto_dep_satisfaction_reset(prog);
+  Graph *new_ddg = ddg_create(prog);
+  for (int i = 0; i < prog->num_hyperplanes; i++) {
+    if (!pluto_is_hyperplane_scalar(band->loop->stmts[0], i)) {
+      break;
+    }
+    dep_satisfaction_update(prog, i);
+  }
+  ddg_update(new_ddg, prog);
+  return new_ddg;
+}
+
 /// Given a band, the routine returns the first non-scalar depth (among the
 /// intra tile iterators) at which some statement has a scalar hyperplane.
 unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
@@ -436,6 +451,8 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   if (depth == last_loop_depth + 1) {
     /* unsigned first_scalar_depth = get_first_scalar_hyperplane(band, prog); */
     unsigned first_scalar_depth = band->loop->depth + band->width;
+    Graph *new_ddg = get_ddg_for_outermost_non_scalar_level(prog, band);
+    IF_DEBUG(pluto_matrix_print(stdout, new_ddg->adj););
     IF_DEBUG(printf("First scalar depth %d\n", first_scalar_depth););
     return 0;
   }
@@ -458,6 +475,7 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
 
   IF_DEBUG(printf("[pluto] post_tile_distribute on band\n\t"););
   IF_DEBUG(pluto_band_print(band););
+  IF_DEBUG(printf("distributing at depth %d\n", depth););
 
   /* Distribute statements */
   pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
