@@ -501,6 +501,7 @@ void pluto_dep_satisfaction_reset(PlutoProg *prog);
 void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_scc_permutability_constraints(int, PlutoProg *);
+PlutoConstraints *get_cc_permutability_constraints(int, PlutoProg *);
 PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
                                                      int);
 PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
@@ -514,6 +515,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *, bool);
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *);
 
 int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog);
+void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog);
 
 int pluto_auto_transform(PlutoProg *prog);
 int pluto_multicore_codegen(FILE *fp, FILE *outfp, const PlutoProg *prog);
@@ -641,6 +643,8 @@ Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands,
                                     int **comm_placement_levels);
+Band *pluto_get_parallel_band(Ploop *loop, const PlutoProg *prog,
+                              int *innermost_split_level);
 void pluto_loop_print(const Ploop *loop);
 void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
@@ -663,7 +667,7 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes);
 
 Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
                               const PlutoProg *prog, unsigned *num);
-Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num);
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
@@ -701,7 +705,7 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
 Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
                                    int current_colour);
 void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog);
-void introduce_skew(PlutoProg *prog);
+bool introduce_skew(PlutoProg *prog);
 #endif
 
 #if defined(__cplusplus)

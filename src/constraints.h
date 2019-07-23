@@ -102,6 +102,7 @@ void pluto_constraints_add_equality(PlutoConstraints *cst);
 void pluto_constraints_add_constraint(PlutoConstraints *cst, int is_eq);
 void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
                                const char *name);
+void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims);
 void pluto_constraints_remove_row(PlutoConstraints *, unsigned);
 void pluto_constraints_remove_dim(PlutoConstraints *, int);
 
@@ -222,16 +223,17 @@ void pluto_constraints_gaussian_eliminate(PlutoConstraints *cst, int pos);
 int pluto_constraints_get_num_non_zero_coeffs(const PlutoConstraints *cst);
 #ifdef GLPK
 int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
-                                          PlutoMatrix *obj, double **val,
-                                          int **index, int npar, int num_ccs);
+                                            PlutoMatrix *obj, double **val,
+                                            int **index, int npar, int num_ccs);
 double *pluto_fcg_constraints_lexmin_glpk(const PlutoConstraints *cst,
                                           PlutoMatrix *obj);
 #endif
 
 #ifdef GUROBI
 int64_t *pluto_prog_constraints_lexmin_gurobi(const PlutoConstraints *cst,
-                                            PlutoMatrix *obj, double **val,
-                                            int **index, int npar, int num_ccs);
+                                              PlutoMatrix *obj, double **val,
+                                              int **index, int npar,
+                                              int num_ccs);
 double *pluto_fcg_constraints_lexmin_gurobi(const PlutoConstraints *cst,
                                             PlutoMatrix *obj);
 #endif

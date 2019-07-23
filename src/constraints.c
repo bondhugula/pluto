@@ -1392,8 +1392,8 @@ int64_t *pluto_prog_constraints_lexmin_glpk(const PlutoConstraints *cst,
       }
     }
 
-    for (j = 0; j < npar + 1; j++) {
-      sol[j] = max_scale_factor;
+    for (int j = 0; j < npar + 1; j++) {
+      sol[j] = max_scale_factor * (int64_t)round(fpsol[j]);
     }
 
     int col_iter = num_ccs;
@@ -1633,6 +1633,16 @@ void pluto_constraints_add_dim(PlutoConstraints *cst, int pos,
   }
 }
 
+/// Adds dimensions to the constraints at the beginning. The corresponding
+/// coefficients of the new variables are nitialized to zero. This is a very
+/// inefficient implemetation of the routine. The constraints can be resized at
+/// one go and the initialization of these dimensions can be done to zero
+/// instead of calling pluto_constraints_add_dim num_dims times
+void pluto_constraints_add_leading_dims(PlutoConstraints *cst, int num_dims) {
+  for (int i = 0; i < num_dims; i++) {
+    pluto_constraints_add_dim(cst, 0, NULL);
+  }
+}
 /* Add a lower bound for 'varnum' variable: varnum: 0-indexed */
 void pluto_constraints_add_lb(PlutoConstraints *cst, int varnum, int64_t lb) {
   assert(varnum >= 0 && varnum <= cst->ncols - 2);
@@ -1810,10 +1820,11 @@ void pluto_constraints_project_out(PlutoConstraints *cst, int start, int num) {
 
 void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
                                         int col2) {
-  int r, tmp;
+  if (col1 == col2)
+    return;
 
-  for (r = 0; r < cst->nrows; r++) {
-    tmp = cst->val[r][col1];
+  for (unsigned r = 0; r < cst->nrows; r++) {
+    int64_t tmp = cst->val[r][col1];
     cst->val[r][col1] = cst->val[r][col2];
     cst->val[r][col2] = tmp;
   }

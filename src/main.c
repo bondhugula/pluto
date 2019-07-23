@@ -82,9 +82,10 @@ void usage_message(void) {
                   "instead of LP\n");
   fprintf(stdout, "       --lpcolor                 Color FCG based on the "
                   "solutions of the lp-problem [disabled by default]\n");
-  fprintf(stdout, "       --clusterscc              Cluster the statemtns of "
-                  "an SCC. This is supported only availabe with decoupled "
-                  "approach [disabled by default]\n");
+  fprintf(stdout,
+          "       --clusterscc              Cluster the statements of "
+          "an SCC. This is supported only available with dfp framework only. "
+          "(Requires GLPK or Gurobi as the LP solver) [disabled by default]\n");
 #endif
   fprintf(stdout, "\n");
 #ifdef GUROBI
@@ -107,6 +108,10 @@ void usage_message(void) {
                   "(enabled by default)\n");
   fprintf(stdout, "       --full-diamond-tile       Enables full-dimensional "
                   "concurrent start\n");
+  fprintf(
+      stdout,
+      "       --per-cc-obj              Enables separate dependence distance "
+      "upper bounds for dependences from different connected components\n");
   fprintf(stdout, "       --[no]prevector           Mark loops for (icc/gcc) "
                   "vectorization (enabled by default)\n");
   fprintf(stdout, "       --multipar                Extract all degrees of "
@@ -124,11 +129,14 @@ void usage_message(void) {
   fprintf(stdout, "       --smartfuse [default]     Heuristic (in between "
                   "nofuse and maxfuse)\n");
   fprintf(stdout, "       --typedfuse               Typed fusion. Fuses SCCs "
-                  "only when there is no loss of parallelism\n");
+                  "only when there is no loss of parallelism [uses dfp "
+                  "framework and requires glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "       --hybridfuse              Typed fusion at outer "
-                  "levels and max fuse at inner level\n");
+                  "levels and max fuse at inner level [uses dfp framework and "
+                  "requires glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "       --delayedcut              Delays the cut between "
-                  "SCCs of different dimensionalities in dfp approach\n");
+                  "SCCs of different dimensionalities in dfp approach [uses "
+                  "glpk or gurobi for solving LPs]\n");
   fprintf(stdout, "\n   Index Set Splitting        \n");
   fprintf(stdout, "       --iss                  \n");
   fprintf(
@@ -203,6 +211,7 @@ int main(int argc, char *argv[]) {
     {"diamond-tile", no_argument, &options->diamondtile, 1},
     {"nodiamond-tile", no_argument, &options->diamondtile, 0},
     {"full-diamond-tile", no_argument, &options->fulldiamondtile, 1},
+    {"per-cc-obj", no_argument, &options->per_cc_obj, 1},
     {"debug", no_argument, &options->debug, true},
     {"moredebug", no_argument, &options->moredebug, true},
     {"rar", no_argument, &options->rar, 1},
@@ -407,16 +416,30 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->parallel = 1;
   }
 
-  if (options->gurobi) {
-    options->islsolve = 0;
+  if (options->hybridcut && !(options->fuse == kTypedFuse)) {
+    options->fuse = kTypedFuse;
   }
-#ifdef GLPK
+
+#if defined GLPK || defined GUROBI
   if (options->lp && !(options->glpk || options->gurobi)) {
     if (!options->silent) {
       printf("[pluto] LP option available with a LP solver only. Using GLPK "
              "for lp solving\n");
     }
     options->glpk = 1;
+  }
+
+  /* Enable dfp framework with typedfuse or hybridfuse */
+  if ((options->fuse == kTypedFuse || options->delayed_cut) && !options->dfp) {
+    printf(
+        "[pluto] Typed or hybrid fusion is available with DFP framework only. "
+        "Using the dfp framework.\n");
+    options->dfp = 1;
+  }
+
+  if (options->scc_cluster && !options->dfp) {
+    printf("[pluto] WARNING: SCC clustering heuristics available wit DFP "
+           "framework only.  Using the dfp framework\n");
   }
 
   /* By default Pluto-dfp uses lp. */
@@ -434,7 +457,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     options->glpk = 1;
   }
 
-  if (options->glpk) {
+  if (options->glpk || options->gurobi) {
     /* Turn off islsolve */
     options->islsolve = 0;
     options->pipsolve = 0;
@@ -453,25 +476,33 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     usage_message();
     return 1;
   }
-  if (options->scc_cluster && !options->dfp) {
-    printf("[pluto] Warning: SCC clustering heuristics available with dfp "
-           "option (FCG based approach) only. Disabling clustering \n");
-  }
 
   if (options->fuse == kTypedFuse && !options->dfp) {
-    printf("[Pluto] WARNING: Typed fusion available with DFP framework only. "
-           "Turning off typed fusion.\n");
-    options->fuse = kSmartFuse;
+    printf("[pluto] ERROR: Typed or hybrid fusion is available with dfp "
+           "framework only which requires an LP solver. Configure pluto with "
+           "--enable-glpk or --enable-gurobi\n");
+    pluto_options_free(options);
+    usage_message();
+    return 1;
+  }
+  if (options->delayed_cut && !options->dfp) {
+    printf("[pluto] ERROR: Delayedcut is available with dfp "
+           "framework only which requires an LP solver. Configure pluto with "
+           "--enable-glpk or --enable-gurobi\n");
+    pluto_options_free(options);
+    usage_message();
+    return 1;
   }
 
   /* Make lastwriter default with dfp. This removes transitive dependences and
-   * hence reduces FCG construction time */
+   * hence reduces FCG construction time. */
   if (options->dfp && !options->lastwriter) {
     if (!options->silent) {
       printf("[pluto] Enabling lastwriter dependence analysis with DFP\n");
     }
     options->lastwriter = 1;
   }
+
   /* Typed fuse is available with clustered FCG approach only */
   if (options->fuse == kTypedFuse && options->dfp && !options->scc_cluster) {
     if (!options->silent) {
@@ -479,6 +510,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
              "Turning on SCC clustering\n");
     }
     options->scc_cluster = 1;
+  }
+
+  if (options->dfp && options->per_cc_obj) {
+    printf("[pluto] ERROR: Per CC connected component objective is not "
+           "supported with DFP framework.\n");
+    pluto_options_free(options);
+    return 1;
   }
 
   /* Extract polyhedral representation from osl scop */

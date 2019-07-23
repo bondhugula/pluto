@@ -26,7 +26,7 @@
 
 #include "assert.h"
 
-/* Sink statement (domain); depth: 0-indexed */
+/// Sink statement (domain); depth: 0-indexed.
 void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
   assert(stmt->dim == stmt->domain->ncols - prog->npar - 1);
 
@@ -39,8 +39,8 @@ void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
   stmt->is_orig_loop[depth] = false;
 }
 
-/* Stripmine 'dim'th time dimension of stmt by stripmine factor; use
- * 'supernode' as the name of the supernode in the domain */
+/// Stripmine 'dim'th time dimension of stmt by stripmine factor; use
+/// 'supernode' as the name of the supernode in the domain.
 void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
                      PlutoProg *prog) {
   pluto_stmt_add_dim(stmt, 0, dim, supernode, H_TILE_SPACE_LOOP, prog);
@@ -63,7 +63,7 @@ void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,
   domain->val[domain->nrows - 1][stmt->trans->ncols] += factor;
 }
 
-/* Interchange loops for a stmt */
+/// Interchange loops for a stmt.
 void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
   for (unsigned j = 0; j < stmt->trans->ncols; j++) {
     int64_t tmp = stmt->trans->val[level1][j];
@@ -73,17 +73,14 @@ void pluto_stmt_loop_interchange(Stmt *stmt, int level1, int level2) {
 }
 
 void pluto_interchange(PlutoProg *prog, int level1, int level2) {
-  int k;
-  HyperplaneProperties hTmp;
-
   Stmt **stmts = prog->stmts;
   int nstmts = prog->nstmts;
 
-  for (k = 0; k < nstmts; k++) {
+  for (int k = 0; k < nstmts; k++) {
     pluto_stmt_loop_interchange(stmts[k], level1, level2);
   }
 
-  hTmp = prog->hProps[level1];
+  HyperplaneProperties hTmp = prog->hProps[level1];
   prog->hProps[level1] = prog->hProps[level2];
   prog->hProps[level2] = hTmp;
 }
@@ -107,25 +104,50 @@ void pluto_sink_transformation(Stmt *stmt, unsigned pos) {
   stmt->hyp_types[pos] = H_SCALAR;
 }
 
-/* Make loop the innermost loop; all loops below move up by one */
-void pluto_make_innermost_loop(Ploop *loop, PlutoProg *prog) {
+/// Make loop the innermost loop; all loops below move up by one. If the loop
+/// nest is tiled, then the loop can be  moved acorss scalar hyperplanes
+/// in the innermost permutable band by setting the boolean variable
+/// move_across_scalar_hyperplanes in the caller. The maximum depth to which a
+/// loop can be moved is given by last_level, which is set to the last level in
+/// the band containing the loop, in case of a tiled loop nest.
+void pluto_make_innermost_loop(Ploop *loop, unsigned last_level,
+                               bool move_across_scalar_hyperplanes,
+                               PlutoProg *prog) {
   assert(prog->num_hyperplanes >= 1);
-  unsigned last_depth = prog->num_hyperplanes - 1;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    Stmt *stmt = loop->stmts[i];
-    unsigned d;
-    for (d = loop->depth; d < stmt->trans->nrows; d++) {
-      if (pluto_is_hyperplane_scalar(stmt, d)) {
-        break;
+  assert(last_level <= prog->num_hyperplanes);
+
+  if (!move_across_scalar_hyperplanes) {
+    unsigned last_depth = prog->num_hyperplanes - 1;
+    for (unsigned i = 0; i < loop->nstmts; i++) {
+      Stmt *stmt = loop->stmts[i];
+      unsigned d;
+      for (d = loop->depth; d < stmt->trans->nrows; d++) {
+        if (pluto_is_hyperplane_scalar(stmt, d)) {
+          break;
+        }
+      }
+      last_depth = PLMIN(last_depth, d - 1);
+    }
+
+    for (unsigned i = 0; i < loop->nstmts; i++) {
+      Stmt *stmt = loop->stmts[i];
+      for (unsigned d = loop->depth; d < last_depth; d++) {
+        pluto_stmt_loop_interchange(stmt, d, d + 1);
       }
     }
-    last_depth = PLMIN(last_depth, d - 1);
+    return;
   }
 
+  unsigned last_depth = last_level;
   for (unsigned i = 0; i < loop->nstmts; i++) {
     Stmt *stmt = loop->stmts[i];
-    for (unsigned d = loop->depth; d < last_depth; d++) {
-      pluto_stmt_loop_interchange(stmt, d, d + 1);
+    /* Current level that has to be made the innermost. */
+    unsigned current_level = loop->depth;
+    for (unsigned d = loop->depth + 1; d < last_depth; d++) {
+      if (pluto_is_hyperplane_scalar(stmt, d))
+        continue;
+      pluto_stmt_loop_interchange(stmt, current_level, d);
+      current_level = d;
     }
   }
 }

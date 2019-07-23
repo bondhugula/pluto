@@ -98,7 +98,7 @@ Vertex *ddg_get_vertex_by_id(Graph *g, int id);
 bool is_adjecent(Graph *, int, int);
 int *get_ssc_topological_order(Graph *ddg);
 void compute_scc_vertices(Graph *ddg);
-void print_scc_vertices(int j, Graph *g);
+void print_scc_vertices(int scc_id, Graph *g);
 void free_scc_vertices(Graph *ddg);
 
 #if defined(__cplusplus)

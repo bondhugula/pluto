@@ -280,38 +280,36 @@ PlutoMatrix *construct_cplex_objective(const PlutoConstraints *cst,
  *   permutation/substitution of variables
  */
 int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
-  Stmt **stmts;
-  int i, j;
-  int nstmts, nvar, npar, del_count;
-  int64_t *sol, *fsol;
-  PlutoConstraints *newcst;
-  double t_start;
+  Stmt **stmts = prog->stmts;
+  int nstmts = prog->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int num_ccs = prog->ddg->num_ccs;
 
-  stmts = prog->stmts;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
-  sol = NULL;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * num_ccs;
+  }
+  assert((int)cst->ncols - 1 == ncols - 1);
 
-  assert((int)cst->ncols - 1 == CST_WIDTH - 1);
-
+  unsigned coeff_offset = npar + 1 + ncols - CST_WIDTH;
   /* Remove redundant variables - that don't appear in your outer loops */
-  int redun[npar + 1 + nstmts * (nvar + 1) + 1];
-  for (i = 0; i < npar + 1; i++) {
+  int redun[coeff_offset + nstmts * (nvar + 1) + 1];
+  for (unsigned i = 0; i < coeff_offset; i++) {
     redun[i] = 0;
   }
 
-  for (i = 0; i < nstmts; i++) {
-    for (j = 0; j < nvar; j++) {
-      redun[npar + 1 + i * (nvar + 1) + j] = !stmts[i]->is_orig_loop[j];
+  for (int i = 0; i < nstmts; i++) {
+    for (int j = 0; j < nvar; j++) {
+      redun[coeff_offset + i * (nvar + 1) + j] = !stmts[i]->is_orig_loop[j];
     }
-    redun[npar + 1 + i * (nvar + 1) + nvar] = 0;
+    redun[coeff_offset + i * (nvar + 1) + nvar] = 0;
   }
-  redun[npar + 1 + nstmts * (nvar + 1)] = 0;
+  redun[coeff_offset + nstmts * (nvar + 1)] = 0;
 
-  del_count = 0;
-  newcst = pluto_constraints_dup(cst);
-  for (j = 0; j < (int)cst->ncols - 1; j++) {
+  int del_count = 0;
+  PlutoConstraints *newcst = pluto_constraints_dup(cst);
+  for (int j = 0; j < (int)cst->ncols - 1; j++) {
     if (redun[j]) {
       pluto_constraints_remove_dim(newcst, j - del_count);
       del_count++;
@@ -322,8 +320,8 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
    * hyperplane order is preserved (no strong reason to do this) */
   /* We do not need to permute in case of pluto-lp-dfp */
   if (!options->dfp) {
-    unsigned j = npar + 1;
-    for (i = 0; i < nstmts; i++) {
+    unsigned j = coeff_offset;
+    for (int i = 0; i < nstmts; i++) {
       for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
         pluto_constraints_interchange_cols(
             newcst, k, j + (stmts[i]->dim_orig - 1 - (k - j)));
@@ -335,9 +333,10 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
                   "constraints)\n",
                   cst->ncols - 1, cst->nrows););
 
+  int64_t *sol = NULL;
   /* Solve the constraints using the chosen solver. */
   if (options->islsolve) {
-    t_start = rtclock();
+    double t_start = rtclock();
     sol = pluto_constraints_lexmin_isl(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   } else if (options->glpk || options->lp || options->dfp || options->gurobi) {
@@ -364,7 +363,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 #endif
     }
 
-    t_start = rtclock();
+    double t_start = rtclock();
     if (options->glpk) {
 #ifdef GLPK
       sol = pluto_prog_constraints_lexmin_glpk(newcst, obj, val, index, npar,
@@ -380,7 +379,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
     pluto_matrix_free(obj);
     if (options->lp) {
-      for (i = 0; i < nrows; i++) {
+      for (int i = 0; i < nrows; i++) {
         free(val[i]);
         free(index[i]);
       }
@@ -389,19 +388,19 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
     }
   } else {
     /* Use PIP */
-    t_start = rtclock();
+    double t_start = rtclock();
     sol = pluto_constraints_lexmin_pip(newcst, DO_NOT_ALLOW_NEGATIVE_COEFF);
     prog->mipTime += rtclock() - t_start;
   }
 
-  fsol = NULL;
+  int64_t *fsol = NULL;
   if (sol) {
     int k1, k2, q;
     int64_t tmp;
     /* Permute the solution in line with the permuted cst */
     if (!options->dfp) {
-      unsigned j = npar + 1;
-      for (i = 0; i < nstmts; i++) {
+      unsigned j = coeff_offset;
+      for (int i = 0; i < nstmts; i++) {
         for (unsigned k = j; k < j + (stmts[i]->dim_orig) / 2; k++) {
           k1 = k;
           k2 = j + (stmts[i]->dim_orig - 1 - (k - j));
@@ -417,7 +416,7 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
 
     /* Fill the soln with zeros for the redundant variables */
     q = 0;
-    for (j = 0; j < (int)cst->ncols - 1; j++) {
+    for (int j = 0; j < (int)cst->ncols - 1; j++) {
       fsol[j] = redun[j] ? 0 : sol[q++];
     }
     free(sol);
@@ -690,11 +689,16 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
 
   /* Get orthogonality constraints for each statement */
   for (j = 0; j < nstmts; j++) {
-    orthcst[j] = get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
+    orthcst[j] =
+        get_stmt_lin_ind_constraints(stmts[j], prog, cst, &orthonum[j]);
     orthosum += orthonum[j];
   }
 
-  PlutoConstraints *indcst = pluto_constraints_alloc(1, CST_WIDTH);
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+  PlutoConstraints *indcst = pluto_constraints_alloc(1, ncols);
 
   if (orthosum >= 1) {
     if (lin_ind_mode == EAGER) {
@@ -711,12 +715,12 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
       for (i = 0; i < prog->nstmts; i++) {
         /* Everything was initialized to zero */
         if (orthonum[i] >= 1) {
-          for (j = 0; j < CST_WIDTH - 1; j++) {
+          for (j = 0; j < ncols - 1; j++) {
             indcst->val[0][j] += orthcst[i][orthonum[i] - 1]->val[0][j];
           }
         }
       }
-      indcst->val[0][CST_WIDTH - 1] = -1;
+      indcst->val[0][ncols - 1] = -1;
       indcst->nrows = 1;
       IF_DEBUG2(printf("Added \"at least one\" linear ind constraints\n"););
       IF_DEBUG2(pluto_constraints_pretty_print(stdout, indcst););
@@ -734,6 +738,31 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
   return indcst;
 }
 
+// Each CC has its own u and w. Lexmin has to minimize u and w for all ccs
+// equally. Therefore we add new set of u and w which is the component wise sum
+// of u and w of the individual connected component. This is given by the
+// constraints \wedge\limits_{i=0}^{npar+1} u_i = \sigma\limits_{j=0}^{num_ccs}
+// u_i^j
+PlutoConstraints *get_per_cc_obj_sum_constraints(PlutoProg *prog) {
+  int num_ccs = prog->ddg->num_ccs;
+  int npar = prog->npar;
+  int nrows = npar + 1;
+  int nvar = prog->nvar;
+  int nstmts = prog->nstmts;
+  int ncols = (num_ccs * (npar + 1)) + CST_WIDTH;
+  PlutoConstraints *obj_sum_cst = pluto_constraints_alloc(nrows, ncols);
+  obj_sum_cst->nrows = nrows;
+  obj_sum_cst->ncols = ncols;
+
+  for (int i = 0; i < npar + 1; i++) {
+    obj_sum_cst->val[i][i] = 1;
+    for (int j = 1; j <= num_ccs; j++) {
+      obj_sum_cst->val[i][j + i] = -1;
+    }
+  }
+  return obj_sum_cst;
+}
+
 /* Find all linearly independent permutable band of hyperplanes at a level.
  *
  * See sub-functions for hyp_search_mode and lin_ind_mode
@@ -745,13 +774,7 @@ PlutoConstraints *get_linear_ind_constraints(const PlutoProg *prog,
  * */
 int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
                                 int max_sols, int band_depth) {
-  int num_sols_found, j, k;
-  int64_t *bestsol;
-  PlutoConstraints *basecst, *nzcst, *boundcst;
-  PlutoConstraints *currcst;
-
   int nstmts = prog->nstmts;
-  Stmt **stmts = prog->stmts;
   int nvar = prog->nvar;
   int npar = prog->npar;
 
@@ -766,22 +789,24 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
     return 0;
 
   /* Don't free basecst */
-  basecst = get_permutability_constraints(prog);
-  boundcst = get_coeff_bounding_constraints(prog);
+  PlutoConstraints *basecst = get_permutability_constraints(prog);
+  PlutoConstraints *boundcst = get_coeff_bounding_constraints(prog);
   pluto_constraints_add(basecst, boundcst);
   pluto_constraints_free(boundcst);
   // print_polylib_visual_sets("pluto", basecst);
 
-  num_sols_found = 0;
+  int num_sols_found = 0;
   /* We don't expect to add a lot to basecst - just ortho constraints
    * and trivial soln avoidance constraints; instead of duplicating basecst,
    * we will just allocate once and copy each time */
-  currcst = pluto_constraints_alloc(basecst->nrows + nstmts + nvar * nstmts,
-                                    CST_WIDTH);
+  PlutoConstraints *currcst = pluto_constraints_alloc(
+      basecst->nrows + nstmts + nvar * nstmts, CST_WIDTH);
 
+  int64_t *bestsol;
   do {
     pluto_constraints_copy(currcst, basecst);
-    nzcst = get_non_trivial_sol_constraints(prog, hyp_search_mode);
+    PlutoConstraints *nzcst =
+        get_non_trivial_sol_constraints(prog, hyp_search_mode);
     pluto_constraints_add(currcst, nzcst);
     pluto_constraints_free(nzcst);
 
@@ -799,6 +824,11 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
       bestsol = NULL;
     } else {
       pluto_constraints_add(currcst, indcst);
+      if (options->per_cc_obj) {
+        PlutoConstraints *obj_sum_cst = get_per_cc_obj_sum_constraints(prog);
+        pluto_constraints_add(currcst, obj_sum_cst);
+        pluto_constraints_free(obj_sum_cst);
+      }
       IF_DEBUG(printf("[pluto] (Band %d) Solving for hyperplane #%d\n",
                       band_depth + 1, num_sols_found + 1));
       // IF_DEBUG2(pluto_constraints_pretty_print(stdout, currcst));
@@ -811,26 +841,8 @@ int find_permutable_hyperplanes(PlutoProg *prog, bool hyp_search_mode,
           stdout, "[pluto] find_permutable_hyperplanes: found a hyperplane\n"));
       num_sols_found++;
 
-      pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+      pluto_add_hyperplane_from_ilp_solution(bestsol, prog);
 
-      for (j = 0; j < nstmts; j++) {
-        Stmt *stmt = stmts[j];
-        pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
-        for (k = 0; k < nvar; k++) {
-          stmt->trans->val[stmt->trans->nrows - 1][k] =
-              bestsol[npar + 1 + j * (nvar + 1) + k];
-        }
-        /* No parameteric shifts */
-        for (k = nvar; k < nvar + npar; k++) {
-          stmt->trans->val[stmt->trans->nrows - 1][k] = 0;
-        }
-        stmt->trans->val[stmt->trans->nrows - 1][nvar + npar] =
-            bestsol[npar + 1 + j * (nvar + 1) + nvar];
-
-        stmt->hyp_types[stmt->trans->nrows - 1] =
-            pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
-                                                                     : H_LOOP;
-      }
       free(bestsol);
       IF_DEBUG(
           pluto_transformation_print_level(prog, prog->num_hyperplanes - 1););
@@ -1400,7 +1412,7 @@ find_cone_complement_hyperplane(Band *band, PlutoMatrix *conc_start_faces,
   IF_DEBUG(pluto_band_print(band););
 
   // lambda_cst is the set of additional constraints added to find the cone
-  // complement involving the conic combination multipliers. 
+  // complement involving the conic combination multipliers.
   // TODO: improve comment by including info on the constraints that are added.
   PlutoConstraints *lambda_cst = pluto_constraints_alloc(
       2 * nvar * nstmts,
@@ -1577,6 +1589,7 @@ int pluto_auto_transform(PlutoProg *prog) {
 #if defined GLPK || defined GUROBI
   Graph *fcg;
   int *colour, nVertices;
+  int is_skewed = false;
 #endif
 
   Stmt **stmts = prog->stmts;
@@ -1684,20 +1697,20 @@ int pluto_auto_transform(PlutoProg *prog) {
 
     nVertices = 0;
     if (options->scc_cluster) {
-      for (i = 0; i < ddg->num_sccs; i++) {
+      for (int i = 0; i < ddg->num_sccs; i++) {
         ddg->sccs[i].fcg_scc_offset = nVertices;
         ddg->sccs[i].is_scc_coloured = false;
         nVertices += ddg->sccs[i].max_dim;
       }
     } else {
-      for (i = 0; i < nstmts; i++) {
+      for (int i = 0; i < nstmts; i++) {
         ddg->vertices[i].fcg_stmt_offset = nVertices;
         nVertices += stmts[i]->dim_orig;
       }
     }
 
     colour = (int *)malloc(nVertices * sizeof(int));
-    for (i = 0; i < nVertices; i++) {
+    for (int i = 0; i < nVertices; i++) {
       colour[i] = 0;
     }
 
@@ -1717,7 +1730,7 @@ int pluto_auto_transform(PlutoProg *prog) {
     prog->total_coloured_stmts = (int *)malloc(nvar * sizeof(int));
     prog->scaled_dims = (int *)malloc(nvar * sizeof(int));
     prog->coloured_dims = 0;
-    for (i = 0; i < nvar; i++) {
+    for (int i = 0; i < nvar; i++) {
       prog->total_coloured_stmts[i] = 0;
       prog->scaled_dims[i] = 0;
     }
@@ -1726,11 +1739,27 @@ int pluto_auto_transform(PlutoProg *prog) {
     find_permutable_dimensions_scc_based(colour, prog);
 
     if (!options->silent && options->debug) {
-      printf("[Pluto]: Transformations before skewing \n");
+      printf("[pluto] Transformations before skewing \n");
       pluto_transformations_pretty_print(prog);
     }
 
-    introduce_skew(prog);
+    is_skewed = introduce_skew(prog);
+
+    pluto_dep_satisfaction_reset(prog);
+    if (is_skewed && options->diamondtile) {
+      conc_start_found = pluto_diamond_tile(prog);
+    }
+    /* If there are any unsatisfied deps, they have to be
+     * distributed at the inner most level. */
+    pluto_dep_satisfaction_reset(prog);
+    for (int i = 0; i < prog->num_hyperplanes; i++) {
+      dep_satisfaction_update(prog, i);
+    }
+    if (!deps_satisfaction_check(prog)) {
+      ddg_update(prog->ddg, prog);
+      ddg_compute_scc(prog);
+      cut_all_sccs(prog, prog->ddg);
+    }
 
     free(prog->total_coloured_stmts);
     free(prog->scaled_dims);
@@ -1767,6 +1796,9 @@ int pluto_auto_transform(PlutoProg *prog) {
       assert(hyp_search_mode == LAZY ||
              num_sols_left == num_ind_sols_req - num_ind_sols_found);
 
+      if (options->per_cc_obj) {
+        ddg_compute_cc(prog);
+      }
       nsols = find_permutable_hyperplanes(prog, hyp_search_mode, num_sols_left,
                                           depth);
 
@@ -1866,9 +1898,6 @@ int pluto_auto_transform(PlutoProg *prog) {
   if (options->dfp) {
 #if defined GLPK || defined GUROBI
     ddg = prog->ddg;
-    for (i = 0; i < ddg->num_sccs; i++) {
-      free(ddg->sccs[i].vertices);
-    }
     graph_free(prog->fcg);
 #endif
   }
@@ -2044,9 +2073,11 @@ void ddg_compute_cc(PlutoProg *prog) {
       dfs_vertex(gU, &gU->vertices[i], &time);
       gU->vertices[i].cc_id = cc_id;
     }
+    gU->vertices[i].cc_id = cc_id;
     g->vertices[i].cc_id = gU->vertices[i].cc_id;
     stmt_id = g->vertices[i].id;
     assert(stmt_id == i);
+
     prog->stmts[i]->cc_id = g->vertices[i].cc_id;
   }
   g->num_ccs = num_cc;
