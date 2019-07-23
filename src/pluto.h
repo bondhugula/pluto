@@ -470,6 +470,13 @@ typedef struct band {
   unsigned width;
   /* Not used yet */
   struct band **children;
+  /* These are the number of post tile distribution hyperplanes in the band.
+   * These (scalar) hyperplanes are introduced during post tile distribution.
+   * Some hyperplanes can be within the band and some can be outside depending
+   * on the width of the band and the depth at which the hyperplane was
+   * introduced. */
+  unsigned post_tile_dist_hyp_in_band;
+  unsigned post_tile_dist_hyp_out_band;
 } Band;
 
 /* Globally visible, easily accessible data */
@@ -661,8 +668,7 @@ Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num);
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
-int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog,
-                                   unsigned num_levels_introduced);
+int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 int pluto_is_band_innermost(const Band *band, int is_tiled,
                             unsigned num_levels_introduced);

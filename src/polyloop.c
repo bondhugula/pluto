@@ -520,6 +520,8 @@ Band *pluto_band_alloc(Ploop *loop, int width) {
   band->width = width;
   band->loop = pluto_loop_dup(loop);
   band->children = NULL;
+  band->post_tile_dist_hyp_in_band = 0;
+  band->post_tile_dist_hyp_out_band = 0;
   return band;
 }
 
@@ -545,7 +547,12 @@ void pluto_bands_print(Band **bands, int num) {
   }
 }
 
-Band *pluto_band_dup(Band *b) { return pluto_band_alloc(b->loop, b->width); }
+Band *pluto_band_dup(Band *b) {
+  Band *band = pluto_band_alloc(b->loop, b->width);
+  band->post_tile_dist_hyp_in_band = b->post_tile_dist_hyp_in_band;
+  band->post_tile_dist_hyp_out_band = b->post_tile_dist_hyp_out_band;
+  return band;
+}
 
 /* Concatenates both and puts them in bands1; pointers are copied - not
  * the structures */
