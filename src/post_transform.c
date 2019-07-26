@@ -490,6 +490,26 @@ unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
   return last_loop_depth + 1;
 }
 
+int distribute_band_dim_based(Band *band, PlutoProg *prog, int num_tiled_levels,
+                              Band **bands, int nbands) {
+  unsigned new_levels_introduced =
+      band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
+
+  int last_loop_depth = band->loop->depth +
+                        (num_tiled_levels + 1) * band->width - 1 +
+                        new_levels_introduced;
+
+  Graph *new_ddg = get_ddg_for_outermost_non_scalar_level(prog, band);
+  IF_DEBUG(pluto_matrix_print(stdout, new_ddg->adj););
+  unsigned depth = get_depth_with_different_scc_dims(new_ddg, band, prog);
+
+  if (depth == last_loop_depth + 1) {
+    return 0;
+  }
+  printf("Cutting band at depth %d\n", depth);
+  return 0;
+}
+
 /// See comments for pluto_post_tile_distribute. num_levels_introduced indicates
 /// the number of scalar dimensions introduced by the distributing the intratile
 /// iterators of the previous bands.
@@ -499,6 +519,14 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   if (band->loop->nstmts == 1)
     return 0;
 
+  /* Distribute based on dimensionalities */
+  int retval =
+      distribute_band_dim_based(band, prog, num_tiled_levels, bands, nbands);
+  if (retval) {
+    return retval;
+  }
+
+  /* Distribute if there is no reuse*/
   unsigned new_levels_introduced =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
 
@@ -531,18 +559,9 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   IF_DEBUG(printf("band_loop_depth %d, depth %d, last_loop_depth %d\n",
                   band->loop->depth, depth, last_loop_depth););
 
+  /* There are no dimensions such that there inter statment deps are not
+   * satisfied */
   if (depth == last_loop_depth + 1) {
-    /* unsigned first_scalar_depth = get_first_scalar_hyperplane(band, prog); */
-    unsigned first_scalar_depth = band->loop->depth + band->width;
-    Graph *new_ddg = get_ddg_for_outermost_non_scalar_level(prog, band);
-    IF_DEBUG(pluto_matrix_print(stdout, new_ddg->adj););
-    depth = get_depth_with_different_scc_dims(new_ddg, band, prog);
-
-    if (depth == last_loop_depth + 1) {
-      return 0;
-    }
-
-    IF_DEBUG(printf("First scalar depth %d\n", first_scalar_depth););
     return 0;
   }
 
