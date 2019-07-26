@@ -413,6 +413,83 @@ unsigned get_first_scalar_hyperplane(const Band *band, const PlutoProg *prog) {
   return last_loop_depth + 1;
 }
 
+/// Returns SCCs whose statements lie in the current band. This check is
+/// incorrect if the outer and inner permutable bands are not same.
+int *get_sccs_in_band(Graph *ddg, Band *band, PlutoProg *prog, int *nsccs) {
+
+  int num = 0;
+  int *scc_list = (int *)malloc(ddg->num_sccs * sizeof(int));
+  for (int i = 0; i < band->loop->nstmts; i++) {
+    scc_list[num++] = band->loop->stmts[i]->scc_id;
+  }
+  *nsccs = num;
+  return scc_list;
+}
+
+/// Returns true if the list contains SCCs of different dimensionalities
+bool contains_sccs_with_diff_dims(int *scc_list, int nsccs, Graph *ddg) {
+  for (int i = 0; i < nsccs - 1; i++) {
+    /* we many also want to check if the DDGs are connected */
+    if (ddg->sccs[i].max_dim != ddg->sccs[i + 1].max_dim)
+      return true;
+  }
+  return false;
+}
+
+/// Returns the first depth in the intra tile iterators at which SCCs have
+/// different dimensionalities
+unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
+                                           PlutoProg *prog) {
+
+  /* Assumes that there is only 1 level of tiling */
+  unsigned new_levels_introduced =
+      band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
+
+  int last_loop_depth =
+      band->loop->depth + 2 * band->width - 1 + new_levels_introduced;
+
+  for (int i = 0; i < band->loop->depth - 1; i++) {
+    dep_satisfaction_update(prog, i);
+  }
+
+  Graph *ddg = prog->ddg;
+  prog->ddg = new_ddg;
+
+  unsigned band_begin = band->loop->depth;
+  unsigned band_end =
+      band->loop->depth + band->width + band->post_tile_dist_hyp_in_band;
+  unsigned inner_band_level = band_end;
+
+  /* Iterate over the inter tile dimensions and keep updating the ddg based on
+   * this level. Correspondingly move the intra tile dimension */
+  for (int i = band_begin; i < band_end; i++) {
+    if (pluto_is_depth_scalar(band->loop, i)) {
+      dep_satisfaction_update(prog, i);
+      continue;
+    }
+    ddg_update(new_ddg, prog);
+    ddg_compute_scc(prog);
+    int nsccs = 0;
+    int *scc_list = get_sccs_in_band(new_ddg, band, prog, &nsccs);
+    bool diff_dim = contains_sccs_with_diff_dims(scc_list, nsccs, new_ddg);
+    if (diff_dim) {
+      prog->ddg = ddg;
+      return inner_band_level;
+    }
+
+    /* Move the intra tile hyperplane to the next hyperplane of type loop */
+    for (int j = inner_band_level + 1; j < last_loop_depth; j++) {
+      if (!pluto_is_depth_scalar(band->loop, j)) {
+        break;
+      }
+      inner_band_level++;
+    }
+    dep_satisfaction_update(prog, i);
+  }
+  prog->ddg = ddg;
+  return last_loop_depth + 1;
+}
+
 /// See comments for pluto_post_tile_distribute. num_levels_introduced indicates
 /// the number of scalar dimensions introduced by the distributing the intratile
 /// iterators of the previous bands.
@@ -459,6 +536,12 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
     unsigned first_scalar_depth = band->loop->depth + band->width;
     Graph *new_ddg = get_ddg_for_outermost_non_scalar_level(prog, band);
     IF_DEBUG(pluto_matrix_print(stdout, new_ddg->adj););
+    depth = get_depth_with_different_scc_dims(new_ddg, band, prog);
+
+    if (depth == last_loop_depth + 1) {
+      return 0;
+    }
+
     IF_DEBUG(printf("First scalar depth %d\n", first_scalar_depth););
     return 0;
   }
