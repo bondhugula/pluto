@@ -448,7 +448,7 @@ unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
   int last_loop_depth =
       band->loop->depth + 2 * band->width - 1 + new_levels_introduced;
 
-  for (int i = 0; i < band->loop->depth - 1; i++) {
+  for (int i = 0; i < (int)band->loop->depth - 1; i++) {
     dep_satisfaction_update(prog, i);
   }
 
