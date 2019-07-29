@@ -559,6 +559,7 @@ bool distribute_band_dim_based(Band *band, PlutoProg *prog,
   }
   IF_DEBUG(printf("Cutting band at depth %d\n", depth););
   distribute_sccs_in_band(new_ddg, band, depth, prog);
+  graph_free(new_ddg);
   return true;
 }
 
@@ -588,7 +589,7 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
 
   // printf("last loop depth %d\n", last_loop_depth);
 
-  /* Find depth to distribute statements */
+  /* Find depth to distribute statements. */
   int depth = last_loop_depth;
 
   /* This doesn't strictly check for validity of distribution, but only finds a
@@ -612,12 +613,12 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
                   band->loop->depth, depth, last_loop_depth););
 
   /* There are no dimensions such that there inter statment deps are not
-   * satisfied */
+   * satisfied. */
   if (depth == last_loop_depth + 1) {
     return 0;
   }
 
-  /* Look for the first loop with reuse score = 0 */
+  /* Look for the first loop with reuse score = 0. */
   for (; depth <= last_loop_depth; depth++) {
     int rscore = 0;
     for (int i = 0; i < band->loop->nstmts; i++) {
@@ -637,10 +638,9 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   IF_DEBUG(pluto_band_print(band););
   IF_DEBUG(printf("distributing at depth %d\n", depth););
 
-  /* Distribute statements */
+  /* Distribute statements. */
   pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
 
-  /* band->post_tile_dist_hyp_out_band++; */
   for (int i = 0; i < nbands; i++) {
     if (depth >= bands[i]->loop->depth + bands[i]->width) {
       bands[i]->post_tile_dist_hyp_out_band++;
