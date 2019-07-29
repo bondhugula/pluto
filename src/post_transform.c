@@ -437,11 +437,11 @@ bool contains_sccs_with_diff_dims(int *scc_list, int nsccs, Graph *ddg) {
 }
 
 /// Returns the first depth in the intra tile iterators at which SCCs have
-/// different dimensionalities
+/// different dimensionalities.
 unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
                                            PlutoProg *prog) {
 
-  /* Assumes that there is only 1 level of tiling */
+  /* Assumes that there is only 1 level of tiling. */
   unsigned new_levels_introduced =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
 
@@ -461,7 +461,7 @@ unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
   unsigned inner_band_level = band_end;
 
   /* Iterate over the inter tile dimensions and keep updating the ddg based on
-   * this level. Correspondingly move the intra tile dimension */
+   * this level. Correspondingly move the intra tile dimension. */
   for (int i = band_begin; i < band_end; i++) {
     if (pluto_is_depth_scalar(band->loop, i)) {
       dep_satisfaction_update(prog, i);
@@ -474,10 +474,11 @@ unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
     bool diff_dim = contains_sccs_with_diff_dims(scc_list, nsccs, new_ddg);
     if (diff_dim) {
       prog->ddg = ddg;
+      free(scc_list);
       return inner_band_level;
     }
 
-    /* Move the intra tile hyperplane to the next hyperplane of type loop */
+    /* Move the intra tile hyperplane to the next hyperplane of type loop. */
     for (int j = inner_band_level + 1; j < last_loop_depth; j++) {
       if (!pluto_is_depth_scalar(band->loop, j)) {
         break;
@@ -485,9 +486,55 @@ unsigned get_depth_with_different_scc_dims(Graph *new_ddg, Band *band,
       inner_band_level++;
     }
     dep_satisfaction_update(prog, i);
+    free(scc_list);
   }
   prog->ddg = ddg;
   return last_loop_depth + 1;
+}
+
+/// Returns true if Scc given by scc_id is present in the list of SCCs.
+bool is_scc_in_list(int *scc_list, int nsccs, int scc_id) {
+  for (int i = 0; i < nsccs; i++) {
+    if (scc_id == scc_list[i])
+      return true;
+  }
+  return false;
+}
+
+/// Distribute SCCs in the band based on dimensionalities at level 'level'.
+void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
+                             PlutoProg *prog) {
+  int nstmts = prog->nstmts;
+
+  /* Add scalar hyperplane for all statements in the program. */
+  for (int i = 0; i < nstmts; i++) {
+    pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, level);
+  }
+  int nsccs;
+  int *scc_list = get_sccs_in_band(new_ddg, band, prog, &nsccs);
+  unsigned offset = 0;
+  Scc *sccs = new_ddg->sccs;
+  int curr_dim = sccs[scc_list[0]].max_dim;
+
+  /* Iterate over SCCs in the ddg.*/
+  for (int i = 0; i < new_ddg->num_sccs; i++) {
+    if (!is_scc_in_list(scc_list, nsccs, i))
+      continue;
+    if (curr_dim != sccs[i].max_dim) {
+      offset++;
+    }
+    /* Iterate over each statement in the program. */
+    Stmt **stmts = prog->stmts;
+    for (int j = 0; j < prog->nstmts; j++) {
+      if (stmts[j]->scc_id == i) {
+        int col_num = stmts[j]->trans->ncols - 1;
+        stmts[j]->trans->val[level][col_num] = offset;
+      }
+    }
+  }
+  pluto_prog_add_hyperplane(prog, level, H_SCALAR);
+  prog->hProps[level].dep_prop = SEQ;
+  return;
 }
 
 int distribute_band_dim_based(Band *band, PlutoProg *prog, int num_tiled_levels,
@@ -507,7 +554,8 @@ int distribute_band_dim_based(Band *band, PlutoProg *prog, int num_tiled_levels,
     return 0;
   }
   printf("Cutting band at depth %d\n", depth);
-  return 0;
+  distribute_sccs_in_band(new_ddg, band, depth, prog);
+  return 1;
 }
 
 /// See comments for pluto_post_tile_distribute. num_levels_introduced indicates
