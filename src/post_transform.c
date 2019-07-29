@@ -537,8 +537,12 @@ void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
   return;
 }
 
-int distribute_band_dim_based(Band *band, PlutoProg *prog, int num_tiled_levels,
-                              Band **bands, int nbands) {
+/// Distribute the band based on dimensionalities. Returns true if the band was
+/// distributed; else returns false. The band is distributed at the outermost
+/// level(in the inter tile space) at which there are sccs of different
+/// dimensionalities. The cut is introduced in the intra tile space.
+bool distribute_band_dim_based(Band *band, PlutoProg *prog,
+                               int num_tiled_levels, Band **bands, int nbands) {
   unsigned new_levels_introduced =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
 
@@ -551,11 +555,11 @@ int distribute_band_dim_based(Band *band, PlutoProg *prog, int num_tiled_levels,
   unsigned depth = get_depth_with_different_scc_dims(new_ddg, band, prog);
 
   if (depth == last_loop_depth + 1) {
-    return 0;
+    return false;
   }
-  printf("Cutting band at depth %d\n", depth);
+  IF_DEBUG(printf("Cutting band at depth %d\n", depth););
   distribute_sccs_in_band(new_ddg, band, depth, prog);
-  return 1;
+  return true;
 }
 
 /// See comments for pluto_post_tile_distribute. num_levels_introduced indicates
@@ -567,14 +571,14 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   if (band->loop->nstmts == 1)
     return 0;
 
-  /* Distribute based on dimensionalities */
+  /* Distribute based on SCC dimensionalities. */
   int retval =
       distribute_band_dim_based(band, prog, num_tiled_levels, bands, nbands);
   if (retval) {
-    return retval;
+    return 0;
   }
 
-  /* Distribute if there is no reuse*/
+  /* Distribute if there is no reuse. */
   unsigned new_levels_introduced =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
 
