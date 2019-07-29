@@ -143,12 +143,10 @@ void usage_message(void) {
   fprintf(stdout, "\n   Miscellaneous\n");
   fprintf(stdout, "       --rar                     Consider RAR dependences "
                   "too (disabled by default)\n");
-  fprintf(
-      stdout,
-      "       --[no]unroll              Unroll-jam (disabled by default)\n");
-  fprintf(
-      stdout,
-      "       --ufactor=<factor>        Unroll-jam factor (default is 8)\n");
+  fprintf(stdout, "       --[no]unrolljam           Unroll and jam (disabled "
+                  "by default)\n");
+  fprintf(stdout, "       --ufactor=<factor>        Unroll and jam factor "
+                  "(default is 8)\n");
   fprintf(stdout, "       --forceparallel=<bitvec>  6 bit-vector of depths "
                   "(1-indexed) to force parallel (0th bit represents depth "
                   "1)\n");
@@ -217,8 +215,8 @@ int main(int argc, char *argv[]) {
     {"parallelize", no_argument, &options->parallel, 1},
     {"innerpar", no_argument, &options->innerpar, 1},
     {"iss", no_argument, &options->iss, 1},
-    {"unroll", no_argument, &options->unroll, 1},
-    {"nounroll", no_argument, &options->unroll, 0},
+    {"unrolljam", no_argument, &options->unrolljam, 1},
+    {"nounrolljam", no_argument, &options->unrolljam, 0},
     {"bee", no_argument, &options->bee, 1},
     {"ufactor", required_argument, 0, 'u'},
     {"prevector", no_argument, &options->prevector, 1},
@@ -644,7 +642,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
   }
 
-  if (options->unroll) {
+  if (options->unrolljam) {
     /* Will generate a .unroll file */
     /* plann/plorc needs a .params */
     FILE *paramsFP = fopen(".params", "w");
@@ -655,7 +653,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
       fclose(paramsFP);
     }
-    pluto_detect_mark_unrollable_loops(prog);
+    pluto_detect_mark_register_tile_loops(prog);
   }
 
   double t_c = 0.0;
@@ -671,7 +669,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     /* Since meta info about loops is printed to be processed by scripts - if
      * transformations are performed, changed loop order/iterator names will
      * be missed. */
-    gen_unroll_file(prog);
+    gen_reg_tile_file(prog);
 
     char *basec, *bname;
     char *outFileName;

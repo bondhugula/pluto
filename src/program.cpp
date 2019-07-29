@@ -2823,7 +2823,7 @@ PlutoOptions *pluto_options_alloc() {
   options->fulldiamondtile = 0;
 
   options->iss = 0;
-  options->unroll = 0;
+  options->unrolljam = 0;
 
   /* Unroll/jam factor */
   options->ufactor = 8;

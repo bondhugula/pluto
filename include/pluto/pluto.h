@@ -93,8 +93,8 @@ struct plutoOptions {
   /* prefer pure inner parallelism to pipelined parallelism */
   int innerpar;
 
-  /* Automatic unroll/unroll-jamming of loops */
-  int unroll;
+  /* Automatic unroll-jamming of loops */
+  int unrolljam;
 
   /* unroll/jam factor */
   int ufactor;

@@ -100,13 +100,13 @@ COMMAND-LINE OPTIONS
     This is geared towards maximal fusion, but maximal fusion is not
     guaranteed. Fusion is done across SCCs.
 
-    --[no]unroll
+    --[no]unrolljam
     Automatically identify and unroll-jam up to two loops. Not enabled 
     by default.
 
     --ufactor=<n>
     Unroll or unroll-jam factor (default is 8). Note that if two loops
-    are unroll-jammed, you will get an nxn body
+    are unroll-jammed by factor n, you will get an nxn body.
 
     --[no]prevector
     Perform post-transformations to make the code amenable to 

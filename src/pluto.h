@@ -538,7 +538,6 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
 void pluto_tile(PlutoProg *);
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
-int pluto_detect_mark_unrollable_loops(PlutoProg *prog);
 
 int pluto_omp_parallelize(PlutoProg *prog);
 int pluto_dynschedule_graph_parallelize(PlutoProg *prog, FILE *sigmafp,

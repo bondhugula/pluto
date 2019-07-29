@@ -475,7 +475,10 @@ bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands) {
   return retval;
 }
 
-/* Find the innermost permutable nest (at least two tilable hyperplanes) */
+// Find the innermost permutable nest (at least two tilable hyperplanes).
+// FIXME(bondhugula): this method does not appear to work any more (due to
+// hProps being obsolete?); on examples/example/matmul.c, a single loop is being
+// returned as the band.
 void getInnermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd) {
   int loop, j, lastloop;
 

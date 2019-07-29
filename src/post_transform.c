@@ -147,10 +147,11 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
   return 0;
 }
 
-/* Detect upto two loops to register tile (unroll-jam) */
-int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
+/// Detects up to two loops to register tile (unroll-jam). Returns the number
+/// of loops marked for register tiling.
+int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
   int bandStart, bandEnd;
-  int numUnrollableLoops;
+  int numRegTileLoops;
   int loop, i;
 
   HyperplaneProperties *hProps = prog->hProps;
@@ -163,7 +164,7 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
 
   getInnermostTilableBand(prog, &bandStart, &bandEnd);
 
-  numUnrollableLoops = 0;
+  numRegTileLoops = 0;
 
   int lastloop = getDeepestNonScalarLoop(prog);
 
@@ -184,16 +185,16 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
         if (hProps[i].type == H_TILE_SPACE_LOOP)
           continue;
         prog->hProps[i].unroll = UNROLLJAM;
-        numUnrollableLoops++;
+        numRegTileLoops++;
       }
     } else {
       if (hProps[bandEnd - 1].type != H_TILE_SPACE_LOOP) {
         hProps[bandEnd - 1].unroll = UNROLLJAM;
-        numUnrollableLoops++;
+        numRegTileLoops++;
       }
       if (hProps[bandEnd].type != H_TILE_SPACE_LOOP) {
         hProps[bandEnd].unroll = UNROLL;
-        numUnrollableLoops++;
+        numRegTileLoops++;
       }
     }
   } else {
@@ -201,18 +202,18 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
      * vectorizable  */
     if (hProps[lastloop].dep_prop != PARALLEL || options->prevector == 0) {
       hProps[lastloop].unroll = UNROLL;
-      numUnrollableLoops = 1;
+      numRegTileLoops = 1;
     }
   }
 
-  if (numUnrollableLoops < 2) {
+  if (numRegTileLoops < 2) {
     /* Any parallel loop at any level can be unrolled */
     for (loop = bandStart - 1; loop >= 0; loop--) {
       if (hProps[loop].dep_prop == PARALLEL &&
           hProps[loop].type != H_TILE_SPACE_LOOP) {
         hProps[loop].unroll = UNROLLJAM;
-        numUnrollableLoops++;
-        if (numUnrollableLoops == UNROLLJAM)
+        numRegTileLoops++;
+        if (numRegTileLoops == UNROLLJAM)
           break;
       }
     }
@@ -220,20 +221,20 @@ int pluto_detect_mark_unrollable_loops(PlutoProg *prog) {
 
   IF_DEBUG(fprintf(
       stdout, "[Pluto post transform] Detected %d unroll/jammable loops\n\n",
-      numUnrollableLoops));
+      numRegTileLoops));
 
-  return numUnrollableLoops;
+  return numRegTileLoops;
 }
 
-/* Create a .unroll - empty .unroll if no unroll-jammable loops */
-int gen_unroll_file(PlutoProg *prog) {
+/* Create a .regtile - empty .regtile if no unroll-jammable loops. */
+int gen_reg_tile_file(PlutoProg *prog) {
   int i;
 
   HyperplaneProperties *hProps = prog->hProps;
-  FILE *unrollfp = fopen(".unroll", "w");
+  FILE *unrollfp = fopen(".regtile", "w");
 
   if (!unrollfp) {
-    printf("Error opening .unroll file for writing\n");
+    printf("Error opening .regtile file for writing\n");
     return -1;
   }
 
@@ -250,7 +251,6 @@ int gen_unroll_file(PlutoProg *prog) {
 }
 
 /// Optimize the intra-tile loop order for locality and vectorization.
-/// 
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
   /* Band has to be the innermost band as well */

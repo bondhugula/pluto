@@ -41,11 +41,13 @@ match_closing_brace() {
     return $closing_brace_linenum
 }
 
-if [ ! -f .unroll ]; then
+REGTILEFILE=".regtile"
+
+if [ ! -f $REGTILEFILE ]; then
     exit 2
 fi
 
-numloops=`wc -l .unroll | awk '{print $1}'`
+numloops=`wc -l $REGTILEFILE | awk '{print $1}'`
 
 if [ $numloops == 0 ]; then
     exit 3
@@ -55,14 +57,14 @@ fi
 
 # unroll only two
 
-unrolldim1=`sed -n -e '1p' .unroll | awk '{print $1}'`
-unrolldim2=`sed -n -e '2p' .unroll | awk '{print $1}'`
+unrolldim1=`sed -n -e '1p' $REGTILEFILE | awk '{print $1}'`
+unrolldim2=`sed -n -e '2p' $REGTILEFILE | awk '{print $1}'`
 
-unrollcmd1=`sed -n -e '1p' .unroll | awk '{print $2}'`
-unrollcmd2=`sed -n -e '2p' .unroll | awk '{print $2}'`
+unrollcmd1=`sed -n -e '1p' $REGTILEFILE | awk '{print $2}'`
+unrollcmd2=`sed -n -e '2p' $REGTILEFILE | awk '{print $2}'`
 
-ufactor1=`sed -n -e '1p' .unroll | awk '{print $3}'`
-ufactor2=`sed -n -e '2p' .unroll | awk '{print $3}'`
+ufactor1=`sed -n -e '1p' $REGTILEFILE | awk '{print $3}'`
+ufactor2=`sed -n -e '2p' $REGTILEFILE | awk '{print $3}'`
 
 if [ $numloops -ne 1 ]; then
     # 2 loops to unroll

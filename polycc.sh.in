@@ -117,7 +117,7 @@ cleanup() {
   fi
   if [ "$DEBUG" != 1 ]; 
   then
-    rm -f .unroll .vectorize .pragmas .params .orcc .linearized .nonlinearized \
+    rm -f .regtile .vectorize .pragmas .params .orcc .linearized .nonlinearized \
       $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
       *.sysloog .appendfilename
   fi
