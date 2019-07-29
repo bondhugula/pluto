@@ -506,6 +506,7 @@ void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
                              PlutoProg *prog) {
   int nstmts = prog->nstmts;
 
+  IF_DEBUG(printf("Distributing SCCs at level %d\n", level););
   /* Add scalar hyperplane for all statements in the program. */
   for (int i = 0; i < nstmts; i++) {
     pluto_stmt_add_hyperplane(prog->stmts[i], H_SCALAR, level);
@@ -576,7 +577,7 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   int retval =
       distribute_band_dim_based(band, prog, num_tiled_levels, bands, nbands);
   if (retval) {
-    return 0;
+    return 1;
   }
 
   /* Distribute if there is no reuse. */
@@ -668,7 +669,7 @@ int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
   }
   int retval = 0;
   for (int i = 0; i < nbands; i++) {
-    printf("Distributing band of width %d\n", bands[i]->width);
+    IF_DEBUG(printf("Distributing band %d of width %d\n", i, bands[i]->width););
     retval |= pluto_post_tile_distribute_band(bands[i], prog, num_tiled_levels,
                                               bands, nbands);
   }
