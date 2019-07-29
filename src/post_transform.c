@@ -538,6 +538,25 @@ void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
   return;
 }
 
+/// The routine updates feilds of all bands that count the number of post tile
+/// distribution hyperplanes inside and outside the band.
+void update_bands(Band **bands, int nbands, int depth) {
+  for (int i = 0; i < nbands; i++) {
+    int band_end_level = bands[i]->loop->depth + bands[i]->width +
+                         bands[i]->post_tile_dist_hyp_in_band;
+    if (depth >= band_end_level) {
+      bands[i]->post_tile_dist_hyp_out_band++;
+    } else {
+      bands[i]->post_tile_dist_hyp_in_band++;
+    }
+    if (options->debug) {
+      printf("Band %d, in hyp: %d, out hyp: %d\n", i,
+             bands[i]->post_tile_dist_hyp_in_band,
+             bands[i]->post_tile_dist_hyp_out_band);
+    }
+  }
+}
+
 /// Distribute the band based on dimensionalities. Returns true if the band was
 /// distributed; else returns false. The band is distributed at the outermost
 /// level(in the inter tile space) at which there are sccs of different
@@ -560,6 +579,7 @@ bool distribute_band_dim_based(Band *band, PlutoProg *prog,
   }
   IF_DEBUG(printf("Cutting band at depth %d\n", depth););
   distribute_sccs_in_band(new_ddg, band, depth, prog);
+  update_bands(bands, nbands, depth);
   graph_free(new_ddg);
   return true;
 }
@@ -642,18 +662,8 @@ int pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   /* Distribute statements. */
   pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
 
-  for (int i = 0; i < nbands; i++) {
-    if (depth >= bands[i]->loop->depth + bands[i]->width) {
-      bands[i]->post_tile_dist_hyp_out_band++;
-    } else {
-      bands[i]->post_tile_dist_hyp_in_band++;
-    }
-    if (options->debug) {
-      printf("Band %d, in hyp: %d, out hyp: %d\n", i,
-             bands[i]->post_tile_dist_hyp_in_band,
-             bands[i]->post_tile_dist_hyp_out_band);
-    }
-  }
+  /* Update bands */
+  update_bands(bands, nbands, depth);
 
   return 1;
 }
