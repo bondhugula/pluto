@@ -70,6 +70,25 @@ for file in $TESTS; do
     check_ret_val_emit_status
 done
 
+# Test per cc objective
+printf '%-50s ' test/test-per-cc-obj.c
+./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
+check_ret_val_emit_status
+
+# Test typed fusion with dfp. These cases are executed only when glpk or gurobi
+# is enabled. Either of these solvers is required by the dfp framework.
+TESTS="test/dfp/typed-fuse-1.c\
+       test/dfp/typed-fuse-2.c\
+       test/dfp/typed-fuse-3.c\
+       "
+if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
+   for file in $TESTS; do
+   printf '%-50s '  $file
+   ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+   check_ret_val_emit_status
+   done
+fi
+
 TESTS_TILE_PARALLEL="\
   test/dep-1,1.c \
   test/diamond-tile-example.c
@@ -79,6 +98,18 @@ echo "============================================================"
 for file in $TESTS_TILE_PARALLEL; do
     printf '%-50s ' "$file with --tile --parallel"
     ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    check_ret_val_emit_status
+done
+
+TEST_MORE_INTRA_TILE_OPT="\
+    test/intratileopt5.c
+"
+for file in $TEST_MORE_INTRA_TILE_OPT; do
+    printf '%-50s ' "$file with --maxfuse"
+    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-TILE $file
+    check_ret_val_emit_status
+    printf '%-50s ' "$file with --maxfuse --notile"
+    ./src/pluto --maxfuse --notile $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-NOTILE $file
     check_ret_val_emit_status
 done
 

@@ -65,6 +65,10 @@ struct plutoOptions {
    * one dimension. */
   int diamondtile;
 
+  /* Use per connected component u and w instead of single u and w for the whole
+   * program. */
+  int per_cc_obj;
+
   /* Extract scop information from libpet*/
   int pet;
 

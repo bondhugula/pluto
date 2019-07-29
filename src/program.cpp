@@ -2090,7 +2090,7 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
   return isl_stat_ok;
 }
 
-/* Extract a Pluto access function from an isl_map. */
+/// Extract a Pluto access function from an isl_map.
 isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
   /* Extract a PlutoAccess from every isl_basic_map */
   isl_stat r =
@@ -2821,6 +2821,8 @@ PlutoOptions *pluto_options_alloc() {
   /* Enable one dimension of concurrent startup by default */
   options->diamondtile = 1;
   options->fulldiamondtile = 0;
+
+  options->per_cc_obj = 0;
 
   options->iss = 0;
   options->unrolljam = 0;

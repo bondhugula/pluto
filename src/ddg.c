@@ -247,10 +247,10 @@ void compute_scc_vertices(Graph *ddg) {
   }
 }
 
-void print_scc_vertices(int j, Graph *g) {
+void print_scc_vertices(int scc_id, Graph *g) {
   int i;
-  for (i = 0; i < g->sccs[j].size; i++) {
-    printf("S%d, ", g->sccs[j].vertices[i]);
+  for (i = 0; i < g->sccs[scc_id].size; i++) {
+    printf("S%d, ", g->sccs[scc_id].vertices[i]);
   }
   printf("\n");
 }

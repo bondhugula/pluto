@@ -309,6 +309,37 @@ PlutoConstraints *get_scc_permutability_constraints(int scc_id,
   return scc_dep_cst;
 }
 
+/// Computes permutatbility constraints for all the dependences within the input
+/// connected component.
+PlutoConstraints *get_cc_permutability_constraints(int cc_id, PlutoProg *prog) {
+  int ndeps = prog->ndeps;
+
+  PlutoConstraints *cc_dep_cst = NULL;
+
+  for (int i = 0; i < ndeps; i++) {
+    Dep *dep = prog->deps[i];
+    int src = dep->src;
+    int dest = dep->dest;
+    if (dep_is_satisfied(dep)) {
+      continue;
+    }
+    if (prog->stmts[src]->cc_id == cc_id &&
+        prog->stmts[src]->cc_id == prog->stmts[dest]->cc_id) {
+      if (dep->cst == NULL) {
+        compute_permutability_constraints_dep(dep, prog);
+      }
+      if (cc_dep_cst == NULL) {
+        cc_dep_cst = pluto_constraints_alloc((prog->nstmts * dep->cst->nrows),
+                                             dep->cst->ncols);
+        cc_dep_cst->nrows = 0;
+        cc_dep_cst->ncols = dep->cst->ncols;
+      }
+      pluto_constraints_add(cc_dep_cst, dep->cst);
+    }
+  }
+  return cc_dep_cst;
+}
+
 /* This function itself is NOT thread-safe for the same PlutoProg */
 PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
   int nstmts, nvar, npar, ndeps, total_cst_rows;
@@ -358,13 +389,17 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
     }
   }
 
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
   if (!prog->globcst) {
-    prog->globcst = pluto_constraints_alloc(total_cst_rows, CST_WIDTH);
+    prog->globcst = pluto_constraints_alloc(total_cst_rows, ncols);
   }
 
   globcst = prog->globcst;
 
-  globcst->ncols = CST_WIDTH;
+  globcst->ncols = ncols;
   globcst->nrows = 0;
 
   /* Add constraints to globcst */
@@ -390,7 +425,22 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
     }
 
     /* Subsequent calls can just use the old ones */
-    pluto_constraints_add(globcst, dep->cst);
+    if (options->per_cc_obj) {
+      PlutoConstraints *newcst = pluto_constraints_dup(dep->cst);
+      int num_cols_to_add = (npar + 1) * (prog->ddg->num_ccs);
+      pluto_constraints_add_leading_dims(newcst, num_cols_to_add);
+      int cc_id = prog->stmts[dep->src]->cc_id;
+      unsigned source_col_offset = (npar + 1) * prog->ddg->num_ccs;
+      unsigned target_col_offset = npar + 1 + (npar + 1) * cc_id;
+      for (int j = 0; j < npar + 1; j++) {
+        pluto_constraints_interchange_cols(newcst, source_col_offset + j,
+                                           target_col_offset + j);
+      }
+      pluto_constraints_add(globcst, newcst);
+      pluto_constraints_free(newcst);
+    } else {
+      pluto_constraints_add(globcst, dep->cst);
+    }
     /* print_polylib_visual_sets("global", dep->cst); */
 
     IF_DEBUG(fprintf(stdout, "\tAfter dep %d; num_constraints: %d\n", i + 1,
@@ -640,20 +690,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
                                                 const PlutoProg *prog,
                                                 const PlutoConstraints *currcst,
                                                 int *orthonum) {
-  int nvar, npar, nstmts;
-  PlutoConstraints **orthcst;
-  HyperplaneProperties *hProps;
-  isl_ctx *ctx;
-  isl_mat *h;
-  isl_basic_set *isl_currcst;
-  PlutoOptions *options;
 
-  options = prog->options;
+  PlutoOptions *options = prog->options;
 
-  nvar = prog->nvar;
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  hProps = prog->hProps;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  HyperplaneProperties *hProps = prog->hProps;
 
   IF_DEBUG(printf("[pluto] get_stmt_ortho constraints S%d\n", stmt->id + 1););
 
@@ -682,13 +725,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
     }
   }
 
-  ctx = isl_ctx_alloc();
+  isl_ctx *ctx = isl_ctx_alloc();
   assert(ctx);
 
-  h = isl_mat_alloc(ctx, q, p);
+  isl_mat *h = isl_mat_alloc(ctx, q, p);
 
   p = 0;
-  for (i = 0; i < nvar; i++) {
+  for (int i = 0; i < nvar; i++) {
     if (stmt->is_orig_loop[i]) {
       unsigned q = 0;
       for (unsigned j = 0; j < stmt->trans->nrows; j++) {
@@ -708,12 +751,17 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   isl_mat_free(h);
 
-  orthcst =
+  PlutoConstraints **orthcst =
       (PlutoConstraints **)malloc((nvar + 1) * sizeof(PlutoConstraints *));
 
-  for (i = 0; i < nvar + 1; i++) {
-    orthcst[i] = pluto_constraints_alloc(1, CST_WIDTH);
-    orthcst[i]->ncols = CST_WIDTH;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+
+  for (int i = 0; i < nvar + 1; i++) {
+    orthcst[i] = pluto_constraints_alloc(1, ncols);
+    orthcst[i]->ncols = ncols;
   }
 
   /* All non-negative orthant only */
@@ -728,8 +776,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
     if (ortho->val[0][j] == 0)
       continue;
     int colgcd = abs(ortho->val[0][j]);
-    unsigned i;
-    for (i = 1; i < ortho->nrows; i++) {
+    for (unsigned i = 1; i < ortho->nrows; i++) {
       if (ortho->val[i][j] == 0)
         break;
       colgcd = gcd(colgcd, abs(ortho->val[i][j]));
@@ -744,6 +791,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
   }
 
   /* Fast linear independence check */
+  isl_basic_set *isl_currcst;
   if (options->flic)
     isl_currcst = NULL;
   else
@@ -751,23 +799,24 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   assert(p == ortho->nrows);
   p = 0;
+  int coeff_offset = npar + 1 + ncols - CST_WIDTH;
   for (unsigned i = 0; i < ortho->ncols; i++) {
     isl_basic_set *orthcst_i;
 
     unsigned j = 0;
     for (int q = 0; q < nvar; q++) {
       if (stmt->is_orig_loop[q]) {
-        orthcst[p]->val[0][npar + 1 + (stmt->id) * (nvar + 1) + q] =
+        orthcst[p]->val[0][coeff_offset + (stmt->id) * (nvar + 1) + q] =
             ortho->val[j][i];
         j++;
       }
     }
     orthcst[p]->nrows = 1;
-    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    orthcst[p]->val[0][ncols - 1] = -1;
     if (!options->flic) {
       orthcst_i = isl_basic_set_from_pluto_constraints(ctx, orthcst[p]);
     }
-    orthcst[p]->val[0][CST_WIDTH - 1] = 0;
+    orthcst[p]->val[0][ncols - 1] = 0;
 
     if (!options->flic) {
       orthcst_i =
@@ -783,13 +832,13 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   if (p >= 1) {
     /* Sum of all of the above is the last constraint */
-    for (int j = 0; j < CST_WIDTH; j++) {
+    for (int j = 0; j < ncols; j++) {
       for (unsigned i = 0; i < p; i++) {
         orthcst[p]->val[0][j] += orthcst[i]->val[0][j];
       }
     }
     orthcst[p]->nrows = 1;
-    orthcst[p]->val[0][CST_WIDTH - 1] = -1;
+    orthcst[p]->val[0][ncols - 1] = -1;
     p++;
   }
 
@@ -803,7 +852,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
   }
 
   /* Free the unnecessary ones */
-  for (i = p; i < nvar + 1; i++) {
+  for (int i = p; i < nvar + 1; i++) {
     pluto_constraints_free(orthcst[i]);
   }
 
@@ -824,48 +873,51 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
  */
 PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
                                                   bool hyp_search_mode) {
-  PlutoConstraints *nzcst;
-  int i, j, stmt_offset, nvar, npar, nstmts;
-
   Stmt **stmts = prog->stmts;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
-  npar = prog->npar;
+  int nstmts = prog->nstmts;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
 
-  nzcst = pluto_constraints_alloc(nstmts, CST_WIDTH);
-  nzcst->ncols = CST_WIDTH;
+  int ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
+  PlutoConstraints *nzcst = pluto_constraints_alloc(nstmts, ncols);
+  nzcst->ncols = ncols;
+
+  int coeff_offset = npar + 1 + ncols - CST_WIDTH;
 
   if (hyp_search_mode == EAGER) {
-    for (i = 0; i < nstmts; i++) {
+    for (int i = 0; i < nstmts; i++) {
       /* Don't add the constraint if enough solutions have been found */
       if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
         IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
         continue;
       }
-      stmt_offset = npar + 1 + i * (nvar + 1);
-      for (j = 0; j < nvar; j++) {
+      int stmt_offset = coeff_offset + i * (nvar + 1);
+      for (int j = 0; j < nvar; j++) {
         if (stmts[i]->is_orig_loop[j] == 1) {
           nzcst->val[nzcst->nrows][stmt_offset + j] = 1;
         }
       }
-      nzcst->val[nzcst->nrows][CST_WIDTH - 1] = -1;
+      nzcst->val[nzcst->nrows][ncols - 1] = -1;
       nzcst->nrows++;
     }
   } else {
     assert(hyp_search_mode == LAZY);
-    for (i = 0; i < nstmts; i++) {
+    for (int i = 0; i < nstmts; i++) {
       /* Don't add the constraint if enough solutions have been found */
       if (pluto_stmt_get_num_ind_hyps(stmts[i]) >= stmts[i]->dim_orig) {
         IF_DEBUG2(fprintf(stdout, "non-zero cst: skipping stmt %d\n", i));
         continue;
       }
-      stmt_offset = npar + 1 + i * (nvar + 1);
-      for (j = 0; j < nvar; j++) {
+      int stmt_offset = coeff_offset + i * (nvar + 1);
+      for (int j = 0; j < nvar; j++) {
         if (stmts[i]->is_orig_loop[j] == 1) {
           nzcst->val[0][stmt_offset + j] = 1;
         }
       }
-      nzcst->val[0][CST_WIDTH - 1] = -1;
+      nzcst->val[0][ncols - 1] = -1;
     }
     nzcst->nrows = 1;
   }
@@ -877,32 +929,36 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
  * Bounds for Pluto ILP variables
  */
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
-  int i, npar, nstmts, nvar;
-  PlutoConstraints *cst;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  int nvar = prog->nvar;
 
-  npar = prog->npar;
-  nstmts = prog->nstmts;
-  nvar = prog->nvar;
+  unsigned ncols = CST_WIDTH;
+  if (options->per_cc_obj) {
+    ncols += (npar + 1) * prog->ddg->num_ccs;
+  }
 
-  cst = pluto_constraints_alloc(1, CST_WIDTH);
+  PlutoConstraints *cst = pluto_constraints_alloc(1, ncols);
+
+  unsigned trans_coeff_offset = npar + 1 + ncols - CST_WIDTH;
 
   /* Lower bound for bounding coefficients (all non-negative) */
-  for (i = 0; i < npar + 1; i++) {
+  for (unsigned i = 0; i < trans_coeff_offset; i++) {
     pluto_constraints_add_lb(cst, i, 0);
   }
   /* Lower bound for transformation coefficients (all non-negative) */
-  for (int i = 0; i < (int)cst->ncols - npar - 1 - 1; i++) {
+  for (int i = trans_coeff_offset; i < (int)cst->ncols - 1; i++) {
     IF_DEBUG2(
         printf("Adding lower bound %d for transformation coefficients\n", 0););
-    pluto_constraints_add_lb(cst, npar + 1 + i, 0);
+    pluto_constraints_add_lb(cst, i, 0);
   }
 
   if (options->coeff_bound != -1) {
-    for (i = 0; i < (int)cst->ncols - npar - 1 - 1; i++) {
+    for (int i = trans_coeff_offset; i < (int)cst->ncols - 1; i++) {
       IF_DEBUG2(
           printf("Adding upper bound %d for transformation coefficients\n",
                  options->coeff_bound););
-      pluto_constraints_add_ub(cst, npar + 1 + i, options->coeff_bound);
+      pluto_constraints_add_ub(cst, i, options->coeff_bound);
     }
   } else {
     /* Add upper bounds for transformation coefficients */
@@ -915,11 +971,11 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
      * loop bounds
      */
     if (ub >= 10) {
-      for (i = 0; i < (int)cst->ncols - npar - 1 - 1; i++) {
+      for (int i = trans_coeff_offset; i < (int)cst->ncols - 1; i++) {
         IF_DEBUG2(
             printf("Adding upper bound %d for transformation coefficients\n",
                    ub););
-        pluto_constraints_add_ub(cst, npar + 1 + i, ub);
+        pluto_constraints_add_ub(cst, i, ub);
       }
     }
   }
@@ -1342,4 +1398,39 @@ void populate_scaling_csr_matrices_for_pluto_program(int ***index,
 
   /* Safety check. */
   assert(nrows == num_rows);
+}
+
+// Adds a hyperplane for each statement from the ILP solution.
+void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  int nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+
+  pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_LOOP);
+
+  int coeff_offset = npar + 1;
+  if (options->per_cc_obj) {
+    coeff_offset += (npar + 1) * prog->ddg->num_ccs;
+  }
+
+  for (int j = 0; j < nstmts; j++) {
+    Stmt *stmt = stmts[j];
+    pluto_stmt_add_hyperplane(stmt, H_UNKNOWN, stmt->trans->nrows);
+    for (int k = 0; k < nvar; k++) {
+      stmt->trans->val[stmt->trans->nrows - 1][k] =
+          sol[coeff_offset + j * (nvar + 1) + k];
+    }
+    /* No parameteric shifts */
+    for (int k = nvar; k < nvar + npar; k++) {
+      stmt->trans->val[stmt->trans->nrows - 1][k] = 0;
+    }
+    /* Constant loop shift */
+    stmt->trans->val[stmt->trans->nrows - 1][nvar + npar] =
+        sol[coeff_offset + j * (nvar + 1) + nvar];
+
+    stmt->hyp_types[stmt->trans->nrows - 1] =
+        pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
+                                                                 : H_LOOP;
+  }
 }

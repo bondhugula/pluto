@@ -89,7 +89,7 @@ Ploop **pluto_loops_cat(Ploop **dest, int num1, Ploop **src, int num2) {
   return dest;
 }
 
-Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, PlutoProg *prog,
+Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num) {
   unsigned ni;
 
@@ -662,7 +662,7 @@ Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog) {
  * innermost_split_level: the first parallel loop in the band which
  * has distribution under it (loop->depth is the band is perfectly nested)
  */
-Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog,
+Band *pluto_get_parallel_band(Ploop *loop, const PlutoProg *prog,
                               int *innermost_split_level) {
   int i, d, depth, width;
 
@@ -689,7 +689,7 @@ Band *pluto_get_parallel_band(Ploop *loop, PlutoProg *prog,
       if (dep->satisfaction_level < loop->depth)
         continue;
       /* The loop (or scalar dimension) has to be parallel */
-      if (dep->dirvec[depth] != DEP_ZERO)
+      if (dep->satvec[depth])
         break;
     }
     if (i < prog->ndeps)
