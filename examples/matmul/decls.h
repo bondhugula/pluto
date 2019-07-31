@@ -1,8 +1,8 @@
-#define M 1024
-#define N 1024
-#define K 1024
+#define M 2048
+#define N 2048
+#define K 2048
 #define alpha 1
 #define beta 1
-double A[M][K+13];
-double B[K][N+13];
-double C[M][N+13];
+double A[M][K];
+double B[K][N];
+double C[M][N];

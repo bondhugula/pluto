@@ -1,7 +1,7 @@
 SRC=matmul
 
-PLCFLAGS =
-TILEFLAGS = --l2tile
+PLCFLAGS = --l2tile
+TILEFLAGS =
 EXTRA_CLEAN = atlas mkl netlib atlaspt goto
 
 include ../common.mk
@@ -13,7 +13,7 @@ atlas: dgemm.f decls.h
 	gfortran -m64 -O dgemm.f -L /usr/local/ATLAS/lib -o atlas -llapack -lcblas -lf77blas -latlas -lpthread
 
 mkl: matmul.blas.c decls.h
-	$(CC) -O3 $(CFLAGS) -I$(MKL)/include matmul.blas.c -L $(MKL)/lib/ia32 -lmkl_intel -lpthread -o mkl
+	$(CC) -O3 $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o mkl
 
 acml: matmul.blas.c decls.h
 	$(CC) -O3 -c -I $(ACML)/ifort64_mp/include -openmp matmul.acml.c -DTIME
@@ -32,7 +32,7 @@ ptest: tiled_test par_test mkl_test  orig_test
 	./orig_test 2> out_orig
 	./tiled_test 2> out_tiled
 	diff -q out_tiled out_orig
-	export OMP_NUM_THREADS=4 
+	export OMP_NUM_THREADS=4
 	./par_test 2> out_par4
 	diff -q out_orig out_par4
 	./mkl_test 2> out_mkl

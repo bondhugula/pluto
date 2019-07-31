@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#define M 1024
-#define N 1024
-#define K 1024
+#define M 2048
+#define N 2048
+#define K 2048
 #define alpha 1
 #define beta 1
 
@@ -87,6 +87,8 @@ int main()
 
     IF_TIME(t_end = rtclock());
     IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
+    IF_TIME(fprintf(stderr, "%0.2lf GFLOPS\n",
+                    2.0 * M * N * K / (t_end - t_start) / 1E9));
 
 #ifdef PERFCTR
     PERF_EXIT; 

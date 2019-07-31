@@ -2,11 +2,12 @@
 *.tiled.c
 *.cloog
 *.pluto.c
+mkl
 out_*
-tiled
 orig
-par
 opt
+par
+tiled
 orig_par
 *.pipepar.c
 pipepar

@@ -5,8 +5,8 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-#CC=icc
-CC=gcc
+CC=icc
+#CC=gcc
 
 NPROCS=4
 NTHREADS=4
@@ -15,18 +15,22 @@ POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
 # Intel MKL and AMD ACML library paths
-MKL=/opt/intel/mkl
-ACML=/usr/local/acml
+MKLROOT=/opt/intel/mkl
+ACMLROOT=/usr/local/acml
 
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel
 	OMP_FLAGS     := -qopenmp
+	MKL_CFLAGS    := -DMKL_ILP64 -mkl=parallel
+	MKL_LDFLAGS   := -liomp5 -lpthread -lm -ldl
 else
 	# for gcc
 	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
 	PAR_FLAGS     := -ftree-parallelize-loops=$(NTHREADS)
 	OMP_FLAGS     := -fopenmp
+	MKL_CFLAGS    := -DMKL_ILP64 -m64 -I$(MKLROOT)/include
+	MKL_LDFLAGS   :=  -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
 endif
 
 CFLAGS += -DTIME
