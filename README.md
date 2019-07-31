@@ -87,7 +87,7 @@ TRYING A NEW CODE
 
 To run a good number of experiments on a code, it is best to use the setup 
 created for example codes in the examples/ directory.  If you do not have 
-ICC (Intel C compiler), uncomment line 7 and comment line 
+ICC (Intel C compiler), uncomment line 9 and comment line 
 8 of examples/common.mk to use GCC.
 
 - Just copy one of the sample directories in examples/, edit Makefile (SRC = 
