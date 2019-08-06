@@ -2,7 +2,7 @@
 #
 # Copyright (C) Uday Bondhugula 2007
 #
-SUBDIRS = 
+SUBDIRS =
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -20,8 +20,8 @@ pluto_SOURCES = \
 		ast_transform.h \
 		constraints.c \
 		constraints.h \
-	       	constraints_polylib.c \
-	       	constraints_polylib.h \
+		constraints_polylib.c \
+		constraints_polylib.h \
 		constraints_isl.c \
 		ddg.c \
 		ddg.h \
@@ -34,10 +34,14 @@ pluto_SOURCES = \
 		main.c \
 		math_support.c \
 		math_support.h \
+		osl_pluto.h \
+		osl_pluto.c \
 		pet_to_pluto.cpp \
+		pet_to_pluto.h \
 		pluto.c \
-		pluto_codegen_if.c \
 		pluto.h \
+		pluto_codegen_if.c \
+		pluto_codegen_if.h \
 		polyloop.c \
 		post_transform.c \
 		post_transform.h \
@@ -108,8 +112,6 @@ libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
-   -I../openscop/include \
-   -I../candl/include \
    $(ISL_INCLUDE)
 # To avoid same name object from being created with libtool and without it.
 libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
@@ -117,8 +119,6 @@ libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
    ../piplib/libpiplib_dp.la \
-   ../openscop/libosl.la \
-   ../candl/libcandl.la \
    $(ISL_LIBADD) \
    -lm -lgomp
 libpluto_la_LDFLAGS = -version-info 2:0:0

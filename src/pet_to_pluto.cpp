@@ -33,6 +33,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "pet_to_pluto.h"
+
 #include "constraints.h"
 #include "math_support.h"
 #include "program.h"
@@ -155,12 +157,12 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
     prog->deps[i] = pluto_dep_alloc();
   }
   prog->ndeps = 0;
-  prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_raw,
-                              OSL_DEPENDENCE_RAW);
-  prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_war,
-                              OSL_DEPENDENCE_WAR);
-  prog->ndeps += extract_deps(prog->deps, prog->ndeps, prog->stmts, dep_waw,
-                              OSL_DEPENDENCE_WAW);
+  prog->ndeps += extract_deps_from_isl_union_map(
+      dep_raw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_RAW);
+  prog->ndeps += extract_deps_from_isl_union_map(
+      dep_war, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAR);
+  prog->ndeps += extract_deps_from_isl_union_map(
+      dep_waw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAW);
   prog->transdeps = NULL;
   prog->ntransdeps = 0;
 

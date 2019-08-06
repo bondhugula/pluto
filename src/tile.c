@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"

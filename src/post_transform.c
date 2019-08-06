@@ -23,8 +23,8 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include "pluto.h"
 #include "post_transform.h"
+
 #include "program.h"
 #include "transforms.h"
 

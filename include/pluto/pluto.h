@@ -19,14 +19,13 @@
  * This file is part of libpluto.
  *
  */
-#ifndef __LIBPLUTO__
-#define __LIBPLUTO__
+#ifndef PLUTO_PLUTO_H
+#define PLUTO_PLUTO_H
 
 typedef struct isl_union_set isl_union_set;
 typedef struct isl_union_map isl_union_map;
 
 #include "isl/ctx.h"
-#include "osl/scop.h"
 
 #include "pluto/matrix.h"
 
@@ -52,6 +51,17 @@ enum fusionType {
   kHybridFuse
 };
 typedef enum fusionType FusionType;
+
+/// Pluto dependence type.
+enum depType {
+  PLUTO_DEP_RAW,
+  PLUTO_DEP_WAR,
+  PLUTO_DEP_WAW,
+	PLUTO_DEP_RAR,
+	PLUTO_DEP_UNDEFINED
+};
+typedef enum depType PlutoDepType;
+
 
 struct plutoOptions {
 
@@ -270,8 +280,6 @@ __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
                                          __isl_take isl_union_map *writes,
                                          PlutoOptions *options_l);
 
-int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l);
-
 /*
  * Structure to hold iterator remapping information ---
  * consists of number of statements, remapping matrix and divs.
@@ -306,4 +314,4 @@ void pluto_schedules_strbuf_free(char *schedules_str_buffer);
 }
 #endif
 
-#endif
+#endif // PLUTO_PLUTO_H

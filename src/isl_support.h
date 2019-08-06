@@ -1,5 +1,8 @@
-#ifndef _ISL_SUPPORT_H
-#define _ISL_SUPPORT_H
+#ifndef ISL_SUPPORT_H
+#define ISL_SUPPORT_H
+
+#include "isl/ctx.h"
+#include "isl/set.h"
 
 #include "math_support.h"
 
@@ -16,4 +19,4 @@ long long isl_val_get_num_ll(__isl_keep isl_val *v);
 }
 #endif
 
-#endif // _ISL_SUPPORT_H
+#endif // ISL_SUPPORT_H

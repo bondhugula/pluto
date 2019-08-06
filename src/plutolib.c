@@ -25,21 +25,17 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "candl/candl.h"
-#include "candl/scop.h"
-
 #include "isl/map.h"
 #include "isl/space.h"
 #include "isl/union_set.h"
 
-#include "constraints.h"
 #include "pluto.h"
 #include "pluto/pluto.h"
 #include "program.h"
 
 PlutoOptions *options = NULL;
 
-/// Run Pluto on the supplied PlutoProg. 
+/// Run Pluto on the supplied PlutoProg.
 static int pluto_schedule_prog(PlutoProg *prog) {
   // Set global var for rest of Pluto.
   options = prog->options;
@@ -281,7 +277,7 @@ static isl_stat stmt_filter(__isl_take isl_map *map, void *user) {
 }
 
 /// Get schedules in ISL format from PlutoProg's transformations.
-// TODO: remove the need from isl_space argument. 
+// TODO: remove the need from isl_space argument.
 static __isl_give isl_union_map *
 pluto_schedules_to_isl(PlutoProg *prog, __isl_take isl_space *space,
                        isl_ctx *ctx) {
@@ -381,7 +377,8 @@ static PlutoProg *pluto_prog_from_isl_domains_dependences(
   for (int i = 0; i < prog->ndeps; i++) {
     prog->deps[i] = pluto_dep_alloc();
   }
-  extract_deps(prog->deps, 0, prog->stmts, dependences, OSL_DEPENDENCE_RAW);
+  extract_deps_from_isl_union_map(dependences, prog->deps, 0, prog->stmts,
+                                  PLUTO_DEP_RAW);
   isl_union_map_free(dependences);
 
   return prog;
@@ -499,27 +496,6 @@ pluto_schedule_and_get_remapping(__isl_take isl_union_set *domains,
   return remapping;
 }
 
-/*
- * Performs pluto-scheduling on an osl_scop.
- * If dependences are not found in Extensions, it'll recalculate them.
- * The osl_scop's statements' domains and scattering are replaced
- * by new ones.
- */
-int pluto_schedule_osl(osl_scop_p scop, PlutoOptions *options_l) {
-  if (!scop || !scop->statement) {
-    fprintf(stderr, "Empty Scop passed\n");
-    return 1;
-  }
-
-  /* Convert clan scop to Pluto program */
-  PlutoProg *prog = scop_to_pluto_prog(scop, options);
-  pluto_schedule_prog(prog);
-  pluto_populate_scop(scop, prog, options);
-  pluto_prog_free(prog);
-
-  return 0;
-}
-
 /// A version of pluto_schedule to get the schedule, parallel loops and
 /// remapping all in one shot.
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
@@ -547,7 +523,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
 
   Remapping *remapping = pluto_get_remapping(prog);
   *remap = remapping;
-  
+
   isl_union_map *schedules = pluto_schedules_to_isl(prog, space, ctx);
 
   pluto_prog_free(prog);

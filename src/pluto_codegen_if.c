@@ -29,15 +29,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <cloog/cloog.h>
+#include "pluto_codegen_if.h"
 
-#include "version.h"
+#include "cloog/cloog.h"
+#include "osl/extensions/loop.h"
 
 #include "ast_transform.h"
-#include "constraints.h"
-#include "math_support.h"
-#include "pluto.h"
 #include "program.h"
+#include "version.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog) {
   int i, first_point_loop;
@@ -234,7 +233,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
     cloogOptions->ls[i] = -1;
   }
 
-  cloogOptions->name = "CLooG file produced by PLUTO";
+  cloogOptions->name = (char *)"CLooG file produced by PLUTO";
   cloogOptions->compilable = 0;
   cloogOptions->esp = 1;
   cloogOptions->strides = 1;
@@ -280,7 +279,7 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   if (options->cloogsh)
     cloogOptions->sh = 1;
 
-  cloogOptions->name = "PLUTO-produced CLooG file";
+  cloogOptions->name = (char *)"PLUTO-produced CLooG file";
 
   fprintf(outfp, "/* Start of CLooG code */\n");
   /* Get the code from CLooG */
@@ -402,4 +401,96 @@ int pluto_omp_parallelize(PlutoProg *prog) {
   fclose(outfp);
 
   return num_parallel_loops;
+}
+
+/*
+ * Get a list of to-be-parallelized loops frop PlutoProg.
+ */
+osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog,
+                                        int vloopsfound) {
+  unsigned i, j, nploops;
+  osl_loop_p ret_loop = NULL;
+
+  Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
+
+  IF_DEBUG(printf("[pluto_parallel_loop_list] parallelizable loops\n"););
+  IF_DEBUG(pluto_loops_print(ploops, nploops););
+
+  for (i = 0; i < nploops; i++) {
+    osl_loop_p newloop = osl_loop_malloc();
+
+    char iter[13];
+    snprintf(iter, sizeof(iter), "t%d", ploops[i]->depth + 1);
+    newloop->iter = strdup(iter);
+
+    newloop->nb_stmts = ploops[i]->nstmts;
+    newloop->stmt_ids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
+    unsigned max_depth = 0;
+    for (j = 0; j < ploops[i]->nstmts; j++) {
+      Stmt *stmt = ploops[i]->stmts[j];
+      newloop->stmt_ids[j] = stmt->id + 1;
+
+      if (stmt->trans->nrows > max_depth)
+        max_depth = stmt->trans->nrows;
+    }
+
+    newloop->directive += CLAST_PARALLEL_OMP;
+    char *private_vars = (char *)malloc(128);
+    private_vars[0] = '\0';
+    if (vloopsfound)
+      strcpy(private_vars, "lbv, ubv");
+    unsigned depth = ploops[i]->depth + 1;
+    for (depth++; depth <= max_depth; depth++) {
+      sprintf(private_vars + strlen(private_vars), "t%d,", depth);
+    }
+    if (strlen(private_vars))
+      private_vars[strlen(private_vars) - 1] = '\0'; // remove last comma
+    newloop->private_vars = strdup(private_vars);
+    free(private_vars);
+
+    // add new loop to looplist
+    osl_loop_add(newloop, &ret_loop);
+  }
+
+  pluto_loops_free(ploops, nploops);
+
+  return ret_loop;
+}
+
+/// Get a list of to-be-vectorized loops from PlutoProg.
+osl_loop_p pluto_get_vector_loop_list(const PlutoProg *prog) {
+  unsigned i, j, nploops;
+  osl_loop_p ret_loop = NULL;
+
+  Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
+
+  for (i = 0; i < nploops; i++) {
+    /* Only the innermost ones */
+    if (!pluto_loop_is_innermost(ploops[i], prog))
+      continue;
+
+    IF_DEBUG(printf("[pluto_get_vector_loop_list] marking loop\n"););
+    IF_DEBUG(pluto_loop_print(ploops[i]););
+
+    osl_loop_p newloop = osl_loop_malloc();
+
+    char iter[13];
+    snprintf(iter, sizeof(iter), "t%d", ploops[i]->depth + 1);
+    newloop->iter = strdup(iter);
+
+    newloop->nb_stmts = ploops[i]->nstmts;
+    newloop->stmt_ids = (int *)malloc(ploops[i]->nstmts * sizeof(int));
+    for (j = 0; j < ploops[i]->nstmts; j++) {
+      newloop->stmt_ids[j] = ploops[i]->stmts[j]->id + 1;
+    }
+
+    newloop->directive += CLAST_PARALLEL_VEC;
+
+    // add new loop to looplist
+    osl_loop_add(newloop, &ret_loop);
+  }
+
+  pluto_loops_free(ploops, nploops);
+
+  return ret_loop;
 }

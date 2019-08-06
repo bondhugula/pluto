@@ -33,20 +33,19 @@
 #include "config.h"
 #endif
 
-#include "osl/extensions/irregular.h"
-#include "osl/generic.h"
-#include "osl/scop.h"
-
 #include "math_support.h"
+#include "pet_to_pluto.h"
+#include "osl_pluto.h"
 #include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
 #include "version.h"
 
-#include "candl/candl.h"
-#include "candl/scop.h"
 #include "clan/clan.h"
+
+#include "osl/extensions/irregular.h"
+#include "osl/scop.h"
 
 #include "pet.h"
 
@@ -603,7 +602,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Convert clan scop to Pluto program */
-    prog = scop_to_pluto_prog(scop, options);
+    prog = osl_scop_to_pluto_prog(scop, options);
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;

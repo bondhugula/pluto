@@ -17,16 +17,10 @@
  * top-level directory of this program (`COPYING')
  *
  */
-#ifndef _PROGRAM_H
+#ifndef PROGRAM_H
+#define PROGRAM_H
 
-#include "constraints.h"
 #include "pluto.h"
-
-#include "candl/candl.h"
-#include "clan/clan.h"
-
-#include "osl/scop.h"
-#include "pet.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -55,7 +49,6 @@ void pluto_deps_print(FILE *, PlutoProg *prog);
 
 PlutoProg *pluto_prog_alloc();
 void pluto_prog_free(PlutoProg *prog);
-PlutoProg *scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options);
 
 int get_coeff_upper_bound(PlutoProg *prog);
 
@@ -99,8 +92,8 @@ void pluto_stmt_add_hyperplane(Stmt *stmt, PlutoHypType type, unsigned pos);
 PlutoMatrix *pluto_get_new_access_func(const PlutoMatrix *acc, const Stmt *stmt,
                                        int **divs);
 
-int extract_deps(Dep **deps, int first, Stmt **stmts,
-                 __isl_keep isl_union_map *umap, int type);
+int extract_deps_from_isl_union_map(__isl_keep isl_union_map *umap, Dep **deps,
+                                    int first, Stmt **stmts, PlutoDepType type);
 
 int pluto_get_max_ind_hyps(const PlutoProg *prog);
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog);
@@ -108,10 +101,6 @@ unsigned pluto_stmt_get_num_ind_hyps(const Stmt *stmt);
 int pluto_stmt_get_num_ind_hyps_non_scalar(const Stmt *stmt);
 int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
-
-PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *, PlutoOptions *);
-void pluto_populate_scop(osl_scop_p scop, PlutoProg *prog,
-                         PlutoOptions *options);
 
 void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt);
 void pluto_transformations_print(const PlutoProg *prog);
@@ -146,4 +135,4 @@ int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 }
 #endif
 
-#endif
+#endif  // PROGRAM_H

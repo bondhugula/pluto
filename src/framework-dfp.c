@@ -31,7 +31,6 @@
 #include "pluto.h"
 #include "program.h"
 
-#include "candl/candl.h"
 #include <isl/constraint.h>
 #include <isl/mat.h>
 #include <isl/set.h>

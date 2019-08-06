@@ -23,7 +23,7 @@
 #include <stdlib.h>
 
 #include "ast_transform.h"
-#include "pluto.h"
+
 #include "program.h"
 
 #include "cloog/cloog.h"

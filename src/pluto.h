@@ -17,19 +17,15 @@
  * top-level directory of this program (`COPYING')
  *
  */
-#ifndef _PLUTO_H_
-#define _PLUTO_H_
+#ifndef PLUTO_H
+#define PLUTO_H
 
 #include <stdbool.h>
-
-#include "osl/scop.h"
 
 #include "constraints.h"
 #include "ddg.h"
 #include "math_support.h"
 #include "pluto/pluto.h"
-
-#include "osl/extensions/dependence.h"
 
 #ifdef GLPK
 #include <glpk.h>
@@ -97,13 +93,6 @@ typedef enum hyptype {
   H_TILE_SPACE_LOOP,
   H_SCALAR
 } PlutoHypType;
-
-/* Candl dependences are not marked uniform/non-uniform */
-#define IS_UNIFORM(type) (0)
-#define IS_RAR(type) (type == OSL_DEPENDENCE_RAR)
-#define IS_RAW(type) (type == OSL_DEPENDENCE_RAW)
-#define IS_WAR(type) (type == OSL_DEPENDENCE_WAR)
-#define IS_WAW(type) (type == OSL_DEPENDENCE_WAW)
 
 typedef enum looptype {
   UNKNOWN = 0,
@@ -263,8 +252,8 @@ struct dependence {
 
   PlutoConstraints *depsat_poly;
 
-  /* Dependence type from Candl (raw, war, or rar) */
-  int type;
+  /// Dependence type.
+  PlutoDepType type;
 
   /* Has this dependence been satisfied? */
   bool satisfied;
@@ -296,6 +285,11 @@ struct dependence {
   DepDir *dirvec;
 };
 typedef struct dependence Dep;
+
+#define IS_RAR(type) (type == PLUTO_DEP_RAR)
+#define IS_RAW(type) (type == PLUTO_DEP_RAW)
+#define IS_WAR(type) (type == PLUTO_DEP_WAR)
+#define IS_WAW(type) (type == PLUTO_DEP_WAW)
 
 typedef enum unrollType { NO_UNROLL, UNROLL, UNROLLJAM } UnrollType;
 
@@ -388,8 +382,6 @@ struct plutoProg {
   /* Hyperplane that was replaced in case concurrent start
    * had been found*/
   int evicted_hyp_pos;
-
-  osl_scop_p scop;
 
   /* number of outermost parallel dimensions to be parameterized */
   /* used by dynschedule */
@@ -711,4 +703,4 @@ bool introduce_skew(PlutoProg *prog);
 }
 #endif
 
-#endif
+#endif // PLUTO_H

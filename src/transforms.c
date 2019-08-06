@@ -19,12 +19,11 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include "transforms.h"
-#include "constraints.h"
-#include "pluto.h"
-#include "program.h"
+#include <assert.h>
 
-#include "assert.h"
+#include "transforms.h"
+
+#include "program.h"
 
 /// Sink statement (domain); depth: 0-indexed.
 void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog) {
