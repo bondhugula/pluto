@@ -108,11 +108,8 @@ libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
    -I../piplib/include \
-   -I../clan/include \
-   -I../pet/include \
    -I../openscop/include \
    -I../candl/include \
-   -I../cloog-isl/include \
    $(ISL_INCLUDE)
 # To avoid same name object from being created with libtool and without it.
 libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
@@ -120,9 +117,7 @@ libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
 # libpluto doesn't use polylib
 libpluto_la_LIBADD = \
    ../piplib/libpiplib_dp.la \
-   ../pet/libpet.la \
    ../openscop/libosl.la \
-   ../clan/libclan.la \
    ../candl/libcandl.la \
    $(ISL_LIBADD) \
    -lm -lgomp
