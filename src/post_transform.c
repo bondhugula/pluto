@@ -250,6 +250,56 @@ int gen_reg_tile_file(PlutoProg *prog) {
   return 0;
 }
 
+/// Routine returns the outermost level in the band at which the statements
+/// given by stmts are distributed. Returns zero, if the statements are not
+/// distributed.
+int get_stmt_dist_level_in_band(Stmt **stmts, int nstmts, Band *band,
+                                int num_tiled_levels) {
+  unsigned band_begin = band->loop->depth;
+  unsigned band_end = band->loop->depth + (num_tiled_levels * band->width) +
+                      band->post_tile_dist_hyp_in_band;
+  for (int i = band_begin; i < band_end; i++) {
+    if (!pluto_is_depth_scalar(band->loop, i))
+      continue;
+    int col = stmts[0]->trans->ncols - 1;
+    int cut_id = stmts[0]->trans->val[i][col];
+    for (int j = 1; j < nstmts; j++) {
+      int col = stmts[j]->trans->ncols - 1;
+      if (cut_id != stmts[j]->trans->val[i][col]) {
+        return i;
+      }
+    }
+  }
+  /* This is with the assumption that the first level in the band is always a
+   * loop */
+  return 0;
+}
+
+/// Returns precisely the loops that enclose the statements in
+/// band->loop->stmts. Ploops returned by get_loops_under(ref.
+/// intra_tile_optimize_band) will not be the precise set of loops enclosing the
+/// statements in the band, as the statements my be distributed in the inter
+/// tile space. This routine precisely gives the scattering dimensions that
+/// enclose the statements in the band.
+Ploop **get_loops_precise(Band *band, Ploop **loops, int nloops,
+                          int num_tiled_levels, PlutoProg *prog,
+                          int *new_num_loops) {
+  assert(num_tiled_levels >= 1);
+  Stmt **stmts = band->loop->stmts;
+  int nstmts = band->loop->nstmts;
+  int get_dist_level =
+      get_stmt_dist_level_in_band(stmts, nstmts, band, num_tiled_levels);
+
+  if (!get_dist_level) {
+    *new_num_loops = 0;
+    return NULL;
+  }
+
+  /* Temproary return values for the build to go through. */
+  *new_num_loops = nloops;
+  return loops;
+}
+
 /// Optimize the intra-tile loop order for locality and vectorization.
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
@@ -261,10 +311,34 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   }
 
   unsigned nloops;
+  int depth =
+      band->loop->depth + num_tiled_levels * band->width + num_new_levels;
+  printf("Getting loop at depth  %d\n", depth);
   Ploop **loops = pluto_get_loops_under(
       band->loop->stmts, band->loop->nstmts,
       band->loop->depth + num_tiled_levels * band->width + num_new_levels, prog,
       &nloops);
+
+  /* These statements might still be distributed at the inter tile space */
+  printf("Loops for intratile opt in Band ");
+  for (unsigned i = 0; i < nloops; i++) {
+    pluto_loop_print(loops[i]);
+  }
+
+  bool has_inter_tile_dist =
+      (num_tiled_levels >= 1) || (band->loop->nstmts > 1);
+
+  if (has_inter_tile_dist) {
+    int num_new_loops = 0;
+    Ploop **new_loops = get_loops_precise(band, loops, nloops, num_tiled_levels,
+                                          prog, &num_new_loops);
+    /* Set loops to the precise ones. */
+    if (new_loops != NULL) {
+      /* pluto_loops_free(loops, nloops); */
+      loops = new_loops;
+      nloops = num_new_loops;
+    }
+  }
 
   int max_score = INT_MIN;
   Ploop *best_loop = NULL;
