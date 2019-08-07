@@ -91,7 +91,8 @@ fi
 
 TESTS_TILE_PARALLEL="\
   test/dep-1,1.c \
-  test/diamond-tile-example.c
+  test/diamond-tile-example.c \
+  test/intratileopt6.c \
   "
 echo -e "\nTest without pet frontend but with tiling / parallelization"
 echo "============================================================"

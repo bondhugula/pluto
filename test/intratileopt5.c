@@ -18,7 +18,7 @@
 // CHECK-NOTILE: T(S4): (i, j+k, 1, 1, k)
 // CHECK: Output written
 
-/* This is a 2mm kernel is taken from Polybench to test intra tile optimization.
+/* This 2mm kernel is taken from Polybench to test intra tile optimization.
  * With maxfuse, the intra-tile optimization has to move hyperplane (j+k) at
  * level 6 to the innermost level for the statement S4. This test case thus
  * tests for intra tile optimization to move loops across scalar hyperplanes. If
