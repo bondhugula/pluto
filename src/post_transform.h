@@ -29,6 +29,6 @@ int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,
 int pluto_detect_mark_register_tile_loops(PlutoProg *prog);
 
 int gen_reg_tile_file(PlutoProg *prog);
-int pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
-                               int n_tiled_levels);
+bool pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
+                                int n_tiled_levels);
 #endif
