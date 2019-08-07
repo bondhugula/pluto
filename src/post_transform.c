@@ -313,20 +313,22 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   unsigned nloops;
   int depth =
       band->loop->depth + num_tiled_levels * band->width + num_new_levels;
-  printf("Getting loop at depth  %d\n", depth);
+  IF_DEBUG(printf("Getting loop at depth  %d\n", depth););
   Ploop **loops = pluto_get_loops_under(
       band->loop->stmts, band->loop->nstmts,
       band->loop->depth + num_tiled_levels * band->width + num_new_levels, prog,
       &nloops);
 
   /* These statements might still be distributed at the inter tile space */
-  printf("Loops for intratile opt in Band ");
-  for (unsigned i = 0; i < nloops; i++) {
-    pluto_loop_print(loops[i]);
+  if (options->debug) {
+    printf("Loops for intratile opt in Band ");
+    for (unsigned i = 0; i < nloops; i++) {
+      pluto_loop_print(loops[i]);
+    }
   }
 
   bool has_inter_tile_dist =
-      (num_tiled_levels >= 1) || (band->loop->nstmts > 1);
+      (num_tiled_levels >= 1) && (band->loop->nstmts > 1);
 
   if (has_inter_tile_dist) {
     int num_new_loops = 0;
