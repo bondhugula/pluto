@@ -347,6 +347,10 @@ Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
   return best_loop;
 }
 
+/// For each statement in the input outermost band, the routine returns a per
+/// statement band. The returned band->loop will have a single statement. This
+/// is used to find statements in the input band that are distributed in the
+/// tile space.
 Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
   int nstmts = band->loop->nstmts;
   int nbands = 0;
@@ -371,8 +375,9 @@ Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
   return per_stmt_bands;
 }
 
-/// Assumes all bands in per_stmt_bands have same widths and begin at same
-/// depth.
+/// Assumes that all bands in per_stmt_bands have same widths and begin at same
+/// depth. Returns true if the statements in band b1 and b2 are fused in the
+/// tile space.
 bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
                          int num_tiled_levels) {
   unsigned band_begin = per_stmt_bands[b1]->loop->depth;
@@ -396,6 +401,9 @@ bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
   return true;
 }
 
+/// The routine fuses per statement bands of statements that are not distributed
+/// in the tile space. The intra tile loop iterators of all these statements
+/// which are not distributed have to be permuted to the inner levels together.
 Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
                            int num_tiled_levels) {
   int nstmts = band->loop->nstmts;
@@ -463,18 +471,16 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     return 0;
   }
 
-  /* Band may have been distributed in the inter tile space. The following is an
-   * early bailout condition. If the band is distributed then there can be
-   * multiple innner permutable bands. We need to find optimize for each of them
-   * separately. */
+  /* Band may have been distributed in the inter tile space.  If the band is
+   * distributed then there can be multiple innner permutable bands. We need to
+   * find optimize for each of them separately. First find bands with a single
+   * statement in it and then fuse the bands with statements that are fused in
+   * the tile space. */
+  /* TODO: We need an early bailout condition here. If the number of statements
+   * in the band is 1 or the loop nest is not tiled, then we can skip the
+   * procedure to find inner most bands corresponding to the input band. */
   int nstmt_bands = 0;
   Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
-  if (options->debug) {
-    for (int i = 0; i < nstmt_bands; i++) {
-      printf("Band %d:\n", i);
-      pluto_band_print(per_stmt_bands[i]);
-    }
-  }
 
   int nfused_bands = 0;
   Band **ibands = fuse_per_stmt_bands(per_stmt_bands, &nfused_bands, band,
@@ -486,11 +492,11 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
 
   int retval = 0;
   for (int i = 0; i < nfused_bands; i++) {
-
     Band *band = ibands[i];
     int depth =
         band->loop->depth + num_tiled_levels * band->width + num_new_levels;
     IF_DEBUG(printf("Getting loop at depth  %d\n", depth););
+
     unsigned nloops;
     Ploop **loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
                                           depth, prog, &nloops);
@@ -507,6 +513,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                             (num_tiled_levels + 1) * band->width +
                             num_new_levels;
       bool move_across_scalar_hyperplanes = false;
+
       /* Move loop across scalar hyperplanes only if the loop nest is tiled.*/
       if (num_tiled_levels > 0) {
         move_across_scalar_hyperplanes = true;
