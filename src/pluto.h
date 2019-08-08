@@ -648,6 +648,7 @@ void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
 int pluto_loop_compar(const void *_l1, const void *_l2);
 Band *pluto_band_alloc(Ploop *loop, int width);
+Band *pluto_band_dup(Band *band);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 

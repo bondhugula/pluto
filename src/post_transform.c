@@ -350,7 +350,6 @@ Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
 Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
   int nstmts = band->loop->nstmts;
   int nbands = 0;
-  pluto_band_print(band);
   Band **per_stmt_bands = (Band **)malloc(nstmts * sizeof(Band *));
   for (int i = 0; i < nstmts; i++) {
     /* Create a Ploop with a single statement i */
@@ -370,6 +369,89 @@ Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
   }
   *nstmt_bands = nbands;
   return per_stmt_bands;
+}
+
+/// Assumes all bands in per_stmt_bands have same widths and begin at same
+/// depth.
+bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
+                         int num_tiled_levels) {
+  unsigned band_begin = per_stmt_bands[b1]->loop->depth;
+  unsigned band_end = per_stmt_bands[b1]->loop->depth +
+                      num_tiled_levels * per_stmt_bands[b1]->width +
+                      per_stmt_bands[b1]->post_tile_dist_hyp_in_band;
+
+  Stmt *stmt1 = per_stmt_bands[b1]->loop->stmts[0];
+  Stmt *stmt2 = per_stmt_bands[b2]->loop->stmts[0];
+
+  for (unsigned i = band_begin; i < band_end; i++) {
+    if (!pluto_is_depth_scalar(per_stmt_bands[b1]->loop, i)) {
+      continue;
+    }
+    int col1 = stmt1->trans->ncols - 1;
+    int col2 = stmt2->trans->ncols - 1;
+    if (stmt1->trans->val[i][col1] != stmt2->trans->val[i][col2]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
+                           int num_tiled_levels) {
+  Stmt **stmts = band->loop->stmts;
+  int nstmts = band->loop->nstmts;
+  unsigned *band_map = (unsigned *)malloc(nstmts * sizeof(unsigned));
+  for (unsigned i = 0; i < nstmts; i++) {
+    band_map[i] = i;
+  }
+
+  int total_bands = nstmts;
+  for (int i = 0; i < nstmts; i++) {
+    for (int j = i + 1; j < nstmts; j++) {
+      /* If the staments in which were originally in bands i and j have been
+       * fused, then skip. */
+      if (band_map[i] == band_map[j]) {
+        continue;
+      }
+      /* If the statements in the bands i and j are not fused, then do not merge
+       * the bands. */
+      if (!stmts_fused_in_band(per_stmt_bands, i, j, num_tiled_levels)) {
+        IF_DEBUG(printf("Stmts distributed in inter tile space\n"););
+        continue;
+      }
+      band_map[j] = band_map[i];
+      total_bands--;
+    }
+  }
+
+  if (total_bands == nstmts) {
+    *nfused_bands = total_bands;
+    return per_stmt_bands;
+  }
+
+  /* Fuse bands based on band map. Note that Band map will be sorted, and
+   * band_map[i] will be the id of the smallest band with which band[i] has to
+   * be fused. */
+  IF_DEBUG(printf("Total number of fused bands %d\n", total_bands););
+  Band **fused_bands = (Band **)malloc(total_bands * sizeof(Band *));
+  int nfbands = 0;
+
+  for (int i = 0; i < nstmts; i++) {
+    IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
+    if (nfbands == band_map[i]) {
+      fused_bands[nfbands++] = pluto_band_dup(per_stmt_bands[i]);
+      continue;
+    }
+    unsigned band_id = band_map[i];
+    Ploop *loop = fused_bands[band_id]->loop;
+    int new_num_stmts = loop->nstmts + per_stmt_bands[i]->loop->nstmts;
+    loop->stmts = (Stmt **)realloc(loop->stmts, new_num_stmts * sizeof(Stmt *));
+    memcpy(loop->stmts + loop->nstmts, per_stmt_bands[i]->loop->stmts,
+           per_stmt_bands[i]->loop->nstmts * sizeof(Stmt *));
+    fused_bands[band_id]->loop->nstmts = new_num_stmts;
+  }
+  *nfused_bands = nfbands;
+  return fused_bands;
 }
 
 /// Optimize the intra-tile loop order for locality and vectorization.
@@ -412,9 +494,9 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     }
   }
 
-  /* int fused_bands = nstmt_bands; */
-  /* Bands ***ibands = fuse_per_stmt_bands(per_stmt_bands, &fused_bands, band);
-   */
+  int fused_bands = 0;
+  Band **ibands =
+      fuse_per_stmt_bands(per_stmt_bands, &fused_bands, band, num_tiled_levels);
 
   bool has_inter_tile_dist =
       (num_tiled_levels >= 1) && (band->loop->nstmts > 1);
