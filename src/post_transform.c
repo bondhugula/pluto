@@ -462,13 +462,13 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
 }
 
 /// Optimize the intra-tile loop order for locality and vectorization.
-int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
-                                   PlutoProg *prog) {
+bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
+                                    PlutoProg *prog) {
   unsigned num_new_levels =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
   /* Band has to be the innermost band as well */
   if (!pluto_is_band_innermost(band, num_tiled_levels, num_new_levels)) {
-    return 0;
+    return false;
   }
 
   /* Band may have been distributed in the inter tile space.  If the band is
@@ -490,7 +490,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     pluto_bands_print(ibands, nfused_bands);
   }
 
-  int retval = 0;
+  bool retval = false;
   for (int i = 0; i < nfused_bands; i++) {
     Band *band = ibands[i];
     int depth =
@@ -520,7 +520,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
       }
       pluto_make_innermost_loop(best_loop, last_level,
                                 move_across_scalar_hyperplanes, prog);
-      retval = 1;
+      retval = true;
     }
     pluto_loops_free(loops, nloops);
   }
@@ -529,7 +529,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
 
 /// This routine is called only when the band is not tiled ?
 // is_tiled: is the band tiled
-int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
+bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
   unsigned nbands;
   int retval;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);
