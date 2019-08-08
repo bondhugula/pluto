@@ -2,16 +2,16 @@
 // CHECK: T(S2): (i, j, 1, 0, k)
 // CHECK: T(S3): (i, j, 0, 0, 0)
 // CHECK: T(S4): (i, j+k, 1, 1, k)
-// CHECK-TILE: After tiling:
-// CHECK-TILE: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
-// CHECK-TILE: T(S2): (1, i/32, j/32, 0, k/32, i, j, 0, k)
-// CHECK-TILE: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
-// CHECK-TILE: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
+// TILE-PARALLEL: After tiling:
+// TILE-PARALLEL: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
+// TILE-PARALLEL: T(S2): (1, i/32, j/32, 0, k/32, i, j, 0, k)
+// TILE-PARALLEL: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
+// TILE-PARALLEL: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
 // After intra-tile optimize
-// CHECK-TILE: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
-// CHECK-TILE: T(S2): (1, i/32, j/32, 0, k/32, i, k, 0, j)
-// CHECK-TILE: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
-// CHECK-TILE: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
+// TILE-PARALLEL: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
+// TILE-PARALLEL: T(S2): (1, i/32, j/32, 0, k/32, i, k, 0, j)
+// TILE-PARALLEL: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
+// TILE-PARALLEL: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
 // CHECK: Output written
 
 /* This 2mm kernel is taken from Polybench to test intra tile optimization.
