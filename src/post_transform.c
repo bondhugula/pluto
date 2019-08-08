@@ -464,22 +464,20 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     return 0;
   }
 
-  unsigned nloops;
-  int depth =
-      band->loop->depth + num_tiled_levels * band->width + num_new_levels;
-  IF_DEBUG(printf("Getting loop at depth  %d\n", depth););
-  Ploop **loops = pluto_get_loops_under(
-      band->loop->stmts, band->loop->nstmts,
-      band->loop->depth + num_tiled_levels * band->width + num_new_levels, prog,
-      &nloops);
+  /* unsigned nloops; */
+  /* Ploop **loops = pluto_get_loops_under( */
+  /*     band->loop->stmts, band->loop->nstmts, */
+  /*     band->loop->depth + num_tiled_levels * band->width + num_new_levels,
+   * prog, */
+  /*     &nloops); */
 
   /* These statements might still be distributed at the inter tile space */
-  if (options->debug) {
-    printf("Loops for intratile opt in Band ");
-    for (unsigned i = 0; i < nloops; i++) {
-      pluto_loop_print(loops[i]);
-    }
-  }
+  /* if (options->debug) { */
+  /*   printf("Loops for intratile opt in Band "); */
+  /*   for (unsigned i = 0; i < nloops; i++) { */
+  /*     pluto_loop_print(loops[i]); */
+  /*   } */
+  /* } */
 
   /* Band may have been distributed in the inter tile space. The following is an
    * early bailout condition. If the band is distributed then there can be
@@ -494,48 +492,64 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     }
   }
 
-  int fused_bands = 0;
-  Band **ibands =
-      fuse_per_stmt_bands(per_stmt_bands, &fused_bands, band, num_tiled_levels);
-
-  bool has_inter_tile_dist =
-      (num_tiled_levels >= 1) && (band->loop->nstmts > 1);
-
-  if (has_inter_tile_dist) {
-    int num_new_loops = 0;
-    Ploop **new_loops = get_loops_precise(band, loops, nloops, num_tiled_levels,
-                                          prog, &num_new_loops);
-    /* Set loops to the precise ones. */
-    if (new_loops != NULL) {
-      /* pluto_loops_free(loops, nloops); */
-      loops = new_loops;
-      nloops = num_new_loops;
-    }
+  int nfused_bands = 0;
+  Band **ibands = fuse_per_stmt_bands(per_stmt_bands, &nfused_bands, band,
+                                      num_tiled_levels);
+  if (options->debug) {
+    printf("Bands for intra tile optimiztion \n");
+    pluto_bands_print(ibands, nfused_bands);
   }
 
-  Ploop *best_loop = get_best_vectorizable_loop(loops, nloops, prog);
+  /* bool has_inter_tile_dist = */
+  /*     (num_tiled_levels >= 1) && (band->loop->nstmts > 1); */
+  /*  */
+  /* if (has_inter_tile_dist) { */
+  /*   int num_new_loops = 0; */
+  /*   Ploop **new_loops = get_loops_precise(band, loops, nloops,
+   * num_tiled_levels, */
+  /*                                         prog, &num_new_loops); */
+  /*   #<{(| Set loops to the precise ones. |)}># */
+  /*   if (new_loops != NULL) { */
+  /*     #<{(| pluto_loops_free(loops, nloops); |)}># */
+  /*     loops = new_loops; */
+  /*     nloops = num_new_loops; */
+  /*   } */
+  /* } */
 
-  if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
-    IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
-    IF_DEBUG(pluto_loop_print(best_loop););
+  int retval = 0;
+  for (int i = 0; i < nfused_bands; i++) {
 
-    /* The last level in the innermost permutable band. This is true only if the
-     * outermost permutable band and innermost permutable band are the same. */
-    unsigned last_level = band->loop->depth + num_tiled_levels * band->width +
-                          band->width + num_new_levels;
-    bool move_across_scalar_hyperplanes = false;
-    /* Move loop across scalar hyperplanes only if the loop nest is tiled.*/
-    if (num_tiled_levels > 0) {
-      move_across_scalar_hyperplanes = true;
+    Band *band = ibands[i];
+    int depth =
+        band->loop->depth + num_tiled_levels * band->width + num_new_levels;
+    IF_DEBUG(printf("Getting loop at depth  %d\n", depth););
+    unsigned nloops;
+    Ploop **loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
+                                          depth, prog, &nloops);
+    Ploop *best_loop = get_best_vectorizable_loop(loops, nloops, prog);
+
+    if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
+      IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
+      IF_DEBUG(pluto_loop_print(best_loop););
+
+      /* The last level in the innermost permutable band. This is true only if
+       * the outermost permutable band and innermost permutable band are the
+       * same. */
+      unsigned last_level = band->loop->depth +
+                            (num_tiled_levels + 1) * band->width +
+                            num_new_levels;
+      bool move_across_scalar_hyperplanes = false;
+      /* Move loop across scalar hyperplanes only if the loop nest is tiled.*/
+      if (num_tiled_levels > 0) {
+        move_across_scalar_hyperplanes = true;
+      }
+      pluto_make_innermost_loop(best_loop, last_level,
+                                move_across_scalar_hyperplanes, prog);
+      retval = 1;
     }
-    pluto_make_innermost_loop(best_loop, last_level,
-                              move_across_scalar_hyperplanes, prog);
     pluto_loops_free(loops, nloops);
-    return 1;
   }
-
-  pluto_loops_free(loops, nloops);
-  return 0;
+  return retval;
 }
 
 /// This routine is called only when the band is not tiled ?
