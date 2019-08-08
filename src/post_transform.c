@@ -398,7 +398,6 @@ bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
 
 Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
                            int num_tiled_levels) {
-  Stmt **stmts = band->loop->stmts;
   int nstmts = band->loop->nstmts;
   unsigned *band_map = (unsigned *)malloc(nstmts * sizeof(unsigned));
   for (unsigned i = 0; i < nstmts; i++) {
@@ -464,21 +463,6 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     return 0;
   }
 
-  /* unsigned nloops; */
-  /* Ploop **loops = pluto_get_loops_under( */
-  /*     band->loop->stmts, band->loop->nstmts, */
-  /*     band->loop->depth + num_tiled_levels * band->width + num_new_levels,
-   * prog, */
-  /*     &nloops); */
-
-  /* These statements might still be distributed at the inter tile space */
-  /* if (options->debug) { */
-  /*   printf("Loops for intratile opt in Band "); */
-  /*   for (unsigned i = 0; i < nloops; i++) { */
-  /*     pluto_loop_print(loops[i]); */
-  /*   } */
-  /* } */
-
   /* Band may have been distributed in the inter tile space. The following is an
    * early bailout condition. If the band is distributed then there can be
    * multiple innner permutable bands. We need to find optimize for each of them
@@ -499,22 +483,6 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     printf("Bands for intra tile optimiztion \n");
     pluto_bands_print(ibands, nfused_bands);
   }
-
-  /* bool has_inter_tile_dist = */
-  /*     (num_tiled_levels >= 1) && (band->loop->nstmts > 1); */
-  /*  */
-  /* if (has_inter_tile_dist) { */
-  /*   int num_new_loops = 0; */
-  /*   Ploop **new_loops = get_loops_precise(band, loops, nloops,
-   * num_tiled_levels, */
-  /*                                         prog, &num_new_loops); */
-  /*   #<{(| Set loops to the precise ones. |)}># */
-  /*   if (new_loops != NULL) { */
-  /*     #<{(| pluto_loops_free(loops, nloops); |)}># */
-  /*     loops = new_loops; */
-  /*     nloops = num_new_loops; */
-  /*   } */
-  /* } */
 
   int retval = 0;
   for (int i = 0; i < nfused_bands; i++) {
