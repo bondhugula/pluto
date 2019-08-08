@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "post_transform.h"
 
@@ -258,7 +259,7 @@ int get_stmt_dist_level_in_band(Stmt **stmts, int nstmts, Band *band,
   unsigned band_begin = band->loop->depth;
   unsigned band_end = band->loop->depth + (num_tiled_levels * band->width) +
                       band->post_tile_dist_hyp_in_band;
-  for (int i = band_begin; i < band_end; i++) {
+  for (int i = band_end - 1; i >= band_begin; i--) {
     if (!pluto_is_depth_scalar(band->loop, i))
       continue;
     int col = stmts[0]->trans->ncols - 1;
@@ -287,6 +288,13 @@ Ploop **get_loops_precise(Band *band, Ploop **loops, int nloops,
   assert(num_tiled_levels >= 1);
   Stmt **stmts = band->loop->stmts;
   int nstmts = band->loop->nstmts;
+
+  if (pluto_are_stmts_fused(stmts, nstmts, prog)) {
+    printf("Statements are fused in band\n");
+  } else {
+    printf("Statements are distributed in band\n");
+  }
+
   int dist_level =
       get_stmt_dist_level_in_band(stmts, nstmts, band, num_tiled_levels);
 
@@ -294,6 +302,11 @@ Ploop **get_loops_precise(Band *band, Ploop **loops, int nloops,
     *new_num_loops = 0;
     return NULL;
   }
+
+  printf("Last level of distribution of statements in band %d\n", dist_level);
+  /* int ni_bands = 0; */
+  /* Band **ibands = get_innermost_bands_at_level( */
+  /*     dist_level, band, num_tiled_levels, prog, &ni_bands); */
 
   /* Temproary return values for the build to go through. */
   *new_num_loops = nloops;
@@ -334,6 +347,31 @@ Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
   return best_loop;
 }
 
+Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
+  int nstmts = band->loop->nstmts;
+  int nbands = 0;
+  pluto_band_print(band);
+  Band **per_stmt_bands = (Band **)malloc(nstmts * sizeof(Band *));
+  for (int i = 0; i < nstmts; i++) {
+    /* Create a Ploop with a single statement i */
+    Ploop *loop = pluto_loop_alloc();
+    loop->nstmts = 1;
+    loop->depth = band->loop->depth;
+    loop->stmts = (Stmt **)malloc(sizeof(Stmt *));
+    memcpy(loop->stmts, &band->loop->stmts[i], sizeof(Stmt *));
+
+    per_stmt_bands[i] = pluto_band_alloc(loop, band->width);
+    per_stmt_bands[i]->post_tile_dist_hyp_in_band =
+        band->post_tile_dist_hyp_in_band;
+    per_stmt_bands[i]->post_tile_dist_hyp_out_band =
+        band->post_tile_dist_hyp_out_band;
+    nbands++;
+    pluto_loop_free(loop);
+  }
+  *nstmt_bands = nbands;
+  return per_stmt_bands;
+}
+
 /// Optimize the intra-tile loop order for locality and vectorization.
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
@@ -365,6 +403,19 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
    * early bailout condition. If the band is distributed then there can be
    * multiple innner permutable bands. We need to find optimize for each of them
    * separately. */
+  int nstmt_bands = 0;
+  Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
+  if (options->debug) {
+    for (int i = 0; i < nstmt_bands; i++) {
+      printf("Band %d:\n", i);
+      pluto_band_print(per_stmt_bands[i]);
+    }
+  }
+
+  /* int fused_bands = nstmt_bands; */
+  /* Bands ***ibands = fuse_per_stmt_bands(per_stmt_bands, &fused_bands, band);
+   */
+
   bool has_inter_tile_dist =
       (num_tiled_levels >= 1) && (band->loop->nstmts > 1);
 

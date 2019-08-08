@@ -653,6 +653,8 @@ void pluto_band_print(const Band *band);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
+Ploop *pluto_loop_alloc();
+void pluto_loop_free(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop,
                                     const Stmt *stmt);
