@@ -287,10 +287,10 @@ Ploop **get_loops_precise(Band *band, Ploop **loops, int nloops,
   assert(num_tiled_levels >= 1);
   Stmt **stmts = band->loop->stmts;
   int nstmts = band->loop->nstmts;
-  int get_dist_level =
+  int dist_level =
       get_stmt_dist_level_in_band(stmts, nstmts, band, num_tiled_levels);
 
-  if (!get_dist_level) {
+  if (!dist_level) {
     *new_num_loops = 0;
     return NULL;
   }
@@ -298,6 +298,40 @@ Ploop **get_loops_precise(Band *band, Ploop **loops, int nloops,
   /* Temproary return values for the build to go through. */
   *new_num_loops = nloops;
   return loops;
+}
+
+/// Returns the pointer to the best loop that can be moved to the innermost
+/// level. The loop is treated as vectorizable if 1) it is parallel 2) has
+/// stride 0 or stride 1 accesses (exhibits spatial locality). A weighted sum of
+/// these factors is taken into account. Any access that hinders spatial
+/// locality is peanalized.
+Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
+  int max_score = INT_MIN;
+  Ploop *best_loop = NULL;
+  for (unsigned l = 0; l < nloops; l++) {
+    int a, s, t, v, score;
+    a = get_num_accesses(loops[l]);
+    s = get_num_spatial_accesses(loops[l]);
+    t = get_num_invariant_accesses(loops[l]);
+    v = pluto_loop_is_vectorizable(loops[l], prog);
+    /*
+     * Penalize accesses which will have neither spatial nor temporal
+     * reuse (i.e., non-contiguous ones); high priority for vectorization
+     * (if it's vectorizable it also means everything in it has
+     * either spatial or temporal reuse, so there is no big tradeoff)
+     * TODO: tune this further
+     */
+    score = (2 * s + 4 * t + 8 * v - 16 * (a - s - t)) * loops[l]->nstmts;
+    /* Using >= since we'll take the last one if all else is the same */
+    if (score > max_score) {
+      max_score = score;
+      best_loop = loops[l];
+    }
+    IF_DEBUG(
+        printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
+    IF_DEBUG(pluto_loop_print(loops[l]));
+  }
+  return best_loop;
 }
 
 /// Optimize the intra-tile loop order for locality and vectorization.
@@ -327,6 +361,10 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     }
   }
 
+  /* Band may have been distributed in the inter tile space. The following is an
+   * early bailout condition. If the band is distributed then there can be
+   * multiple innner permutable bands. We need to find optimize for each of them
+   * separately. */
   bool has_inter_tile_dist =
       (num_tiled_levels >= 1) && (band->loop->nstmts > 1);
 
@@ -342,31 +380,7 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     }
   }
 
-  int max_score = INT_MIN;
-  Ploop *best_loop = NULL;
-  for (unsigned l = 0; l < nloops; l++) {
-    int a, s, t, v, score;
-    a = get_num_accesses(loops[l]);
-    s = get_num_spatial_accesses(loops[l]);
-    t = get_num_invariant_accesses(loops[l]);
-    v = pluto_loop_is_vectorizable(loops[l], prog);
-    /*
-     * Penalize accesses which will have neither spatial nor temporal
-     * reuse (i.e., non-contiguous ones); high priority for vectorization
-     * (if it's vectorizable it also means everything in it has
-     * either spatial or temporal reuse, so there is no big tradeoff)
-     * TODO: tune this further
-     */
-    score = (2 * s + 4 * t + 8 * v - 16 * (a - s - t)) * loops[l]->nstmts;
-    /* Using >= since we'll take the last one if all else is the same */
-    if (score > max_score) {
-      max_score = score;
-      best_loop = loops[l];
-    }
-    IF_DEBUG(
-        printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
-    IF_DEBUG(pluto_loop_print(loops[l]));
-  }
+  Ploop *best_loop = get_best_vectorizable_loop(loops, nloops, prog);
 
   if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
     IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
