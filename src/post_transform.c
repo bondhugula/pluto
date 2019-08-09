@@ -316,8 +316,8 @@ Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
 /// Assumes that all bands in per_stmt_bands have same widths and begin at same
 /// depth. Returns true if the statements in band b1 and b2 are fused in the
 /// tile space.
-bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
-                         int num_tiled_levels) {
+bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
+                             int num_tiled_levels) {
   unsigned band_begin = per_stmt_bands[b1]->loop->depth;
   unsigned band_end = per_stmt_bands[b1]->loop->depth +
                       num_tiled_levels * per_stmt_bands[b1]->width +
@@ -342,17 +342,16 @@ bool stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
 /// The routine fuses per statement bands of statements that are not distributed
 /// in the tile space. The intra tile loop iterators of all these statements
 /// which are not distributed have to be permuted to the inner levels together.
-Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
-                           int num_tiled_levels) {
-  int nstmts = band->loop->nstmts;
-  unsigned *band_map = (unsigned *)malloc(nstmts * sizeof(unsigned));
-  for (unsigned i = 0; i < nstmts; i++) {
+Band **fuse_per_stmt_bands(Band **per_stmt_bands, int nbands,
+                           int num_tiled_levels, int *num_fused_bands) {
+  unsigned *band_map = (unsigned *)malloc(nbands * sizeof(unsigned));
+  for (unsigned i = 0; i < nbands; i++) {
     band_map[i] = i;
   }
 
-  int total_bands = nstmts;
-  for (int i = 0; i < nstmts; i++) {
-    for (int j = i + 1; j < nstmts; j++) {
+  int total_bands = nbands;
+  for (int i = 0; i < nbands; i++) {
+    for (int j = i + 1; j < nbands; j++) {
       /* If the staments in which were originally in bands i and j have been
        * fused, then skip. */
       if (band_map[i] == band_map[j]) {
@@ -360,7 +359,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
       }
       /* If the statements in the bands i and j are not fused, then do not merge
        * the bands. */
-      if (!stmts_fused_in_band(per_stmt_bands, i, j, num_tiled_levels)) {
+      if (!are_stmts_fused_in_band(per_stmt_bands, i, j, num_tiled_levels)) {
         IF_DEBUG(printf("Stmts distributed in inter tile space\n"););
         continue;
       }
@@ -369,8 +368,8 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
     }
   }
 
-  if (total_bands == nstmts) {
-    *nfused_bands = total_bands;
+  if (total_bands == nbands) {
+    *num_fused_bands = total_bands;
     return per_stmt_bands;
   }
 
@@ -381,7 +380,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
   Band **fused_bands = (Band **)malloc(total_bands * sizeof(Band *));
   int nfbands = 0;
 
-  for (int i = 0; i < nstmts; i++) {
+  for (int i = 0; i < nbands; i++) {
     IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
     if (nfbands == band_map[i]) {
       fused_bands[nfbands++] = pluto_band_dup(per_stmt_bands[i]);
@@ -395,7 +394,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int *nfused_bands, Band *band,
            per_stmt_bands[i]->loop->nstmts * sizeof(Stmt *));
     fused_bands[band_id]->loop->nstmts = new_num_stmts;
   }
-  *nfused_bands = nfbands;
+  *num_fused_bands = nfbands;
   return fused_bands;
 }
 
@@ -420,16 +419,16 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   int nstmt_bands = 0;
   Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
 
-  int nfused_bands = 0;
-  Band **ibands = fuse_per_stmt_bands(per_stmt_bands, &nfused_bands, band,
-                                      num_tiled_levels);
+  int num_fused_bands = 0;
+  Band **ibands = fuse_per_stmt_bands(per_stmt_bands, nstmt_bands,
+                                      num_tiled_levels, &num_fused_bands);
   if (options->debug) {
     printf("Bands for intra tile optimiztion \n");
-    pluto_bands_print(ibands, nfused_bands);
+    pluto_bands_print(ibands, num_fused_bands);
   }
 
   bool retval = false;
-  for (int i = 0; i < nfused_bands; i++) {
+  for (int i = 0; i < num_fused_bands; i++) {
     Band *band = ibands[i];
     int depth =
         band->loop->depth + num_tiled_levels * band->width + num_new_levels;
