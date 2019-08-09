@@ -318,6 +318,11 @@ Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
 /// tile space.
 bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
                              int num_tiled_levels) {
+
+  /* Assumptions of this routine. */
+  assert(per_stmt_bands[b1]->loop->depth == per_stmt_bands[b2]->loop->depth);
+  assert(per_stmt_bands[b1]->width == per_stmt_bands[b2]->width);
+
   unsigned band_begin = per_stmt_bands[b1]->loop->depth;
   unsigned band_end = per_stmt_bands[b1]->loop->depth +
                       num_tiled_levels * per_stmt_bands[b1]->width +
