@@ -375,6 +375,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
 
   if (total_bands == nbands) {
     *num_fused_bands = total_bands;
+    free(band_map);
     return per_stmt_bands;
   }
 
@@ -402,6 +403,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
     fused_bands[band_id]->loop->nstmts = new_num_stmts;
   }
   *num_fused_bands = nfbands;
+  free(band_map);
   return fused_bands;
 }
 
@@ -429,6 +431,10 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   unsigned num_fused_bands = 0;
   Band **ibands = fuse_per_stmt_bands(per_stmt_bands, nstmt_bands,
                                       num_tiled_levels, &num_fused_bands);
+
+  if (num_fused_bands != nstmt_bands) {
+    pluto_bands_free(per_stmt_bands, nstmt_bands);
+  }
   if (options->debug) {
     printf("Bands for intra tile optimiztion \n");
     pluto_bands_print(ibands, num_fused_bands);
@@ -468,6 +474,7 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
     }
     pluto_loops_free(loops, nloops);
   }
+  pluto_bands_free(ibands, num_fused_bands);
   return retval;
 }
 
