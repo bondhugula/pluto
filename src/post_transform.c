@@ -289,9 +289,9 @@ Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
 /// statement band. The returned band->loop will have a single statement. This
 /// is used to find statements in the input band that are distributed in the
 /// tile space.
-Band **get_per_stmt_band(Band *band, int *nstmt_bands) {
-  int nstmts = band->loop->nstmts;
-  int nbands = 0;
+Band **get_per_stmt_band(Band *band, unsigned *nstmt_bands) {
+  unsigned nstmts = band->loop->nstmts;
+  unsigned nbands = 0;
   Band **per_stmt_bands = (Band **)malloc(nstmts * sizeof(Band *));
   for (int i = 0; i < nstmts; i++) {
     /* Create a Ploop with a single statement i */
@@ -347,14 +347,14 @@ bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
 /// The routine fuses per statement bands of statements that are not distributed
 /// in the tile space. The intra tile loop iterators of all these statements
 /// which are not distributed have to be permuted to the inner levels together.
-Band **fuse_per_stmt_bands(Band **per_stmt_bands, int nbands,
-                           int num_tiled_levels, int *num_fused_bands) {
+Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
+                           int num_tiled_levels, unsigned *num_fused_bands) {
   unsigned *band_map = (unsigned *)malloc(nbands * sizeof(unsigned));
   for (unsigned i = 0; i < nbands; i++) {
     band_map[i] = i;
   }
 
-  int total_bands = nbands;
+  unsigned total_bands = nbands;
   for (int i = 0; i < nbands; i++) {
     for (int j = i + 1; j < nbands; j++) {
       /* If the staments in which were originally in bands i and j have been
@@ -378,12 +378,14 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, int nbands,
     return per_stmt_bands;
   }
 
+  assert(1 <= total_bands && total_bands <= nbands);
+
   /* Fuse bands based on band map. Note that Band map will be sorted, and
    * band_map[i] will be the id of the smallest band with which band[i] has to
    * be fused. */
   IF_DEBUG(printf("Total number of fused bands %d\n", total_bands););
   Band **fused_bands = (Band **)malloc(total_bands * sizeof(Band *));
-  int nfbands = 0;
+  unsigned nfbands = 0;
 
   for (int i = 0; i < nbands; i++) {
     IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
@@ -421,10 +423,10 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   /* TODO: We need an early bailout condition here. If the number of statements
    * in the band is 1 or the loop nest is not tiled, then we can skip the
    * procedure to find inner most bands corresponding to the input band. */
-  int nstmt_bands = 0;
+  unsigned nstmt_bands = 0;
   Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
 
-  int num_fused_bands = 0;
+  unsigned num_fused_bands = 0;
   Band **ibands = fuse_per_stmt_bands(per_stmt_bands, nstmt_bands,
                                       num_tiled_levels, &num_fused_bands);
   if (options->debug) {
@@ -433,7 +435,7 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   }
 
   bool retval = false;
-  for (int i = 0; i < num_fused_bands; i++) {
+  for (unsigned i = 0; i < num_fused_bands; i++) {
     Band *band = ibands[i];
     int depth =
         band->loop->depth + num_tiled_levels * band->width + num_new_levels;
