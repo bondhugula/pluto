@@ -826,11 +826,18 @@ static Stmt **osl_to_pluto_stmts(const osl_scop_p scop) {
     wlist_t = wlist;
 
     stmt->nwrites = osl_relation_list_count(wlist);
-    stmt->writes =
-        (PlutoAccess **)malloc(stmt->nwrites * sizeof(PlutoAccess *));
+    if (stmt->nwrites > 0)
+      stmt->writes =
+          (PlutoAccess **)malloc(stmt->nwrites * sizeof(PlutoAccess *));
+    else
+      stmt->writes = NULL;
 
     stmt->nreads = osl_relation_list_count(rlist);
-    stmt->reads = (PlutoAccess **)malloc(stmt->nreads * sizeof(PlutoAccess *));
+    if (stmt->nreads > 0)
+      stmt->reads =
+          (PlutoAccess **)malloc(stmt->nreads * sizeof(PlutoAccess *));
+    else
+      stmt->reads = NULL;
 
     osl_arrays_p arrays =
         (osl_arrays_p)osl_generic_lookup(scop->extension, OSL_URI_ARRAYS);
