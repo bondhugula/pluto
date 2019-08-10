@@ -419,8 +419,7 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
       stmts[dep->src]->dim + stmts[dep->dest]->dim, stmts[dep->dest]->dim,
       stmts[dep->dest]->domain->ncols - stmts[dep->dest]->dim - 1);
 
-  if (options->isldepaccesswise &&
-      (stmts[dep->src]->reads != NULL && stmts[dep->dest]->reads != NULL)) {
+  if (options->isldepaccesswise) {
     /* Extract access function information */
     int src_acc_num, dest_acc_num;
     char src_type, dest_type;
@@ -440,8 +439,9 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
     if (*dest_name != '\0') {
       dest_type = *dest_name;
       dest_acc_num = atoi(dest_name + 1);
-    } else
-      assert(0); // access function num not encoded in dependence
+    } else {
+      assert(0 && "access function num not encoded in dependence");
+    }
 
     switch (info->type) {
     case PLUTO_DEP_RAW:
