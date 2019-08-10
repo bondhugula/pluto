@@ -365,7 +365,9 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
       /* If the statements in the bands i and j are not fused, then do not merge
        * the bands. */
       if (!are_stmts_fused_in_band(per_stmt_bands, i, j, num_tiled_levels)) {
-        IF_DEBUG(printf("Stmts distributed in inter tile space\n"););
+        IF_DEBUG(
+            printf("Stmts in bands %d and %d are distributed in tile space\n",
+                   i, j););
         continue;
       }
       band_map[j] = band_map[i];
@@ -390,7 +392,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
 
   for (int i = 0; i < nbands; i++) {
     IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
-    if (nfbands == band_map[i]) {
+    if (i == band_map[i]) {
       fused_bands[nfbands++] = pluto_band_dup(per_stmt_bands[i]);
       continue;
     }
