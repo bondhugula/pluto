@@ -349,15 +349,33 @@ bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
 /// which are not distributed have to be permuted to the inner levels together.
 Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
                            int num_tiled_levels, unsigned *num_fused_bands) {
+
+  /* Band map is map that maps each band to a band identifier. All bands that
+   * are completely fused in the inter tile space will have the same band map.
+   * Each band initialized to a unique identifier to start with and is updated
+   * when fusion decisions are made.*/
   unsigned *band_map = (unsigned *)malloc(nbands * sizeof(unsigned));
   for (unsigned i = 0; i < nbands; i++) {
     band_map[i] = i;
   }
 
-  unsigned total_bands = nbands;
+  /* Compute bands that need to be fused and update band_map. */
+  unsigned total_bands = 0;
   for (int i = 0; i < nbands; i++) {
+    /* If the current band is not fused with the band that was seen earlier,
+     * then it has to be put in a new band. If it is fused with a band k such
+     * that k<i, then all bands j>i would also be fused with k. Hence it is not
+     * necessary to check for any band that is greater than i that can be fused
+     * with i. */
+    if (band_map[i] < i)
+      continue;
+
+    /* This is a new band that has not been fused with anything that was seen
+     * before. Update band_map so that a new band is created for the band i. */
+    band_map[i] = total_bands++;
+
     for (int j = i + 1; j < nbands; j++) {
-      /* If the staments in which were originally in bands i and j have been
+      /* If the statements in which were originally in bands i and j have been
        * fused, then skip. */
       if (band_map[i] == band_map[j]) {
         continue;
@@ -370,8 +388,8 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
                    i, j););
         continue;
       }
+      /* Statements are fused in the band*/
       band_map[j] = band_map[i];
-      total_bands--;
     }
   }
 
@@ -381,8 +399,6 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
     return per_stmt_bands;
   }
 
-  assert(1 <= total_bands && total_bands <= nbands);
-
   /* Fuse bands based on band map. Note that Band map will be sorted, and
    * band_map[i] will be the id of the smallest band with which band[i] has to
    * be fused. */
@@ -390,9 +406,9 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
   Band **fused_bands = (Band **)malloc(total_bands * sizeof(Band *));
   unsigned nfbands = 0;
 
-  for (int i = 0; i < nbands; i++) {
+  for (unsigned i = 0; i < nbands; i++) {
     IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
-    if (i == band_map[i]) {
+    if (band_map[i] >= nfbands) {
       fused_bands[nfbands++] = pluto_band_dup(per_stmt_bands[i]);
       continue;
     }
