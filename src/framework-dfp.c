@@ -967,6 +967,28 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
   transitive_closure(new_ddg);
   unsigned nstmts = prog->nstmts;
   Stmt **stmts = prog->stmts;
+  if (options->scc_cluster) {
+    unsigned num_sccs = prog->ddg->num_sccs;
+    for (unsigned i = 0; i < num_sccs; i++) {
+      for (unsigned j = i + 1; j < num_sccs; j++) {
+        /* Check if the two sccs are connected in the transitve closure. */
+        if (ddg_sccs_direct_connected(new_ddg, prog, i, j))
+          continue;
+        unsigned scc_offset1 = prog->ddg->sccs[i].fcg_scc_offset;
+        unsigned scc_offset2 = prog->ddg->sccs[j].fcg_scc_offset;
+        Scc scc1 = prog->ddg->sccs[i];
+        Scc scc2 = prog->ddg->sccs[j];
+        for (unsigned dim1 = 0; dim1 < scc1.max_dim; dim1++) {
+          for (unsigned dim2 = 0; dim2 < scc2.max_dim; dim2++) {
+            fcg->adj->val[scc_offset1 + dim1][scc_offset2 + dim2] = 1;
+          }
+        }
+      }
+    }
+    graph_free(new_ddg);
+    return;
+  }
+  /* When Clustering is turned off. */
   for (unsigned i = 0; i < nstmts; i++) {
     for (unsigned j = i + 1; j < nstmts; j++) {
       if (is_adjecent(new_ddg, i, j))
