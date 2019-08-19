@@ -2410,6 +2410,8 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
       pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
       IF_DEBUG(printf("Updating FCG between SCCs %d and %d\n", prev_scc, i););
       update_fcg_between_sccs(fcg, prev_scc, i, prog);
+      /* The scalar cut might satisfy some dependences. */
+      dep_satisfaction_update(prog, prog->stmts[0]->trans->nrows - 1);
     }
 
     IF_DEBUG(printf("Trying colouring Scc %d of Size %d with colour %d\n", i,
