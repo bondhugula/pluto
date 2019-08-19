@@ -1169,7 +1169,7 @@ static osl_names_p get_scop_names(osl_scop_p scop) {
 }
 
 /* Compute dependences based on the iteration domain and access
- * information in "scop" and put the result in "prog".
+ * information in the OSL 'scop' and put the result in 'prog'.
  */
 static void compute_deps(osl_scop_p scop, PlutoProg *prog,
                          PlutoOptions *options) {
@@ -1412,7 +1412,7 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
           trans_dep_war, prog->transdeps, prog->ntransdeps, prog->stmts,
           PLUTO_DEP_WAR);
       prog->ntransdeps += extract_deps_from_isl_union_map(
-          dep_waw, prog->transdeps, prog->ntransdeps, prog->stmts,
+          trans_dep_waw, prog->transdeps, prog->ntransdeps, prog->stmts,
           PLUTO_DEP_WAW);
       prog->ntransdeps += extract_deps_from_isl_union_map(
           dep_rar, prog->transdeps, prog->ntransdeps, prog->stmts,
