@@ -93,6 +93,7 @@ Graph *graph_transpose(Graph *g);
 void dfs(Graph *g);
 void dfs_for_scc(Graph *g);
 void dfs_vertex(Graph *g, Vertex *v, int *time);
+void transitive_closure(Graph *g);
 Vertex *ddg_get_vertex_by_id(Graph *g, int id);
 
 bool is_adjecent(Graph *, int, int);

@@ -962,7 +962,7 @@ void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog) {
 /// Adds fusion conflict edges between all dimensions corresponding to the
 /// statements that do are not connected in the DDG. TODO: Need to update this
 /// routine to handle clustering.
-void add_must_distribute_edges(Graph *ddg, Graph *fcg, PlutoProg *prog) {
+void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
   Graph *new_ddg = ddg_create(prog);
   transitive_closure(new_ddg);
   unsigned nstmts = prog->nstmts;
@@ -971,6 +971,9 @@ void add_must_distribute_edges(Graph *ddg, Graph *fcg, PlutoProg *prog) {
     for (unsigned j = i + 1; j < nstmts; j++) {
       if (is_adjecent(new_ddg, i, j))
         continue;
+      IF_DEBUG(
+          printf("Adding must distribute edges between statements %d and %d\n",
+                 i, j););
       unsigned stmt_offset1 = prog->ddg->vertices[i].fcg_stmt_offset;
       unsigned stmt_offset2 = prog->ddg->vertices[j].fcg_stmt_offset;
       for (unsigned dim1 = 0; dim1 < stmts[i]->dim_orig; dim1++) {
@@ -1115,7 +1118,7 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
     }
   }
 
-  add_must_distribute_edges(ddg, fcg, prog);
+  add_must_distribute_edges(fcg, prog);
 
   prog->fcg_const_time += rtclock() - t_start;
 
@@ -2330,6 +2333,31 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
   }
 }
 
+/// Checks if the input SCC (given by scc_id) is connected by must distribute
+/// edges with some scc that was numbered less than scc_id.
+bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
+                                   PlutoProg *prog) {
+  for (int i = 0; i < scc_id; i++) {
+    if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
+      continue;
+    if (!options->scc_cluster) {
+      unsigned stmt1 = ddg->sccs[i].vertices[0];
+      unsigned stmt2 = ddg->sccs[scc_id].vertices[0];
+      unsigned v1 = ddg->vertices[stmt1].fcg_stmt_offset;
+      unsigned v2 = ddg->vertices[stmt2].fcg_stmt_offset;
+      if (is_adjecent(fcg, v1, v2)) {
+        return true;
+      }
+    } else {
+      unsigned v1 = ddg->sccs[i].fcg_scc_offset;
+      unsigned v2 = ddg->sccs[scc_id].fcg_scc_offset;
+      if (is_adjecent(fcg, v1, v2))
+        return true;
+    }
+  }
+  return false;
+}
+
 /// Colours all scc's with a colour c. Returns the current colouring of the FCG.
 int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
   Graph *ddg = prog->ddg;
@@ -2353,6 +2381,13 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
       prev_scc = i;
       prog->fcg_colour_time += rtclock() - t_start;
       continue;
+    }
+
+    /* From the second scc, check if the two sccs must be distributed. */
+    if (i >= 1 && scc_has_must_distribute_edges(fcg, ddg, i, prog)) {
+      pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
+      IF_DEBUG(printf("Updating FCG between SCCs %d and %d\n", prev_scc, i););
+      update_fcg_between_sccs(fcg, prev_scc, i, prog);
     }
 
     IF_DEBUG(printf("Trying colouring Scc %d of Size %d with colour %d\n", i,
