@@ -959,6 +959,30 @@ void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog) {
   return;
 }
 
+/// Adds fusion conflict edges between all dimensions corresponding to the
+/// statements that do are not connected in the DDG. TODO: Need to update this
+/// routine to handle clustering.
+void add_must_distribute_edges(Graph *ddg, Graph *fcg, PlutoProg *prog) {
+  Graph *new_ddg = ddg_create(prog);
+  transitive_closure(new_ddg);
+  unsigned nstmts = prog->nstmts;
+  Stmt **stmts = prog->stmts;
+  for (unsigned i = 0; i < nstmts; i++) {
+    for (unsigned j = i + 1; j < nstmts; j++) {
+      if (is_adjecent(new_ddg, i, j))
+        continue;
+      unsigned stmt_offset1 = prog->ddg->vertices[i].fcg_stmt_offset;
+      unsigned stmt_offset2 = prog->ddg->vertices[j].fcg_stmt_offset;
+      for (unsigned dim1 = 0; dim1 < stmts[i]->dim_orig; dim1++) {
+        for (unsigned dim2 = 0; dim2 < stmts[j]->dim_orig; dim2++) {
+          fcg->adj->val[stmt_offset1 + dim1][stmt_offset2 + dim2] = 1;
+        }
+      }
+    }
+  }
+  graph_free(new_ddg);
+}
+
 /// Build the fusion conflict graph for a given program. The current colour is
 /// used to rebuild FCG for the current level. This is needed in case we are
 /// separating out construction of FCG for permute preventing dependence and
@@ -1064,6 +1088,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   }
 
   pluto_matrix_free(obj);
+  pluto_constraints_free(boundcst);
+  pluto_constraints_free(*conflicts);
+  free(conflicts);
 
   if (options->scc_cluster) {
     fcg_add_intra_scc_edges(fcg, prog);
@@ -1088,9 +1115,8 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
     }
   }
 
-  pluto_constraints_free(boundcst);
-  pluto_constraints_free(*conflicts);
-  free(conflicts);
+  add_must_distribute_edges(ddg, fcg, prog);
+
   prog->fcg_const_time += rtclock() - t_start;
 
   IF_DEBUG(printf("FCG \n"););
