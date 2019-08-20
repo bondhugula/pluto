@@ -886,10 +886,6 @@ void update_fcg_between_sccs(Graph *fcg, int scc1, int scc2, PlutoProg *prog) {
   Graph *ddg = prog->ddg;
   Stmt **stmts = prog->stmts;
 
-  if (!(options->fuse == kTypedFuse)) {
-    /* This assertion might not hold in case of typed fuse */
-    assert(fcg->to_be_rebuilt == false);
-  }
   if (nstmts == 1) {
     return;
   }
