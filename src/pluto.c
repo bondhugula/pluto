@@ -1698,13 +1698,17 @@ int pluto_auto_transform(PlutoProg *prog) {
     nVertices = 0;
     if (options->scc_cluster) {
       for (int i = 0; i < ddg->num_sccs; i++) {
-        ddg->sccs[i].fcg_scc_offset = nVertices;
+        if (ddg->sccs[i].max_dim > 0) {
+          ddg->sccs[i].fcg_scc_offset = nVertices;
+        }
         ddg->sccs[i].is_scc_coloured = false;
         nVertices += ddg->sccs[i].max_dim;
       }
     } else {
       for (int i = 0; i < nstmts; i++) {
-        ddg->vertices[i].fcg_stmt_offset = nVertices;
+        if (stmts[i]->dim > 0) {
+          ddg->vertices[i].fcg_stmt_offset = nVertices;
+        }
         nVertices += stmts[i]->dim_orig;
       }
     }
@@ -2202,7 +2206,7 @@ bool pluto_are_stmts_fused(Stmt **stmts, int nstmts, const PlutoProg *prog) {
   /// Find the deepest loop hyperplane for the first statement.
   int d;
   for (d = prog->num_hyperplanes - 1; d >= 0; --d) {
-    if (!pluto_is_hyperplane_scalar(stmts[0], d)) 
+    if (!pluto_is_hyperplane_scalar(stmts[0], d))
       break;
   }
   if (d < 0)

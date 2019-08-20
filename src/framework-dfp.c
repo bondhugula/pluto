@@ -1546,7 +1546,15 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
 /// edges with some scc that was numbered less than scc_id.
 bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
                                    PlutoProg *prog) {
+  /* if the scc corresponds to a scalar statement, then there is no
+   * corresponding vertex in the FCG. Trivially in such cases, there are no must
+   * distribute edges. Hence bail out and return false. */
+  if (ddg->sccs[scc_id].max_dim == 0)
+    return false;
   for (int i = 0; i < scc_id; i++) {
+    if (ddg->sccs[i].max_dim == 0) {
+      continue;
+    }
     if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
       continue;
     if (!options->scc_cluster) {
