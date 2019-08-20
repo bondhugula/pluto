@@ -959,14 +959,41 @@ void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog) {
   return;
 }
 
+/// The routine checks if the two SCCs are fused in the till the current level.
+/// If yes it returns true else returns false
+bool are_sccs_fused(PlutoProg *prog, unsigned scc1, unsigned scc2) {
+  unsigned num_hyperplanes = prog->num_hyperplanes;
+  Scc *sccs = prog->ddg->sccs;
+  Stmt **stmts = prog->stmts;
+  unsigned nvar = prog->nvar;
+  unsigned npar = prog->npar;
+
+  unsigned stmt1 = sccs[scc1].vertices[0];
+  unsigned stmt2 = sccs[scc2].vertices[0];
+
+  bool sccs_fused = true;
+  for (unsigned i = 0; i < num_hyperplanes; i++) {
+    if (prog->hProps[i].type == H_LOOP) {
+      continue;
+    }
+
+    int cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
+    int cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
+
+    if (cut_id1 != cut_id2) {
+      sccs_fused = false;
+      break;
+    }
+  }
+  return sccs_fused;
+}
+
 /// Adds fusion conflict edges between all dimensions corresponding to the
-/// statements that do are not connected in the DDG. TODO: Need to update this
-/// routine to handle clustering.
+/// statements that do are not connected in the DDG.
 void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
   Graph *new_ddg = ddg_create(prog);
   transitive_closure(new_ddg);
   unsigned nstmts = prog->nstmts;
-  Stmt **stmts = prog->stmts;
   if (options->scc_cluster) {
     unsigned num_sccs = prog->ddg->num_sccs;
     for (unsigned i = 0; i < num_sccs; i++) {
@@ -974,6 +1001,11 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
         /* Check if the two sccs are connected in the transitve closure. */
         if (ddg_sccs_direct_connected(new_ddg, prog, i, j))
           continue;
+        /* If the sccs are already distributed then do not add any must
+         * distribute edges. */
+        if (!are_sccs_fused(prog, i, j))
+          continue;
+
         unsigned scc_offset1 = prog->ddg->sccs[i].fcg_scc_offset;
         unsigned scc_offset2 = prog->ddg->sccs[j].fcg_scc_offset;
         Scc scc1 = prog->ddg->sccs[i];
@@ -989,9 +1021,14 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
     return;
   }
   /* When Clustering is turned off. */
+  Stmt **stmts = prog->stmts;
   for (unsigned i = 0; i < nstmts; i++) {
     for (unsigned j = i + 1; j < nstmts; j++) {
       if (is_adjecent(new_ddg, i, j))
+        continue;
+      unsigned scc1 = stmts[i]->scc_id;
+      unsigned scc2 = stmts[j]->scc_id;
+      if (!are_sccs_fused(prog, scc1, scc2))
         continue;
       IF_DEBUG(
           printf("Adding must distribute edges between statements %d and %d\n",
@@ -2329,35 +2366,6 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   free(stmt_colour);
   free(has_parallel_hyperplane);
   return scc_colour;
-}
-
-/// The routine checks if the two SCCs are fused in the till the current level.
-/// If yes it returns true else returns false
-bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
-  int num_hyperplanes = prog->num_hyperplanes;
-  Scc *sccs = prog->ddg->sccs;
-  Stmt **stmts = prog->stmts;
-  int nvar = prog->nvar;
-  int npar = prog->npar;
-
-  int stmt1 = sccs[scc1].vertices[0];
-  int stmt2 = sccs[scc2].vertices[0];
-
-  bool sccs_fused = true;
-  for (int i = 0; i < num_hyperplanes; i++) {
-    if (prog->hProps[i].type == H_LOOP) {
-      continue;
-    }
-
-    int cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
-    int cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
-
-    if (cut_id1 != cut_id2) {
-      sccs_fused = false;
-      break;
-    }
-  }
-  return sccs_fused;
 }
 
 /// Routine adds a scalar hyperplane between two SCCs. Note that SCCs might not
