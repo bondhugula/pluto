@@ -1169,10 +1169,10 @@ static osl_names_p get_scop_names(osl_scop_p scop) {
 }
 
 /* Compute dependences based on the iteration domain and access
- * information in "scop" and put the result in "prog".
+ * information in the OSL 'scop' and put the result in 'prog'.
  */
-static void compute_deps(osl_scop_p scop, PlutoProg *prog,
-                         PlutoOptions *options) {
+static void compute_deps_osl(osl_scop_p scop, PlutoProg *prog,
+                             PlutoOptions *options) {
   int i, racc_num, wacc_num;
   int nstmts = osl_statement_number(scop->statement);
   isl_space *space;
@@ -1399,24 +1399,22 @@ static void compute_deps(osl_scop_p scop, PlutoProg *prog,
     isl_union_map_foreach_map(trans_dep_waw, &isl_map_count, &prog->ntransdeps);
     isl_union_map_foreach_map(dep_rar, &isl_map_count, &prog->ntransdeps);
 
-    if (prog->ntransdeps >= 1) {
+    if (prog->ntransdeps > 0) {
       prog->transdeps = (Dep **)malloc(prog->ntransdeps * sizeof(Dep *));
       for (i = 0; i < prog->ntransdeps; i++) {
         prog->transdeps[i] = pluto_dep_alloc();
       }
-      prog->ntransdeps = 0;
-      prog->ntransdeps += extract_deps_from_isl_union_map(
-          dep_raw, prog->transdeps, prog->ntransdeps, prog->stmts,
-          PLUTO_DEP_RAW);
-      prog->ntransdeps += extract_deps_from_isl_union_map(
-          trans_dep_war, prog->transdeps, prog->ntransdeps, prog->stmts,
-          PLUTO_DEP_WAR);
-      prog->ntransdeps += extract_deps_from_isl_union_map(
-          dep_waw, prog->transdeps, prog->ntransdeps, prog->stmts,
-          PLUTO_DEP_WAW);
-      prog->ntransdeps += extract_deps_from_isl_union_map(
-          dep_rar, prog->transdeps, prog->ntransdeps, prog->stmts,
-          PLUTO_DEP_RAR);
+      int ntransdeps = 0;
+      ntransdeps += extract_deps_from_isl_union_map(
+          dep_raw, prog->transdeps, ntransdeps, prog->stmts, PLUTO_DEP_RAW);
+      ntransdeps += extract_deps_from_isl_union_map(trans_dep_war,
+                                                    prog->transdeps, ntransdeps,
+                                                    prog->stmts, PLUTO_DEP_WAR);
+      ntransdeps += extract_deps_from_isl_union_map(trans_dep_waw,
+                                                    prog->transdeps, ntransdeps,
+                                                    prog->stmts, PLUTO_DEP_WAW);
+      ntransdeps += extract_deps_from_isl_union_map(
+          dep_rar, prog->transdeps, ntransdeps, prog->stmts, PLUTO_DEP_RAR);
     }
 
     isl_union_map_free(trans_dep_war);
@@ -1649,7 +1647,7 @@ PlutoProg *osl_scop_to_pluto_prog(osl_scop_p scop, PlutoOptions *options) {
 
   /* Compute dependences */
   if (options->isldep) {
-    compute_deps(scop, prog, options);
+    compute_deps_osl(scop, prog, options);
   } else {
     /*  Using Candl */
     candl_options_p candlOptions = candl_options_malloc();
