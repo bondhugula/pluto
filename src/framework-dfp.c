@@ -1509,6 +1509,31 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
   return false;
 }
 
+/// Checks if the input SCC (given by scc_id) is connected by must distribute
+/// edges with some scc that was numbered less than scc_id.
+bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
+                                   PlutoProg *prog) {
+  for (int i = 0; i < scc_id; i++) {
+    if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
+      continue;
+    if (!options->scc_cluster) {
+      unsigned stmt1 = ddg->sccs[i].vertices[0];
+      unsigned stmt2 = ddg->sccs[scc_id].vertices[0];
+      unsigned v1 = ddg->vertices[stmt1].fcg_stmt_offset;
+      unsigned v2 = ddg->vertices[stmt2].fcg_stmt_offset;
+      if (is_adjecent(fcg, v1, v2)) {
+        return true;
+      }
+    } else {
+      unsigned v1 = ddg->sccs[i].fcg_scc_offset;
+      unsigned v2 = ddg->sccs[scc_id].fcg_scc_offset;
+      if (is_adjecent(fcg, v1, v2))
+        return true;
+    }
+  }
+  return false;
+}
+
 /// Returns SCCs that are convex successors of the input SCC.
 int *get_convex_successors(int scc_id, PlutoProg *prog,
                            int *num_convex_successors) {
@@ -1519,6 +1544,9 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
   int num_successors = 0;
 
   for (int i = scc_id + 1; i < num_sccs; i++) {
+    if (scc_has_must_distribute_edges(prog->fcg, ddg, i, prog)) {
+      break;
+    }
 
     if (is_convex_scc(scc_id, i, ddg, prog)) {
       if (convex_successors == NULL) {
@@ -1552,6 +1580,8 @@ int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
     }
     convex_par_successors[par_successors++] = convex_successors[i];
   }
+  IF_DEBUG(printf("Num parallel convex successors for Scc %d : %d \n", scc_id,
+                  par_successors););
   free(convex_successors);
   *num_convex_par_successors = par_successors;
   return convex_par_successors;
@@ -2353,31 +2383,6 @@ void pluto_add_scalar_hyperplanes_between_sccs(PlutoProg *prog, int scc1,
       stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] = 1;
     }
   }
-}
-
-/// Checks if the input SCC (given by scc_id) is connected by must distribute
-/// edges with some scc that was numbered less than scc_id.
-bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
-                                   PlutoProg *prog) {
-  for (int i = 0; i < scc_id; i++) {
-    if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
-      continue;
-    if (!options->scc_cluster) {
-      unsigned stmt1 = ddg->sccs[i].vertices[0];
-      unsigned stmt2 = ddg->sccs[scc_id].vertices[0];
-      unsigned v1 = ddg->vertices[stmt1].fcg_stmt_offset;
-      unsigned v2 = ddg->vertices[stmt2].fcg_stmt_offset;
-      if (is_adjecent(fcg, v1, v2)) {
-        return true;
-      }
-    } else {
-      unsigned v1 = ddg->sccs[i].fcg_scc_offset;
-      unsigned v2 = ddg->sccs[scc_id].fcg_scc_offset;
-      if (is_adjecent(fcg, v1, v2))
-        return true;
-    }
-  }
-  return false;
 }
 
 /// Colours all scc's with a colour c. Returns the current colouring of the FCG.
