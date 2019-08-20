@@ -87,6 +87,11 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
    ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
    check_ret_val_emit_status
    done
+
+# Test loop distribution with dfp
+   printf '%-50s ' "test/dfp/distribution.c"
+   ./src/pluto --dfp test/dfp/distribution.c $* -o test_tmp_out.pluto.c | FileCheck test/dfp/distribution.c
+   check_ret_val_emit_status
 fi
 
 TESTS_TILE_PARALLEL="\
