@@ -1173,7 +1173,11 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
     }
   }
 
-  add_must_distribute_edges(fcg, prog);
+  /* Add must distribute edges. Distribution is done only at the outermost
+   * level. */
+  if (current_colour == 1) {
+    add_must_distribute_edges(fcg, prog);
+  }
 
   prog->fcg_const_time += rtclock() - t_start;
 
@@ -1546,7 +1550,7 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
 /// edges with some scc that was numbered less than scc_id.
 bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
                                    PlutoProg *prog) {
-  /* if the scc corresponds to a scalar statement, then there is no
+  /* If the scc corresponds to a scalar statement, then there is no
    * corresponding vertex in the FCG. Trivially in such cases, there are no must
    * distribute edges. Hence bail out and return false. */
   if (ddg->sccs[scc_id].max_dim == 0)
