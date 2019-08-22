@@ -537,7 +537,7 @@ void getOutermostTilableBand(PlutoProg *prog, int *bandStart, int *bandEnd);
 
 void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog);
 void cut_lightest_edge(Stmt *stmts, int nstmts, Dep *deps, int ndeps, int);
-void pluto_tile(PlutoProg *);
+unsigned pluto_tile(PlutoProg *);
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands);
 
 int pluto_omp_parallelize(PlutoProg *prog);
@@ -675,7 +675,9 @@ bool pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 int pluto_is_band_innermost(const Band *band, int is_tiled,
                             unsigned num_levels_introduced);
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
+Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
+                                            unsigned num_tiled_levels,
+                                            unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 int pluto_satisfies_inter_stmt_dep(const PlutoProg *prog, const Ploop *loop,
                                    int depth);

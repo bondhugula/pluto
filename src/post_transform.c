@@ -150,7 +150,8 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
 
 /// Detects up to two loops to register tile (unroll-jam). Returns the number
 /// of loops marked for register tiling.
-int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
+int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
+                                          unsigned num_tiled_levels) {
   int bandStart, bandEnd;
   int numRegTileLoops;
   int loop, i;
@@ -163,7 +164,13 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
    * give two loops to unroll-jam, look for parallel loops from inner to
    * outer to fill up the quota of two */
 
-  getInnermostTilableBand(prog, &bandStart, &bandEnd);
+  /* getInnermostTilableBand(prog, &bandStart, &bandEnd); */
+  Band **ibands;
+  unsigned nbands;
+  ibands =
+      pluto_get_innermost_permutable_bands(prog, num_tiled_levels, &nbands);
+  IF_DEBUG(printf("Innermost permutatble bands \n"));
+  pluto_bands_print(ibands, nbands);
 
   numRegTileLoops = 0;
 

@@ -858,6 +858,7 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops) {
 
 /* Set of innermost non-trivial permutable bands (of width >= 2) */
 Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
+                                            unsigned num_tiled_levels,
                                             unsigned *ndbands) {
   Ploop **loops;
   unsigned num, i, nbands;
@@ -870,7 +871,7 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
   nbands = 0;
   for (i = 0; i < num; i++) {
     Band *band = pluto_get_permutable_band(loops[i], prog);
-    if (band != NULL && pluto_is_band_innermost(band, 0, 0)) {
+    if (band != NULL && pluto_is_band_innermost(band, num_tiled_levels, 0)) {
       bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
       bands[nbands] = band;
       nbands++;

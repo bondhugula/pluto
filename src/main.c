@@ -34,8 +34,8 @@
 #endif
 
 #include "math_support.h"
-#include "pet_to_pluto.h"
 #include "osl_pluto.h"
+#include "pet_to_pluto.h"
 #include "pluto.h"
 #include "post_transform.h"
 #include "program.h"
@@ -653,8 +653,9 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     pluto_transformations_pretty_print(prog);
   }
 
+  unsigned num_tiled_levels = 0;
   if (options->tile) {
-    pluto_tile(prog);
+    num_tiled_levels = pluto_tile(prog);
   } else {
     if (options->intratileopt) {
       pluto_intra_tile_optimize(prog, 0);
@@ -693,7 +694,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
       fclose(paramsFP);
     }
-    pluto_detect_mark_register_tile_loops(prog);
+    pluto_detect_mark_register_tile_loops(prog, num_tiled_levels);
   }
 
   double t_c = 0.0;

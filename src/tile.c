@@ -213,11 +213,13 @@ void pluto_tile_band(PlutoProg *prog, Band *band, int *tile_sizes) {
  * tiled code. A schedule of tiles is created for parallel execution if
  * --parallel is on. Intra-tile optimization is done as part of this as well.
  */
-void pluto_tile(PlutoProg *prog) {
+unsigned pluto_tile(PlutoProg *prog) {
   unsigned nbands, i, j, n_ibands, num_tiled_levels, nloops;
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-  ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+  /* Tiling has not been done yet. Hence num_tiled_levels argument to
+   * pluto_get_innermost_permutable_bands is 0. */
+  ibands = pluto_get_innermost_permutable_bands(prog, 0, &n_ibands);
   IF_DEBUG(printf("[pluto_tile] Outermost tilable bands\n"););
   IF_DEBUG(pluto_bands_print(bands, nbands););
   IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
@@ -324,8 +326,10 @@ void pluto_tile(PlutoProg *prog) {
       pluto_transformations_pretty_print(prog);
     }
   }
+
   pluto_bands_free(bands, nbands);
   pluto_bands_free(ibands, n_ibands);
+  return num_tiled_levels;
 }
 
 /// Tiles scattering functions for all bands; if l2 is true, perform another

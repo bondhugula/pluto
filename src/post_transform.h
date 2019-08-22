@@ -26,9 +26,10 @@
 int getDeepestNonScalarLoop(PlutoProg *prog);
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,
                              PlutoProg *prog);
-int pluto_detect_mark_register_tile_loops(PlutoProg *prog);
+int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
+                                          unsigned num_tiled_levels);
 
 int gen_reg_tile_file(PlutoProg *prog);
 bool pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
-                                int n_tiled_levels);
+                                int num_tiled_levels);
 #endif
