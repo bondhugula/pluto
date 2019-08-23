@@ -638,6 +638,8 @@ int get_outermost_parallel_loop(const PlutoProg *prog);
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
+Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
+                                   unsigned *num_ujloops);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands,
                                     int **comm_placement_levels);
@@ -675,7 +677,7 @@ bool pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 int pluto_is_band_innermost(const Band *band, int is_tiled,
                             unsigned num_levels_introduced);
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
+Band **pluto_get_innermost_permutable_bands(const PlutoProg *prog,
                                             unsigned num_tiled_levels,
                                             unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);

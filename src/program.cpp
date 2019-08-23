@@ -223,6 +223,18 @@ static int64_t *pluto_check_supernode(const Stmt *stmt, unsigned pos,
   return tile_hyp;
 }
 
+/// Returns true if the input loop is a tile space loop.
+bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog) {
+  int tile_size;
+  int64_t *tiling_hyp =
+      pluto_check_supernode(loop->stmts[0], loop->depth, &tile_size);
+  if (tiling_hyp == NULL) {
+    return false;
+  }
+  free(tiling_hyp);
+  return true;
+}
+
 static int is_skewed(int64_t *func, int len) {
   int count, i;
 
@@ -829,7 +841,7 @@ PlutoOptions *pluto_options_alloc() {
   options->unrolljam = 0;
 
   /* Unroll/jam factor */
-  options->ufactor = 8;
+  options->ufactor = 4;
 
   /* Ignore input deps */
   options->rar = 0;

@@ -694,7 +694,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       }
       fclose(paramsFP);
     }
-    pluto_detect_mark_register_tile_loops(prog, num_tiled_levels);
+    /* pluto_detect_mark_register_tile_loops(prog, num_tiled_levels); */
   }
 
   double t_c = 0.0;

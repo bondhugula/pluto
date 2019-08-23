@@ -133,6 +133,65 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   pluto_bands_free(pbands, npbands);
 }
 
+/// Marks loops in the cloog clast for unroll jam. Currently it marks all
+/// possible candidates. A way to restrict it must be implemented.
+void pluto_mark_unroll_jam(struct clast_stmt *root, const PlutoProg *prog,
+                           CloogOptions *cloogOptions, unsigned ufactor) {
+
+  assert(root != NULL);
+  unsigned num_ujloops;
+  Ploop **ujloops = pluto_get_unroll_jam_loops(prog, &num_ujloops);
+  if (num_ujloops == 0) {
+    if (!options->silent) {
+      printf("[pluto-unroll-jam] No unroll jam loop candidates found\n");
+    }
+    return;
+  }
+  IF_DEBUG(printf("Unroll jam candidates \n"));
+  IF_DEBUG(pluto_loops_print(ujloops, num_ujloops));
+
+  for (unsigned i = 0; i < num_ujloops; i++) {
+    char iter[13];
+    sprintf(iter, "t%d", ujloops[i]->depth + 1);
+    unsigned *stmtids =
+        (unsigned *)malloc(ujloops[i]->nstmts * sizeof(unsigned));
+    for (unsigned j = 0; j < ujloops[i]->nstmts; j++) {
+      stmtids[j] = ujloops[i]->stmts[j]->id + 1;
+    }
+
+    struct clast_for **loops;
+    unsigned nloops, nstmts;
+    /* TODO: clast_filter takes an arugument of type int**. However the usage of
+     * this needs to be checked. */
+    int *stmts;
+    ClastFilter filter = {iter, (int *)stmtids, (int)ujloops[i]->nstmts,
+                          subset};
+    clast_filter(root, filter, &loops, (int *)&nloops, &stmts, (int *)&nstmts);
+
+    /* There should be at least one */
+    if (nloops == 0) {
+      /* Sometimes loops may disappear (1) tile size larger than trip count
+       * 2) it's a scalar dimension but can't be determined from the
+       * trans matrix */
+      printf("[pluto] pluto_unroll_jam: WARNING: Unroll-jam poly loop not "
+             "found in AST\n");
+      free(stmtids);
+      free(loops);
+      free(stmts);
+      continue;
+    }
+    for (unsigned j = 0; j < nloops; j++) {
+      loops[j]->unroll += CLAST_UNROLL_JAM;
+      loops[j]->ufactor = ufactor;
+    }
+    free(stmtids);
+    free(loops);
+    free(stmts);
+  }
+
+  pluto_loops_free(ujloops, num_ujloops);
+}
+
 /*
  * Clast-based vector loop marking */
 void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,

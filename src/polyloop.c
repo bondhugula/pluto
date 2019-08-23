@@ -439,6 +439,34 @@ int pluto_loop_compar(const void *_l1, const void *_l2) {
   return 1;
 }
 
+/// Returns a list of intra tile loops that are candidates for unroll jam.
+Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
+                                   unsigned *num_ujloops) {
+  unsigned num_ibands;
+  Band **ibands = pluto_get_innermost_permutable_bands(prog, 1, &num_ibands);
+  unsigned num = 0;
+  Ploop **ujloops = NULL;
+  unsigned nloops = 0;
+  for (unsigned j = 0; j < num_ibands; j++) {
+    Ploop *loop = ibands[j]->loop;
+    Ploop **loops = pluto_get_loops_under(loop->stmts, loop->nstmts,
+                                          loop->depth, prog, &num);
+    for (unsigned i = 0; i < num; i++) {
+      /* Do not unroll jam a tile space loop. */
+      if (is_tile_space_loop(loops[i], prog))
+        continue;
+      /* Do not unroll jam the innermost loop.*/
+      if (pluto_loop_is_innermost(loops[i], prog))
+        continue;
+      ujloops = (Ploop **)realloc(ujloops, (nloops + 1) * sizeof(Ploop *));
+      ujloops[nloops++] = pluto_loop_dup(loops[i]);
+    }
+    pluto_loops_free(loops, num);
+  }
+  *num_ujloops = nloops;
+  return ujloops;
+}
+
 /* Get all parallel loops */
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops) {
   Ploop **loops, **ploops;
@@ -613,7 +641,7 @@ bool pluto_is_depth_scalar(Ploop *loop, int depth) {
 
 /* Returns a non-trivial permutable band starting from this loop; NULL
  * if the band is trivial (just the loop itself */
-Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog) {
+Band *pluto_get_permutable_band(Ploop *loop, const PlutoProg *prog) {
   int i, depth;
 
   depth = loop->depth;
@@ -857,7 +885,7 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops) {
 }
 
 /* Set of innermost non-trivial permutable bands (of width >= 2) */
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
+Band **pluto_get_innermost_permutable_bands(const PlutoProg *prog,
                                             unsigned num_tiled_levels,
                                             unsigned *ndbands) {
   Ploop **loops;

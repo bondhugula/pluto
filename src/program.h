@@ -131,9 +131,10 @@ void extract_accesses_for_pluto_stmt(Stmt *stmt, isl_union_map *reads,
 isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context);
+bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog);
 
 #if defined(__cplusplus)
 }
 #endif
 
-#endif  // PROGRAM_H
+#endif // PROGRAM_H

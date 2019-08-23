@@ -189,6 +189,18 @@ check_ret_val_emit_status
 # TODO: add tests that check the generated code for certain things (like stmt
 # body source esp. while using --pet).
 
+# Unroll jam tests. These tests check the generated code.
+echo -e "\nTest Unroll jam"
+echo "===================="
+TESTS_UNROLL_JAM="test/unrolljam.c\
+    test/unrolljam-2.c\
+    test/unrolljam-3.c"
+for file in $TESTS_UNROLL_JAM; do
+    printf '%-50s ' $file
+    ./src/pluto --unrolljam --silent $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
+
 cleanup()
 {
 rm -f test_temp_out.pluto.c
