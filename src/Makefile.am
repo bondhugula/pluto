@@ -9,8 +9,8 @@ MAINTAINERCLEANFILES = Makefile.in
 if EXTERNAL_ISL
 # ISL_INCLUDE, ISL_LIBADD were already defined
 else
-ISL_INCLUDE += -I$(top_srcdir)/isl/include
-ISL_LIBADD += $(top_srcdir)/isl/libisl.la
+ISL_INCLUDE += -I$(top_srcdir)/isl/include -I$(top_builddir)/isl/include
+ISL_LIBADD += $(top_builddir)/isl/libisl.la
 endif
 
 bin_PROGRAMS = pluto
@@ -55,14 +55,20 @@ pluto_SOURCES = \
 pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP -DPLUTO_OPENCL \
    -I../include \
-   -I../piplib/include \
+   -I$(top_srcdir)/include \
+   -I$(top_srcdir)/piplib/include \
    -I../clan/include \
-   -I../pet/include \
+   -I$(top_srcdir)/clan/include \
+   -I$(top_srcdir)/pet/include \
    $(ISL_INCLUDE) \
    -I../cloog-isl/include \
+   -I$(top_srcdir)/cloog-isl/include \
    -I../openscop/include \
+   -I$(top_srcdir)/openscop/include \
    -I../candl/include \
-   -I../polylib/include
+   -I$(top_srcdir)/candl/include \
+   -I../polylib/include \
+   -I$(top_srcdir)/polylib/include
 # To avoid same name object from being created with libtool and without it.
 pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
 
@@ -111,7 +117,9 @@ libpluto_la_SOURCES = \
 libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
    -I../include \
+   -I$(top_srcdir)/include \
    -I../piplib/include \
+   -I$(top_srcdir)/piplib/include \
    $(ISL_INCLUDE)
 # To avoid same name object from being created with libtool and without it.
 libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
