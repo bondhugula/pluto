@@ -25,6 +25,20 @@ AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
 AM_CONFIG_HEADER(config.h)
 
+# Define REL_SRCDIR_PREFIX to be used when invoking configure script
+# of subprojects
+case $srcdir in
+  . )
+    REL_SRCDIR_PREFIX=..
+    ;;
+  [[\\/]]* | ?:[[\\/]]* )
+    REL_SRCDIR_PREFIX=$srcdir
+    ;;
+  *)
+    REL_SRCDIR_PREFIX=../$srcdir
+    ;;
+esac
+
 if test -n "${CXXFLAGS}"; then
   user_set_cxxflags=yes
 fi
@@ -72,9 +86,9 @@ AC_C_CONST
 
 AC_CHECK_HEADERS(math.h stdlib.h stdio.h assert.h string.h)
 
-dnl set SOURCE_DIR to current directory
-SOURCE_DIR=`pwd`
-AC_SUBST(SOURCE_DIR)
+dnl set BUILD_DIR to build directory
+BUILD_DIR=`pwd`
+AC_SUBST(BUILD_DIR)
 
 dnl Offer --with-clang-prefix
 AC_ARG_WITH(clang-prefix,
@@ -195,9 +209,10 @@ echo "=========================="
 configureopts="--with-gmp --with-bits=64 \
 --with-gmp-prefix=$GMP_PREFIX \
 --prefix=$prefix"
-(cd piplib/
+(mkdir -p piplib
+ cd piplib/
  $RM config.cache;
- ./configure ${configureopts} ${archopts}
+ $REL_SRCDIR_PREFIX/piplib/configure ${configureopts} ${archopts}
  )
 
 
@@ -209,8 +224,9 @@ echo "=========================="
 configureopts="--with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --prefix=$prefix"
-(cd openscop/
- ./configure ${configureopts} ${archopts}
+(mkdir -p openscop
+ cd openscop/
+ $REL_SRCDIR_PREFIX/openscop/configure ${configureopts} ${archopts}
  )
 
 
@@ -221,9 +237,10 @@ echo "Configuring Clan"
 echo "=========================="
 configureopts="--prefix=$prefix \
 --with-osl=build \
---with-osl-builddir=$SOURCE_DIR/openscop"
-(cd clan/
- ./configure ${configureopts} ${archopts}
+--with-osl-builddir=../openscop"
+(mkdir -p clan
+ cd clan/
+ $REL_SRCDIR_PREFIX/clan/configure ${configureopts} ${archopts}
  )
 
 dnl check if clan configure failed
@@ -240,11 +257,12 @@ echo "=========================="
 configureopts="--enable-llint-version \
 --prefix=$prefix \
 --with-piplib=build \
---with-piplib-builddir=$SOURCE_DIR/piplib \
+--with-piplib-builddir=../piplib \
 --with-osl=build \
---with-osl-builddir=$SOURCE_DIR/openscop"
-(cd candl/
- ./configure ${configureopts} ${archopts}
+--with-osl-builddir=../openscop"
+(mkdir -p candl
+ cd candl/
+ $REL_SRCDIR_PREFIX/candl/configure ${configureopts} ${archopts}
  )
 
 
@@ -255,8 +273,9 @@ echo "Configuring polylib"
 echo "======================"
 configureopts="--enable-longlongint-lib \
 --prefix=$prefix"
-(cd polylib/
- ./configure ${configureopts}
+(mkdir -p polylib
+ cd polylib/
+ $REL_SRCDIR_PREFIX/polylib/configure ${configureopts}
 )
 
 
@@ -289,8 +308,9 @@ configureopts="--with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --with-gmp-exec-prefix=$GMP_PREFIX \
 --prefix=$prefix"
-(cd isl/
- ./configure ${configureopts} ${archopts}
+(mkdir -p isl
+ cd isl/
+ $REL_SRCDIR_PREFIX/isl/configure ${configureopts} ${archopts}
 )
 fi
 
@@ -305,7 +325,8 @@ else
     configureopts="CXXFLAGS=-fno-rtti --with-isl-builddir=../isl --prefix=$prefix"
 fi
 
-(cd pet && ./configure ${configureopts})
+(mkdir -p pet
+ cd pet && $REL_SRCDIR_PREFIX/pet/configure ${configureopts})
 
 dnl check if pet configure had failed
 AC_CHECK_FILE([pet/Makefile], [], [AC_MSG_ERROR([configure in pet/ failed])])
@@ -317,11 +338,11 @@ echo "Configuring Cloog-isl"
 echo "=========================="
 if test x$external_isl = xfalse; then
 configureopts="--with-isl=build \
---with-isl-builddir=$SOURCE_DIR/isl \
+--with-isl-builddir=../isl \
 --with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --with-osl=build \
---with-osl-builddir=$SOURCE_DIR/openscop \
+--with-osl-builddir=../openscop \
 --prefix=$prefix"
 else
 configureopts="--with-isl=system \
@@ -329,16 +350,18 @@ configureopts="--with-isl=system \
 --with-gmp=system \
 --with-gmp-prefix=$GMP_PREFIX \
 --with-osl=build \
---with-osl-builddir=$SOURCE_DIR/openscop \
+--with-osl-builddir=../openscop \
 --prefix=$prefix"
 fi
-(cd cloog-isl/
- ./configure ${configureopts} ${archopts}
+(mkdir -p cloog-isl
+ cd cloog-isl/
+ $REL_SRCDIR_PREFIX/cloog-isl/configure ${configureopts} ${archopts}
  )
 
 AC_PATH_PROGS(BASH, bash)
 
 AC_CONFIG_FILES([getversion.sh], [chmod +x ./getversion.sh])
+AC_CONFIG_FILES([test.sh], [chmod +x ./test.sh])
 AC_CONFIG_COMMANDS([version.h],
                    [echo '#define PLUTO_VERSION "'`./getversion.sh`'"' > src/version.h])
 
