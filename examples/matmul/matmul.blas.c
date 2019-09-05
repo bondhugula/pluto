@@ -53,7 +53,6 @@ double t_start, t_end;
 
 int main() {
   int i, j;
-  register double s;
   int LDA, LDB, LDC;
   double *a, *b, *c;
   // char transa='n', transb='n';
