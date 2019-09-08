@@ -1,3 +1,11 @@
+OVERVIEW
+
+Please see http://pluto-compiler.sourceforge.net.
+
+This package involves both the tool pluto and libpluto.
+
+libpluto is not thread-safe.
+
 LICENSE
 
 Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
