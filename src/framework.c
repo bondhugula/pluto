@@ -706,9 +706,8 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   /* Get rid of the variables that don't appear in the domain of this
    * statement and also beta rows */
-  int i;
-  unsigned p;
-  for (i = 0, p = 0; i < nvar; i++) {
+  unsigned p = 0;
+  for (int i = 0; i < nvar; i++) {
     if (stmt->is_orig_loop[i]) {
       p++;
     }
@@ -774,7 +773,8 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
     if (ortho->val[0][j] == 0)
       continue;
     int colgcd = abs(ortho->val[0][j]);
-    for (unsigned i = 1; i < ortho->nrows; i++) {
+    unsigned i;
+    for (i = 1; i < ortho->nrows; i++) {
       if (ortho->val[i][j] == 0)
         break;
       colgcd = gcd(colgcd, abs(ortho->val[i][j]));
@@ -844,7 +844,7 @@ PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
 
   IF_DEBUG2(printf("Ortho constraints for S%d; %d disjuncts\n", stmt->id + 1,
                    *orthonum - 1));
-  for (i = 0; i < *orthonum; i++) {
+  for (int i = 0; i < *orthonum; i++) {
     // print_polylib_visual_sets("li", orthcst[i]);
     IF_DEBUG2(pluto_constraints_compact_print(stdout, orthcst[i]));
   }
