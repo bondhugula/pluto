@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "constraints.h"
+#include "ddg.h"
 #include "isl_support.h"
 #include "math_support.h"
 #include "pluto.h"

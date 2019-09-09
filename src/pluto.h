@@ -22,9 +22,9 @@
 
 #include <stdbool.h>
 
-#include "ddg.h"
 #include "pluto/pluto.h"
 
+typedef struct graph Graph;
 typedef struct pluto_constraints PlutoConstraints;
 typedef struct pluto_matrix PlutoMatrix;
 

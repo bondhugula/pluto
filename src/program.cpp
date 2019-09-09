@@ -32,6 +32,7 @@
 #include <string.h>
 
 #include "constraints.h"
+#include "ddg.h"
 #include "isl_support.h"
 #include "program.h"
 
