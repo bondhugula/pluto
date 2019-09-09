@@ -20,6 +20,8 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
+// Not replacing this with a forward declaration due to use of enum types
+// PlutoStmtType and PlutoHypType.
 #include "pluto.h"
 #include "isl/map.h"
 
