@@ -31,12 +31,13 @@
 
 #include "pluto_codegen_if.h"
 
-#include "cloog/cloog.h"
-#include "osl/extensions/loop.h"
-
 #include "ast_transform.h"
+#include "constraints.h"
 #include "program.h"
 #include "version.h"
+
+#include "cloog/cloog.h"
+#include "osl/extensions/loop.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog) {
   int i, first_point_loop;

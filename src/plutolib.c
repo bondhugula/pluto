@@ -29,6 +29,7 @@
 #include "isl/space.h"
 #include "isl/union_set.h"
 
+#include "constraints.h"
 #include "pluto.h"
 #include "pluto/pluto.h"
 #include "program.h"

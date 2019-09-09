@@ -22,10 +22,11 @@
 
 #include <stdbool.h>
 
-#include "constraints.h"
 #include "ddg.h"
-#include "math_support.h"
 #include "pluto/pluto.h"
+
+typedef struct pluto_constraints PlutoConstraints;
+typedef struct pluto_matrix PlutoMatrix;
 
 #ifdef GLPK
 #include <glpk.h>

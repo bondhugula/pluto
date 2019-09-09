@@ -3,7 +3,7 @@
 #ifndef _PLUTO_MATRIX_H
 #define _PLUTO_MATRIX_H
 /* A matrix */
-struct plutoMatrix {
+struct pluto_matrix {
   /* The values */
   int64_t **val;
 
@@ -14,6 +14,6 @@ struct plutoMatrix {
   int alloc_nrows;
   int alloc_ncols;
 };
-typedef struct plutoMatrix PlutoMatrix;
+typedef struct pluto_matrix PlutoMatrix;
 
 #endif

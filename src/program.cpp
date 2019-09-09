@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "constraints.h"
 #include "isl_support.h"
 #include "program.h"
 

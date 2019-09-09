@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "constraints.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"

@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "constraints.h"
+#include "math_support.h"
 
 #include "isl/aff.h"
 #include "isl/val.h"
@@ -37,11 +38,10 @@
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
   int i, j;
   int rows, cols;
-  PlutoMatrix *pluto;
 
   rows = isl_mat_rows(mat);
   cols = isl_mat_cols(mat);
-  pluto = pluto_matrix_alloc(rows, cols);
+  PlutoMatrix *pluto = pluto_matrix_alloc(rows, cols);
 
   for (i = 0; i < rows; ++i)
     for (j = 0; j < cols; ++j) {

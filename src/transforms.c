@@ -23,6 +23,7 @@
 
 #include "transforms.h"
 
+#include "constraints.h"
 #include "program.h"
 
 /// Sink statement (domain); depth: 0-indexed.

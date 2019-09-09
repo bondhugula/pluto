@@ -24,8 +24,9 @@
 #include <glpk.h>
 #endif
 
-#include "math_support.h"
 #include "isl/set.h"
+
+typedef struct pluto_matrix PlutoMatrix;
 
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,

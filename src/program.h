@@ -21,6 +21,7 @@
 #define PROGRAM_H
 
 #include "pluto.h"
+#include "isl/map.h"
 
 #if defined(__cplusplus)
 extern "C" {
