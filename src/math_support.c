@@ -27,27 +27,26 @@
 
 #include "constraints.h"
 #include "math_support.h"
+#include "pluto/matrix.h"
 
 /*
  * Allocated; not initialized
  *
  * nrows and ncols initialized to allocated number of rows and cols
  */
-PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols) {
-  int i;
-  PlutoMatrix *mat;
-
+PlutoMatrix *pluto_matrix_alloc(int alloc_nrows, int alloc_ncols,
+                                PlutoContext *context) {
   assert(alloc_nrows >= 0);
   assert(alloc_ncols >= 0);
 
-  mat = (PlutoMatrix *)malloc(sizeof(PlutoMatrix));
-
+  PlutoMatrix *mat = (PlutoMatrix *)malloc(sizeof(PlutoMatrix));
+  mat->context = context;
   mat->val = (int64_t **)malloc(PLMAX(alloc_nrows, 1) * sizeof(int64_t *));
 
   mat->alloc_nrows = PLMAX(alloc_nrows, 1);
   mat->alloc_ncols = PLMAX(alloc_ncols, 1);
 
-  for (i = 0; i < mat->alloc_nrows; i++) {
+  for (int i = 0; i < mat->alloc_nrows; i++) {
     mat->val[i] = (int64_t *)malloc(mat->alloc_ncols * sizeof(int64_t));
   }
 
@@ -245,7 +244,8 @@ PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src) {
 
   assert(src != NULL);
 
-  PlutoMatrix *dup = pluto_matrix_alloc(src->alloc_nrows, src->alloc_ncols);
+  PlutoMatrix *dup =
+      pluto_matrix_alloc(src->alloc_nrows, src->alloc_ncols, src->context);
 
   for (i = 0; i < src->nrows; i++) {
     for (j = 0; j < src->ncols; j++) {
@@ -271,26 +271,20 @@ void pluto_matrix_set(PlutoMatrix *mat, int val) {
 }
 
 /* Return an identity matrix of size: size x size */
-PlutoMatrix *pluto_matrix_identity(int size) {
-  int i;
-
-  PlutoMatrix *mat = pluto_matrix_alloc(size, size);
+PlutoMatrix *pluto_matrix_identity(int size, PlutoContext *context) {
+  PlutoMatrix *mat = pluto_matrix_alloc(size, size, context);
   pluto_matrix_set(mat, 0);
-
-  for (i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++) {
     mat->val[i][i] = 1;
   }
-
   return mat;
 }
 
 /* Zero out a row */
 void pluto_matrix_zero_row(PlutoMatrix *mat, int pos) {
-  int j;
-
   assert(pos >= 0 && pos <= mat->nrows - 1);
 
-  for (j = 0; j < mat->ncols; j++) {
+  for (int j = 0; j < mat->ncols; j++) {
     mat->val[pos][j] = 0;
   }
 }
@@ -314,11 +308,11 @@ void pluto_matrix_read(FILE *fp, const PlutoMatrix *mat) {
       fscanf(fp, "%ld", &mat->val[i][j]);
 }
 
-PlutoMatrix *pluto_matrix_input(FILE *fp) {
+PlutoMatrix *pluto_matrix_input(FILE *fp, PlutoContext *context) {
   int i, j, nrows, ncols;
   fscanf(fp, "%d %d", &nrows, &ncols);
 
-  PlutoMatrix *mat = pluto_matrix_alloc(nrows, ncols);
+  PlutoMatrix *mat = pluto_matrix_alloc(nrows, ncols, context);
 
   for (i = 0; i < mat->nrows; i++)
     for (j = 0; j < mat->ncols; j++)
@@ -452,7 +446,8 @@ PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1,
 
   int i, j, k;
 
-  PlutoMatrix *mat3 = pluto_matrix_alloc(mat1->nrows, mat2->ncols);
+  PlutoMatrix *mat3 =
+      pluto_matrix_alloc(mat1->nrows, mat2->ncols, mat1->context);
 
   for (i = 0; i < mat1->nrows; i++) {
     for (j = 0; j < mat2->ncols; j++) {

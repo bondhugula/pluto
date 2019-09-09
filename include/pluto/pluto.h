@@ -27,7 +27,7 @@ typedef struct isl_union_map isl_union_map;
 
 #include "isl/ctx.h"
 
-#include "pluto/matrix.h"
+typedef struct pluto_matrix PlutoMatrix;
 
 #if defined(__cplusplus)
 extern "C" {
@@ -51,17 +51,6 @@ enum fusionType {
   kHybridFuse
 };
 typedef enum fusionType FusionType;
-
-/// Pluto dependence type.
-enum depType {
-  PLUTO_DEP_RAW,
-  PLUTO_DEP_WAR,
-  PLUTO_DEP_WAW,
-	PLUTO_DEP_RAR,
-	PLUTO_DEP_UNDEFINED
-};
-typedef enum depType PlutoDepType;
-
 
 struct plutoOptions {
 
@@ -259,6 +248,13 @@ typedef struct plutoOptions PlutoOptions;
 PlutoOptions *pluto_options_alloc();
 void pluto_options_free(PlutoOptions *);
 
+typedef struct plutoContext {
+  PlutoOptions *options;
+} PlutoContext;
+
+PlutoContext *pluto_context_alloc();
+void pluto_context_free(PlutoContext *context);
+
 /// Run the Pluto transformation algorithm on the provided domains and
 /// dependences. Read and writes accesses can be optionally provided (NULL
 /// otherwise); if they are provided, they are exploited for certain late
@@ -268,7 +264,7 @@ __isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
                                           __isl_take isl_union_map *dependences,
                                           __isl_take isl_union_map *reads,
                                           __isl_take isl_union_map *writes,
-                                          PlutoOptions *options);
+                                          PlutoContext *context);
 
 /// Use the Pluto transformation algorithm on the domains cum schedules provided
 /// in `schedules' and with the read and writes access relations provided in
@@ -278,7 +274,7 @@ __isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
 __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
                                          __isl_take isl_union_map *reads,
                                          __isl_take isl_union_map *writes,
-                                         PlutoOptions *options_l);
+                                         PlutoContext *context);
 
 /*
  * Structure to hold iterator remapping information ---
@@ -299,10 +295,10 @@ typedef struct remapping Remapping;
 // converted back to an ISL object.
 void pluto_schedule_str(const char *domains_str, const char *dependences_str,
                         char **schedules_str_buffer_ptr, char **p_loops,
-                        Remapping **remapping_ptr, PlutoOptions *options);
+                        Remapping **remapping_ptr, PlutoContext *context);
 
 void pluto_get_remapping_str(const char *domains_str,
-                             const char *dependences_str, PlutoOptions *options,
+                             const char *dependences_str, PlutoContext *context,
                              Remapping *remapping);
 
 void pluto_remapping_free(Remapping remapping);

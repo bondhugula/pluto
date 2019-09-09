@@ -26,6 +26,8 @@
 #include "math_support.h"
 #include "post_transform.h"
 
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 #include "transforms.h"
 
@@ -154,6 +156,8 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
   int bandStart, bandEnd;
   int numRegTileLoops;
   int loop, i;
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
 
   HyperplaneProperties *hProps = prog->hProps;
 
@@ -230,6 +234,7 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
 /* Create a .regtile - empty .regtile if no unroll-jammable loops. */
 int gen_reg_tile_file(PlutoProg *prog) {
   int i;
+  PlutoOptions *options = prog->context->options;
 
   HyperplaneProperties *hProps = prog->hProps;
   FILE *unrollfp = fopen(".regtile", "w");
@@ -258,6 +263,8 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   if (!pluto_is_band_innermost(band, num_tiled_levels)) {
     return 0;
   }
+
+  PlutoContext *context = prog->context;
 
   unsigned nloops;
   Ploop **loops = pluto_get_loops_under(
@@ -329,7 +336,7 @@ int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
     /* Detect properties again */
     pluto_compute_dep_directions(prog);
     pluto_compute_dep_satisfaction(prog);
-    if (!options->silent) {
+    if (!prog->context->options->silent) {
       printf("[pluto] After intra-tile optimize\n");
       pluto_transformations_pretty_print(prog);
     }

@@ -24,13 +24,12 @@
 #include "isl/union_set.h"
 
 void run_test_and_cleanup(const char *domains_str, const char *deps_str,
-                          PlutoOptions *options, __isl_take isl_ctx *ctx) {
-
+                          PlutoContext *context, __isl_take isl_ctx *ctx) {
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
   isl_union_map *deps = isl_union_map_read_from_str(ctx, deps_str);
 
   isl_union_map *schedules =
-      pluto_transform(isl_union_set_copy(domains), deps, NULL, NULL, options);
+      pluto_transform(isl_union_set_copy(domains), deps, NULL, NULL, context);
   if (schedules) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
     printer = isl_printer_print_union_map(printer, schedules);
@@ -48,7 +47,7 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
   // Test remapping.
   // TODO: test it properly instead of just checking it doesn't crash.
   Remapping remapping;
-  pluto_get_remapping_str(domains_str, deps_str, options, &remapping);
+  pluto_get_remapping_str(domains_str, deps_str, context, &remapping);
   pluto_remapping_free(remapping);
 
   isl_ctx_free(ctx);
@@ -60,7 +59,7 @@ void run_test_and_cleanup(const char *domains_str, const char *deps_str,
 // CHECK: T(S1): (i0, 0, 0)
 // CHECK: T(S2): (i0, 1, i1)
 // CHECK: T(S3): (i0, 2, 0)
-void test1(PlutoOptions *options) {
+void test1(PlutoContext *context) {
   printf("\n\n*** TEST CASE 1 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -76,13 +75,13 @@ void test1(PlutoOptions *options) {
       "i0, 0] : i0 >= 0 and i0 <= 98; S_0[i0] -> S_2[i0] : i0 >= 0 and i0 "
       "<= 99; S_1[i0, 99] -> S_2[i0] : i0 >= 0 and i0 <= 99 }";
 
-  run_test_and_cleanup(domains_str, deps_str, options, ctx);
+  run_test_and_cleanup(domains_str, deps_str, context, ctx);
 }
 
 // CHECK-LABEL: *** TEST CASE 2 ***
 // CHECK: T(S1): (i0, 1024i0)
 // CHECK: T(S2): (i0, 1024i0+i1)
-void test2(PlutoOptions *options) {
+void test2(PlutoContext *options) {
   printf("\n\n*** TEST CASE 2 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -107,7 +106,7 @@ void test2(PlutoOptions *options) {
 
 // CHECK-LABEL: *** TEST CASE 3 ***
 // CHECK: T(S1): (i0-i1, i0+i1)
-void test_diamond_tiling(PlutoOptions *options) {
+void test_diamond_tiling(PlutoContext *options) {
   printf("\n\n*** TEST CASE 3 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -127,7 +126,7 @@ void test_diamond_tiling(PlutoOptions *options) {
 
 // CHECK-LABEL: *** TEST CASE 4 ***
 // CHECK: T(S1): (i0+i1, i0)
-void test4(PlutoOptions *options) {
+void test4(PlutoContext *context) {
   printf("\n\n*** TEST CASE 4 ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -138,13 +137,13 @@ void test4(PlutoOptions *options) {
   const char *deps_str = "[R, T] -> {"
                          "S_0[i0, i1] -> S_0[i0 + 1, i1 - 1] : 1 "
                          "<= i0 <= T and 1 <= i1 <= R - 2; }";
-  run_test_and_cleanup(domains_str, deps_str, options, ctx);
+  run_test_and_cleanup(domains_str, deps_str, context, ctx);
 }
 
 // CHECK-LABEL: *** TEST CASE 5 ***
 // CHECK: T(S1): (i0, i1, 0)
 // CHECK: T(S2): (i0+1, i1+1, 1)
-void test5(PlutoOptions *options) {
+void test5(PlutoContext *context) {
   printf("\n\n*** TEST CASE 5 ***\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -159,12 +158,12 @@ void test5(PlutoOptions *options) {
       "S_0[i0, i1] -> S_1[i0 - 1, i1 + 1] : 1 <= i0 <= T and 1 <= i1 <= R - 2; "
       "}";
 
-  run_test_and_cleanup(domains_str, deps_str, options, ctx);
+  run_test_and_cleanup(domains_str, deps_str, context, ctx);
 }
 
 // CHECK-LABEL: *** TEST CASE 6
 // CHECK: T(S1): (i0, i1+i2, i1)
-void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
+void test6_diamond_tiling_with_scalar_dimension(PlutoContext *context) {
   printf("\n\n*** TEST CASE 6\n\n");
   isl_ctx *ctx = isl_ctx_alloc();
   const char *domains_str =
@@ -179,13 +178,13 @@ void test6_diamond_tiling_with_scalar_dimension(PlutoOptions *options) {
       "S_0[2, i0, i1] -> S_0[2, i0 + 1, i1 + 1] : 1 <= i0 <= T and 1 <= "
       "i1 <= R - 2; }";
 
-  run_test_and_cleanup(domains_str, deps_str, options, ctx);
+  run_test_and_cleanup(domains_str, deps_str, context, ctx);
 }
 
 // CHECK-LABEL: *** TEST CASE test_lib_pluto_schedule ***
 // CHECK: T(S1): (1, i0, i1, 0)
 // CHECK: T(S2): (0, i0, i2, i1)
-void test_lib_pluto_schedule(PlutoOptions *options) {
+void test_lib_pluto_schedule(PlutoContext *context) {
   printf("\n\n*** TEST CASE test_lib_pluto_schedule ***\n\n");
 
   isl_ctx *ctx = isl_ctx_alloc();
@@ -207,7 +206,7 @@ void test_lib_pluto_schedule(PlutoOptions *options) {
       ctx,
       "[p1, p2, p0] -> { S_1[i0, i1, i2]->M1[o0, o1] : o0 = i2 and o1 = i0}");
 
-  schedules = pluto_schedule(schedules, reads, writes, options);
+  schedules = pluto_schedule(schedules, reads, writes, context);
 
   if (schedules) {
     isl_printer *printer = isl_printer_to_file(ctx, stdout);
@@ -221,7 +220,9 @@ void test_lib_pluto_schedule(PlutoOptions *options) {
 }
 
 int main() {
-  PlutoOptions *options = pluto_options_alloc();
+  PlutoContext *context = pluto_context_alloc();
+  PlutoOptions *options = context->options;
+
   options->tile = 1;
   options->parallel = 1;
   options->debug = 0;
@@ -231,18 +232,19 @@ int main() {
   options->fulldiamondtile = 0;
   options->isldepaccesswise = 0;
 
-  test1(options);
-  test2(options);
-  test_diamond_tiling(options);
-  test4(options);
-  test5(options);
-  test6_diamond_tiling_with_scalar_dimension(options);
+  test1(context);
+  test2(context);
+  test_diamond_tiling(context);
+  test4(context);
+  test5(context);
+  test6_diamond_tiling_with_scalar_dimension(context);
 
   options->tile = 0;
   options->diamondtile = 0;
   options->fulldiamondtile = 0;
   options->fuse = kNoFuse;
-  test_lib_pluto_schedule(options);
 
-  pluto_options_free(options);
+  test_lib_pluto_schedule(context);
+
+  pluto_context_free(context);
 }

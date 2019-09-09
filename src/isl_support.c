@@ -25,8 +25,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "isl_support.h"
+
 #include "constraints.h"
 #include "math_support.h"
+#include "pluto/matrix.h"
 
 #include "isl/aff.h"
 #include "isl/val.h"
@@ -35,13 +38,14 @@
 /*
  * Construct a PlutoMatrix with the same content as the given isl_mat.
  */
-PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
+PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat,
+                                       PlutoContext *context) {
   int i, j;
   int rows, cols;
 
   rows = isl_mat_rows(mat);
   cols = isl_mat_cols(mat);
-  PlutoMatrix *pluto = pluto_matrix_alloc(rows, cols);
+  PlutoMatrix *pluto = pluto_matrix_alloc(rows, cols, context);
 
   for (i = 0; i < rows; ++i)
     for (j = 0; j < cols; ++j) {
@@ -58,14 +62,15 @@ PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat) {
  */
 isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
                                void *user) {
-  int i, j, npar;
+  struct pluto_mat_context_info *info = (struct pluto_mat_context_info *)user;
 
-  npar = isl_aff_dim(aff, isl_dim_param);
+  int npar = isl_aff_dim(aff, isl_dim_param);
 
-  PlutoMatrix **mat_p = (PlutoMatrix **)user;
+  PlutoMatrix **mat_p = info->mat;
   if (*mat_p != NULL)
     pluto_matrix_free(*mat_p);
-  *mat_p = pluto_matrix_alloc(1, isl_aff_dim(aff, isl_dim_in) + npar + 1);
+  *mat_p = pluto_matrix_alloc(1, isl_aff_dim(aff, isl_dim_in) + npar + 1,
+                              info->context);
   PlutoMatrix *mat = *mat_p;
 
   if (isl_aff_dim(aff, isl_dim_div) >= 1) {
@@ -82,12 +87,15 @@ isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
     isl_val_free(v);
   }
 
+  // FIXME: fix this bug from the ugly use of i in the second loop nest and
+  // later.
+  int i;
   for (i = 0; i < isl_aff_dim(aff, isl_dim_in); i++) {
     isl_val *v = isl_aff_get_coefficient_val(aff, isl_dim_in, i);
     mat->val[0][i] = isl_val_get_num_si(v);
     isl_val_free(v);
   }
-  for (j = 0; j < npar; i++, j++) {
+  for (int j = 0; j < npar; i++, j++) {
     isl_val *v = isl_aff_get_coefficient_val(aff, isl_dim_param, j);
     mat->val[0][i] = isl_val_get_num_si(v);
     isl_val_free(v);

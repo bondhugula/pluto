@@ -34,9 +34,10 @@
 #endif
 
 #include "math_support.h"
-#include "pet_to_pluto.h"
 #include "osl_pluto.h"
+#include "pet_to_pluto.h"
 #include "pluto.h"
+#include "pluto/pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
@@ -48,8 +49,6 @@
 #include "osl/scop.h"
 
 #include "pet.h"
-
-PlutoOptions *options = NULL;
 
 void usage_message(void) {
   fprintf(stdout, "Usage: polycc <input.c> [options] [-o output]\n");
@@ -191,10 +190,11 @@ int main(int argc, char *argv[]) {
 
   double t_start_all = rtclock();
 
-  options = pluto_options_alloc();
-
   int option_index = 0;
   int nolastwriter = 0;
+
+  PlutoContext *context = pluto_context_alloc();
+  PlutoOptions *options = context->options;
 
   const struct option pluto_options[] = {
     {"fast-lin-ind-check", no_argument, &options->flic, 1},
@@ -540,7 +540,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       return 12;
     }
     double t_start = rtclock();
-    prog = pet_to_pluto_prog(pscop, pctx, options);
+    prog = pet_to_pluto_prog(pscop, pctx, context);
     t_d = rtclock() - t_start;
 
     pet_scop_free(pscop);
@@ -602,7 +602,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
 
     /* Convert clan scop to Pluto program */
-    prog = osl_scop_to_pluto_prog(scop, options);
+    prog = osl_scop_to_pluto_prog(scop, context);
 
     /* Backup irregular program portion in .scop. */
     osl_irregular_p irreg_ext = NULL;
@@ -697,7 +697,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
   if (!options->pet && !strcmp(srcFileName, "stdin")) {
     // input stdin == output stdout
-    pluto_populate_scop(scop, prog, options);
+    pluto_populate_scop(scop, prog, context);
     osl_scop_print(stdout, scop);
   } else {
     // Do the usual Pluto stuff.
@@ -754,6 +754,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       free(cloogFileName);
       pluto_options_free(options);
       pluto_prog_free(prog);
+      pluto_context_free(context);
       return 9;
     }
     free(cloogFileName);
@@ -765,6 +766,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
       free(outFileName);
       pluto_options_free(options);
       pluto_prog_free(prog);
+      pluto_context_free(context);
       fclose(cloogfp);
       return 10;
     }
@@ -824,7 +826,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
   }
 
   pluto_prog_free(prog);
-  pluto_options_free(options);
+  pluto_context_free(context);
 
   return 0;
 }

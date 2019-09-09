@@ -24,7 +24,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "pluto/matrix.h"
+typedef struct plutoContext PlutoContext;
+typedef struct pluto_matrix PlutoMatrix;
 
 #define PLMAX(a, b) ((a >= b) ? (a) : (b))
 #define PLMIN(a, b) ((a <= b) ? (a) : (b))
@@ -36,12 +37,12 @@ extern "C" {
 
 void pluto_matrix_print(FILE *, const PlutoMatrix *);
 void pluto_matrix_read(FILE *, const PlutoMatrix *);
-PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols);
+PlutoMatrix *pluto_matrix_alloc(int nrows, int ncols, PlutoContext *context);
 void pluto_matrix_free(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_dup(const PlutoMatrix *src);
-PlutoMatrix *pluto_matrix_identity(int size);
+PlutoMatrix *pluto_matrix_identity(int size, PlutoContext *context);
 void pluto_matrix_set(PlutoMatrix *mat, int val);
-PlutoMatrix *pluto_matrix_input(FILE *fp);
+PlutoMatrix *pluto_matrix_input(FILE *fp, PlutoContext *context);
 
 PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat);
 PlutoMatrix *pluto_matrix_product(const PlutoMatrix *mat1,

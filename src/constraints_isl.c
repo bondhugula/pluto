@@ -14,6 +14,7 @@
 #include "isl_support.h"
 #include "math_support.h"
 #include "pluto.h"
+#include "pluto/pluto.h"
 
 #include "isl/aff.h"
 #include "isl/ctx.h"
@@ -25,20 +26,18 @@
 /* start: 0-indexed */
 void pluto_constraints_project_out_isl(PlutoConstraints *cst, int start,
                                        int num) {
-  int end;
-  isl_set *set;
-
   assert(num >= 0);
   if (num == 0)
     return;
 
-  end = start + num - 1;
+  int end = start + num - 1;
   assert(start >= 0 && end <= (int)cst->ncols - 2);
 
-  set = isl_set_from_pluto_constraints(cst, NULL);
+  PlutoContext *context = cst->context;
+  isl_set *set = isl_set_from_pluto_constraints(cst, NULL);
   set = isl_set_project_out(set, isl_dim_set, start, num);
   pluto_constraints_free(cst);
-  cst = isl_set_to_pluto_constraints(set);
+  cst = isl_set_to_pluto_constraints(set, context);
   isl_set_free(set);
 }
 
@@ -52,6 +51,8 @@ void pluto_constraints_project_out_isl_single(PlutoConstraints **cst, int start,
   if (num == 0)
     return;
 
+  PlutoContext *context = (*cst)->context;
+
   end = start + num - 1;
   assert(start >= 0 && end <= (int)(*cst)->ncols - 2);
 
@@ -59,7 +60,7 @@ void pluto_constraints_project_out_isl_single(PlutoConstraints **cst, int start,
   bset = isl_basic_set_from_pluto_constraints(ctx, *cst);
   bset = isl_basic_set_project_out(bset, isl_dim_set, start, num);
   pluto_constraints_free(*cst);
-  *cst = isl_basic_set_to_pluto_constraints(bset);
+  *cst = isl_basic_set_to_pluto_constraints(bset, context);
   isl_basic_set_free(bset);
   isl_ctx_free(ctx);
 }
@@ -137,11 +138,18 @@ __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
   return set;
 }
 
+struct pluto_cst_context_info {
+  PlutoConstraints **cst;
+  PlutoContext *context;
+};
+
 static isl_stat extract_basic_set_constraints(__isl_take isl_basic_set *bset,
                                               void *usr) {
-  PlutoConstraints **cst = (PlutoConstraints **)usr;
+  struct pluto_cst_context_info *info = (struct pluto_cst_context_info *)usr;
+  PlutoConstraints **cst = info->cst;
 
-  PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
+  PlutoConstraints *bcst =
+      isl_basic_set_to_pluto_constraints(bset, info->context);
   isl_basic_set_free(bset);
 
   if (*cst == NULL)
@@ -157,13 +165,16 @@ static isl_stat extract_basic_set_constraints(__isl_take isl_basic_set *bset,
 }
 
 /* Convert an isl_set to PlutoConstraints */
-PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set) {
+PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set,
+                                               PlutoContext *context) {
   PlutoConstraints *cst = NULL;
-  assert(set != NULL);
-  isl_set_foreach_basic_set(set, &extract_basic_set_constraints, &cst);
+  assert(set && "set is null");
+  struct pluto_cst_context_info info = {&cst, context};
+  isl_set_foreach_basic_set(set, &extract_basic_set_constraints, &info);
   if (cst == NULL)
     cst = pluto_constraints_empty(isl_set_dim(set, isl_dim_set) +
-                                  isl_set_dim(set, isl_dim_param) + 1);
+                                      isl_set_dim(set, isl_dim_param) + 1,
+                                  context);
   return cst;
 }
 
@@ -221,7 +232,8 @@ isl_basic_map_from_pluto_constraints(isl_ctx *ctx, const PlutoConstraints *cst,
  * existentially quantified variables (leads to an overapproximation in some
  * cases */
 PlutoConstraints *
-isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset) {
+isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset,
+                                   PlutoContext *context) {
   int i, j;
   int eq_row;
   int ineq_row;
@@ -242,7 +254,7 @@ isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset) {
   ineq_row = isl_mat_rows(ineq);
   n_col = isl_mat_cols(eq);
 
-  cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
+  cons = pluto_constraints_alloc(eq_row + ineq_row, n_col, context);
   cons->nrows = eq_row + ineq_row;
 
   for (i = 0; i < eq_row; ++i) {
@@ -271,10 +283,11 @@ isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset) {
 
 /* Convert an isl_basic_map to a PlutoConstraints object */
 PlutoConstraints *
-isl_basic_map_to_pluto_constraints(__isl_keep isl_basic_map *bmap) {
+isl_basic_map_to_pluto_constraints(__isl_keep isl_basic_map *bmap,
+                                   PlutoContext *context) {
   PlutoConstraints *cst;
-
-  isl_basic_map_to_pluto_constraints_func_arg(isl_basic_map_copy(bmap), &cst);
+  struct pluto_cst_context_info info = {&cst, context};
+  isl_basic_map_to_pluto_constraints_func_arg(isl_basic_map_copy(bmap), &info);
 
   return cst;
 }
@@ -289,6 +302,8 @@ int isl_basic_map_to_pluto_constraints_func_arg(__isl_take isl_basic_map *bmap,
   isl_mat *eq, *ineq;
   PlutoConstraints *cons;
 
+  struct pluto_cst_context_info *info = (struct pluto_cst_context_info *)user;
+
   eq = isl_basic_map_equalities_matrix(bmap, isl_dim_in, isl_dim_out,
                                        isl_dim_div, isl_dim_param, isl_dim_cst);
   ineq = isl_basic_map_inequalities_matrix(
@@ -298,7 +313,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(__isl_take isl_basic_map *bmap,
   ineq_row = isl_mat_rows(ineq);
   n_col = isl_mat_cols(eq);
 
-  cons = pluto_constraints_alloc(eq_row + ineq_row, n_col);
+  cons = pluto_constraints_alloc(eq_row + ineq_row, n_col, info->context);
   cons->nrows = eq_row + ineq_row;
 
   for (i = 0; i < eq_row; ++i) {
@@ -323,7 +338,7 @@ int isl_basic_map_to_pluto_constraints_func_arg(__isl_take isl_basic_map *bmap,
   isl_mat_free(ineq);
   isl_basic_map_free(bmap);
 
-  *(PlutoConstraints **)user = cons;
+  *info->cst = cons;
   return 0;
 }
 
@@ -335,6 +350,7 @@ int64_t *pluto_constraints_lexmin_isl(const PlutoConstraints *cst, int negvar) {
   isl_ctx *ctx;
   isl_basic_set *bset, *all_positive;
   isl_set *domain, *all_positive_set, *lexmin;
+  PlutoContext *context = cst->context;
 
   IF_DEBUG(printf("[pluto] pluto_constraints_lexmin_isl (%d variables, %d "
                   "constraints)\n",
@@ -384,7 +400,7 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
   isl_set *set2 = isl_set_from_pluto_constraints(cst2, NULL);
   isl_set *set3 = isl_set_union(set1, set2);
 
-  PlutoConstraints *ucst = isl_set_to_pluto_constraints(set3);
+  PlutoConstraints *ucst = isl_set_to_pluto_constraints(set3, cst1->context);
 
   isl_set_free(set3);
 
@@ -395,7 +411,8 @@ PlutoConstraints *pluto_constraints_union_isl(const PlutoConstraints *cst1,
  * Extract a pluto function from an isl map under certain
  * circumstances
  */
-PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
+PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar,
+                                   PlutoContext *context) {
   int i, dim, ncols;
 
   dim = isl_map_dim(map, isl_dim_out);
@@ -403,17 +420,18 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar) {
 
   assert(ncols == stmt_dim + npar + 1);
 
-  PlutoMatrix *func = pluto_matrix_alloc(0, ncols);
+  PlutoMatrix *func = pluto_matrix_alloc(0, ncols, context);
 
   for (i = 0; i < dim; i++) {
     PlutoMatrix *func_onedim = NULL;
+    struct pluto_mat_context_info info = {&func_onedim, context};
     /* Schedule should be single valued */
     assert(isl_map_dim_is_single_valued(map, i));
     isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
     /* TODO: check to make sure there is only one piece; or else
      * an incorrect schedule will be extracted */
     /* Best effort: Gets it from the last piece */
-    isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+    isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &info);
     pluto_matrix_add(func, func_onedim);
     pluto_matrix_free(func_onedim);
     isl_pw_aff_free(pw_aff);
@@ -449,7 +467,7 @@ pluto_constraints_intersection_isl(const PlutoConstraints *cst1,
 
   iset3 = isl_set_intersect(iset1, iset2);
 
-  icst = isl_set_to_pluto_constraints(iset3);
+  icst = isl_set_to_pluto_constraints(iset3, cst1->context);
   isl_set_free(iset3);
 
   isl_ctx_free(ctx);

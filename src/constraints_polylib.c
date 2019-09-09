@@ -13,6 +13,7 @@
 #include "constraints_polylib.h"
 #include "math_support.h"
 #include "pluto.h"
+#include "pluto/matrix.h"
 
 #include "polylib/polylib64.h"
 
@@ -30,8 +31,8 @@ Matrix *pluto_matrix_to_polylib(const PlutoMatrix *mat) {
   return polymat;
 }
 
-PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat) {
-  PlutoMatrix *mat = pluto_matrix_alloc(pmat->NbRows, pmat->NbColumns);
+PlutoMatrix *polylib_matrix_to_pluto(Matrix *pmat, PlutoContext *context) {
+  PlutoMatrix *mat = pluto_matrix_alloc(pmat->NbRows, pmat->NbColumns, context);
 
   for (unsigned r = 0; r < mat->nrows; r++) {
     for (unsigned c = 0; c < mat->ncols; c++) {
@@ -64,16 +65,14 @@ Polyhedron *pluto_constraints_to_polylib(const PlutoConstraints *cst) {
   return pol;
 }
 
-PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol) {
-  PlutoConstraints *cst;
-
+PlutoConstraints *polylib_to_pluto_constraints(Polyhedron *pol,
+                                               PlutoContext *context) {
   Matrix *polymat = Polyhedron2Constraints(pol);
-
-  cst = polylib_matrix_to_pluto_constraints(polymat);
+  PlutoConstraints *cst = polylib_matrix_to_pluto_constraints(polymat, context);
   Matrix_Free(polymat);
 
   if (pol->next != NULL) {
-    cst->next = polylib_to_pluto_constraints(pol->next);
+    cst->next = polylib_to_pluto_constraints(pol->next, context);
   }
 
   return cst;
@@ -87,8 +86,6 @@ PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst,
                                           const PlutoMatrix *func) {
   assert(func->ncols == cst->ncols);
 
-  PlutoConstraints *imagecst;
-
   Polyhedron *pol = pluto_constraints_to_polylib(cst);
   Matrix *polymat = pluto_matrix_to_polylib(func);
 
@@ -96,7 +93,8 @@ PlutoConstraints *pluto_constraints_image(const PlutoConstraints *cst,
   Polyhedron *image = Polyhedron_Image(pol, polymat, 2 * cst->nrows);
 
   // Polyhedron_Print(stdout, "%4d ",  image);
-  imagecst = polylib_to_pluto_constraints(image);
+  PlutoConstraints *imagecst =
+      polylib_to_pluto_constraints(image, cst->context);
 
   Matrix_Free(polymat);
   Domain_Free(pol);
@@ -111,7 +109,7 @@ PlutoConstraints *pluto_constraints_union(const PlutoConstraints *cst1,
   Polyhedron *pol2 = pluto_constraints_to_polylib(cst2);
   Polyhedron *pol3 = DomainUnion(pol1, pol2, 50);
 
-  PlutoConstraints *ucst = polylib_to_pluto_constraints(pol3);
+  PlutoConstraints *ucst = polylib_to_pluto_constraints(pol3, cst1->context);
 
   Domain_Free(pol1);
   Domain_Free(pol2);
@@ -128,7 +126,7 @@ PlutoConstraints *pluto_constraints_difference(const PlutoConstraints *cst1,
   Polyhedron *pol2 = pluto_constraints_to_polylib(cst2);
   Polyhedron *pol3 = DomainDifference(pol1, pol2, 50);
 
-  PlutoConstraints *diffcst = polylib_to_pluto_constraints(pol3);
+  PlutoConstraints *diffcst = polylib_to_pluto_constraints(pol3, cst1->context);
 
   Domain_Free(pol1);
   Domain_Free(pol2);
@@ -144,7 +142,7 @@ PlutoConstraints *pluto_constraints_intersection(const PlutoConstraints *cst1,
 
   Polyhedron *pol3 = DomainIntersection(pol1, pol2, 50);
 
-  PlutoConstraints *icst = polylib_to_pluto_constraints(pol3);
+  PlutoConstraints *icst = polylib_to_pluto_constraints(pol3, cst1->context);
 
   Domain_Free(pol1);
   Domain_Free(pol2);
@@ -164,10 +162,10 @@ PlutoConstraints *pluto_constraints_intersect(PlutoConstraints *cst1,
 }
 
 /* Converts polylib matrix to pluto constraints */
-PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat) {
-  PlutoConstraints *cst;
-
-  cst = pluto_constraints_alloc(polymat->NbRows, polymat->NbColumns - 1);
+PlutoConstraints *polylib_matrix_to_pluto_constraints(Matrix *polymat,
+                                                      PlutoContext *context) {
+  PlutoConstraints *cst =
+      pluto_constraints_alloc(polymat->NbRows, polymat->NbColumns - 1, context);
   cst->nrows = polymat->NbRows;
 
   for (unsigned i = 0; i < cst->nrows; i++) {
@@ -192,7 +190,7 @@ PlutoMatrix *pluto_matrix_inverse(PlutoMatrix *mat) {
 
   Matrix_Inverse(pmat, pinv);
 
-  inv = polylib_matrix_to_pluto(pinv);
+  inv = polylib_matrix_to_pluto(pinv, mat->context);
 
   Matrix_Free(pmat);
   Matrix_Free(pinv);
