@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "constraints.h"
+#include "math_support.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"

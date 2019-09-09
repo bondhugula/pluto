@@ -23,6 +23,7 @@
 
 #include "transforms.h"
 
+#include "math_support.h"
 #include "constraints.h"
 #include "program.h"
 

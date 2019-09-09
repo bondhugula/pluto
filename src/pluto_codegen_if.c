@@ -33,6 +33,7 @@
 
 #include "ast_transform.h"
 #include "constraints.h"
+#include "math_support.h"
 #include "program.h"
 #include "version.h"
 

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "math_support.h"
+typedef struct pluto_matrix PlutoMatrix;
 
 /* Vertex of a graph */
 struct vertex {

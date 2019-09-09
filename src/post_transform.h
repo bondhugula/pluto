@@ -21,7 +21,8 @@
 #ifndef _POST_TRANSFORM_H
 #define _POST_TRANSFORM_H
 
-#include "pluto.h"
+typedef struct plutoProg PlutoProg;
+typedef struct band Band;
 
 int getDeepestNonScalarLoop(PlutoProg *prog);
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,

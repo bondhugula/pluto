@@ -30,6 +30,7 @@
 #include "isl/union_set.h"
 
 #include "constraints.h"
+#include "math_support.h"
 #include "pluto.h"
 #include "pluto/pluto.h"
 #include "program.h"

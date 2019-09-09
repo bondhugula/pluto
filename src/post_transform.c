@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <stdio.h>
 
+#include "math_support.h"
 #include "post_transform.h"
 
 #include "program.h"
