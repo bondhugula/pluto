@@ -66,7 +66,7 @@ force:
 	true
 
 test: PHONY
-	
+
 PHONY: polycc src/pluto test_libpluto unit_tests
 	./test.sh
 

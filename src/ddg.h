@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 typedef struct pluto_matrix PlutoMatrix;
+typedef struct plutoContext PlutoContext;
 
 /* Vertex of a graph */
 struct vertex {
@@ -77,6 +78,8 @@ struct graph {
    * to
    * rebuild only when necessary */
   bool to_be_rebuilt;
+
+  PlutoContext *context;
 };
 typedef struct graph Graph;
 
@@ -84,7 +87,7 @@ typedef struct graph Graph;
 extern "C" {
 #endif
 
-Graph *graph_alloc(int nVertices);
+Graph *graph_alloc(int nVertices, PlutoContext *context);
 void graph_free(Graph *g);
 void graph_print_sccs(Graph *g);
 void dfs_for_scc(Graph *g);

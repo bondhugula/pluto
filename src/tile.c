@@ -25,6 +25,8 @@
 
 #include "constraints.h"
 #include "math_support.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "post_transform.h"
 #include "program.h"
 #include "transforms.h"
@@ -32,13 +34,15 @@
 /* Read tile sizes from file tile.sizes */
 static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
                            int num_tile_dims, Stmt **stmts, int nstmts,
-                           int firstLoop) {
+                           int firstLoop, PlutoContext *context) {
   int i, j;
 
   FILE *tsfile = fopen("tile.sizes", "r");
 
   if (!tsfile)
     return 0;
+
+  PlutoOptions *options = context->options;
 
   IF_DEBUG(printf("[pluto] Reading %d tile sizes\n", num_tile_dims););
 
@@ -220,6 +224,9 @@ void pluto_tile(PlutoProg *prog) {
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
   ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+
   IF_DEBUG(printf("[pluto_tile] Outermost tilable bands\n"););
   IF_DEBUG(pluto_bands_print(bands, nbands););
   IF_DEBUG(printf("[pluto_tile] Innermost tilable bands\n"););
@@ -347,7 +354,7 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
   for (b = 0; b < nbands; b++) {
     read_tile_sizes(tile_sizes, l2_tile_size_ratios, bands[b]->width,
                     bands[b]->loop->stmts, bands[b]->loop->nstmts,
-                    bands[b]->loop->depth);
+                    bands[b]->loop->depth, prog->context);
 
     if (l2) {
       pluto_tile_band(prog, bands[b], l2_tile_size_ratios);
@@ -384,6 +391,9 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
   if (pluto_loop_is_parallel(prog, band->loop))
     return false;
 
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+
   /* A band can have scalar dimensions; it starts from a loop */
   int loop_depths[band->width];
   loop_depths[0] = band->loop->depth;
@@ -413,7 +423,7 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
 
   /* loop_depths[0...nloops-1] are the depths for which a tile schedule
    * can be created */
-  if (prog->options->multipar) {
+  if (options->multipar) {
     /* Full multi-dimensional wavefront */
     nip_dims = nloops - 1;
   } else {
@@ -466,6 +476,7 @@ bool pluto_create_tile_schedule_band(PlutoProg *prog, Band *band) {
 
 /// Returns true if something was done.
 bool pluto_create_tile_schedule(PlutoProg *prog, Band **bands, int nbands) {
+  PlutoContext *context = prog->context;
   IF_DEBUG(printf("creating tile schedule for bands: \n"););
   IF_DEBUG(pluto_bands_print(bands, nbands););
 

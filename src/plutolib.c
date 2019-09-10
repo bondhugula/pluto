@@ -32,15 +32,14 @@
 #include "constraints.h"
 #include "math_support.h"
 #include "pluto.h"
+#include "pluto/matrix.h"
 #include "pluto/pluto.h"
 #include "program.h"
-
-PlutoOptions *options = NULL;
 
 /// Run Pluto on the supplied PlutoProg.
 static int pluto_schedule_prog(PlutoProg *prog) {
   // Set global var for rest of Pluto.
-  options = prog->options;
+  PlutoOptions *options = prog->context->options;
 
   unsigned dim_sum = 0;
   for (int i = 0; i < prog->nstmts; i++) {
@@ -119,6 +118,7 @@ static int pluto_schedule_prog(PlutoProg *prog) {
 struct pluto_extra_stmt_info {
   Stmt **stmts;
   unsigned index;
+  PlutoContext *context;
 };
 
 static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
@@ -127,7 +127,8 @@ static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   Stmt **stmts = info->stmts;
   Stmt *stmt = stmts[info->index];
 
-  PlutoConstraints *bcst = isl_basic_set_to_pluto_constraints(bset);
+  PlutoConstraints *bcst =
+      isl_basic_set_to_pluto_constraints(bset, info->context);
   if (stmt->domain) {
     stmt->domain = pluto_constraints_unionize_simple(stmt->domain, bcst);
     pluto_constraints_free(bcst);
@@ -139,14 +140,19 @@ static isl_stat extract_basic_set(__isl_take isl_basic_set *bset, void *user) {
   return isl_stat_ok;
 }
 
-/* Used by libpluto interface. Expects that stmts[idx] have been initialized to
- * NULL.  */
-static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
-  Stmt **stmts = (Stmt **)user;
+struct pluto_stmt_context_info {
+  Stmt **stmts;
+  PlutoContext *context;
+};
 
+// Used by libpluto interface. Expects that stmts[idx] have been initialized to
+// NULL.
+static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
+  struct pluto_stmt_context_info *info = (struct pluto_stmt_context_info *)user;
+  Stmt **stmts = info->stmts;
   int dim = isl_set_dim(set, isl_dim_all);
   int npar = isl_set_dim(set, isl_dim_param);
-  PlutoMatrix *trans = pluto_matrix_alloc(dim - npar, dim + 1);
+  PlutoMatrix *trans = pluto_matrix_alloc(dim - npar, dim + 1, info->context);
   pluto_matrix_set(trans, 0);
   trans->nrows = 0;
 
@@ -173,8 +179,8 @@ static isl_stat extract_stmt(__isl_take isl_set *set, void *user) {
     stmt->iterators[i] = iter;
   }
 
-  struct pluto_extra_stmt_info info = {stmts, id};
-  isl_stat r = isl_set_foreach_basic_set(set, &extract_basic_set, &info);
+  struct pluto_extra_stmt_info e_info = {stmts, id, info->context};
+  isl_stat r = isl_set_foreach_basic_set(set, &extract_basic_set, &e_info);
 
   pluto_constraints_set_names_range(stmt->domain, stmt->iterators, 0, 0,
                                     stmt->dim);
@@ -210,7 +216,9 @@ static void extract_stmts(__isl_keep isl_union_set *domains, PlutoProg *prog) {
     prog->stmts[i] = NULL;
   }
 
-  isl_union_set_foreach_set(domains, &extract_stmt, prog->stmts);
+  struct pluto_stmt_context_info info = {prog->stmts, prog->context};
+
+  isl_union_set_foreach_set(domains, &extract_stmt, &info);
 
   for (int i = 0; i < prog->nstmts; i++)
     assert(prog->stmts[i] && "statement extraction failed; invalid domains?");
@@ -320,11 +328,8 @@ pluto_schedules_to_isl(PlutoProg *prog, __isl_take isl_space *space,
 static PlutoProg *pluto_prog_from_isl_domains_dependences(
     __isl_take isl_union_set *domains, __isl_take isl_union_map *dependences,
     __isl_take __isl_take isl_union_map *reads, isl_union_map *writes,
-    PlutoOptions *options_l) {
-  PlutoProg *prog = pluto_prog_alloc();
-  /* Global var */
-  options = options_l;
-  prog->options = options_l;
+    PlutoContext *context) {
+  PlutoProg *prog = pluto_prog_alloc(context);
 
   prog->nvar = -1;
 
@@ -363,7 +368,8 @@ static PlutoProg *pluto_prog_from_isl_domains_dependences(
       isl_union_map_foreach_map(writes, stmt_filter, &w_info);
 
       // Extract and populate into statements.
-      extract_accesses_for_pluto_stmt(prog->stmts[i], reads_s, writes_s);
+      extract_accesses_for_pluto_stmt(prog->stmts[i], reads_s, writes_s,
+                                      context);
 
       isl_union_map_free(reads_s);
       isl_union_map_free(writes_s);
@@ -380,7 +386,7 @@ static PlutoProg *pluto_prog_from_isl_domains_dependences(
     prog->deps[i] = pluto_dep_alloc();
   }
   extract_deps_from_isl_union_map(dependences, prog->deps, 0, prog->stmts,
-                                  PLUTO_DEP_RAW);
+                                  PLUTO_DEP_RAW, prog->context);
   isl_union_map_free(dependences);
 
   return prog;
@@ -395,12 +401,12 @@ __isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
                                           __isl_take isl_union_map *dependences,
                                           __isl_take isl_union_map *reads,
                                           __isl_take isl_union_map *writes,
-                                          PlutoOptions *options_l) {
+                                          PlutoContext *context) {
   isl_ctx *ctx = isl_union_set_get_ctx(domains);
   isl_space *space = isl_union_set_get_space(domains);
 
   PlutoProg *prog = pluto_prog_from_isl_domains_dependences(
-      domains, dependences, reads, writes, options_l);
+      domains, dependences, reads, writes, context);
 
   IF_MORE_DEBUG(printf("Extracted PlutoProg\n"));
   IF_MORE_DEBUG(pluto_prog_print(stdout, prog));
@@ -412,7 +418,7 @@ __isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
     pluto_prog_free(prog);
     isl_space_free(space);
 
-    if (!options_l->silent) {
+    if (!context->options->silent) {
       printf("[libpluto] failure, returning NULL schedules\n");
     }
     return NULL;
@@ -433,15 +439,15 @@ __isl_give isl_union_map *pluto_transform(__isl_take isl_union_set *domains,
 __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
                                          __isl_take isl_union_map *reads,
                                          __isl_take isl_union_map *writes,
-                                         PlutoOptions *options_l) {
+                                         PlutoContext *context) {
   isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_rar;
-
-  options = options_l;
 
   isl_union_map *empty = isl_union_map_empty(isl_union_map_get_space(reads));
 
+  PlutoOptions *options = context->options;
+
   compute_deps_isl(reads, writes, schedules, empty, &dep_raw, &dep_war,
-                   &dep_waw, &dep_rar, NULL, NULL);
+                   &dep_waw, &dep_rar, NULL, NULL, options);
   isl_union_map_free(empty);
 
   isl_union_map *dependences = isl_union_map_union(dep_raw, dep_war);
@@ -449,7 +455,7 @@ __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
   isl_union_set *domains = isl_union_map_domain(schedules);
 
   isl_union_map *pluto_schedules = pluto_transform(
-      isl_union_set_copy(domains), dependences, reads, writes, options_l);
+      isl_union_set_copy(domains), dependences, reads, writes, context);
   pluto_schedules = isl_union_map_intersect_domain(pluto_schedules, domains);
 
   return pluto_schedules;
@@ -458,6 +464,7 @@ __isl_give isl_union_map *pluto_schedule(__isl_take isl_union_map *schedules,
 /// Construct a remapping matrix for the transformations in prog's statements
 /// and return that.
 static Remapping *pluto_get_remapping(PlutoProg *prog) {
+  PlutoContext *context = prog->context;
   Remapping *remapping = (Remapping *)malloc(sizeof(Remapping));
   remapping->nstmts = prog->nstmts;
   remapping->stmt_inv_matrices =
@@ -476,9 +483,9 @@ static Remapping *pluto_get_remapping(PlutoProg *prog) {
 static Remapping *
 pluto_schedule_and_get_remapping(__isl_take isl_union_set *domains,
                                  __isl_take isl_union_map *dependences,
-                                 PlutoOptions *options_l) {
+                                 PlutoContext *context) {
   PlutoProg *prog = pluto_prog_from_isl_domains_dependences(
-      domains, dependences, NULL, NULL, options_l);
+      domains, dependences, NULL, NULL, context);
 
   IF_MORE_DEBUG(printf("Extracted PlutoProg\n"));
   IF_DEBUG(pluto_prog_print(stdout, prog););
@@ -487,7 +494,7 @@ pluto_schedule_and_get_remapping(__isl_take isl_union_set *domains,
     /* Failure */
     pluto_prog_free(prog);
 
-    if (!options_l->silent) {
+    if (!context->options->silent) {
       printf("[libpluto] failure, returning NULL schedules\n");
     }
     return NULL;
@@ -503,12 +510,12 @@ pluto_schedule_and_get_remapping(__isl_take isl_union_set *domains,
 __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     __isl_take isl_union_set *domains, __isl_take isl_union_map *dependences,
     Ploop ***ploops, unsigned *nploops, Remapping **remap,
-    PlutoOptions *options_l) {
+    PlutoContext *context) {
   isl_ctx *ctx = isl_union_set_get_ctx(domains);
   isl_space *space = isl_union_set_get_space(domains);
 
   PlutoProg *prog = pluto_prog_from_isl_domains_dependences(
-      domains, dependences, NULL, NULL, options_l);
+      domains, dependences, NULL, NULL, context);
 
   IF_MORE_DEBUG(printf("Extracted PlutoProg\n"));
   IF_DEBUG(pluto_prog_print(stdout, prog));
@@ -517,7 +524,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
     /* Failure */
     pluto_prog_free(prog);
 
-    if (!options_l->silent) {
+    if (!context->options->silent) {
       printf("[libpluto] failure, returning NULL schedules\n");
     }
     return NULL;
@@ -545,8 +552,7 @@ __isl_give isl_union_map *pluto_parallel_schedule_with_remapping(
 // converted back to an ISL object.
 void pluto_schedule_str(const char *domains_str, const char *dependences_str,
                         char **schedules_str_buffer_ptr, char **p_loops,
-                        Remapping **remapping_ptr, PlutoOptions *options) {
-
+                        Remapping **remapping_ptr, PlutoContext *context) {
   isl_ctx *ctx = isl_ctx_alloc();
   Ploop **ploop;
   unsigned nploop = 0, i;
@@ -558,11 +564,11 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 
   assert(remapping_ptr != NULL);
   isl_union_map *schedule = pluto_parallel_schedule_with_remapping(
-      domains, dependences, &ploop, &nploop, &remapping, options);
+      domains, dependences, &ploop, &nploop, &remapping, context);
   *remapping_ptr = remapping;
 
-  if (options->parallel) {
-    if (!options->silent) {
+  if (context->options->parallel) {
+    if (!context->options->silent) {
       pluto_loops_print(ploop, nploop);
     }
 
@@ -601,7 +607,7 @@ void pluto_schedule_str(const char *domains_str, const char *dependences_str,
 }
 
 void pluto_get_remapping_str(const char *domains_str,
-                             const char *dependences_str, PlutoOptions *options,
+                             const char *dependences_str, PlutoContext *context,
                              Remapping *remapping) {
   isl_ctx *ctx = isl_ctx_alloc();
   isl_union_set *domains = isl_union_set_read_from_str(ctx, domains_str);
@@ -609,7 +615,7 @@ void pluto_get_remapping_str(const char *domains_str,
       isl_union_map_read_from_str(ctx, dependences_str);
 
   Remapping *remapping_l =
-      pluto_schedule_and_get_remapping(domains, dependences, options);
+      pluto_schedule_and_get_remapping(domains, dependences, context);
   *remapping = *remapping_l;
   free(remapping_l);
   isl_ctx_free(ctx);

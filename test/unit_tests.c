@@ -27,11 +27,14 @@
 #include <stdio.h>
 
 #include "math_support.h"
+#include "pluto/pluto.h"
 
 void test_rank() {
-  PlutoMatrix *mat = pluto_matrix_input(stdin);
+  PlutoContext *context = pluto_context_alloc();
+  PlutoMatrix *mat = pluto_matrix_input(stdin, context);
   printf("The rank of this matrix is %d\n", pluto_matrix_get_rank(mat));
   pluto_matrix_free(mat);
+  pluto_context_free(context);
 }
 
 int main() {

@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "pluto.h"
+#include "pluto/matrix.h"
 #include "program.h"
 
 Ploop *pluto_loop_alloc() {

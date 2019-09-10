@@ -71,7 +71,7 @@ for file in $TESTS; do
 done
 
 # Test per cc objective
-printf '%-50s ' test/test-per-cc-obj.c
+printf '%-50s ' @top_srcdir@/test/test-per-cc-obj.c
 ./src/pluto --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
 check_ret_val_emit_status
 

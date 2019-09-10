@@ -8,9 +8,11 @@
 #include <string.h>
 
 #include "constraints.h"
-#include "math_support.h"
 #include "isl_support.h"
+#include "math_support.h"
 #include "pluto.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
@@ -36,7 +38,7 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
 
   h = isl_mat_right_kernel(h);
 
-  PlutoMatrix *ortho = pluto_matrix_from_isl_mat(h);
+  PlutoMatrix *ortho = pluto_matrix_from_isl_mat(h, mat->context);
 
   isl_mat_free(h);
 
@@ -44,7 +46,7 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
       (PlutoConstraints **)malloc((ndim + 1) * sizeof(PlutoConstraints *));
 
   for (i = 0; i < ndim + 1; i++) {
-    orthcst[i] = pluto_constraints_alloc(1, ndim + 1);
+    orthcst[i] = pluto_constraints_alloc(1, ndim + 1, mat->context);
     orthcst[i]->ncols = ndim + 1;
   }
 
@@ -124,6 +126,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
   assert(ndoms >= 0);
 
   const PlutoConstraints *dom0 = doms[0];
+  PlutoContext *context = dom0->context;
 
   for (i = 0; i < ndoms; i++) {
     assert((doms[i]->ncols - 1 - npar) % 2 == 0);
@@ -138,13 +141,13 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
    *
    * */
   int iss_cst_width = 2 + ndim + npar + 1 + 1;
-  PlutoConstraints *cst = pluto_constraints_alloc(10, iss_cst_width);
+  PlutoConstraints *cst = pluto_constraints_alloc(10, iss_cst_width, context);
 
   for (k = 0; k < ndoms; k++) {
     const PlutoConstraints *dom = doms[k];
 
     /* Linearize m + 2v(p) - h.s - h.t >= 0 */
-    PlutoMatrix *mat = pluto_matrix_alloc(dom->ncols, iss_cst_width);
+    PlutoMatrix *mat = pluto_matrix_alloc(dom->ncols, iss_cst_width, context);
     pluto_matrix_set(mat, 0);
 
     for (i = 0; i < ndim; i++) {
@@ -203,7 +206,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
   cst->val[cst->nrows - 1][1] = 1;
 
   /* Avoid trivial zero solution of h */
-  PlutoConstraints *nz = pluto_constraints_alloc(1, iss_cst_width);
+  PlutoConstraints *nz = pluto_constraints_alloc(1, iss_cst_width, context);
   nz->nrows = 1;
   for (j = 0; j < ndim; j++) {
     nz->val[0][2 + j] = 1;
@@ -229,7 +232,7 @@ PlutoConstraints *pluto_find_iss(const PlutoConstraints **doms, int ndoms,
   pluto_constraints_free(nz);
 
   if (sol) {
-    PlutoConstraints *h = pluto_constraints_alloc(1, ndim + npar + 1);
+    PlutoConstraints *h = pluto_constraints_alloc(1, ndim + npar + 1, context);
     h->nrows = 1;
 
     h->is_eq[0] = 1;
@@ -380,6 +383,7 @@ void pluto_iss(Stmt *stmt, PlutoConstraints **cuts, int num_cuts,
   int i;
 
   int prev_num_stmts = prog->nstmts;
+  PlutoContext *context = prog->context;
 
   PLUTO_MESSAGE(printf("[iss] Splitting S%d into %d statements\n", stmt->id + 1,
                        num_cuts););
@@ -400,6 +404,7 @@ void pluto_iss_dep(PlutoProg *prog) {
   int ndeps = prog->ndeps;
   int npar = prog->npar;
   int i, j;
+  PlutoContext *context = prog->context;
 
   if (prog->nstmts == 0)
     return;
