@@ -57,7 +57,7 @@ test_libpluto: test/test_libpluto.c
 	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $<  -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
 unit_tests: test/unit_tests.c
-	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I $(top_srcdir)/include -I $(top_srcdir)/src -lpluto -o unit_tests
+	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I$(top_srcdir)/src -lpluto -o unit_tests
 
 src/pluto: force
 	$(MAKE) $(MFLAGS) -C src pluto
