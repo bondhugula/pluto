@@ -97,6 +97,14 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         ./src/pluto --dfp $file $* -o test_tmp_out.pluto.c | FileCheck $file
         check_ret_val_emit_status
    done
+# Test greedy cost model with dfp
+   TESTS="test/dfp/fdtd-2d.c\
+       "
+   for file in $TESTS; do
+        printf '%-50s ' "$file with --dfp --clusterscc --lpcolor"
+        ./src/pluto --dfp --lpcolor --clusterscc $file -o test_tmp_out.pluto.c | FileCheck $file
+        check_ret_val_emit_status
+   done
 fi
 
 TESTS_TILE_PARALLEL="\

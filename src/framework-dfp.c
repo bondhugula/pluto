@@ -3279,22 +3279,28 @@ bool introduce_skew(PlutoProg *prog) {
       int64_t *sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
       if (!sol) {
-        /* The loop nest is not tileable */
+        /* The loop nest is not tileable. */
         break;
       }
 
-      /* Set the Appropriate coeffs in the transformation matrix */
+      /* Set appropriate coeffs in the transformation matrix. */
       for (int j = 0; j < nstmts; j++) {
         int stmt_offset = npar + 1 + j * (nvar + 1);
         for (int k = 0; k < nvar; k++) {
           stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
         }
-        /* No parametric Shifts */
+        /* No parametric shifts. */
         for (int k = nvar; k < nvar + npar; k++) {
           stmts[j]->trans->val[level][k] = 0;
         }
-        /* The constant Shift */
+        /* constant shift. */
         stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
+
+        /* Update hyperplane type. A scalar hyperplane for a statement S can
+         * become a loop hyperplane in cases where m_S linearly independent
+         * dimensions have already been found till level 'level - 1'. */
+        stmts[j]->hyp_types[level] =
+            pluto_is_hyperplane_scalar(stmts[j], level) ? H_SCALAR : H_LOOP;
       }
       /* If skewing results in a parallel hyperplane, then swap this hyperplane
        * with the one that satisfied dependences at this level */
