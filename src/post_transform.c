@@ -29,21 +29,6 @@
 #include "program.h"
 #include "transforms.h"
 
-int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
-  assert(depth <= (int)newacc->ncols - 1);
-  unsigned i;
-  for (i = 0; i < newacc->nrows; i++) {
-    if (newacc->val[i][depth] != 0)
-      break;
-  }
-  int is_invariant = (i == newacc->nrows);
-  pluto_matrix_free(newacc);
-  free(divs);
-  return is_invariant;
-}
-
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
@@ -76,21 +61,6 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   return 0;
 }
 
-unsigned get_num_invariant_accesses(Ploop *loop) {
-  /* All statements under the loop, all accesses for the statement */
-  unsigned ni = 0;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    Stmt *stmt = loop->stmts[i];
-    for (int j = 0; j < stmt->nreads; j++) {
-      ni += is_invariant(stmt, stmt->reads[j], loop->depth);
-    }
-    for (int j = 0; j < stmt->nwrites; j++) {
-      ni += is_invariant(stmt, stmt->writes[j], loop->depth);
-    }
-  }
-  return ni;
-}
-
 unsigned get_num_spatial_accesses(Ploop *loop) {
   /* All statements under the loop, all accesses for the statement */
   unsigned ns = 0;
@@ -103,16 +73,6 @@ unsigned get_num_spatial_accesses(Ploop *loop) {
       ns += has_spatial_reuse(stmt, stmt->writes[j], loop->depth);
     }
   }
-  return ns;
-}
-
-unsigned get_num_accesses(Ploop *loop) {
-  /* All statements under the loop, all accesses for the statement */
-  unsigned ns = 0;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
-  }
-
   return ns;
 }
 

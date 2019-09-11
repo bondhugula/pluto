@@ -439,24 +439,64 @@ int pluto_loop_compar(const void *_l1, const void *_l2) {
   return 1;
 }
 
-/// The loop is not a skewing hyperplane if for all statements, the
-/// transformation coefficient for only one dimension is non zero at level given
-/// by the loop depth. The routine returns true if the loop has skewing, else
-/// returns false.
-static bool is_loop_skewed(Ploop *loop, const PlutoProg *prog) {
-  unsigned nstmts = loop->nstmts;
-  unsigned level = loop->depth;
-  Stmt **stmts = loop->stmts;
-  for (unsigned i = 0; i < nstmts; i++) {
-    unsigned count = 0;
-    int len = stmts[i]->trans->ncols - 1;
-    for (unsigned j = 0; j < len; j++) {
-      if (stmts[i]->trans->val[level][j] > 0)
-        count++;
-    }
-    if (count > 1)
-      return true;
+unsigned get_num_accesses(Ploop *loop) {
+  /* All statements under the loop, all accesses for the statement */
+  unsigned ns = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
+    ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
   }
+
+  return ns;
+}
+
+static int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
+  int *divs;
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
+  assert(depth <= (int)newacc->ncols - 1);
+  unsigned i;
+  for (i = 0; i < newacc->nrows; i++) {
+    if (newacc->val[i][depth] != 0)
+      break;
+  }
+  int is_invariant = (i == newacc->nrows);
+  pluto_matrix_free(newacc);
+  free(divs);
+  if (is_invariant) {
+    printf("Invariant access in stmt %d\n", stmt->id);
+  }
+  return is_invariant;
+}
+
+unsigned get_num_invariant_accesses(Ploop *loop) {
+  /* All statements under the loop, all accesses for the statement */
+  unsigned ni = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
+    Stmt *stmt = loop->stmts[i];
+    for (int j = 0; j < stmt->nreads; j++) {
+      ni += is_invariant(stmt, stmt->reads[j], loop->depth);
+    }
+    for (int j = 0; j < stmt->nwrites; j++) {
+      ni += is_invariant(stmt, stmt->writes[j], loop->depth);
+    }
+  }
+  return ni;
+}
+
+#define NUM_TOTAL_REGISTERS 32
+/// Cost function returns true if unrolling jamming the loop will utilize less
+/// number of registers than the total number of registers specified in the ISA
+/// of the processor. We assume that the total number of registers that is
+/// available is 32. This heuristic has to be tuned further.
+bool is_unroll_jam_profitable(Ploop *loop) {
+  unsigned t = get_num_invariant_accesses(loop);
+  unsigned a = get_num_accesses(loop);
+  unsigned unroll_factor = options->ufactor;
+  int num_reg_required = a * unroll_factor - (t * (unroll_factor - 1));
+  int cost = NUM_TOTAL_REGISTERS - num_reg_required;
+  IF_DEBUG(pluto_loop_print(loop););
+  IF_DEBUG(printf("Cost for loop: %d\n", cost););
+  if (cost >= 0)
+    return true;
   return false;
 }
 
@@ -476,8 +516,9 @@ Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
       /* Do not unroll jam a tile space loop. */
       if (is_tile_space_loop(loops[i], prog))
         continue;
-      /* Do not unroll jam if the loop is skewed. */
-      if (is_loop_skewed(loops[i], prog))
+      /* Do not unroll jam if unroll jamming is not profitable. Refer function
+       * defintion for the cost function. */
+      if (!is_unroll_jam_profitable(loops[i]))
         continue;
       /* Do not unroll jam the innermost loop. */
       if (pluto_loop_is_innermost(loops[i], prog))

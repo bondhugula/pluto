@@ -132,6 +132,8 @@ isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog);
+unsigned get_num_invariant_accesses(Ploop *loop);
+unsigned get_num_accesses(Ploop *loop);
 
 #if defined(__cplusplus)
 }
