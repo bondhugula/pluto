@@ -439,6 +439,27 @@ int pluto_loop_compar(const void *_l1, const void *_l2) {
   return 1;
 }
 
+/// The loop is not a skewing hyperplane if for all statements, the
+/// transformation coefficient for only one dimension is non zero at level given
+/// by the loop depth. The routine returns true if the loop has skewing, else
+/// returns false.
+static bool is_loop_skewed(Ploop *loop, const PlutoProg *prog) {
+  unsigned nstmts = loop->nstmts;
+  unsigned level = loop->depth;
+  Stmt **stmts = loop->stmts;
+  for (unsigned i = 0; i < nstmts; i++) {
+    unsigned count = 0;
+    int len = stmts[i]->trans->ncols - 1;
+    for (unsigned j = 0; j < len; j++) {
+      if (stmts[i]->trans->val[level][j] > 0)
+        count++;
+    }
+    if (count > 1)
+      return true;
+  }
+  return false;
+}
+
 /// Returns a list of intra tile loops that are candidates for unroll jam.
 Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
                                    unsigned *num_ujloops) {
@@ -455,7 +476,10 @@ Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
       /* Do not unroll jam a tile space loop. */
       if (is_tile_space_loop(loops[i], prog))
         continue;
-      /* Do not unroll jam the innermost loop.*/
+      /* Do not unroll jam if the loop is skewed. */
+      if (is_loop_skewed(loops[i], prog))
+        continue;
+      /* Do not unroll jam the innermost loop. */
       if (pluto_loop_is_innermost(loops[i], prog))
         continue;
       ujloops = (Ploop **)realloc(ujloops, (nloops + 1) * sizeof(Ploop *));
