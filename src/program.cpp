@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "isl_support.h"
 #include "program.h"
@@ -2340,5 +2341,89 @@ void pluto_stmt_transformation_print(const Stmt *stmt) {
       printf("unknown");
   }
   printf(")\n\n");
+}
+
+PlutoAccess *pluto_create_new_access(int sym_id, const char *name,
+                                     PlutoMatrix *acc_mat) {
+  PlutoAccess *newacc = (PlutoAccess *)malloc(sizeof(PlutoAccess));
+  newacc->sym_id = sym_id;
+  newacc->name = strdup(name);
+  newacc->mat = acc_mat;
+  return newacc;
+}
+
+/// Checks if two PlutoAceesess are the same.
+static bool are_pluto_accesses_same(PlutoAccess *acc1, PlutoAccess *acc2) {
+  // TODO: Do we need to check id and name of the symbols?
+  if (acc1->sym_id != acc2->sym_id)
+    return false;
+  if (strcmp(acc1->name, acc2->name))
+    return false;
+  return are_pluto_matrices_equal(acc1->mat, acc2->mat);
+}
+
+/// Checks if an access is present in a set of accesses.
+static bool is_access_present(std::vector<PlutoAccess *> acc_set,
+                              PlutoAccess *acc) {
+  for (auto acc_itr = acc_set.begin(); acc_itr != acc_set.end(); acc_itr++) {
+    if (are_pluto_accesses_same(*acc_itr, acc))
+      return true;
+  }
+  return false;
+}
+
+/// Inserts an access newacc to a vector of accesses if it is not already
+/// present.
+static void insert_access_if_unique(std::vector<PlutoAccess *> *acc_set,
+                                    PlutoAccess *newacc) {
+  if (acc_set->empty()) {
+    acc_set->push_back(newacc);
+  } else if (is_access_present(*acc_set, newacc)) {
+    pluto_access_free(newacc);
+  } else {
+    acc_set->push_back(newacc);
+  }
+}
+
+/// Returns a vector of unique accesses in the list of input statements.
+static std::vector<PlutoAccess *>
+get_unique_accesses_in_stmts(std::vector<Stmt *> stmts, const PlutoProg *prog) {
+  std::vector<PlutoAccess *> unique_accesses;
+  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
+    /* All read accesses. */
+    Stmt *stmt = *stmt_itr;
+    for (int j = 0; j < stmt->nreads; j++) {
+      int *divs;
+      PlutoAccess *acc = stmt->reads[j];
+      PlutoMatrix *new_acc_func =
+          pluto_get_new_access_func(acc->mat, stmt, &divs);
+      PlutoAccess *newacc =
+          pluto_create_new_access(acc->sym_id, acc->name, new_acc_func);
+      insert_access_if_unique(&unique_accesses, newacc);
+    }
+    /* All write accesses. */
+    for (int j = 0; j < stmt->nwrites; j++) {
+      int *divs;
+      PlutoAccess *acc = stmt->writes[j];
+      PlutoMatrix *new_acc_func =
+          pluto_get_new_access_func(acc->mat, stmt, &divs);
+      PlutoAccess *newacc =
+          pluto_create_new_access(acc->sym_id, acc->name, new_acc_func);
+      insert_access_if_unique(&unique_accesses, newacc);
+    }
+  }
+  return unique_accesses;
+}
+
+/// Returns the number of unique accesses in a set of statements.
+unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                          const PlutoProg *prog) {
+  std::vector<Stmt *> stmts_vec;
+  for (unsigned i = 0; i < nstmts; i++) {
+    stmts_vec.push_back(stmts[i]);
+  }
+  std::vector<PlutoAccess *> unique_accesses =
+      get_unique_accesses_in_stmts(stmts_vec, prog);
+  return unique_accesses.size();
 }
 

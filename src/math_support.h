@@ -21,8 +21,9 @@
 #define _MATH_SUPPORT_H
 
 #include <gmp.h>
-#include <stdio.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "pluto/matrix.h"
 
@@ -75,6 +76,8 @@ char *pluto_affine_function_sprint(int64_t *func, int ndims, const char **vars);
 
 void pluto_matrix_reverse_rows(PlutoMatrix *mat);
 void pluto_matrix_negate(PlutoMatrix *mat);
+
+bool are_pluto_matrices_equal(PlutoMatrix *mat1, PlutoMatrix *mat2);
 
 int pluto_vector_is_parallel(PlutoMatrix *mat1, int r1, PlutoMatrix *mat2,
                              int r2);

@@ -29,6 +29,9 @@
 #include "program.h"
 #include "transforms.h"
 
+/// Used to determine if an access has a short stride.  This is used to favour
+/// loops with short strides at the innermost level. Loops with short stride
+/// have exhibit spatial locality when they are present at the innermost level.
 #define SHORT_STRIDE 4
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;

@@ -29,6 +29,10 @@
 #include "pluto.h"
 #include "program.h"
 
+/// Number of registers defined in the ISA. This is used in heuristics that
+/// determine whether the unroll jam of a loop is profitable.
+#define NUM_TOTAL_REGISTERS 32
+
 Ploop *pluto_loop_alloc() {
   Ploop *loop = (Ploop *)malloc(sizeof(Ploop));
   loop->nstmts = 0;
@@ -445,11 +449,12 @@ unsigned get_num_accesses(Ploop *loop) {
   for (unsigned i = 0; i < loop->nstmts; i++) {
     ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
   }
-
   return ns;
 }
 
-static int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
+/// Is the access given by acc an invariant at a given depth. If yes, then the
+/// access has temporal reuse along the hyperplane at this depth.
+static bool is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
   assert(depth <= (int)newacc->ncols - 1);
@@ -458,12 +463,9 @@ static int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
     if (newacc->val[i][depth] != 0)
       break;
   }
-  int is_invariant = (i == newacc->nrows);
+  bool is_invariant = (i == newacc->nrows);
   pluto_matrix_free(newacc);
   free(divs);
-  if (is_invariant) {
-    printf("Invariant access in stmt %d\n", stmt->id);
-  }
   return is_invariant;
 }
 
@@ -482,14 +484,56 @@ unsigned get_num_invariant_accesses(Ploop *loop) {
   return ni;
 }
 
-#define NUM_TOTAL_REGISTERS 32
+/// Returns the maximum number of accesses that occuer at the innermost level.
+static unsigned get_max_num_innermost_accesses(Ploop *loop,
+                                               const PlutoProg *prog) {
+  unsigned num_inner_loops;
+  Ploop **iloops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth,
+                                         prog, &num_inner_loops);
+
+  unsigned max_unique_accesses = 0;
+  Stmt **stmts = (Stmt **)malloc(loop->nstmts * sizeof(Stmt *));
+  for (unsigned i = 0; i < num_inner_loops; i++) {
+    if (!pluto_loop_is_innermost(iloops[i], prog))
+      continue;
+    unsigned max_dim = iloops[i]->stmts[0]->dim;
+    for (unsigned j = 1; j < iloops[i]->nstmts; j++) {
+      Stmt *stmt = iloops[i]->stmts[j];
+      if (stmt->dim > max_dim)
+        max_dim = stmt->dim;
+    }
+
+    unsigned nstmts = 0;
+    for (unsigned j = 0; j < iloops[i]->nstmts; j++) {
+      Stmt *stmt = iloops[i]->stmts[j];
+      if (stmt->dim != max_dim)
+        continue;
+      stmts[nstmts++] = stmt;
+    }
+    unsigned unique_accesses =
+        get_num_unique_accesses_in_stmts(stmts, nstmts, prog);
+    if (unique_accesses > max_unique_accesses)
+      max_unique_accesses = unique_accesses;
+  }
+  free(stmts);
+  pluto_loops_free(iloops, num_inner_loops);
+  return max_unique_accesses;
+}
+
 /// Cost function returns true if unrolling jamming the loop will utilize less
 /// number of registers than the total number of registers specified in the ISA
 /// of the processor. We assume that the total number of registers that is
 /// available is 32. This heuristic has to be tuned further.
-bool is_unroll_jam_profitable(Ploop *loop) {
+bool is_unroll_jam_profitable(Ploop *loop, const PlutoProg *prog) {
   unsigned t = get_num_invariant_accesses(loop);
-  unsigned a = get_num_accesses(loop);
+  IF_DEBUG(printf("Number of accesses with temporal reuse: %d\n", t););
+  // If there is no temporal reuse, then unroll jam isnt profitable.
+  if (t == 0)
+    return false;
+  unsigned a = get_max_num_innermost_accesses(loop, prog);
+  IF_DEBUG(pluto_loop_print(loop););
+  IF_DEBUG(
+      printf("Total number of unique accesses at innermost level %d\n", a););
   unsigned unroll_factor = options->ufactor;
   int num_reg_required = a * unroll_factor - (t * (unroll_factor - 1));
   int cost = NUM_TOTAL_REGISTERS - num_reg_required;
@@ -516,12 +560,12 @@ Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
       /* Do not unroll jam a tile space loop. */
       if (is_tile_space_loop(loops[i], prog))
         continue;
-      /* Do not unroll jam if unroll jamming is not profitable. Refer function
-       * defintion for the cost function. */
-      if (!is_unroll_jam_profitable(loops[i]))
-        continue;
       /* Do not unroll jam the innermost loop. */
       if (pluto_loop_is_innermost(loops[i], prog))
+        continue;
+      /* Do not unroll jam if unroll jamming is not profitable. Refer function
+       * defintion for the cost function. */
+      if (!is_unroll_jam_profitable(loops[i], prog))
         continue;
       ujloops = (Ploop **)realloc(ujloops, (nloops + 1) * sizeof(Ploop *));
       ujloops[nloops++] = pluto_loop_dup(loops[i]);

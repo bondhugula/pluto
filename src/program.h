@@ -134,7 +134,8 @@ int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog);
 unsigned get_num_invariant_accesses(Ploop *loop);
 unsigned get_num_accesses(Ploop *loop);
-
+unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                          const PlutoProg *prog);
 #if defined(__cplusplus)
 }
 #endif
