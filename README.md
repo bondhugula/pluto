@@ -2,13 +2,14 @@ OVERVIEW
 
 Please see http://pluto-compiler.sourceforge.net.
 
-This package involves both the tool pluto and libpluto. The 'pluto' tool
+This package includes both the tool pluto and libpluto. The 'pluto' tool
 is a source-to-source transfomer meant to be run via the polycc script.  
 libpluto provides a thread-safe library interface.
 
 LICENSE
 
-Pluto is available under GPL v3, and libpluto is available under LGPL v2.1.
+Pluto is available under GPL v3, and libpluto is available under the MIT
+license. Please see the files LICENSE and LICENSE.MIT for more details.
 
 INSTALLING PLUTO
 
