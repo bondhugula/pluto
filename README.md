@@ -2,9 +2,9 @@ OVERVIEW
 
 Please see http://pluto-compiler.sourceforge.net.
 
-This package involves both the tool pluto and libpluto.
-
-libpluto is not thread-safe.
+This package involves both the tool pluto and libpluto. The 'pluto' tool
+is a source-to-source transfomer meant to be run via the polycc script.  
+libpluto provides a thread-safe library interface.
 
 LICENSE
 
