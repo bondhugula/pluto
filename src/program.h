@@ -136,6 +136,9 @@ unsigned get_num_invariant_accesses(Ploop *loop);
 unsigned get_num_accesses(Ploop *loop);
 unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
                                           const PlutoProg *prog);
+unsigned get_num_invariant_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                             unsigned depth,
+                                             const PlutoProg *prog);
 #if defined(__cplusplus)
 }
 #endif

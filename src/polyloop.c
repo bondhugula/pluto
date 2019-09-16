@@ -484,7 +484,46 @@ unsigned get_num_invariant_accesses(Ploop *loop) {
   return ni;
 }
 
-/// Returns the maximum number of accesses that occuer at the innermost level.
+/// Returns the maximum dimensionality of the set of input statements.
+static unsigned get_max_dim(Stmt **stmts, unsigned nstmts) {
+  unsigned max_dim = stmts[0]->dim;
+  for (unsigned j = 1; j < nstmts; j++) {
+    Stmt *stmt = stmts[j];
+    if (stmt->dim > max_dim)
+      max_dim = stmt->dim;
+  }
+  return max_dim;
+}
+
+unsigned get_max_num_innermost_invariant_accesses(Ploop *loop,
+                                                  const PlutoProg *prog) {
+  unsigned num_inner_loops;
+  Ploop **iloops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth,
+                                         prog, &num_inner_loops);
+  unsigned max_invariant_accesses = 0;
+  Stmt **stmts = (Stmt **)malloc(loop->nstmts * sizeof(Stmt *));
+  for (unsigned i = 0; i < num_inner_loops; i++) {
+    if (!pluto_loop_is_innermost(iloops[i], prog))
+      continue;
+    unsigned max_dim = get_max_dim(iloops[i]->stmts, iloops[i]->nstmts);
+    unsigned nstmts = 0;
+    for (unsigned j = 0; j < iloops[i]->nstmts; j++) {
+      Stmt *stmt = iloops[i]->stmts[j];
+      if (stmt->dim != max_dim)
+        continue;
+      stmts[nstmts++] = stmt;
+    }
+    unsigned unique_invariant_accesses =
+        get_num_invariant_accesses_in_stmts(stmts, nstmts, loop->depth, prog);
+    if (unique_invariant_accesses > max_invariant_accesses)
+      max_invariant_accesses = unique_invariant_accesses;
+  }
+  free(stmts);
+  pluto_loops_free(iloops, num_inner_loops);
+  return max_invariant_accesses;
+}
+
+/// Returns the maximum number of accesses at the innermost level.
 static unsigned get_max_num_innermost_accesses(Ploop *loop,
                                                const PlutoProg *prog) {
   unsigned num_inner_loops;
@@ -496,13 +535,8 @@ static unsigned get_max_num_innermost_accesses(Ploop *loop,
   for (unsigned i = 0; i < num_inner_loops; i++) {
     if (!pluto_loop_is_innermost(iloops[i], prog))
       continue;
-    unsigned max_dim = iloops[i]->stmts[0]->dim;
-    for (unsigned j = 1; j < iloops[i]->nstmts; j++) {
-      Stmt *stmt = iloops[i]->stmts[j];
-      if (stmt->dim > max_dim)
-        max_dim = stmt->dim;
-    }
 
+    unsigned max_dim = get_max_dim(iloops[i]->stmts, iloops[i]->nstmts);
     unsigned nstmts = 0;
     for (unsigned j = 0; j < iloops[i]->nstmts; j++) {
       Stmt *stmt = iloops[i]->stmts[j];
@@ -525,7 +559,7 @@ static unsigned get_max_num_innermost_accesses(Ploop *loop,
 /// of the processor. We assume that the total number of registers that is
 /// available is 32. This heuristic has to be tuned further.
 bool is_unroll_jam_profitable(Ploop *loop, const PlutoProg *prog) {
-  unsigned t = get_num_invariant_accesses(loop);
+  unsigned t = get_max_num_innermost_invariant_accesses(loop, prog);
   IF_DEBUG(printf("Number of accesses with temporal reuse: %d\n", t););
   // If there is no temporal reuse, then unroll jam isnt profitable.
   if (t == 0)
@@ -573,6 +607,7 @@ Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
     pluto_loops_free(loops, num);
   }
   *num_ujloops = nloops;
+  pluto_bands_free(ibands, num_ibands);
   return ujloops;
 }
 
