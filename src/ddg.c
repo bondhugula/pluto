@@ -26,29 +26,31 @@
 #include "ddg.h"
 #include "math_support.h"
 #include "pluto.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 
 /* Allocate a graph */
-Graph *graph_alloc(int nVertices) {
-  Graph *g;
-  int i, j;
+Graph *graph_alloc(int nVertices, PlutoContext *context) {
+  assert(context && "null context");
 
-  g = (Graph *)malloc(sizeof(Graph));
+  Graph *g = (Graph *)malloc(sizeof(Graph));
+  g->context = context;
 
   g->nVertices = nVertices;
 
   g->vertices = (Vertex *)malloc(nVertices * sizeof(Vertex));
-  for (i = 0; i < nVertices; i++) {
+  for (int i = 0; i < nVertices; i++) {
     g->vertices[i].id = i;
   }
 
-  g->adj = pluto_matrix_alloc(nVertices, nVertices);
+  g->adj = pluto_matrix_alloc(nVertices, nVertices, context);
   g->adj->nrows = nVertices;
   g->adj->ncols = nVertices;
 
-  for (i = 0; i < nVertices; i++) {
+  for (int i = 0; i < nVertices; i++) {
     g->vertices[i].vn = -1;
     g->vertices[i].fn = -1;
-    for (j = 0; j < nVertices; j++)
+    for (int j = 0; j < nVertices; j++)
       g->adj->val[i][j] = 0;
   }
 
@@ -64,12 +66,12 @@ Graph *graph_alloc(int nVertices) {
 
 /* Print the strongly-connected components */
 void graph_print_sccs(Graph *g) {
-  int i;
+  PlutoContext *context = g->context;
 
   /* SCCs should have been computed */
   assert(g->num_sccs != -1);
 
-  for (i = 0; i < g->num_sccs; i++) {
+  for (int i = 0; i < g->num_sccs; i++) {
     IF_DEBUG(printf("\tSCC %d: size: %d: max stmt dim: %d\n", g->sccs[i].id,
                     g->sccs[i].size, g->sccs[i].max_dim));
   }
@@ -78,13 +80,10 @@ void graph_print_sccs(Graph *g) {
 /* Return transpose of a graph G
  * G^T has an edge b/w u and v  iff G has an edge b/w v and u */
 Graph *graph_transpose(Graph *g) {
-  int i, j;
-  Graph *gT;
+  Graph *gT = graph_alloc(g->nVertices, g->context);
 
-  gT = graph_alloc(g->nVertices);
-
-  for (i = 0; i < g->nVertices; i++) {
-    for (j = 0; j < g->nVertices; j++) {
+  for (int i = 0; i < g->nVertices; i++) {
+    for (int j = 0; j < g->nVertices; j++) {
       gT->adj->val[j][i] = g->adj->val[i][j];
     }
 
@@ -99,7 +98,7 @@ Graph *graph_transpose(Graph *g) {
 Graph *get_undirected_graph(const Graph *g) {
   int i, j;
   Graph *gU;
-  gU = graph_alloc(g->nVertices);
+  gU = graph_alloc(g->nVertices, g->context);
   for (i = 0; i < g->nVertices; i++) {
     for (j = 0; j <= i; j++) {
       gU->adj->val[i][j] =
@@ -184,6 +183,7 @@ static int compar(const void *e1, const void *e2) {
 void dfs_for_scc(Graph *g) {
   int i, j;
   int time = 0;
+  PlutoContext *context = g->context;
 
   Vertex *vCopy = (Vertex *)malloc(g->nVertices * sizeof(Vertex));
   memcpy(vCopy, g->vertices, g->nVertices * sizeof(Vertex));

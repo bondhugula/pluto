@@ -31,12 +31,16 @@
 
 #include "pluto_codegen_if.h"
 
-#include "cloog/cloog.h"
-#include "osl/extensions/loop.h"
-
 #include "ast_transform.h"
+#include "constraints.h"
+#include "math_support.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 #include "version.h"
+
+#include "cloog/cloog.h"
+#include "osl/extensions/loop.h"
 
 static int get_first_point_loop(Stmt *stmt, const PlutoProg *prog) {
   int i, first_point_loop;
@@ -74,6 +78,7 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog) {
   Stmt **stmts = prog->stmts;
   int nstmts = prog->nstmts;
   int npar = prog->npar;
+  PlutoContext *context = prog->context;
 
   IF_DEBUG(printf("[pluto] generating Cloog file...\n"));
   fprintf(fp, "# CLooG script generated automatically by PLUTO %s\n",
@@ -82,10 +87,10 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog) {
   fprintf(fp, "c\n\n");
 
   /* Context: setting conditions on parameters */
-  PlutoConstraints *ctx = pluto_constraints_dup(prog->context);
-  pluto_constraints_intersect_isl(ctx, prog->codegen_context);
-  pluto_constraints_print_polylib(fp, ctx);
-  pluto_constraints_free(ctx);
+  PlutoConstraints *param_ctx = pluto_constraints_dup(prog->param_context);
+  pluto_constraints_intersect_isl(param_ctx, prog->codegen_context);
+  pluto_constraints_print_polylib(fp, param_ctx);
+  pluto_constraints_free(param_ctx);
 
   /* Setting parameter names */
   fprintf(fp, "\n1\n");
@@ -132,7 +137,8 @@ void pluto_gen_cloog_file(FILE *fp, const PlutoProg *prog) {
   }
 }
 
-static void gen_stmt_macro(const Stmt *stmt, FILE *outfp) {
+static void gen_stmt_macro(const Stmt *stmt, PlutoOptions *options,
+                           FILE *outfp) {
   int j;
 
   for (j = 0; j < stmt->dim; j++) {
@@ -175,7 +181,7 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp) {
 
   /* Generate statement macros */
   for (i = 0; i < nstmts; i++) {
-    gen_stmt_macro(stmts[i], outfp);
+    gen_stmt_macro(stmts[i], prog->context->options, outfp);
   }
   fprintf(outfp, "\n");
 
@@ -193,7 +199,7 @@ int generate_declarations(const PlutoProg *prog, FILE *outfp) {
     fprintf(outfp, ";\n\n");
   }
 
-  if (options->parallel) {
+  if (prog->context->options->parallel) {
     fprintf(outfp, "\tint lb, ub, lbp, ubp, lb2, ub2;\n");
   }
   /* For vectorizable loop bound replacement */
@@ -214,6 +220,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   CloogInput *input;
   CloogOptions *cloogOptions;
   CloogState *state;
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
   int i;
 
   struct clast_stmt *root;
@@ -317,12 +325,12 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
 /* Generate code for a single multicore; the ploog script will insert openmp
  * pragmas later */
 int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog) {
-  if (options->parallel) {
+  if (prog->context->options->parallel) {
     fprintf(outfp, "#include <omp.h>\n\n");
   }
   generate_declarations(prog, outfp);
 
-  if (options->multipar) {
+  if (prog->context->options->multipar) {
     fprintf(outfp, "\tomp_set_nested(1);\n");
     fprintf(outfp, "\tomp_set_num_threads(2);\n");
   }
@@ -349,6 +357,8 @@ int pluto_omp_parallelize(PlutoProg *prog) {
     return 1;
 
   HyperplaneProperties *hProps = prog->hProps;
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
 
   int loop;
 
@@ -420,6 +430,7 @@ osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog,
                                         int vloopsfound) {
   unsigned i, j, nploops;
   osl_loop_p ret_loop = NULL;
+  PlutoContext *context = prog->context;
 
   Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
 
@@ -471,6 +482,7 @@ osl_loop_p pluto_get_parallel_loop_list(const PlutoProg *prog,
 osl_loop_p pluto_get_vector_loop_list(const PlutoProg *prog) {
   unsigned i, j, nploops;
   osl_loop_p ret_loop = NULL;
+  PlutoContext *context = prog->context;
 
   Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
 

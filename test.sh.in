@@ -18,50 +18,50 @@ fi
 }
 
 TESTS="\
-  test/1dloop-invar.c \
-  test/costfunc.c \
-  test/doitgen.c \
-  test/fdtd-2d.c \
-  test/fusion1.c \
-  test/fusion2.c \
-  test/fusion3.c \
-  test/fusion4.c \
-  test/fusion5.c \
-  test/fusion6.c \
-  test/fusion7.c \
-  test/fusion8.c \
-  test/fusion9.c \
-  test/fusion10.c \
-  test/gemver.c \
-  test/jacobi-1d-imper.c \
-  test/jacobi-2d-imper.c \
-  test/intratileopt1.c \
-  test/intratileopt2.c \
-  test/intratileopt3.c \
-  test/intratileopt4.c \
-  test/matmul.c \
-  test/matmul-seq.c \
-  test/matmul-seq3.c \
-  test/multi-loop-param.c \
-  test/multi-stmt-stencil-seq.c \
-  test/mvt.c \
-  test/mxv.c \
-  test/mxv-seq.c \
-  test/mxv-seq3.c \
-  test/negparam.c \
-  test/nodep.c \
-  test/noloop.c \
-  test/polynomial.c \
-  test/seidel.c \
-  test/seq.c \
-  test/shift.c \
-  test/spatial.c \
-  test/tce-4index-transform.c \
-  test/tricky1.c \
-  test/tricky2.c \
-  test/tricky3.c \
-  test/tricky4.c \
-  test/wavefront.c \
+  @top_srcdir@/test/1dloop-invar.c \
+  @top_srcdir@/test/costfunc.c \
+  @top_srcdir@/test/doitgen.c \
+  @top_srcdir@/test/fdtd-2d.c \
+  @top_srcdir@/test/fusion1.c \
+  @top_srcdir@/test/fusion2.c \
+  @top_srcdir@/test/fusion3.c \
+  @top_srcdir@/test/fusion4.c \
+  @top_srcdir@/test/fusion5.c \
+  @top_srcdir@/test/fusion6.c \
+  @top_srcdir@/test/fusion7.c \
+  @top_srcdir@/test/fusion8.c \
+  @top_srcdir@/test/fusion9.c \
+  @top_srcdir@/test/fusion10.c \
+  @top_srcdir@/test/gemver.c \
+  @top_srcdir@/test/jacobi-1d-imper.c \
+  @top_srcdir@/test/jacobi-2d-imper.c \
+  @top_srcdir@/test/intratileopt1.c \
+  @top_srcdir@/test/intratileopt2.c \
+  @top_srcdir@/test/intratileopt3.c \
+  @top_srcdir@/test/intratileopt4.c \
+  @top_srcdir@/test/matmul.c \
+  @top_srcdir@/test/matmul-seq.c \
+  @top_srcdir@/test/matmul-seq3.c \
+  @top_srcdir@/test/multi-loop-param.c \
+  @top_srcdir@/test/multi-stmt-stencil-seq.c \
+  @top_srcdir@/test/mvt.c \
+  @top_srcdir@/test/mxv.c \
+  @top_srcdir@/test/mxv-seq.c \
+  @top_srcdir@/test/mxv-seq3.c \
+  @top_srcdir@/test/negparam.c \
+  @top_srcdir@/test/nodep.c \
+  @top_srcdir@/test/noloop.c \
+  @top_srcdir@/test/polynomial.c \
+  @top_srcdir@/test/seidel.c \
+  @top_srcdir@/test/seq.c \
+  @top_srcdir@/test/shift.c \
+  @top_srcdir@/test/spatial.c \
+  @top_srcdir@/test/tce-4index-transform.c \
+  @top_srcdir@/test/tricky1.c \
+  @top_srcdir@/test/tricky2.c \
+  @top_srcdir@/test/tricky3.c \
+  @top_srcdir@/test/tricky4.c \
+  @top_srcdir@/test/wavefront.c \
   "
 # Tests without --pet and without any tiling and parallelization.
 for file in $TESTS; do
@@ -71,17 +71,17 @@ for file in $TESTS; do
 done
 
 # Test per cc objective
-printf '%-50s ' test/test-per-cc-obj.c
-./src/pluto --notile --noparallel --per-cc-obj test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK test/test-per-cc-obj.c
+printf '%-50s ' @top_srcdir@/test/test-per-cc-obj.c
+./src/pluto --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
 check_ret_val_emit_status
 
 # Test typed fusion with dfp. These cases are executed only when glpk or gurobi
 # is enabled. Either of these solvers is required by the dfp framework.
 if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
-   TESTS="test/dfp/typed-fuse-1.c\
-       test/dfp/typed-fuse-2.c\
-       test/dfp/typed-fuse-3.c\
-       "
+    TESTS="@top_srcdir@/test/dfp/typed-fuse-1.c\
+        @top_srcdir@/test/dfp/typed-fuse-2.c\
+        @top_srcdir@/test/dfp/typed-fuse-3.c\
+        "
    for file in $TESTS; do
         printf '%-50s '  $file
         ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
@@ -89,8 +89,8 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
    done
 
 # Test loop distribution with dfp
-   TESTS="test/dfp/distribution.c\
-       test/dfp/scalar-distribute.c\
+   TESTS="@top_srcdir@/test/dfp/distribution.c\
+       @top_srcdir@/test/dfp/scalar-distribute.c\
        "
    for file in $TESTS; do
         printf '%-50s ' "$file with --dfp"
@@ -108,9 +108,9 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
 fi
 
 TESTS_TILE_PARALLEL="\
-  test/dep-1,1.c \
-  test/diamond-tile-example.c \
-  test/intratileopt6.c \
+  @top_srcdir@/test/dep-1,1.c \
+  @top_srcdir@/test/diamond-tile-example.c
+  @top_srcdir@/test/intratileopt6.c \
   "
 echo -e "\nTest without pet frontend but with tiling / parallelization"
 echo "============================================================"
@@ -121,7 +121,7 @@ for file in $TESTS_TILE_PARALLEL; do
 done
 
 TEST_MORE_INTRA_TILE_OPT="\
-    test/intratileopt5.c
+    @top_srcdir@/test/intratileopt5.c
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
     printf '%-50s ' "$file with --maxfuse"
@@ -133,10 +133,10 @@ for file in $TEST_MORE_INTRA_TILE_OPT; do
 done
 
 TESTS_PET="\
-  test/heat-2d.c \
-  test/heat-3d.c \
-  test/jacobi-3d-25pt.c \
-  test/matmul.c \
+  @top_srcdir@/test/heat-2d.c \
+  @top_srcdir@/test/heat-3d.c \
+  @top_srcdir@/test/jacobi-3d-25pt.c \
+  @top_srcdir@/test/matmul.c \
   "
 # Tests with pet frontend with tiling and parallelization disabled.
 echo -e "\nTest with pet frontend with no tiling / parallelization"
@@ -159,9 +159,9 @@ done
 echo -e "\nTest ISS"
 echo "========"
 TESTS_ISS="\
-  test/jacobi-2d-periodic.c \
-  test/multi-stmt-periodic.c \
-  test/heat-2dp.c \
+  @top_srcdir@/test/jacobi-2d-periodic.c \
+  @top_srcdir@/test/multi-stmt-periodic.c \
+  @top_srcdir@/test/heat-2dp.c \
   "
 for file in $TESTS_ISS; do
     printf '%-50s ' $file
@@ -171,10 +171,10 @@ done
 
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
-file=test/test_libpluto.c
+file=@top_srcdir@/test/test_libpluto.c
 echo "============================="
 printf '%-50s ' test_libpluto
-./test_libpluto | FileCheck test/test_libpluto.c
+./test_libpluto | FileCheck @top_srcdir@/test/test_libpluto.c
 check_ret_val_emit_status
 
 # Unit tests
@@ -183,7 +183,7 @@ echo "==============="
 printf '%-50s ' unit_tests
 # Filter out all "// " comments from unit_tests.in when sending input to
 # 'unit_tests'.
-cat test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck test/unit_tests.in
+cat @top_srcdir@/test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck @top_srcdir@/test/unit_tests.in
 check_ret_val_emit_status
 
 # TODO: add tests that check the generated code for certain things (like stmt
@@ -192,9 +192,9 @@ check_ret_val_emit_status
 # Unroll jam tests. These tests check the generated code.
 echo -e "\nTest Unroll jam"
 echo "===================="
-TESTS_UNROLL_JAM="test/unrolljam.c\
-    test/unrolljam-2.c\
-    test/unrolljam-3.c"
+TESTS_UNROLL_JAM="@top_srcdir@/test/unrolljam.c\
+    @top_srcdir@/test/unrolljam-2.c\
+    @top_srcdir@/test/unrolljam-3.c"
 for file in $TESTS_UNROLL_JAM; do
     printf '%-50s ' $file
     ./src/pluto --unrolljam --silent $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | FileCheck $file

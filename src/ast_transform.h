@@ -2,7 +2,8 @@
 #define AST_TRANSFORM_H
 
 #include "cloog/cloog.h"
-#include "pluto.h"
+
+typedef struct plutoProg PlutoProg;
 
 void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
                          CloogOptions *options);

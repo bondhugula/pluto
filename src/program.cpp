@@ -32,7 +32,12 @@
 #include <string.h>
 #include <vector>
 
+#include "constraints.h"
+#include "ddg.h"
 #include "isl_support.h"
+#include "math_support.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 #include <isl/aff.h>
@@ -358,6 +363,7 @@ struct pluto_extra_dep_info {
   Stmt **stmts;
   PlutoDepType type;
   int index;
+  PlutoContext *context;
 };
 
 /* Convert an isl_basic_map describing part of a dependence to a Dep.
@@ -400,7 +406,7 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
     space = isl_basic_map_get_space(bmap);
   }
   dep->dest = atoi(isl_space_get_tuple_name(space, isl_dim_out) + 2);
-  dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap);
+  dep->dpolytope = isl_basic_map_to_pluto_constraints(bmap, info->context);
   dep->bounding_poly = pluto_constraints_dup(dep->dpolytope);
   isl_space_free(space);
 
@@ -432,7 +438,7 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
       stmts[dep->src]->dim + stmts[dep->dest]->dim, stmts[dep->dest]->dim,
       stmts[dep->dest]->domain->ncols - stmts[dep->dest]->dim - 1);
 
-  if (options->isldepaccesswise) {
+  if (info->context->options->isldepaccesswise) {
     /* Extract access function information */
     int src_acc_num, dest_acc_num;
     char src_type, dest_type;
@@ -514,14 +520,17 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
   int ncols =
       isl_map_dim(map, isl_dim_in) + isl_map_dim(map, isl_dim_param) + 1;
 
-  PlutoMatrix *acc_mat = pluto_matrix_alloc(0, ncols);
+  struct pluto_access_meta_info *info = (struct pluto_access_meta_info *)user;
+
+  PlutoMatrix *acc_mat = pluto_matrix_alloc(0, ncols, info->context);
 
   for (int i = 0; i < dim; i++) {
     PlutoMatrix *func_onedim = NULL;
     if (isl_map_dim_is_single_valued(map, i)) {
       isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
       /* Best effort: Gets it from the last piece */
-      isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &func_onedim);
+      struct pluto_mat_context_info m_info = {&func_onedim, info->context};
+      isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &m_info);
       pluto_matrix_add(acc_mat, func_onedim);
       pluto_matrix_free(func_onedim);
       isl_pw_aff_free(pw_aff);
@@ -531,7 +540,6 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
       pluto_matrix_zero_row(acc_mat, 0);
     }
   }
-  struct pluto_access_meta_info *info = (struct pluto_access_meta_info *)user;
   (*info->accs)[info->index] = (PlutoAccess *)malloc(sizeof(PlutoAccess));
   PlutoAccess *acc = (*info->accs)[info->index];
   acc->name = strdup(isl_basic_map_get_tuple_name(bmap, isl_dim_out));
@@ -556,14 +564,17 @@ isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user) {
 /// array name.
 void extract_accesses_for_pluto_stmt(Stmt *stmt,
                                      __isl_keep isl_union_map *reads,
-                                     __isl_keep isl_union_map *writes) {
+                                     __isl_keep isl_union_map *writes,
+                                     PlutoContext *context) {
   isl_union_map_foreach_map(reads, &isl_map_count, &stmt->nreads);
   isl_union_map_foreach_map(writes, &isl_map_count, &stmt->nwrites);
 
   int npar = stmt->domain->ncols - stmt->dim - 1;
 
-  struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar};
-  struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, npar};
+  struct pluto_access_meta_info e_reads = {&stmt->reads, 0, stmt->dim, npar,
+                                           context};
+  struct pluto_access_meta_info e_writes = {&stmt->writes, 0, stmt->dim, npar,
+                                            context};
 
   if (stmt->nreads > 0) {
     stmt->reads = (PlutoAccess **)malloc(stmt->nreads * sizeof(PlutoAccess *));
@@ -596,9 +607,9 @@ void extract_accesses_for_pluto_stmt(Stmt *stmt,
 
 /// Extract deps from isl union map into Pluto Deps.
 int extract_deps_from_isl_union_map(__isl_keep isl_union_map *umap, Dep **deps,
-                                    int first, Stmt **stmts,
-                                    PlutoDepType type) {
-  struct pluto_extra_dep_info info = {deps, stmts, type, first};
+                                    int first, Stmt **stmts, PlutoDepType type,
+                                    PlutoContext *context) {
+  struct pluto_extra_dep_info info = {deps, stmts, type, first, context};
 
   isl_union_map_foreach_map(umap, &map_extract_dep, &info);
 
@@ -625,7 +636,7 @@ void compute_deps_isl(__isl_keep isl_union_map *reads,
                       __isl_keep isl_union_map *empty, isl_union_map **dep_raw,
                       isl_union_map **dep_war, isl_union_map **dep_waw,
                       isl_union_map **dep_rar, isl_union_map **trans_dep_war,
-                      isl_union_map **trans_dep_waw) {
+                      isl_union_map **trans_dep_waw, PlutoOptions *options) {
   assert(options && "options not set");
 
   if (options->lastwriter) {
@@ -696,10 +707,11 @@ void compute_deps_isl(__isl_keep isl_union_map *reads,
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context) {
   FILE *fp = fopen("codegen.context", "r");
+  PlutoContext *context = codegen_context->context;
 
   if (fp) {
     IF_DEBUG(printf("[Pluto] Reading from codegen.context\n"););
-    PlutoConstraints *cc = pluto_constraints_read(fp);
+    PlutoConstraints *cc = pluto_constraints_read(fp, context);
     if (cc && cc->ncols == codegen_context->ncols) {
       pluto_constraints_add(codegen_context, cc);
       return 0;
@@ -726,16 +738,19 @@ int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog) {
   return max - 1;
 }
 
-PlutoProg *pluto_prog_alloc() {
+PlutoProg *pluto_prog_alloc(PlutoContext *context) {
+  assert(context->options && "options null");
+
   PlutoProg *prog = (PlutoProg *)malloc(sizeof(PlutoProg));
 
+  prog->context = context;
   prog->nstmts = 0;
   prog->stmts = NULL;
   prog->npar = 0;
   prog->nvar = 0;
   prog->params = NULL;
-  prog->context = pluto_constraints_alloc(1, prog->npar + 1);
-  prog->codegen_context = pluto_constraints_alloc(1, prog->npar + 1);
+  prog->param_context = pluto_constraints_alloc(1, prog->npar + 1, context);
+  prog->codegen_context = pluto_constraints_alloc(1, prog->npar + 1, context);
   prog->deps = NULL;
   prog->ndeps = 0;
   prog->transdeps = NULL;
@@ -795,7 +810,7 @@ void pluto_prog_free(PlutoProg *prog) {
     free(prog->stmts);
   }
 
-  pluto_constraints_free(prog->context);
+  pluto_constraints_free(prog->param_context);
   pluto_constraints_free(prog->codegen_context);
 
   pluto_constraints_free(prog->globcst);
@@ -916,6 +931,17 @@ PlutoOptions *pluto_options_alloc() {
   return options;
 }
 
+PlutoContext *pluto_context_alloc() {
+  PlutoContext *context = (PlutoContext *)malloc(sizeof(PlutoContext));
+  context->options = pluto_options_alloc();
+  return context;
+}
+
+void pluto_context_free(PlutoContext *context) {
+  pluto_options_free(context->options);
+  free(context);
+}
+
 /* Add global/program parameter at position 'pos' */
 void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos) {
   int i, j;
@@ -939,8 +965,9 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos) {
         prog->deps[i]->dpolytope,
         prog->deps[i]->dpolytope->ncols - 1 - prog->npar + pos, NULL);
   }
-  pluto_constraints_add_dim(prog->context,
-                            prog->context->ncols - 1 - prog->npar + pos, param);
+  pluto_constraints_add_dim(prog->param_context,
+                            prog->param_context->ncols - 1 - prog->npar + pos,
+                            param);
   pluto_constraints_add_dim(prog->codegen_context,
                             prog->codegen_context->ncols - 1 - prog->npar + pos,
                             param);
@@ -1191,8 +1218,8 @@ void pluto_pad_stmt_transformations(PlutoProg *prog) {
   if (max_nrows >= 1) {
     for (i = 0; i < nstmts; i++) {
       if (stmts[i]->trans == NULL) {
-        stmts[i]->trans =
-            pluto_matrix_alloc(max_nrows, stmts[i]->dim + prog->npar + 1);
+        stmts[i]->trans = pluto_matrix_alloc(
+            max_nrows, stmts[i]->dim + prog->npar + 1, prog->context);
         stmts[i]->trans->nrows = 0;
       }
 
@@ -1739,8 +1766,8 @@ void get_lb_ub_expr(const PlutoConstraints *cst, int pos, int npar,
   pluto_constraints_project_out(dup, 0, pos);
   pluto_constraints_project_out(dup, 1, dup->ncols - npar - 1 - 1);
 
-  lbs = pluto_constraints_alloc(dup->nrows, dup->ncols);
-  ubs = pluto_constraints_alloc(dup->nrows, dup->ncols);
+  lbs = pluto_constraints_alloc(dup->nrows, dup->ncols, cst->context);
+  ubs = pluto_constraints_alloc(dup->nrows, dup->ncols, cst->context);
 
   for (unsigned i = 0; i < dup->nrows; i++) {
     if (dup->is_eq[i] && dup->val[i][0] != 0) {
@@ -1810,7 +1837,7 @@ void get_parametric_extent(const PlutoConstraints *cst, int pos, int npar,
 /* Get Alpha matrix (A matrix - INRIA transformation representation */
 PlutoMatrix *get_alpha(const Stmt *stmt, const PlutoProg *prog) {
   PlutoMatrix *a;
-  a = pluto_matrix_alloc(stmt->dim, stmt->dim);
+  a = pluto_matrix_alloc(stmt->dim, stmt->dim, prog->context);
 
   unsigned r = 0;
   for (unsigned i = 0; i < stmt->trans->nrows; i++) {

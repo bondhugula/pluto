@@ -21,11 +21,16 @@
  */
 #include <assert.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "post_transform.h"
 
+#include "ddg.h"
+#include "math_support.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 #include "transforms.h"
 
@@ -112,12 +117,15 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
 }
 
 /// Detects up to two loops to register tile (unroll-jam). Returns the number
-/// of loops marked for register tiling.
-int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
-                                          unsigned num_tiled_levels) {
+/// of loops marked for register tiling. The support for unroll jam using this
+/// routine is deprectated as hprops has become obsolete and orio does not
+/// support unroll jamming of loop nests with vector pragmas .
+int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
   int bandStart, bandEnd;
   int numRegTileLoops;
   int loop, i;
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
 
   HyperplaneProperties *hProps = prog->hProps;
 
@@ -127,13 +135,7 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
    * give two loops to unroll-jam, look for parallel loops from inner to
    * outer to fill up the quota of two */
 
-  /* getInnermostTilableBand(prog, &bandStart, &bandEnd); */
-  Band **ibands;
-  unsigned nbands;
-  ibands =
-      pluto_get_innermost_permutable_bands(prog, num_tiled_levels, &nbands);
-  IF_DEBUG(printf("Innermost permutatble bands \n"));
-  pluto_bands_print(ibands, nbands);
+  getInnermostTilableBand(prog, &bandStart, &bandEnd);
 
   numRegTileLoops = 0;
 
@@ -200,6 +202,7 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
 /* Create a .regtile - empty .regtile if no unroll-jammable loops. */
 int gen_reg_tile_file(PlutoProg *prog) {
   int i;
+  PlutoOptions *options = prog->context->options;
 
   HyperplaneProperties *hProps = prog->hProps;
   FILE *unrollfp = fopen(".regtile", "w");
@@ -227,6 +230,9 @@ int gen_reg_tile_file(PlutoProg *prog) {
 /// these factors is taken into account. Any access that hinders spatial
 /// locality is peanalized.
 Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
+
+  PlutoContext *context = prog->context;
+
   int max_score = INT_MIN;
   Ploop *best_loop = NULL;
   for (unsigned l = 0; l < nloops; l++) {
@@ -318,7 +324,8 @@ bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
 /// in the tile space. The intra tile loop iterators of all these statements
 /// which are not distributed have to be permuted to the inner levels together.
 Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
-                           int num_tiled_levels, unsigned *num_fused_bands) {
+                           int num_tiled_levels, unsigned *num_fused_bands,
+                           PlutoContext *context) {
 
   /* Band map is map that maps each band to a band identifier. All bands that
    * are completely fused in the inter tile space will have the same band map.
@@ -417,12 +424,15 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
 
   unsigned num_fused_bands = 0;
-  Band **ibands = fuse_per_stmt_bands(per_stmt_bands, nstmt_bands,
-                                      num_tiled_levels, &num_fused_bands);
+  Band **ibands =
+      fuse_per_stmt_bands(per_stmt_bands, nstmt_bands, num_tiled_levels,
+                          &num_fused_bands, prog->context);
 
   if (num_fused_bands != nstmt_bands) {
     pluto_bands_free(per_stmt_bands, nstmt_bands);
   }
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
   if (options->debug) {
     printf("Bands for intra tile optimiztion \n");
     pluto_bands_print(ibands, num_fused_bands);
@@ -491,7 +501,7 @@ bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
     /* Detect properties again */
     pluto_compute_dep_directions(prog);
     pluto_compute_dep_satisfaction(prog);
-    if (!options->silent) {
+    if (!prog->context->options->silent) {
       printf("[pluto] After intra-tile optimize\n");
       pluto_transformations_pretty_print(prog);
     }
@@ -656,6 +666,7 @@ bool is_scc_in_list(int *scc_list, int nsccs, int scc_id) {
 /// Distribute SCCs in the band based on dimensionalities at level 'level'.
 void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
                              PlutoProg *prog) {
+  PlutoContext *context = prog->context;
   int nstmts = prog->nstmts;
 
   IF_DEBUG(printf("Distributing SCCs at level %d\n", level););
@@ -692,7 +703,8 @@ void distribute_sccs_in_band(Graph *new_ddg, Band *band, int level,
 
 /// The routine updates feilds of all bands that count the number of post tile
 /// distribution hyperplanes inside and outside the band.
-void update_bands(Band **bands, int nbands, int depth) {
+void update_bands(Band **bands, int nbands, int depth, PlutoContext *context) {
+  PlutoOptions *options = context->options;
   for (int i = 0; i < nbands; i++) {
     int band_end_level = bands[i]->loop->depth + bands[i]->width +
                          bands[i]->post_tile_dist_hyp_in_band;
@@ -715,6 +727,7 @@ void update_bands(Band **bands, int nbands, int depth) {
 /// dimensionalities. The cut is introduced in the intra tile space.
 bool distribute_band_dim_based(Band *band, PlutoProg *prog,
                                int num_tiled_levels, Band **bands, int nbands) {
+  PlutoContext *context = prog->context;
   unsigned new_levels_introduced =
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
 
@@ -731,7 +744,7 @@ bool distribute_band_dim_based(Band *band, PlutoProg *prog,
   }
   IF_DEBUG(printf("Cutting band at depth %d\n", depth););
   distribute_sccs_in_band(new_ddg, band, depth, prog);
-  update_bands(bands, nbands, depth);
+  update_bands(bands, nbands, depth, context);
   graph_free(new_ddg);
   return true;
 }
@@ -777,6 +790,8 @@ bool pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
       break;
   }
 
+  PlutoContext *context = prog->context;
+
   IF_DEBUG(pluto_band_print(band););
   IF_DEBUG(printf("band_loop_depth %d, depth %d, last_loop_depth %d\n",
                   band->loop->depth, depth, last_loop_depth););
@@ -811,7 +826,7 @@ bool pluto_post_tile_distribute_band(Band *band, PlutoProg *prog,
   pluto_separate_stmts(prog, band->loop->stmts, band->loop->nstmts, depth, 0);
 
   /* Update bands */
-  update_bands(bands, nbands, depth);
+  update_bands(bands, nbands, depth, context);
 
   return true;
 }
@@ -827,6 +842,9 @@ bool pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,
   if (num_tiled_levels == 0) {
     return false;
   }
+
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
 
   bool retval = false;
   for (int i = 0; i < nbands; i++) {

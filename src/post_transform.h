@@ -21,13 +21,13 @@
 #ifndef _POST_TRANSFORM_H
 #define _POST_TRANSFORM_H
 
-#include "pluto.h"
+typedef struct plutoProg PlutoProg;
+typedef struct band Band;
 
 int getDeepestNonScalarLoop(PlutoProg *prog);
 int pluto_pre_vectorize_band(Band *band, int num_tiling_levels,
                              PlutoProg *prog);
-int pluto_detect_mark_register_tile_loops(PlutoProg *prog,
-                                          unsigned num_tiled_levels);
+int pluto_detect_mark_register_tile_loops(PlutoProg *prog);
 
 int gen_reg_tile_file(PlutoProg *prog);
 bool pluto_post_tile_distribute(PlutoProg *prog, Band **bands, int nbands,

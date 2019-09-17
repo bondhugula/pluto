@@ -24,8 +24,10 @@
 #include <glpk.h>
 #endif
 
-#include "math_support.h"
 #include "isl/set.h"
+
+typedef struct pluto_matrix PlutoMatrix;
+typedef struct plutoContext PlutoContext;
 
 /* A system of linear inequalities and equalities; all inequalities in
  * the >= 0 form. The constant term is on the LHS as well, i.e.,
@@ -52,9 +54,10 @@ struct pluto_constraints {
   /* Names of the dimensions (optional) */
   char **names;
 
+  PlutoContext *context;
+
   struct pluto_constraints *next;
 };
-
 typedef struct pluto_constraints PlutoConstraints;
 
 /* A constraint with one equality */
@@ -65,7 +68,8 @@ typedef PlutoConstraints Hyperplane;
 extern "C" {
 #endif
 
-PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols);
+PlutoConstraints *pluto_constraints_alloc(int nrows, int ncols,
+                                          PlutoContext *context);
 void pluto_constraints_free(PlutoConstraints *);
 PlutoConstraints *pluto_constraints_from_equalities(const PlutoMatrix *mat);
 void pluto_constraints_resize(PlutoConstraints *, int, int);
@@ -119,7 +123,7 @@ void pluto_constraints_negate_constraint(PlutoConstraints *cst, int pos);
 void pluto_constraints_interchange_cols(PlutoConstraints *cst, int col1,
                                         int col2);
 
-PlutoConstraints *pluto_constraints_read(FILE *fp);
+PlutoConstraints *pluto_constraints_read(FILE *fp, PlutoContext *context);
 
 void pluto_constraints_print(FILE *fp, const PlutoConstraints *);
 void pluto_constraints_pretty_print(FILE *fp, const PlutoConstraints *cst);
@@ -166,8 +170,8 @@ int pluto_constraints_is_empty(const PlutoConstraints *cst);
 int pluto_constraints_are_equal(const PlutoConstraints *cst1,
                                 const PlutoConstraints *cst2);
 
-PlutoConstraints *pluto_constraints_empty(int ncols);
-PlutoConstraints *pluto_constraints_universe(int ncols);
+PlutoConstraints *pluto_constraints_empty(int ncols, PlutoContext *context);
+PlutoConstraints *pluto_constraints_universe(int ncols, PlutoContext *context);
 void pluto_constraints_set_names(PlutoConstraints *cst, char **names);
 void pluto_constraints_set_names_range(PlutoConstraints *cst, char **names,
                                        int dest_offset, int src_offset,
@@ -183,13 +187,16 @@ void print_polylib_visual_sets_new(char *name, PlutoConstraints *cst);
 
 __isl_give isl_set *isl_set_from_pluto_constraints(const PlutoConstraints *cst,
                                                    isl_ctx *ctx);
-PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set);
+PlutoConstraints *isl_set_to_pluto_constraints(__isl_keep isl_set *set,
+                                               PlutoContext *context);
 __isl_give isl_basic_set *
 isl_basic_set_from_pluto_constraints(isl_ctx *ctx, const PlutoConstraints *cst);
 PlutoConstraints *
-isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset);
+isl_basic_set_to_pluto_constraints(__isl_keep isl_basic_set *bset,
+                                   PlutoContext *context);
 PlutoConstraints *
-isl_basic_map_to_pluto_constraints(__isl_keep isl_basic_map *bmap);
+isl_basic_map_to_pluto_constraints(__isl_keep isl_basic_map *bmap,
+                                   PlutoContext *context);
 int isl_basic_map_to_pluto_constraints_func_arg(__isl_keep isl_basic_map *bmap,
                                                 void *user);
 __isl_give isl_basic_map *
@@ -206,7 +213,8 @@ PlutoMatrix *pluto_constraints_extract_equalities(const PlutoConstraints *cst);
 int pluto_constraints_best_elim_candidate(const PlutoConstraints *cst,
                                           int max_elim);
 isl_stat isl_map_count(__isl_take isl_map *map, void *user);
-PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar);
+PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar,
+                                   PlutoContext *context);
 PlutoConstraints *pluto_hyperplane_get_negative_half_space(Hyperplane *h);
 PlutoConstraints *pluto_hyperplane_get_non_negative_half_space(Hyperplane *h);
 void pluto_constraints_shift_dim(PlutoConstraints *cst, int pos,

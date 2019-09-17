@@ -23,7 +23,8 @@
 #include <stdlib.h>
 
 #include "ast_transform.h"
-
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 #include "cloog/cloog.h"
@@ -35,6 +36,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
   unsigned nploops;
   Ploop **ploops = pluto_get_dom_parallel_loops(prog, &nploops);
   Band **pbands = (Band **)malloc(nploops * sizeof(Band *));
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = prog->context->options;
 
   IF_DEBUG(printf("[pluto_mark_parallel] parallel loops\n"););
   IF_DEBUG(pluto_loops_print(ploops, nploops););
@@ -138,6 +141,8 @@ void pluto_mark_parallel(struct clast_stmt *root, const PlutoProg *prog,
 void pluto_mark_unroll_jam(struct clast_stmt *root, const PlutoProg *prog,
                            CloogOptions *cloogOptions, unsigned ufactor) {
 
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
   assert(root != NULL);
   unsigned num_ujloops;
   Ploop **ujloops = pluto_get_unroll_jam_loops(prog, &num_ujloops);
@@ -200,6 +205,7 @@ void pluto_mark_vector(struct clast_stmt *root, const PlutoProg *prog,
   struct clast_for **loops;
   int *stmts;
   assert(root != NULL);
+  PlutoContext *context = prog->context;
 
   Ploop **ploops = pluto_get_parallel_loops(prog, &nploops);
 

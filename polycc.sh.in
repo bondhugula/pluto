@@ -12,9 +12,10 @@
 # Available under GNU GPL version 3 or (at your option) any later version
 # 
 
-pluto=@SOURCE_DIR@/src/pluto
-plann=@SOURCE_DIR@/plann
-plorc=@SOURCE_DIR@/plorc
+pluto=@abs_top_builddir@/src/pluto
+plann=@abs_top_srcdir@/plann
+plorc=@abs_top_srcdir@/plorc
+inscop=@abs_top_srcdir@/inscop
 
 # Some additional setup here to ensure that variables are visible outside of the run function
 SOURCEFILE=""
@@ -65,16 +66,16 @@ PLUTOOUT=$OUTFILE
 
 # generate and insert unrolling annotations, run ancc on it,
 if [ "$UNROLL" == 1 ]; then
-    $plorc $PLUTOOUT @SOURCE_DIR@/orio-0.1.0
+    $plorc $PLUTOOUT @srcdir@/orio-0.1.0
 fi
 
 #if [ "$UNROLL" == 1 ]; then
-    #$plann $PLUTOOUT @SOURCE_DIR@/annotations
+    #$plann $PLUTOOUT @srcdir@/annotations
 #fi
 
 
 # put the original skeleton around the transformed code
-@SOURCE_DIR@/inscop $SOURCEFILE $OUTFILE $OUTFILE
+$inscop $SOURCEFILE $OUTFILE $OUTFILE
 
 if [ "$INDENT" == 1 ] && [ -x /usr/bin/clang-format ]; then
     clang-format --style=LLVM -i $OUTFILE

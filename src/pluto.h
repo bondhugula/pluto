@@ -21,11 +21,13 @@
 #define PLUTO_H
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
-#include "constraints.h"
-#include "ddg.h"
-#include "math_support.h"
-#include "pluto/pluto.h"
+typedef struct graph Graph;
+typedef struct pluto_constraints PlutoConstraints;
+typedef struct plutoContext PlutoContext;
+typedef struct pluto_matrix PlutoMatrix;
 
 #ifdef GLPK
 #include <glpk.h>
@@ -41,25 +43,25 @@
 
 #define IF_DEBUG(foo)                                                          \
   {                                                                            \
-    if (options->debug || options->moredebug) {                                \
+    if (context->options->debug || context->options->moredebug) {              \
       foo;                                                                     \
     }                                                                          \
   }
 #define IF_DEBUG2(foo)                                                         \
   {                                                                            \
-    if (options->moredebug) {                                                  \
+    if (context->options->moredebug) {                                         \
       foo;                                                                     \
     }                                                                          \
   }
 #define IF_MORE_DEBUG(foo)                                                     \
   {                                                                            \
-    if (options->moredebug) {                                                  \
+    if (context->options->moredebug) {                                         \
       foo;                                                                     \
     }                                                                          \
   }
 #define PLUTO_MESSAGE(foo)                                                     \
   {                                                                            \
-    if (!options->silent) {                                                    \
+    if (!context->options->silent) {                                           \
       foo;                                                                     \
     }                                                                          \
   }
@@ -217,6 +219,16 @@ struct stmt_access_pair {
   Stmt *stmt;
 };
 
+/// Pluto dependence type.
+enum depType {
+  PLUTO_DEP_RAW,
+  PLUTO_DEP_WAR,
+  PLUTO_DEP_WAW,
+  PLUTO_DEP_RAR,
+  PLUTO_DEP_UNDEFINED
+};
+typedef enum depType PlutoDepType;
+
 struct dependence {
 
   /* Unique number of the dependence: starts with 0  */
@@ -356,9 +368,6 @@ struct plutoProg {
   /* Fusion conflict graph of the program */
   Graph *fcg;
 
-  /* Options for Pluto */
-  PlutoOptions *options;
-
   /* Hyperplane properties */
   HyperplaneProperties *hProps;
 
@@ -369,7 +378,7 @@ struct plutoProg {
   int npar;
 
   /* Param context */
-  PlutoConstraints *context;
+  PlutoConstraints *param_context;
 
   // Declarations to be emitted.
   char *decls;
@@ -404,6 +413,8 @@ struct plutoProg {
   double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time,
       fcg_cst_alloc_time;
   long int num_lp_calls;
+
+  PlutoContext *context;
 };
 typedef struct plutoProg PlutoProg;
 
@@ -478,11 +489,6 @@ typedef struct band {
   unsigned post_tile_dist_hyp_in_band;
   unsigned post_tile_dist_hyp_out_band;
 } Band;
-
-/* Globally visible, easily accessible data */
-/* It's declared in main.c (for pluto binary) and in libpluto.c for
- * the library */
-extern PlutoOptions *options;
 
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);

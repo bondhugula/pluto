@@ -13,8 +13,8 @@ MAY_ISL =
 # ISL_INCLUDE and ISL_LIBADD were already defined
 else
 MAY_ISL = isl
-ISL_INCLUDE += -I$(top_srcdir)/isl/include
-ISL_LIBADD += $(top_srcdir)/isl/libisl.la
+ISL_INCLUDE += -I$(top_srcdir)/isl/include -I$(top_builddir)/isl/include
+ISL_LIBADD += $(top_builddir)/isl/libisl.la
 endif
 
 
@@ -35,7 +35,7 @@ pkginclude_HEADERS = include/pluto/pluto.h include/pluto/matrix.h
 polycc: polycc.sh
 	rm -f polycc
 	echo "#! " $(BASH) > polycc
-	cat $(srcdir)/polycc.sh >> polycc
+	cat polycc.sh >> polycc
 	chmod ugo+x polycc
 
 .PHONY: bin binit
@@ -54,10 +54,10 @@ pclean:
 	$(MAKE) -C src clean
 
 test_libpluto: test/test_libpluto.c
-	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $<  -Lsrc/.libs/ -I include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
+	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $<  -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
 unit_tests: test/unit_tests.c
-	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I include -I src -lpluto -o unit_tests
+	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I$(top_srcdir)/src -lpluto -o unit_tests
 
 src/pluto: force
 	$(MAKE) $(MFLAGS) -C src pluto
@@ -66,7 +66,7 @@ force:
 	true
 
 test: PHONY
-	
+
 PHONY: polycc src/pluto test_libpluto unit_tests
 	./test.sh
 

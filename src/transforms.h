@@ -20,7 +20,12 @@
 #ifndef _TRANSFORMS_H_
 #define _TRANSFORMS_H_
 
-#include "pluto.h"
+#include <stdbool.h>
+
+typedef struct band Band;
+typedef struct plutoProg PlutoProg;
+typedef struct statement Stmt;
+typedef struct pLoop Ploop;
 
 void pluto_sink_statement(Stmt *stmt, int depth, int val, PlutoProg *prog);
 void pluto_stripmine(Stmt *stmt, int dim, int factor, char *supernode,

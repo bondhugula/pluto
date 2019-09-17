@@ -37,6 +37,8 @@
 
 #include "constraints.h"
 #include "math_support.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 #include <isl/flow.h>
@@ -145,7 +147,7 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
   isl_space_free(space);
 
   compute_deps_isl(reads, writes, schedules, empty, &dep_raw, &dep_war,
-                   &dep_waw, &dep_rar, &trans_dep_war, &trans_dep_waw);
+                   &dep_waw, &dep_rar, &trans_dep_war, &trans_dep_waw, options);
 
   prog->ndeps = 0;
   isl_union_map_foreach_map(dep_raw, &isl_map_count, &prog->ndeps);
@@ -157,12 +159,13 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
     prog->deps[i] = pluto_dep_alloc();
   }
   prog->ndeps = 0;
+  PlutoContext *context = prog->context;
   prog->ndeps += extract_deps_from_isl_union_map(
-      dep_raw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_RAW);
+      dep_raw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_RAW, context);
   prog->ndeps += extract_deps_from_isl_union_map(
-      dep_war, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAR);
+      dep_war, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAR, context);
   prog->ndeps += extract_deps_from_isl_union_map(
-      dep_waw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAW);
+      dep_waw, prog->deps, prog->ndeps, prog->stmts, PLUTO_DEP_WAW, context);
   prog->transdeps = NULL;
   prog->ntransdeps = 0;
 
@@ -235,7 +238,7 @@ static void mark_trivial_dead_code(struct pet_scop *pscop,
 static Stmt **pet_to_pluto_stmts(
     struct pet_scop *pscop, isl_map **stmt_wise_schedules,
     const std::unordered_map<struct pet_stmt *, char *> &stmtTextMap,
-    int *nstmts) {
+    int *nstmts, PlutoContext *context) {
   int i, j, s, t;
   Stmt **stmts;
   int nvar, npar, max_sched_rows;
@@ -290,7 +293,8 @@ static Stmt **pet_to_pluto_stmts(
     if (dead[s])
       continue;
     struct pet_stmt *pstmt = pscop->stmts[s];
-    PlutoConstraints *domain = isl_set_to_pluto_constraints(pstmt->domain);
+    PlutoConstraints *domain =
+        isl_set_to_pluto_constraints(pstmt->domain, context);
 
     isl_map *s_map = isl_map_from_union_map(isl_union_map_intersect_domain(
         isl_union_map_copy(s_umap),
@@ -300,7 +304,7 @@ static Stmt **pet_to_pluto_stmts(
     max_sched_rows = PLMAX(max_sched_rows, nrows);
 
     PlutoMatrix *trans = isl_map_to_pluto_func(
-        s_map, isl_set_dim(pstmt->domain, isl_dim_set), npar);
+        s_map, isl_set_dim(pstmt->domain, isl_dim_set), npar, context);
 
     isl_map_free(s_map);
 
@@ -349,7 +353,7 @@ static Stmt **pet_to_pluto_stmts(
     isl_union_map *writes =
         pet_stmt_collect_accesses(pstmt, pet_expr_access_may_write, 0, space);
 
-    extract_accesses_for_pluto_stmt(stmt, reads, writes);
+    extract_accesses_for_pluto_stmt(stmt, reads, writes, context);
 
     isl_union_map_free(reads);
     isl_union_map_free(writes);
@@ -618,15 +622,17 @@ static __isl_give isl_printer *construct_stmt_body(
  * PlutoProg also includes dependences; uses isl.
  */
 PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
-                             PlutoOptions *options) {
+                             PlutoContext *context) {
   int i, max_sched_rows, npar;
 
   if (pscop == NULL)
     return NULL;
 
+  PlutoOptions *options = context->options;
+
   pet_scop_align_params(pscop);
 
-  PlutoProg *prog = pluto_prog_alloc();
+  PlutoProg *prog = pluto_prog_alloc(context);
 
   /* Program parameters */
   npar = isl_set_dim(pscop->context, isl_dim_all);
@@ -638,11 +644,11 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   }
   isl_space_free(cspace);
 
-  pluto_constraints_free(prog->context);
-  prog->context = isl_set_to_pluto_constraints(pscop->context);
+  pluto_constraints_free(prog->param_context);
+  prog->param_context = isl_set_to_pluto_constraints(pscop->context, context);
   IF_DEBUG(printf("[pluto] Pet SCoP context\n"));
   IF_DEBUG(isl_set_dump(pscop->context););
-  IF_DEBUG(pluto_constraints_compact_print(stdout, prog->context));
+  IF_DEBUG(pluto_constraints_compact_print(stdout, prog->param_context));
 
   if (options->codegen_context != -1) {
     for (i = 0; i < prog->npar; i++) {
@@ -654,8 +660,6 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   }
 
   read_codegen_context_from_file(prog->codegen_context);
-
-  prog->options = options;
 
   prog->nvar = -1;
   max_sched_rows = 0;
@@ -682,7 +686,8 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   p = construct_stmt_body(pscop, p, &stmtTextMap);
   isl_printer_free(p);
 
-  prog->stmts = pet_to_pluto_stmts(pscop, NULL, stmtTextMap, &prog->nstmts);
+  prog->stmts =
+      pet_to_pluto_stmts(pscop, NULL, stmtTextMap, &prog->nstmts, context);
 
   // Free the source strings.
   for (const auto &entry : stmtTextMap) {

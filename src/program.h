@@ -20,18 +20,26 @@
 #ifndef PROGRAM_H
 #define PROGRAM_H
 
+// Not replacing this with a forward declaration due to use of enum types
+// PlutoStmtType and PlutoHypType.
 #include "pluto.h"
+#include "isl/map.h"
+#include "isl/union_map.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+typedef struct plutoOptions PlutoOptions;
+
+// Helper to extract access info from ISL structures.
 struct pluto_access_meta_info {
   /* Pointer to an array of accesses */
   PlutoAccess ***accs;
   unsigned index;
   unsigned stmt_dim;
   int npar;
+  PlutoContext *context;
 };
 
 Stmt *pluto_stmt_alloc(unsigned dim, const PlutoConstraints *domain,
@@ -47,7 +55,7 @@ Dep *pluto_dep_alloc();
 void pluto_dep_print(FILE *fp, const Dep *dep);
 void pluto_deps_print(FILE *, PlutoProg *prog);
 
-PlutoProg *pluto_prog_alloc();
+PlutoProg *pluto_prog_alloc(PlutoContext *context);
 void pluto_prog_free(PlutoProg *prog);
 
 int get_coeff_upper_bound(PlutoProg *prog);
@@ -94,7 +102,8 @@ PlutoMatrix *pluto_get_new_access_func(const PlutoMatrix *acc, const Stmt *stmt,
                                        int **divs);
 
 int extract_deps_from_isl_union_map(__isl_keep isl_union_map *umap, Dep **deps,
-                                    int first, Stmt **stmts, PlutoDepType type);
+                                    int first, Stmt **stmts, PlutoDepType type,
+                                    PlutoContext *context);
 
 int pluto_get_max_ind_hyps(const PlutoProg *prog);
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog);
@@ -124,10 +133,11 @@ void compute_deps_isl(isl_union_map *reads, isl_union_map *writes,
                       isl_union_map **dep_raw, isl_union_map **dep_war,
                       isl_union_map **dep_waw, isl_union_map **dep_rar,
                       isl_union_map **trans_dep_war,
-                      isl_union_map **trans_dep_waw);
+                      isl_union_map **trans_dep_waw, PlutoOptions *options);
 
 void extract_accesses_for_pluto_stmt(Stmt *stmt, isl_union_map *reads,
-                                     isl_union_map *writes);
+                                     isl_union_map *writes,
+                                     PlutoContext *context);
 isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context);

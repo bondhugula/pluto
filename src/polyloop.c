@@ -26,7 +26,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "math_support.h"
 #include "pluto.h"
+#include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
 /// Number of registers defined in the ISA. This is used in heuristics that
@@ -559,6 +562,8 @@ static unsigned get_max_num_innermost_accesses(Ploop *loop,
 /// of the processor. We assume that the total number of registers that is
 /// available is 32. This heuristic has to be tuned further.
 bool is_unroll_jam_profitable(Ploop *loop, const PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
   unsigned t = get_max_num_innermost_invariant_accesses(loop, prog);
   IF_DEBUG(printf("Number of accesses with temporal reuse: %d\n", t););
   // If there is no temporal reuse, then unroll jam isnt profitable.
