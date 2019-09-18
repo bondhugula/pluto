@@ -25,7 +25,7 @@ pluto_SOURCES = \
 		constraints_isl.c \
 		ddg.c \
 		ddg.h \
-		framework.c \
+		framework.cpp \
 		framework-dfp.c \
 		gurobi-plugin.c \
 		isl_support.c \
@@ -93,7 +93,7 @@ libpluto_la_SOURCES = \
 		      constraints_isl.c \
 		      ddg.c \
 		      ddg.h \
-		      framework.c \
+		      framework.cpp \
 		      framework-dfp.c \
 		      gurobi-plugin.c \
 		      isl_support.c \
