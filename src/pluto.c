@@ -1611,6 +1611,21 @@ int pluto_auto_transform(PlutoProg *prog) {
     }
   }
 
+  if (options->hybridcut) {
+    /* Mark sccs with stencils to be not distributed. This is accomplished by
+     * setting that an scc already has a parallel hyperplane. This enables
+     * maxfusion for all the statements in the scc. */
+    for (int i = 0; i < ddg->num_sccs; i++) {
+      if (is_scc_stencil(i, prog)) {
+        ddg->sccs[i].has_parallel_hyperplane = true;
+        IF_DEBUG(printf("Scc %d has stencil dependence pattern\n", i););
+      } else {
+        ddg->sccs[i].has_parallel_hyperplane = false;
+        IF_DEBUG(printf("Scc %d has no stencil dependence patterns\n", i););
+      }
+    }
+  }
+
   /* For diamond tiling */
   bool conc_start_found = false;
 

@@ -553,6 +553,7 @@ int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp,
 int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
                               FILE *pifp);
 
+bool is_scc_stencil(int scc_id, PlutoProg *prog);
 void ddg_update(Graph *g, PlutoProg *prog);
 void ddg_compute_scc(PlutoProg *prog);
 void ddg_compute_cc(PlutoProg *prog);

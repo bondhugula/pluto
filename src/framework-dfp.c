@@ -451,7 +451,10 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
 
       PlutoConstraints *inter_scc_cst =
           get_inter_scc_dep_constraints(scc1, scc2, prog);
-      if ((sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
+      bool hybridcut = options->hybridcut &&
+                       sccs[scc1].has_parallel_hyperplane &&
+                       sccs[scc2].has_parallel_hyperplane;
+      if (!hybridcut && (sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
           options->fuse == kTypedFuse) {
         check_parallel = true;
       }
@@ -2514,6 +2517,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
               cut_between_sccs(prog, ddg, prev_scc, i);
               update_fcg_between_sccs(fcg, prev_scc, i, prog);
             } else {
+              IF_DEBUG(printf("Adding Scalar hyperplanes without cut\n"););
               pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
             }
           }
@@ -2723,9 +2727,12 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
 
-  if (options->fuse == kTypedFuse && options->scc_cluster) {
+  /* In case of hybrid fusion, these are already initialized based on SCCs that
+   * have short dependences. */
+  if (options->fuse == kTypedFuse && options->scc_cluster &&
+      !options->hybridcut) {
     for (int i = 0; i < prog->ddg->num_sccs; i++) {
-      prog->ddg->sccs[i].has_parallel_hyperplane = 0;
+      prog->ddg->sccs[i].has_parallel_hyperplane = false;
     }
   }
 
