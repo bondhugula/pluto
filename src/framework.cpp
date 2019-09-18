@@ -21,9 +21,11 @@
  */
 #include <assert.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "constraints.h"
 #include "ddg.h"
@@ -45,7 +47,9 @@ static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
                                         unsigned level);
 static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
                                                 unsigned level);
-
+static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts);
+static PlutoConstraints *
+get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts);
 /**
  *
  * Each constraint row has the following format
@@ -613,8 +617,8 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
 /*
  * 1-d affine schedule for a set of statements.
  */
-PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
-                                                     Stmt **stmts, int nstmts) {
+PlutoConstraints *
+get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts) {
   int ndeps = prog->ndeps;
   Dep **deps = prog->deps;
   int nvar = prog->nvar;
@@ -632,8 +636,8 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
       continue;
     }
 
-    if (!pluto_stmt_is_member_of(dep->src, stmts, nstmts) ||
-        !pluto_stmt_is_member_of(dep->dest, stmts, nstmts)) {
+    if (!is_stmt_in_stmt_list(dep->src, stmts) ||
+        !is_stmt_in_stmt_list(dep->dest, stmts)) {
       continue;
     }
 
@@ -1451,4 +1455,112 @@ void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
         pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
                                                                  : H_LOOP;
   }
+}
+
+/// The routine checks whether the statement given by stat_id is present in
+/// the vector of input statements.
+static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts) {
+  for (auto itr = stmts.begin(); itr != stmts.end(); itr++) {
+    Stmt *stmt = *itr;
+    if (stmt->id == stmt_id)
+      return true;
+  }
+  return false;
+}
+
+/// Finds domain face that allows concurrent start (for diamond tiling)
+/// FIXME: iteration space boundaries are assumed to be corresponding to
+/// rectangular ones
+/// Returns: matrix with row i being the concurrent start face for Stmt i
+PlutoMatrix *
+get_face_with_concurrent_start_for_stmts(PlutoProg *prog,
+                                         std::vector<Stmt *> stmts) {
+  PlutoConstraints *bcst;
+  PlutoMatrix *conc_start_faces;
+  PlutoContext *context = prog->context;
+
+  int npar = prog->npar;
+  int nvar = prog->nvar;
+
+  PlutoConstraints *fcst = get_feautrier_schedule_constraints(prog, stmts);
+
+  bcst = get_coeff_bounding_constraints(prog);
+  pluto_constraints_add(fcst, bcst);
+  pluto_constraints_free(bcst);
+
+  int64_t *sol = pluto_prog_constraints_lexmin(fcst, prog);
+  pluto_constraints_free(fcst);
+
+  if (!sol) {
+    IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d "
+                    "schedules \n"););
+    return NULL;
+  }
+
+  conc_start_faces = pluto_matrix_alloc(stmts.size(), nvar + npar + 1, context);
+  pluto_matrix_set(conc_start_faces, 0);
+
+  for (int s = 0, _s = 0; s < prog->nstmts; s++) {
+    if (!is_stmt_in_stmt_list(s, stmts))
+      continue;
+    assert(_s <= (int)stmts.size() - 1);
+    for (int j = 0; j < nvar; j++) {
+      conc_start_faces->val[_s][j] = sol[npar + 1 + s * (nvar + 1) + j];
+    }
+    conc_start_faces->val[_s][nvar + npar] =
+        sol[npar + 1 + s * (nvar + 1) + nvar];
+    _s++;
+  }
+  free(sol);
+
+  IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
+  unsigned s;
+  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
+    Stmt *stmt = *stmt_itr;
+    IF_DEBUG(printf("\tf(S%d) = ", stmt->id + 1););
+    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s++],
+                                         nvar + npar,
+                                         (const char **)stmt->domain->names););
+    IF_DEBUG(printf("\n"););
+  }
+
+  /* 1-d schedule should be parallel to an iteration space boundary
+   * FIXME: assuming canonical boundaries */
+  for (s = 0; s < stmts.size(); s++) {
+    unsigned nz = 0;
+    for (int j = 0; j < nvar; j++) {
+      if (conc_start_faces->val[s][j])
+        nz++;
+    }
+    if (nz != 1)
+      break;
+  }
+
+  if (s < stmts.size()) {
+    pluto_matrix_free(conc_start_faces);
+    IF_DEBUG(printf("[pluto] No iteration space faces with concurrent start "
+                    "for all statements\n"););
+    return NULL;
+  }
+
+  IF_DEBUG(
+      printf(
+          "[pluto] faces with concurrent start found for all statements\n"););
+
+  return conc_start_faces;
+}
+
+/// Return the face with concurrent start for a band. This routine is the
+/// interface between the routine get_face_with_concurrent_start_for_stmts and
+/// pluto.c for diamond tiling.
+PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
+  PlutoContext *context = prog->context;
+  IF_DEBUG(printf("[pluto] get_face_with_concurrent_start for band\n\t"););
+  IF_DEBUG(pluto_band_print(band););
+
+  std::vector<Stmt *> stmts;
+  for (unsigned i = 0; i < band->loop->nstmts; i++) {
+    stmts.push_back(band->loop->stmts[i]);
+  }
+  return get_face_with_concurrent_start_for_stmts(prog, stmts);
 }
