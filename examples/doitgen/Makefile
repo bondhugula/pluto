@@ -1,7 +1,7 @@
 SRC= doitgen
 
 PLCFLAGS = --codegen-context=10 --prevector #--unroll --ufactor=8 #--maxfuse
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

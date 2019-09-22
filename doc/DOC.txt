@@ -23,7 +23,7 @@ C code --> Polyhedral extraction -->  Dependence analysis
       (core Pluto algorithm + post transformation)
 
  --> CLooG                     -->       C (with OpenMP, ivdep pragmas)
- (cloog + clast processing 
+ (cloog + clast processing
  to mark loops parallel, ivdep)
 
 
@@ -32,47 +32,47 @@ USING PLUTO
 - Use '#pragma scop' and '#pragma endscop' around the section of code 
   you want to parallelize/optimize.
 
-- Then, run 
-    
+- Then, run
+
     ./polycc <C source file> --parallel --tile
 
-    The output file will be named <original prefix>.pluto.c unless '-o 
-    <filename>" is supplied. When --debug is used, the .cloog used to 
+    The output file will be named <original prefix>.pluto.c unless '-o
+    <filename>" is supplied. When --debug is used, the .cloog used to
     generate code is not deleted and is named similarly.
 
-Please refer to the documentation of Clan or PET for information on the 
-kind of code around which one can put '#pragma scop' and '#pragma 
-endscop'.  Most of the time, although your program may not satisfy the 
+Please refer to the documentation of Clan or PET for information on the
+kind of code around which one can put '#pragma scop' and '#pragma
+endscop'.  Most of the time, although your program may not satisfy the
 constraints, it may be possible to work around them.
 
 
 COMMAND-LINE OPTIONS
     -o output
-    Output to file 'output'. Without -o, name of the output file is 
+    Output to file 'output'. Without -o, name of the output file is
     determined as described earlier (under 'Using PLUTO')
 
-    --help 
+    --help
     List all available options with one-line summary
 
-    --pet Use 'pet' to extract polyhedral representation from the source 
+    --pet Use 'pet' to extract polyhedral representation from the source
     program instead of clan.
 
-    --tile [--l2tile]
-    Tile code; in addition, --l2tile will tile once more for the L2 
-    cache. By default, both of them are disabled. Tile sizes can be 
-    forced if needed from a file 'tile.sizes' (see below), otherwise, 
-    tile sizes are set automatically using a rough heuristic. Tiling 
-    also allows extraction of coarse-grained pipelined parallelism with 
-    the Pluto model.
+    --tile [--second-level-tile]
+    Tile code; in addition, --second-level-tile will tile once more. By
+    default, --second-level-tile is disabled. Tile sizes can be forced
+    if needed from a file 'tile.sizes' (see below), otherwise, tile
+      sizes are set automatically using a rough heuristic.  Tiling also
+      allows extraction of coarse-grained pipelined parallelism with the
+      Pluto model.
 
     --intratileopt  [enabled by default]
     Optimize a tile's execution order for locality (spatial and temporal
     reuse); the right loop permutation for a tile will be chosen, in particular,
-    the right innermost loop. Spatial locality is not otherwise captured 
+    the right innermost loop. Spatial locality is not otherwise captured
     by Pluto's cost function.
 
     --parallel
-    Parallelize code with OpenMP (usually useful when used with --tile) 
+    Parallelize code with OpenMP (usually useful when used with --tile)
 
     --parallelize
     Same as --parallel
@@ -81,27 +81,27 @@ COMMAND-LINE OPTIONS
     Prever inner parallelism over pipelined/wavefront parallelism obtained
     via skewing whenever both exist
 
-    --multipipe 
-    Will enable extraction of multiple degrees of parallelism (from all 
-    parallel loops).  Disabled by default. By default, only one degree of 
-    outer parallelism or coarse-grained pipelined parallelism is extracted 
-    if it exists.
+    --multipar
+    Will enable extraction of multiple degrees of parallelism (from all
+    parallel loops).  Disabled by default. By default, only one degree
+    of outer parallelism or coarse-grained pipelined parallelism is
+    extracted if it exists.
 
     --smartfuse [default]
-    This is the default fusion heuristic. Will try to fuse between SCCs 
-    of the same dimensionality. 
+    This is the default fusion heuristic. Will try to fuse between SCCs
+    of the same dimensionality.
 
     --nofuse
     Separate all strongly-connected components (SCCs) in the dependence
     graphs to start with, i.e., no fusion across SCCs, and at any level
     inside.
 
-    --maxfuse 
+    --maxfuse
     This is geared towards maximal fusion, but maximal fusion is not
     guaranteed. Fusion is done across SCCs.
 
     --[no]unrolljam
-    Automatically identify and unroll-jam up to two loops. Not enabled 
+    Automatically identify and unroll-jam up to two loops. Not enabled
     by default.
 
     --ufactor=<n>
@@ -167,24 +167,28 @@ SPECIFYING CUSTOM TILE SIZES THROUGH 'tile.sizes'
 A 'tile.sizes' file in the current working directory can be used to manually 
 specify tile sizes. Specify one tile size on each line and as many tile 
 sizes are there are hyperplanes in the outermost non-trivial permutable 
-band. When specifying tile sizes for multiple levels (with --l2tile), first 
-specify L1 tile sizes, then L2:L1 tile size ratios.  See 
-examples/matmul/tile.sizes as an example.  If 8x128x8 is the L1 tile size, 
-and 128x256x128 L2, the tile.sizes file will be
+band. When specifying tile sizes for multiple levels (with 
+--second-level-tile), first specify first level tile sizes, then 
+second:first tile size ratios.  See examples/matmul/tile.sizes as an 
+example.  If
+8x128x8 is the first level tile size, and 128x256x128 for the second 
+level, the
+tile.sizes file will be
 
-# L1 tile size 8x128x8
+# first level tile size 8x128x8
 8
 128
 8
-# L2 is 16*8 x 2*128 x 16*8
+# second level is 16*8 x 2*128 x 16*8
 16
 2
 16
 
-The default tile size in the absence of a tile.sizes file is 32 (along all 
-dimensions), and the default L2/L1 ratio is 8 (when using --l2tile). The 
-sizes specified correspond to transformed loops in that order.  For eg., for 
-heat-3d, you'll see this output when you run Pluto
+The default tile size in the absence of a tile.sizes file is 32 (along 
+all dimensions), and the default second/first ratio is 8 (when using 
+--second-level-tile). The sizes specified correspond to transformed 
+loops in that order.  For eg., for heat-3d, you'll see this output when 
+you run Pluto
 
 $ ../../polycc 3d7pt.c
 
@@ -202,19 +206,19 @@ Hence, the tile sizes specified correspond to t, t+i, t+j, and t+k.
 
 SETTING GOOD TILE SIZES
 
-One would like to maximize locality while making sure there are enough tiles 
-to keep all cores busy. Rough thumb rules on selecting tile sizes 
+One would like to maximize locality while making sure there are enough
+tiles to keep all cores busy. Rough thumb rules on selecting tile sizes
 empirically are below.
 
-(1) data set should fit in L1 roughly (or definitely within L2), 
-(2) the innermost dimension should have enough iterations, especially if 
-it's being vectorized so that (a) cleanup code if any doesn't hurt and (b) 
+(1) data set should fit in L2 roughly (or definitely within L3), (2) the
+innermost dimension should have enough iterations, especially if it's
+being vectorized so that (a) cleanup code if any doesn't hurt and (b)
 prefetching provides benefits,
 (3) for non-innermost dimensions from which temporal reuse is typically being
-exploited, increasing tile size beyond 32 often provides diminishing returns 
-(additional reuse); so one may not want to experiment much beyond 32. Each 
-time tile.sizes is changed, code has to be regenerated (rm -f *.tiled.c; 
-make tiled; ./tiled).
+exploited, increasing tile size beyond 32 often provides diminishing 
+returns (additional reuse); so one may not want to experiment much 
+beyond 32. Each time tile.sizes is changed, code has to be regenerated 
+(rm -f *.tiled.c; make tiled; ./tiled).
 
 If one wishes to carefully tune tile sizes, it may be good to first run 
 Pluto without tiling (without --tile) and check the number of iterations 
@@ -320,9 +324,9 @@ The best options for taking a good look at the generated code are:
 
 <pluto_dir>/polycc source.c --noprevector --tile --parallel
 
-or 
+or
 
-<pluto_dir>/polycc source.c --noprevector 
+<pluto_dir>/polycc source.c --noprevector
 
 to just look at the transformation without the actual tiling and 
 parallelization performed; the transformation is just applied, and loop 

@@ -1,7 +1,7 @@
 SRC=dct
 
 PLCFLAGS = --codegen-context=32
-TILEFLAGS = --l2tile
+TILEFLAGS = --second-level-tile
 
 include ../common.mk
 

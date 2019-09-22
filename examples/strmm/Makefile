@@ -1,7 +1,7 @@
 SRC= strmm
 
 PLCFLAGS = #--unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

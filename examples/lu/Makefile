@@ -2,7 +2,7 @@
 SRC=lu
 
 PLCFLAGS = #--codegen-context=250 
-TILEFLAGS = --tile --l2tile 
+TILEFLAGS = --tile --second-level-tile 
 
 include ../common.mk
 

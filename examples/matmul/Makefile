@@ -1,6 +1,6 @@
 SRC=matmul
 
-PLCFLAGS = --l2tile
+PLCFLAGS = --second-level-tile
 TILEFLAGS =
 EXTRA_CLEAN = atlas mkl netlib atlaspt goto
 

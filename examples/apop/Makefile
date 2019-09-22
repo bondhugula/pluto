@@ -1,7 +1,7 @@
 SRC=apop
 
 PLCFLAGS = --pet #--unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 DISTOPT_FLAGS +=
 
 include ../common.mk

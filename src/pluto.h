@@ -68,7 +68,11 @@ typedef struct pluto_matrix PlutoMatrix;
 
 #define MAX_TILING_LEVELS 2
 
-#define DEFAULT_L1_TILE_SIZE 32
+/// The default tile size to use for the first level of tiling.
+#define DEFAULT_FIRST_LEVEL_TILE_SIZE 32
+
+/// The ratio / multiplying factor to use for the second level of tile size.
+#define DEFAULT_SECOND_LEVEL_TILE_SIZE_RATIO 8
 
 #define PI_TABLE_SIZE 256
 
@@ -77,7 +81,7 @@ typedef struct pluto_matrix PlutoMatrix;
 #define ALLOW_NEGATIVE_COEFF 1
 #define DO_NOT_ALLOW_NEGATIVE_COEFF 0
 
-/* Iterative search modes */
+// Iterative search mode for the Pluto algorithm.
 #define EAGER 0
 #define LAZY 1
 

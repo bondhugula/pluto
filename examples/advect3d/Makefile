@@ -1,7 +1,7 @@
 SRC=advect3d
 
 PLCFLAGS = --codegen-context=100
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

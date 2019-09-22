@@ -1,7 +1,7 @@
 SRC= dsyr2k
 
 PLCFLAGS = #--unroll --ufactor=4
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

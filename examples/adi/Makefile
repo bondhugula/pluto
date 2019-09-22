@@ -1,7 +1,7 @@
 SRC=adi
 
 PLCFLAGS = --codegen-context=50
-TILEFLAGS =  #--l2tile
+TILEFLAGS =  #--second-level-tile
 
 include ../common.mk
 

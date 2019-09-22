@@ -32,7 +32,7 @@
 #include "transforms.h"
 
 /* Read tile sizes from file tile.sizes */
-static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
+static int read_tile_sizes(int *tile_sizes, int *second_level_tile_size_ratios,
                            int num_tile_dims, Stmt **stmts, int nstmts,
                            int firstLoop, PlutoContext *context) {
   int i, j;
@@ -72,14 +72,15 @@ static int read_tile_sizes(int *tile_sizes, int *l2_tile_size_ratios,
 
   i = 0;
   while (i < num_tile_dims && !feof(tsfile)) {
-    fscanf(tsfile, "%d", &l2_tile_size_ratios[i++]);
+    fscanf(tsfile, "%d", &second_level_tile_size_ratios[i++]);
   }
 
   if (i < num_tile_dims) {
-    if (options->l2tile)
-      printf("WARNING: not enough L2 tile sizes provided; using default\n");
+    if (options->second_level_tile)
+      printf("WARNING: not enough second level tile sizes provided; using "
+             "default\n");
     for (i = 0; i < num_tile_dims; i++) {
-      l2_tile_size_ratios[i] = 8;
+      second_level_tile_size_ratios[i] = 8;
     }
   }
 
@@ -261,20 +262,20 @@ void pluto_tile(PlutoProg *prog) {
     assert(options->lt <= prog->num_hyperplanes - 1);
     assert(options->ft <= options->lt);
 
-    /* L1 tiling */
+    // Tiling for the first level.
     pluto_tile_scattering_dims(prog, bands, nbands, false);
     num_tiled_levels++;
 
-    if (options->l2tile) {
+    if (options->second_level_tile) {
       pluto_tile_scattering_dims(prog, bands, nbands, true);
       num_tiled_levels++;
     }
   } else {
-    /* L1 tiling */
+    // Tiling for the first level.
     pluto_tile_scattering_dims(prog, bands, nbands, false);
     num_tiled_levels++;
-    if (options->l2tile) {
-      /* L2 tiling */
+    if (options->second_level_tile) {
+      // Tile for another level.
       pluto_tile_scattering_dims(prog, bands, nbands, true);
       num_tiled_levels++;
     }
@@ -331,33 +332,28 @@ void pluto_tile(PlutoProg *prog) {
   pluto_bands_free(ibands, n_ibands);
 }
 
-/// Tiles scattering functions for all bands; if l2 is true, perform another
-/// level of tiling.
+/// Tiles scattering functions for all bands; if tile_second_level is true,
+/// perform another level of tiling.
 void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
-                                bool l2) {
+                                bool tile_second_level) {
   int i, j, b;
   int tile_sizes[prog->num_hyperplanes];
-  int l2_tile_size_ratios[prog->num_hyperplanes];
+  int second_level_tile_size_ratios[prog->num_hyperplanes];
 
   Stmt **stmts = prog->stmts;
 
   for (j = 0; j < prog->num_hyperplanes; j++) {
-    tile_sizes[j] = DEFAULT_L1_TILE_SIZE;
-    /* L2 cache is around 64 times L1 cache */
-    /* assuming 2-d - this tile size has to be eight
-     * times the L1 tile size; NOTE: 8 and NOT
-     * 8*default_tile_size -- there is a cumulative multiply
-     * involved */
-    l2_tile_size_ratios[j] = 8;
+    tile_sizes[j] = DEFAULT_FIRST_LEVEL_TILE_SIZE;
+    second_level_tile_size_ratios[j] = DEFAULT_SECOND_LEVEL_TILE_SIZE_RATIO;
   }
 
   for (b = 0; b < nbands; b++) {
-    read_tile_sizes(tile_sizes, l2_tile_size_ratios, bands[b]->width,
+    read_tile_sizes(tile_sizes, second_level_tile_size_ratios, bands[b]->width,
                     bands[b]->loop->stmts, bands[b]->loop->nstmts,
                     bands[b]->loop->depth, prog->context);
 
-    if (l2) {
-      pluto_tile_band(prog, bands[b], l2_tile_size_ratios);
+    if (tile_second_level) {
+      pluto_tile_band(prog, bands[b], second_level_tile_size_ratios);
     } else {
       pluto_tile_band(prog, bands[b], tile_sizes);
     }

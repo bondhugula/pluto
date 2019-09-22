@@ -1,7 +1,7 @@
 SRC=fdtd-2d
 
 PLCFLAGS += #--codegen-context=32  --unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

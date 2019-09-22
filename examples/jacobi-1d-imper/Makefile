@@ -1,7 +1,7 @@
 SRC=jacobi-1d-imper
 
 PLCFLAGS = #--unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

@@ -97,7 +97,7 @@ void usage_message(void) {
                   "[disabled by default]\n");
   fprintf(stdout, "       --[no]intratileopt        Optimize intra-tile "
                   "execution order for locality [enabled by default]\n");
-  fprintf(stdout, "       --l2tile                  Tile a second time "
+  fprintf(stdout, "       --second-level-tile       Tile a second time "
                   "(typically for L2 cache) [disabled by default] \n");
   fprintf(stdout, "       --parallel                Automatically parallelize "
                   "(generate OpenMP pragmas) [disabled by default]\n");
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
     {"ft", required_argument, 0, 'f'},
     {"lt", required_argument, 0, 'l'},
     {"multipar", no_argument, &options->multipar, 1},
-    {"l2tile", no_argument, &options->l2tile, 1},
+    {"second-level-tile", no_argument, &options->second_level_tile, 1},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {"indent", no_argument, 0, 'i'},

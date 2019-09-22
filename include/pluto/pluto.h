@@ -122,14 +122,11 @@ struct plutoOptions {
   /* multiple (currently two) degrees of pipelined parallelism */
   int multipar;
 
-  /* Tile for L2 too */
-  /* By default, only L1 tiling is done; under parallel execution, every
-   * processor executes a sequence of L1 tiles (OpenMP adds another blocking
-   * on the parallel loop). With L2 tiling, each processor executes a
-   * sequence of L2 tiles and barrier is done after a group of L2 tiles is
-   * exectuted -- causes load imbalance due to pipe startup when problem
-   * sizes are not huge */
-  int l2tile;
+  /// Tile a second time for the next level of the memory hierarchy. By
+  /// default tiling is done only for one level. A second level of tiling may
+  /// in several cases reduce the number of tiles available for parallel
+  /// execution.
+  int second_level_tile;
 
   /* NOTE: --ft and --lt are to manually force tiling depths */
   /* First depth to tile (starting from 0) */

@@ -1,7 +1,7 @@
 SRC= template
 
 PLCFLAGS = --codegen-context=100 #--unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

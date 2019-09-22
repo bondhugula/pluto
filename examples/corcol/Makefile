@@ -1,7 +1,7 @@
 SRC= corcol
 
 PLCFLAGS = --codegen-context=100 #--unroll --ufactor=8
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 

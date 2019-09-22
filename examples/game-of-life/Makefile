@@ -1,7 +1,7 @@
 SRC=life
 
 PLCFLAGS = --pet --nolastwriter #--unroll
-TILEFLAGS = #--l2tile
+TILEFLAGS = #--second-level-tile
 DISTOPT_FLAGS +=
 
 include ../common.mk
