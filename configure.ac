@@ -129,6 +129,7 @@ if test $glpk = "true"; then
     dnl check for glpk
     AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[GLPK solver for solving ILP])]
                                 CFLAGS="$CFLAGS -DGLPK" LDFLAGS="$LDFLAGS -lglpk"
+                                CXXFLAGS="$CXXFLAGS -DGLPK"
                                 , [AC_ERROR([glpk.h header not found])])
     AC_CHECK_LIB([glpk], [glp_create_prob], []
                  , [AC_ERROR([GLPK library not found])])
@@ -153,6 +154,7 @@ if test $gurobi = "true"; then
                                    minor_version=`cat $GUROBI_PREFIX/include/gurobi_c.h| grep VERSION_MINOR| awk '{print $3}'`
                                    grb_version=gurobi$major_version$minor_version
                                    CFLAGS="$CFLAGS -DGUROBI" LDFLAGS="$LDFLAGS -l$grb_version"
+                                   CXXFLAGS="$CXXFLAGS -DGUROBI"
                                    , [AC_ERROR([gurobi_c.h header not found])])
     AC_CHECK_LIB([$grb_version], [GRBnewmodel], []
                  , [AC_ERROR([Gurobi library not found])])

@@ -490,6 +490,7 @@ typedef struct band {
 void dep_alloc_members(Dep *);
 void dep_free(Dep *);
 
+bool dep_satisfaction_test(Dep *dep, PlutoProg *prog, unsigned level);
 void pluto_compute_dep_satisfaction(PlutoProg *prog);
 int pluto_compute_dep_satisfaction_precise(PlutoProg *prog);
 bool dep_is_satisfied(Dep *dep);
