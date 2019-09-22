@@ -67,16 +67,19 @@ $(SRC).mlbpar.c:  $(SRC).c
 $(SRC).pipepar.c:  $(SRC).c
 	$(PLC) $(SRC).c --nodiamond-tile $(TILEFLAGS) $(PLCFLAGS) -o $@
 
-orig: $(SRC).c 
+orig: $(SRC).c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
 orig_par: $(SRC).c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(PAR_FLAGS) $(SRC).c -o $@ $(LDFLAGS)
 
+orig_omp: $(SRC).c
+	$(CC) $(OPT_FLAGS) $(CFLAGS) $(OMP_FLAGS) $(SRC).c -o $@ $(LDFLAGS)
+
 opt: $(SRC).opt.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).opt.c -o $@ $(LDFLAGS)
 
-tiled: $(SRC).tiled.c 
+tiled: $(SRC).tiled.c
 	$(CC) $(OPT_FLAGS) $(CFLAGS) $(SRC).tiled.c -o $@ $(LDFLAGS)
 
 par: $(SRC).par.c
