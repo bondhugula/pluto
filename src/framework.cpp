@@ -1568,6 +1568,8 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   return get_face_with_concurrent_start_for_stmts(prog, stmts);
 }
 
+/// Returns the dependence distance bounding constraints for each dependence in
+/// the scc.
 static PlutoConstraints *
 get_dep_distance_bounding_constraints_for_scc(int scc_id, PlutoProg *prog) {
   PlutoConstraints *dep_dist_bound_cst = NULL;
@@ -1598,6 +1600,140 @@ get_dep_distance_bounding_constraints_for_scc(int scc_id, PlutoProg *prog) {
   return dep_dist_bound_cst;
 }
 
+/// Return constraints of the form \phi(t) - \phi(s) >= -(u+w) for the input
+/// dependence. This is used to lower bound the dependence distances to a small
+/// value (Dep distances may even be negative). The callee has to set the value
+/// of u to be zero if the dependence distance has to be short.
+static PlutoConstraints *
+compute_dep_dist_lb_constraints_for_stencil_check(Dep *dep, PlutoProg *prog) {
+  int src_stmt = dep->src;
+  int dest_stmt = dep->dest;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  PlutoMatrix *phi = NULL;
+  PlutoContext *context = prog->context;
+
+  if (src_stmt != dest_stmt) {
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + 2 * (nvar + 1) + 1,
+                             context);
+    pluto_matrix_set(phi, 0);
+
+    for (int r = 0; r < nvar; r++) {
+      /* Source stmt. */
+      phi->val[r][npar + 1 + r] = -1;
+    }
+    for (int r = nvar; r < 2 * nvar; r++) {
+      /* Dest stmt. */
+      phi->val[r][npar + 1 + (nvar + 1) + (r - nvar)] = 1;
+    }
+    for (int r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* for \vec{u} - parametric bounding function */
+      phi->val[r][r - 2 * nvar] = 1;
+    }
+
+    /* Translation coefficients of statements */
+    phi->val[2 * nvar + npar][npar + 1 + nvar] = -1;
+    phi->val[2 * nvar + npar][npar + 1 + (nvar + 1) + nvar] = 1;
+    /* for w. */
+    phi->val[2 * nvar + npar][npar] = 1;
+  } else {
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + (nvar + 1) + 1,
+                             context);
+    pluto_matrix_set(phi, 0);
+
+    for (int r = 0; r < nvar; r++) {
+      /* Source stmt. */
+      phi->val[r][npar + 1 + r] = -1;
+    }
+    for (int r = nvar; r < 2 * nvar; r++) {
+      /* Dest stmt */
+      phi->val[r][npar + 1 + (r - nvar)] = 1;
+    }
+    for (int r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* for u */
+      phi->val[r][r - 2 * nvar] = 1;
+      /* No parametric shift coefficients */
+    }
+    /* Statement's translation coefficients cancel out */
+
+    /* for w */
+    phi->val[2 * nvar + npar][npar] = 1;
+  }
+
+  /* Apply Farkas lemma for bounding function constraints */
+  PlutoConstraints *bounding_func_cst =
+      farkas_lemma_affine(dep->bounding_poly, phi);
+
+  pluto_matrix_free(phi);
+  // Bring this to global format
+  PlutoConstraints *bcst_g;
+
+  int src_offset = npar + 1 + src_stmt * (nvar + 1);
+  int dest_offset = npar + 1 + dest_stmt * (nvar + 1);
+  int nstmts = prog->nstmts;
+
+  bcst_g =
+      pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH, context);
+
+  for (unsigned k = 0; k < bounding_func_cst->nrows; k++) {
+    pluto_constraints_add_constraint(bcst_g, bounding_func_cst->is_eq[k]);
+    for (int j = 0; j < npar + 1; j++) {
+      bcst_g->val[bcst_g->nrows - 1][j] = bounding_func_cst->val[k][j];
+    }
+    for (int j = 0; j < nvar + 1; j++) {
+      bcst_g->val[bcst_g->nrows - 1][src_offset + j] =
+          bounding_func_cst->val[k][npar + 1 + j];
+      if (src_stmt != dest_stmt) {
+        bcst_g->val[bcst_g->nrows - 1][dest_offset + j] =
+            bounding_func_cst->val[k][npar + 1 + nvar + 1 + j];
+      }
+    }
+    /* constant part */
+    if (src_stmt == dest_stmt) {
+      bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
+          bounding_func_cst->val[k][npar + 1 + nvar + 1];
+    } else {
+      bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
+          bounding_func_cst->val[k][npar + 1 + 2 * nvar + 2];
+    }
+  }
+  pluto_constraints_free(bounding_func_cst);
+  return bcst_g;
+}
+
+/// Get a lower bound for dependence distances this is used to check if the
+/// dependences in the SCC are short. See routine
+/// compute_dep_dist_lb_constraints_for_stencil_check for more details.
+static PlutoConstraints *
+get_dep_dist_lower_bound_constraints_for_scc(int scc_id, PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+  Dep **deps = prog->deps;
+  Stmt **stmts = prog->stmts;
+  PlutoConstraints *dist_lb_csts = NULL;
+  for (int i = 0; i < prog->ndeps; i++) {
+    Dep *dep = deps[i];
+    if (IS_RAR(dep->type))
+      continue;
+    int src_stmt = dep->src;
+    int dest_stmt = dep->dest;
+    if (stmts[src_stmt]->scc_id != scc_id || stmts[dest_stmt]->scc_id != scc_id)
+      continue;
+
+    PlutoConstraints *dep_dist_lb_cst =
+        compute_dep_dist_lb_constraints_for_stencil_check(dep, prog);
+    if (dist_lb_csts == NULL) {
+      dist_lb_csts =
+          pluto_constraints_alloc(prog->ndeps * dep_dist_lb_cst->nrows,
+                                  dep_dist_lb_cst->ncols, context);
+      dist_lb_csts->nrows = 1;
+      dist_lb_csts->ncols = dep_dist_lb_cst->ncols;
+    }
+    dist_lb_csts = pluto_constraints_add(dist_lb_csts, dep_dist_lb_cst);
+    pluto_constraints_free(dep_dist_lb_cst);
+  }
+  return dist_lb_csts;
+}
+
 /// Returns true if the scc in the ddg given by scc_id has the stencil pattern
 /// of dependences. That is, the routine checks if there a face with concurrent
 /// start and there are short dependences on either sides of the face with
@@ -1621,6 +1757,9 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   PlutoConstraints *dep_bound_cst =
       get_dep_distance_bounding_constraints_for_scc(scc_id, prog);
 
+  PlutoConstraints *dep_dist_lower_bound_cst =
+      get_dep_dist_lower_bound_constraints_for_scc(scc_id, prog);
+
   // Bounding Constraints for coefficients.
   PlutoConstraints *coeff_bound_cst = pluto_constraints_alloc(
       dep_bound_cst->ncols, dep_bound_cst->ncols, context);
@@ -1628,7 +1767,7 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   coeff_bound_cst->ncols = dep_bound_cst->ncols;
   unsigned npar = prog->npar;
 
-  for (unsigned i = npar + 1; i < dep_bound_cst->ncols - 1; i++) {
+  for (unsigned i = npar; i < dep_bound_cst->ncols - 1; i++) {
     pluto_constraints_add_lb(coeff_bound_cst, i, 0);
   }
   // Set \vec{u} to zero.
@@ -1642,7 +1781,7 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   pluto_constraints_add_ub(coeff_bound_cst, npar, short_dist_bound);
   // Lower bound on w for short dependence distance. Note that in case of
   // stencils this can be negative.
-  pluto_constraints_add_lb(coeff_bound_cst, npar, -short_dist_bound);
+  // pluto_constraints_add_lb(coeff_bound_cst, npar, -short_dist_bound);
 
   PlutoConstraints *orthocst = pluto_constraints_alloc(
       conc_start_faces->nrows, dep_bound_cst->ncols, context);
@@ -1668,6 +1807,8 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   }
 
   dep_bound_cst = pluto_constraints_add(dep_bound_cst, orthocst);
+  dep_bound_cst =
+      pluto_constraints_add(dep_bound_cst, dep_dist_lower_bound_cst);
   dep_bound_cst = pluto_constraints_add(dep_bound_cst, coeff_bound_cst);
 
   bool is_stencil = true;
@@ -1680,8 +1821,10 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   }
   free(sol);
 
+  pluto_constraints_free(dep_dist_lower_bound_cst);
   pluto_constraints_free(dep_bound_cst);
   pluto_constraints_free(coeff_bound_cst);
   pluto_matrix_free(conc_start_faces);
+  pluto_constraints_free(orthocst);
   return is_stencil;
 }
