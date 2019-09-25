@@ -53,6 +53,9 @@ struct scc {
   /* Set to true if there is a parallel hyperplane has already been found for
    * this scc */
   bool has_parallel_hyperplane;
+
+  /* Set to true if the scc has stencil dependence pattern. */
+  bool is_scc_stencil;
 };
 typedef struct scc Scc;
 

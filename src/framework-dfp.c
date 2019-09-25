@@ -454,8 +454,9 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
       bool hybridcut = options->hybridcut &&
                        sccs[scc1].has_parallel_hyperplane &&
                        sccs[scc2].has_parallel_hyperplane;
+      bool is_stencil = sccs[scc1].is_scc_stencil && sccs[scc2].is_scc_stencil;
       if (!hybridcut && (sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
-          options->fuse == kTypedFuse) {
+          options->fuse == kTypedFuse && !is_stencil) {
         check_parallel = true;
       }
 
@@ -2219,7 +2220,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
   /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid,
    * then look max_fuse instead of greedy typed fuse heuristic */
-  if (options->fuse == kTypedFuse && sccs[scc_id].is_parallel && !hybrid_cut) {
+  if (options->fuse == kTypedFuse && !sccs[scc_id].is_scc_stencil &&
+      sccs[scc_id].is_parallel && !hybrid_cut) {
     if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
       sccs[scc_id].has_parallel_hyperplane = true;
       return true;
@@ -2302,10 +2304,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
 
 /// Returns colours corresponding vertices of the original FCG from the colours
 /// of vertices of scc clustered FCG.
-int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
-                                       int *has_parallel_hyperplane) {
-  PlutoContext *context = prog->context;
-  PlutoOptions *options = context->options;
+int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour) {
   int nvar = prog->nvar;
   int nstmts = prog->nstmts;
   Stmt **stmts = prog->stmts;
@@ -2319,11 +2318,35 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
     for (int j = 0; j < stmts[i]->dim_orig; j++) {
       stmt_colour[i * (nvar) + j] = colour[scc_offset + j];
     }
-    if (options->fuse == kTypedFuse) {
-      has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
-    }
   }
   return stmt_colour;
+}
+
+/// Temporarily move the properties of sccs that are associated with an scc to a
+/// vertex. This is done to keep carry the info of sccs across updates of the
+/// DDG. Properties that are to be moved are given as arguments.
+static void get_vertex_properties_from_scc_properties(
+    PlutoProg *prog, bool *has_parallel_hyperplane, bool *is_stencil) {
+  Scc *sccs = prog->ddg->sccs;
+  for (int i = 0; i < prog->nstmts; i++) {
+    int scc_id = prog->stmts[i]->scc_id;
+    has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
+    is_stencil[i] = sccs[scc_id].is_scc_stencil;
+  }
+}
+
+/// The routine sets the properties of SCCs given in input from vertex
+/// properties. These were temporarily moved from scc properties to vertices
+/// during ddg update.
+static void set_scc_properties_from_vertex_properties(
+    PlutoProg *prog, bool *has_parallel_hyperplane, bool *is_stencil) {
+  Scc *sccs = prog->ddg->sccs;
+  int num_sccs = prog->ddg->num_sccs;
+  for (int i = 0; i < num_sccs; i++) {
+    int stmt_id = sccs[i].vertices[0];
+    sccs[i].has_parallel_hyperplane = has_parallel_hyperplane[stmt_id];
+    sccs[i].is_scc_stencil = is_stencil[stmt_id];
+  }
 }
 
 /// Returns colours corresponding to clustered FCG from the colours of the
@@ -2331,10 +2354,7 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
 /// dimensionality is same as the dimensionality of the SCC as the colour of the
 /// SCC.
 int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
-                                         int current_colour, int nvertices,
-                                         int *has_parallel_hyperplane) {
-  PlutoContext *context = prog->context;
-  PlutoOptions *options = context->options;
+                                         int current_colour, int nvertices) {
   int nvar = prog->nvar;
   Stmt **stmts = prog->stmts;
   int num_sccs = prog->ddg->num_sccs;
@@ -2362,9 +2382,6 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
     }
     sccs[i].fcg_scc_offset = scc_offset;
     scc_offset += sccs[i].max_dim;
-    if (options->fuse == kTypedFuse) {
-      sccs[i].has_parallel_hyperplane = has_parallel_hyperplane[stmt_id];
-    }
   }
   return scc_colour;
 }
@@ -2375,20 +2392,21 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
 int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
-  int *has_parallel_hyperplane = NULL;
+  bool *has_parallel_hyperplane = NULL;
+  bool *is_stencil = NULL;
   Graph *fcg = prog->fcg;
   Graph *ddg = prog->ddg;
 
   if (options->fuse == kTypedFuse) {
-    has_parallel_hyperplane = (int *)malloc((prog->nstmts) * sizeof(int));
+    has_parallel_hyperplane = (bool *)malloc((prog->nstmts) * sizeof(bool));
+    is_stencil = (bool *)malloc((prog->nstmts) * sizeof(bool));
+    get_vertex_properties_from_scc_properties(prog, has_parallel_hyperplane,
+                                              is_stencil);
   }
-  int *stmt_colour =
-      get_vertex_colour_from_scc_colour(prog, colour, has_parallel_hyperplane);
+
+  int *stmt_colour = get_vertex_colour_from_scc_colour(prog, colour);
   free_scc_vertices(ddg);
 
-  /* You can update the DDG but do not update the FCG.  Doing otherwise will
-   * remove
-   * edges wich prevents permutation which is unsound */
   ddg_update(ddg, prog);
   IF_DEBUG(printf("DDG after colouring with colour %d\n", c););
   IF_DEBUG(pluto_matrix_print(stdout, ddg->adj););
@@ -2402,8 +2420,13 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
     nvertices += prog->ddg->sccs[i].max_dim;
   }
 
-  int *scc_colour = get_scc_colours_from_vertex_colours(
-      prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
+  int *scc_colour =
+      get_scc_colours_from_vertex_colours(prog, stmt_colour, c, nvertices);
+  if (options->fuse == kTypedFuse) {
+    set_scc_properties_from_vertex_properties(prog, has_parallel_hyperplane,
+                                              is_stencil);
+  }
+
   if (options->fuse == kTypedFuse) {
     pluto_matrix_free(par_preventing_adj_mat);
   }
@@ -2727,11 +2750,11 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
 
-  /* In case of hybrid fusion, these are already initialized based on SCCs that
+  /* For typed hybrid fusion, these are already initialized based on SCCs that
    * have short dependences. */
-  if (options->fuse == kTypedFuse && options->scc_cluster &&
-      !options->hybridcut) {
+  if (options->scc_cluster && options->fuse != kTypedFuse) {
     for (int i = 0; i < prog->ddg->num_sccs; i++) {
+      prog->ddg->sccs[i].is_scc_stencil = false;
       prog->ddg->sccs[i].has_parallel_hyperplane = false;
     }
   }
