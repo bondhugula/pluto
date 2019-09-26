@@ -402,6 +402,49 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
   return fused_bands;
 }
 
+/// The routine looks for a parallel loop with the best cost and makes it the
+/// innermost loop. This is called when the loop nest is tiled and outer and
+/// inner permutable bands are not the same.
+static bool make_parallel_loop_innermost(Band *band, unsigned num_tiled_levels,
+                                         PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+  unsigned num_new_levels =
+      band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
+
+  int depth =
+      band->loop->depth + num_tiled_levels * band->width + num_new_levels;
+  unsigned nloops;
+  Ploop **loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
+                                        depth, prog, &nloops);
+  pluto_loops_print(loops, nloops);
+  unsigned nploops = 0;
+  Ploop **par_loops = (Ploop **)malloc(nloops * sizeof(Ploop *));
+  unsigned innermost_loop_depth = band->loop->depth;
+  for (unsigned i = 0; i < nloops; i++) {
+    if (pluto_loop_is_parallel(prog, loops[i])) {
+      par_loops[nploops++] = loops[i];
+    }
+    if (loops[i]->depth > innermost_loop_depth) {
+      innermost_loop_depth = loops[i]->depth;
+    }
+  }
+  if (nploops == 0) {
+    return false;
+  }
+
+  Ploop *best_loop = get_best_vectorizable_loop(par_loops, nploops, prog);
+  if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
+    IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
+    pluto_loop_print(best_loop);
+
+    bool move_across_scalar_hyperplanes = true;
+    pluto_make_innermost_loop(best_loop, innermost_loop_depth + 1,
+                              move_across_scalar_hyperplanes, prog);
+    return true;
+  }
+  return false;
+}
+
 /// Optimize the intra-tile loop order for locality and vectorization.
 bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                     PlutoProg *prog) {
@@ -409,6 +452,11 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
       band->post_tile_dist_hyp_in_band + band->post_tile_dist_hyp_out_band;
   /* Band has to be the innermost band as well */
   if (!pluto_is_band_innermost(band, num_tiled_levels, num_new_levels)) {
+    /* If the loop nest is tiled (but not completely), then move an intratile
+     * parallel loop in this band to the innermost level. */
+    if (num_tiled_levels > 0) {
+      return make_parallel_loop_innermost(band, num_tiled_levels, prog);
+    }
     return false;
   }
 

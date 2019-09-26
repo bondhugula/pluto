@@ -147,8 +147,6 @@ void pluto_make_innermost_loop(Ploop *loop, unsigned last_level,
     /* Current level that has to be made the innermost. */
     unsigned current_level = loop->depth;
     for (unsigned d = loop->depth + 1; d < last_depth; d++) {
-      if (pluto_is_hyperplane_scalar(stmt, d))
-        continue;
       pluto_stmt_loop_interchange(stmt, current_level, d);
       current_level = d;
     }
