@@ -18,6 +18,9 @@ PLC=$(BASEDIR)../polycc
 MKLROOT=/opt/intel/mkl
 ACMLROOT=/usr/local/acml
 
+OPENBLAS_CFLAGS=-I/usr/include/openblas
+OPENBLAS_LDFLAGS=-L/usr/lib64/openblas -lopenblas
+
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
 	PAR_FLAGS     := -parallel

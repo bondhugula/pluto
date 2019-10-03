@@ -5,9 +5,22 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <mkl.h>
+#ifdef OPENBLAS
+#include "cblas.h"
+#endif
 
-#include "decls.h"
+#ifdef MKL
+#include "mkl.h"
+#endif
+
+#define M 2048
+#define N 2048
+#define K 2048
+#define alpha 1
+#define beta 1
+double A[M][K];
+double B[K][N];
+double C[M][N];
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
