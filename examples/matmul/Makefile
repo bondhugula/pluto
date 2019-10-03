@@ -18,10 +18,6 @@ openblas: matmul.blas.c
 mkl: matmul.blas.c
 	$(CC) -O3 -DMKL $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o $@
 
-acml: matmul.blas.c
-	$(CC) -O3 -c -I $(ACML)/ifort64_mp/include -openmp matmul.acml.c -DTIME
-	ifort -openmp -nofor-main  -L $(ACML)/ifort64_mp/lib matmul.acml.o -lacml_mp -o $@
-
 netlib: dgemm.f
 	ifort -O3 dgemm.f -lblas -o netlib
 

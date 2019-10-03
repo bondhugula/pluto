@@ -14,9 +14,8 @@ POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
 POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
-# Intel MKL and AMD ACML library paths
+# Intel MKL library paths
 MKLROOT=/opt/intel/mkl
-ACMLROOT=/usr/local/acml
 
 OPENBLAS_CFLAGS=-I/usr/include/openblas
 OPENBLAS_LDFLAGS=-L/usr/lib64/openblas -lopenblas
