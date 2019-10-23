@@ -15,6 +15,9 @@ atlas: dgemm.f
 openblas: matmul.blas.c
 	$(CC) -O3 -DOPENBLAS $(CFLAGS) $(OPENBLAS_CFLAGS) matmul.blas.c $(OPENBLAS_LDFLAGS) -o $@
 
+blis: matmul.blas.c
+	$(CC) -O3 -DBLIS $(CFLAGS) $(OPENBLAS_CFLAGS) matmul.blas.c -lblis  -o $@
+
 mkl: matmul.blas.c
 	$(CC) -O3 -DMKL $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o $@
 

@@ -9,6 +9,10 @@
 #include "cblas.h"
 #endif
 
+#ifdef BLIS
+#include "blis/blis.h"
+#endif
+
 #ifdef MKL
 #include "mkl.h"
 #endif
@@ -89,8 +93,16 @@ int main() {
 
   IF_TIME(t_start = rtclock());
 
+  double _alpha = alpha;
+  double _beta = beta;
+
+#ifdef BLIS
+  bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, a, N, 1,
+            b, N, 1, &_beta, c, N, 1);
+#else
   cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, a, LDA,
               b, LDB, beta, c, LDC);
+#endif
 
   IF_TIME(t_end = rtclock());
   IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));

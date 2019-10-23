@@ -5,8 +5,8 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-CC=icc
-#CC=gcc
+#CC=icc
+CC=gcc
 
 NPROCS=4
 NTHREADS=4
@@ -19,6 +19,9 @@ MKLROOT=/opt/intel/mkl
 
 OPENBLAS_CFLAGS=-I/usr/include/openblas
 OPENBLAS_LDFLAGS=-L/usr/lib64/openblas -lopenblas
+
+BLIS_CFLAGS=-I/usr/include/blis
+BLIS_LDFLAGS=-L/usr/local/lib/ -lblis
 
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
@@ -38,13 +41,7 @@ endif
 CFLAGS += -DTIME
 LDFLAGS += -lm
 PLCFLAGS +=
-TILEFLAGS += 
-
-#PERFCTR=perfctr
-
-ifdef PERFCTR
-	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
-endif
+TILEFLAGS +=
 
 ifdef POLYBENCH
 	CFLAGS += -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -I $(POLYBENCHINCDIR) $(POLYBENCHSRC)
