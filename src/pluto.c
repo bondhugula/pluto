@@ -312,14 +312,22 @@ int64_t *pluto_prog_constraints_lexmin(PlutoConstraints *cst, PlutoProg *prog) {
   }
   redun[coeff_offset + nstmts * (nvar + 1)] = 0;
 
-  int del_count = 0;
+  /* TODO: Write a new in-place copy routine where some columns from the source
+   * can be removed during copy using a mask. This will be helpful when a large
+   * number of columns need to be removed. */
+  unsigned newcols = 0;
   PlutoConstraints *newcst = pluto_constraints_dup(cst);
-  for (int j = 0; j < (int)cst->ncols - 1; j++) {
-    if (redun[j]) {
-      pluto_constraints_remove_dim(newcst, j - del_count);
-      del_count++;
+  for (int i = 0; i < cst->nrows; i++) {
+    unsigned count = 0;
+    for (int j = 0; j < cst->ncols; j++) {
+      if (!redun[j]) {
+        newcst->val[i][count++] = newcst->val[i][j];
+      }
     }
+    if (newcols == 0)
+      newcols = count;
   }
+  newcst->ncols = newcols;
 
   /* Permute the constraints so that if all else is the same, the original
    * hyperplane order is preserved (no strong reason to do this) */
@@ -1554,6 +1562,7 @@ int pluto_auto_transform(PlutoProg *prog) {
   prog->fcg_colour_time = 0.0;
   prog->fcg_dims_scale_time = 0.0;
   prog->fcg_cst_alloc_time = 0.0;
+  prog->stencil_check_time = 0.0;
 
   prog->num_lp_calls = 0;
 
@@ -1615,6 +1624,7 @@ int pluto_auto_transform(PlutoProg *prog) {
     /* Mark sccs with stencils to be not distributed. This is accomplished by
      * setting that an scc already has a parallel hyperplane. This enables
      * maxfusion for all the statements in the scc. */
+    double tstart = rtclock();
     for (int i = 0; i < ddg->num_sccs; i++) {
       if (is_scc_stencil(i, prog)) {
         ddg->sccs[i].is_scc_stencil = true;
@@ -1626,6 +1636,7 @@ int pluto_auto_transform(PlutoProg *prog) {
         IF_DEBUG(printf("Scc %d has no stencil dependence patterns\n", i););
       }
     }
+    prog->stencil_check_time += rtclock() - tstart;
   }
 
   /* For diamond tiling */

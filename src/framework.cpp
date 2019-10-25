@@ -341,10 +341,8 @@ PlutoConstraints *get_cc_permutability_constraints(int cc_id, PlutoProg *prog) {
         compute_permutability_constraints_dep(dep, prog);
       }
       if (cc_dep_cst == NULL) {
-        cc_dep_cst = pluto_constraints_alloc((prog->nstmts * dep->cst->nrows),
+        cc_dep_cst = pluto_constraints_alloc((ndeps * dep->cst->nrows),
                                              dep->cst->ncols, prog->context);
-        cc_dep_cst->nrows = 0;
-        cc_dep_cst->ncols = dep->cst->ncols;
       }
       pluto_constraints_add(cc_dep_cst, dep->cst);
     }
@@ -399,8 +397,8 @@ PlutoConstraints *get_permutability_constraints(PlutoProg *prog) {
 
       IF_DEBUG(fprintf(stdout, "\tFor dep %d; num_constraints: %d\n", i + 1,
                        dep->cst->nrows));
-      total_cst_rows += dep->cst->nrows;
     }
+    total_cst_rows += dep->cst->nrows;
   }
 
   int ncols = CST_WIDTH;
@@ -629,7 +627,7 @@ get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts) {
   PlutoContext *context = prog->context;
 
   PlutoConstraints *fcst = pluto_constraints_alloc(
-      128, (npar + 1 + prog->nstmts * (nvar + 1) + 1), context);
+      ndeps * nvar, (npar + 1 + prog->nstmts * (nvar + 1) + 1), context);
 
   /* Compute the constraints and store them */
   for (int i = 0, inc = 0; i < ndeps; i++) {
@@ -942,9 +940,7 @@ PlutoConstraints *get_non_trivial_sol_constraints(const PlutoProg *prog,
   return nzcst;
 }
 
-/**
- * Bounds for Pluto ILP variables
- */
+/// Bounds for Pluto ILP variables.
 PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
   int npar = prog->npar;
   int nstmts = prog->nstmts;
@@ -957,7 +953,8 @@ PlutoConstraints *get_coeff_bounding_constraints(const PlutoProg *prog) {
     ncols += (npar + 1) * prog->ddg->num_ccs;
   }
 
-  PlutoConstraints *cst = pluto_constraints_alloc(1, ncols, context);
+  // Allocate more assuming both upper and lower bounds for each coefficient.
+  PlutoConstraints *cst = pluto_constraints_alloc(2 * ncols, ncols, context);
 
   unsigned trans_coeff_offset = npar + 1 + ncols - CST_WIDTH;
 

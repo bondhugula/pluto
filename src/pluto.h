@@ -409,7 +409,7 @@ struct plutoProg {
 
   /* Used to store constraint solving times */
   double mipTime, ilpTime, cst_solve_time, cst_const_time, cst_write_time,
-      scaling_cst_sol_time, skew_time;
+      scaling_cst_sol_time, skew_time, stencil_check_time;
   double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time,
       fcg_cst_alloc_time;
   long int num_lp_calls;
