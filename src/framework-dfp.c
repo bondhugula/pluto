@@ -379,15 +379,14 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog,
 
 /// Returns both intra and inter dependence constraints for dependences between
 /// SCC1 and SCC2.
-PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
-                                                PlutoProg *prog) {
+PlutoConstraints *
+get_inter_scc_dep_constraints(int scc1, int scc2, PlutoProg *prog,
+                              PlutoConstraints *inter_scc_dep_cst) {
   Dep **deps = prog->deps;
   int ndeps = prog->ndeps;
   Stmt **stmts = prog->stmts;
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
-
-  PlutoConstraints *inter_scc_dep_cst = NULL;
 
   IF_DEBUG2(printf("Computing inter-scc dep constraints for SCCs %d and %d\n",
                    scc1, scc2););
@@ -414,8 +413,6 @@ PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
         int nrows = dep->cst->nrows * ndeps;
         int ncols = dep->cst->ncols;
         inter_scc_dep_cst = pluto_constraints_alloc(nrows, ncols, context);
-        inter_scc_dep_cst->nrows = 0;
-        inter_scc_dep_cst->ncols = dep->cst->ncols;
       }
       pluto_constraints_add(inter_scc_dep_cst, dep->cst);
     }
@@ -439,6 +436,7 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
   Stmt **stmts = prog->stmts;
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
+  PlutoConstraints *inter_scc_cst = NULL;
 
   for (int scc1 = 0; scc1 < num_sccs; scc1++) {
     int scc1_fcg_offset = sccs[scc1].fcg_scc_offset;
@@ -449,8 +447,12 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
         continue;
       }
 
-      PlutoConstraints *inter_scc_cst =
-          get_inter_scc_dep_constraints(scc1, scc2, prog);
+      /* Do not allocate every time for each pair of SCCs.*/
+      if (!inter_scc_cst)
+        inter_scc_cst =
+            pluto_constraints_alloc(prog->ndeps * nstmts, CST_WIDTH, context);
+      inter_scc_cst->nrows = 0;
+      get_inter_scc_dep_constraints(scc1, scc2, prog, inter_scc_cst);
       bool hybridcut = options->hybridcut &&
                        sccs[scc1].has_parallel_hyperplane &&
                        sccs[scc2].has_parallel_hyperplane;
@@ -593,9 +595,9 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
           }
         }
       }
-      pluto_constraints_free(inter_scc_cst);
     }
   }
+  pluto_constraints_free(inter_scc_cst);
 }
 
 /// Computes intra statement dependence constraints for every unstisfied
@@ -3338,7 +3340,7 @@ bool introduce_skew(PlutoProg *prog) {
   bool is_skew_introduced = false;
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
-    /* If there are no dependences in for this cc then, no skewing is required
+    /* If there are no dependences in for this cc then, no skewing is required.
      */
     int cc_id = newDDG->vertices[sccs[i].vertices[0]].cc_id;
     if (cc_permute_constraints[cc_id] == NULL) {
@@ -3401,7 +3403,7 @@ bool introduce_skew(PlutoProg *prog) {
             pluto_is_hyperplane_scalar(stmts[j], level) ? H_SCALAR : H_LOOP;
       }
       /* If skewing results in a parallel hyperplane, then swap this hyperplane
-       * with the one that satisfied dependences at this level */
+       * with the one that satisfied dependences at the outer level. */
       if (is_ilp_solution_parallel(sol, npar)) {
         int par_level = get_outermost_sat_level(i, src_dims, prog);
         swap_trans_for_cc(par_level, level, cc_id, prog);
