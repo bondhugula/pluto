@@ -13,6 +13,8 @@
 #include "blis/blis.h"
 #endif
 
+#define NUM_REPS 20
+
 #ifdef MKL
 #include "mkl.h"
 #endif
@@ -22,6 +24,7 @@
 #define K 2048
 #define alpha 1
 #define beta 1
+
 double A[M][K];
 double B[K][N];
 double C[M][N];
@@ -84,10 +87,20 @@ int main() {
   c = (double *)malloc(sizeof(double) * M * M);
 
   for (i = 0; i < M; i++) {
+    for (j = 0; j < K; j++) {
+      a[i * K + j] = A[i][j];
+    }
+  }
+
+  for (i = 0; i < K; i++) {
     for (j = 0; j < N; j++) {
-      a[i * M + j] = A[i][j];
-      b[i * M + j] = B[i][j];
-      c[i * M + j] = C[i][j];
+      b[i * N + j] = B[i][j];
+    }
+  }
+
+  for (i = 0; i < M; i++) {
+    for (j = 0; j < N; j++) {
+      c[i * N + j] = C[i][j];
     }
   }
 
@@ -96,18 +109,20 @@ int main() {
   double _alpha = alpha;
   double _beta = beta;
 
+  for (int t = 0; t < NUM_REPS; ++t) {
 #ifdef BLIS
-  bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, a, N, 1,
-            b, N, 1, &_beta, c, N, 1);
+    bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, a, N, 1,
+              b, N, 1, &_beta, c, N, 1);
 #else
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, a, LDA,
-              b, LDB, beta, c, LDC);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, a,
+                LDA, b, LDB, beta, c, LDC);
 #endif
+  }
 
   IF_TIME(t_end = rtclock());
   IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
   IF_TIME(fprintf(stderr, "%0.2lf GFLOPS\n",
-                  2.0 * M * N * K / (t_end - t_start) / 1E9));
+                  2.0 * num_reps * M * N * K / (t_end - t_start) / 1E9));
 
   if (fopen(".test", "r")) {
     for (i = 0; i < M; i++) {
