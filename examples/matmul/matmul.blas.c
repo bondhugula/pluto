@@ -7,21 +7,20 @@
 
 #ifdef OPENBLAS
 #include "cblas.h"
-#endif
-
-#ifdef BLIS
+#elif BLIS
 #include "blis/blis.h"
+#elif MKL
+#include "mkl.h"
 #endif
 
-#define NUM_REPS 20
-
-#ifdef MKL
-#include "mkl.h"
+#ifndef NUM_REPS
+#define NUM_REPS 1
 #endif
 
 #define M 2048
 #define N 2048
 #define K 2048
+
 #define alpha 1
 #define beta 1
 
@@ -35,7 +34,7 @@ double C[M][N];
 #define IF_TIME(foo)
 #endif
 
-void init_array() {
+void init_matrices() {
   int i, j;
 
   for (i = 0; i < N; i++) {
@@ -47,7 +46,7 @@ void init_array() {
   }
 }
 
-void print_array() {
+void print_matrix() {
   int i, j;
 
   for (i = 0; i < N; i++) {
@@ -75,34 +74,12 @@ int main() {
   int i, j;
   int LDA, LDB, LDC;
   double *a, *b, *c;
-  // char transa='n', transb='n';
+
   LDA = M;
   LDB = N;
   LDC = M;
 
-  init_array();
-
-  a = (double *)malloc(sizeof(double) * M * M);
-  b = (double *)malloc(sizeof(double) * M * M);
-  c = (double *)malloc(sizeof(double) * M * M);
-
-  for (i = 0; i < M; i++) {
-    for (j = 0; j < K; j++) {
-      a[i * K + j] = A[i][j];
-    }
-  }
-
-  for (i = 0; i < K; i++) {
-    for (j = 0; j < N; j++) {
-      b[i * N + j] = B[i][j];
-    }
-  }
-
-  for (i = 0; i < M; i++) {
-    for (j = 0; j < N; j++) {
-      c[i * N + j] = C[i][j];
-    }
-  }
+  init_matrices();
 
   IF_TIME(t_start = rtclock());
 
@@ -111,27 +88,21 @@ int main() {
 
   for (int t = 0; t < NUM_REPS; ++t) {
 #ifdef BLIS
-    bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, a, N, 1,
-              b, N, 1, &_beta, c, N, 1);
+    bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, &A[0][0],
+              N, 1, &B[0][0], N, 1, &_beta, &C[0][0], N, 1);
 #else
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, a,
-                LDA, b, LDB, beta, c, LDC);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha,
+                &A[0][0], LDA, &B[0][0], LDB, beta, &C[0][0], LDC);
 #endif
   }
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
-  IF_TIME(fprintf(stderr, "%0.2lf GFLOPS\n",
-                  2.0 * num_reps * M * N * K / (t_end - t_start) / 1E9));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.2lf GFLOPS\n",
+                  2.0 * NUM_REPS * M * N * K / (t_end - t_start) / 1E9));
 
   if (fopen(".test", "r")) {
-    for (i = 0; i < M; i++) {
-      for (j = 0; j < N; j++) {
-        C[i][j] = c[i * M + j];
-      }
-    }
-
-    print_array();
+    print_matrix();
   }
 
   return 0;

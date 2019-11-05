@@ -104,7 +104,6 @@ pipeperf: par pipepar
 	OMP_NUM_THREADS=$(NTHREADS) ./par
 	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 
 
-
 test: orig tiled par
 	touch .test
 	./orig 2> out_orig

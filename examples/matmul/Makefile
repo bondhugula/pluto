@@ -27,15 +27,13 @@ netlib: dgemm.f
 goto: dgemm.f
 	 ifort -o goto dgemm.f -L ~/tmp/GotoBLAS -lgoto_core2p-r1.23 -lpthread
 
-mkl_test: matmul.blas.c
-	icc -DTEST -I/usr/local/mkl/include  -L/usr/local/mkl/lib/em64t $(SRC).blas.c -o mkl_test -lmkl_em64t -lmkl -lguide -lpthread
-
-ptest: tiled_test par_test mkl_test  orig_test
-	./orig_test 2> out_orig
-	./tiled_test 2> out_tiled
-	diff -q out_tiled out_orig
-	export OMP_NUM_THREADS=4
-	./par_test 2> out_par4
-	diff -q out_orig out_par4
-	./mkl_test 2> out_mkl
+blas_test: tiled mkl openblas blis
+	touch .test
+	./tiled 2> out_tiled
+	OMP_NUM_THREADS=1 ./mkl 2> out_mkl
 	diff -q out_tiled out_mkl
+	BLIS_NUM_THREADS=1 ./blis 2> out_blis
+	diff -q out_tiled out_blis
+	OPENBLAS_NUM_THREADS=1 ./openblas 2> out_openblas
+	diff -q out_tiled out_openblas
+	rm -f .test
