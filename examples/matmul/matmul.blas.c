@@ -5,12 +5,13 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#ifdef OPENBLAS
-#include "cblas.h"
+#ifdef MKL
+#include "mkl.h"
 #elif BLIS
 #include "blis/blis.h"
-#elif MKL
-#include "mkl.h"
+#else
+// OpenBLAS.
+#include "cblas.h"
 #endif
 
 #ifndef NUM_REPS
@@ -35,10 +36,8 @@ double C[M][N];
 #endif
 
 void init_matrices() {
-  int i, j;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < N; j++) {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
       A[i][j] = (i + j);
       B[i][j] = (double)(i * j);
       C[i][j] = 0.0;
@@ -46,11 +45,9 @@ void init_matrices() {
   }
 }
 
-void print_matrix() {
-  int i, j;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < N; j++) {
+void print_output() {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
       fprintf(stderr, "%lf ", C[i][j]);
       if (j % 80 == 79)
         fprintf(stderr, "\n");
@@ -62,8 +59,7 @@ void print_matrix() {
 double rtclock() {
   struct timezone Tzp;
   struct timeval Tp;
-  int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  int stat = gettimeofday(&Tp, &Tzp);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -71,13 +67,9 @@ double rtclock() {
 double t_start, t_end;
 
 int main() {
-  int i, j;
-  int LDA, LDB, LDC;
-  double *a, *b, *c;
-
-  LDA = M;
-  LDB = N;
-  LDC = M;
+  int LDA = M;
+  int LDB = N;
+  int LDC = M;
 
   init_matrices();
 
@@ -102,7 +94,7 @@ int main() {
                   2.0 * NUM_REPS * M * N * K / (t_end - t_start) / 1E9));
 
   if (fopen(".test", "r")) {
-    print_matrix();
+    print_output();
   }
 
   return 0;

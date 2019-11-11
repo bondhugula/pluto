@@ -35,5 +35,5 @@ blas_test: tiled mkl openblas blis
 	BLIS_NUM_THREADS=1 ./blis 2> out_blis
 	diff -q out_tiled out_blis
 	OPENBLAS_NUM_THREADS=1 ./openblas 2> out_openblas
-	diff -q out_tiled out_openblas
+	diff -q out_tiled out_mkl out_blis out_openblas
 	rm -f .test
