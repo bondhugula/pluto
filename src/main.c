@@ -679,20 +679,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
     }
   }
 
-  if (options->unrolljam) {
-    /* Will generate a .unroll file */
-    /* plann/plorc needs a .params */
-    FILE *paramsFP = fopen(".params", "w");
-    if (paramsFP) {
-      int i;
-      for (i = 0; i < prog->npar; i++) {
-        fprintf(paramsFP, "%s\n", prog->params[i]);
-      }
-      fclose(paramsFP);
-    }
-    pluto_detect_mark_register_tile_loops(prog);
-  }
-
   double t_c = 0.0;
 
   if (!options->pet && !strcmp(srcFileName, "stdin")) {

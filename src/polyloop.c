@@ -23,12 +23,18 @@
  *
  */
 #include <assert.h>
+#include <stdbool.h>
 #include <string.h>
 
+#include "math_support.h"
 #include "pluto.h"
 #include "pluto/matrix.h"
+#include "pluto/pluto.h"
 #include "program.h"
 
+/// Number of registers defined in the ISA. This is used in heuristics that
+/// determine whether the unroll jam of a loop is profitable.
+#define NUM_TOTAL_REGISTERS 32
 Ploop *pluto_loop_alloc() {
   Ploop *loop = (Ploop *)malloc(sizeof(Ploop));
   loop->nstmts = 0;
@@ -439,6 +445,176 @@ int pluto_loop_compar(const void *_l1, const void *_l2) {
   return 1;
 }
 
+unsigned get_num_accesses(Ploop *loop) {
+  /* All statements under the loop, all accesses for the statement */
+  unsigned ns = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
+    ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
+  }
+  return ns;
+}
+
+/// Is the access given by acc an invariant at a given depth. If yes, then the
+/// access has temporal reuse along the hyperplane at this depth.
+static bool is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
+  int *divs;
+  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
+  assert(depth <= (int)newacc->ncols - 1);
+  unsigned i;
+  for (i = 0; i < newacc->nrows; i++) {
+    if (newacc->val[i][depth] != 0)
+      break;
+  }
+  bool is_invariant = (i == newacc->nrows);
+  pluto_matrix_free(newacc);
+  free(divs);
+  return is_invariant;
+}
+
+unsigned get_num_invariant_accesses(Ploop *loop) {
+  /* All statements under the loop, all accesses for the statement */
+  unsigned ni = 0;
+  for (unsigned i = 0; i < loop->nstmts; i++) {
+    Stmt *stmt = loop->stmts[i];
+    for (int j = 0; j < stmt->nreads; j++) {
+      ni += is_invariant(stmt, stmt->reads[j], loop->depth);
+    }
+    for (int j = 0; j < stmt->nwrites; j++) {
+      ni += is_invariant(stmt, stmt->writes[j], loop->depth);
+    }
+  }
+  return ni;
+}
+
+/// Returns the maximum dimensionality of the set of input statements.
+static unsigned get_max_dim(Stmt **stmts, unsigned nstmts) {
+  unsigned max_dim = stmts[0]->dim;
+  for (unsigned j = 1; j < nstmts; j++) {
+    Stmt *stmt = stmts[j];
+    if (stmt->dim > max_dim)
+      max_dim = stmt->dim;
+  }
+  return max_dim;
+}
+
+unsigned get_max_num_innermost_invariant_accesses(Ploop *loop,
+                                                  const PlutoProg *prog) {
+  unsigned num_inner_loops;
+  Ploop **iloops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth,
+                                         prog, &num_inner_loops);
+  unsigned max_invariant_accesses = 0;
+  Stmt **stmts = (Stmt **)malloc(loop->nstmts * sizeof(Stmt *));
+  for (unsigned i = 0; i < num_inner_loops; i++) {
+    if (!pluto_loop_is_innermost(iloops[i], prog))
+      continue;
+    unsigned max_dim = get_max_dim(iloops[i]->stmts, iloops[i]->nstmts);
+    unsigned nstmts = 0;
+    for (unsigned j = 0; j < iloops[i]->nstmts; j++) {
+      Stmt *stmt = iloops[i]->stmts[j];
+      if (stmt->dim != max_dim)
+        continue;
+      stmts[nstmts++] = stmt;
+    }
+    unsigned unique_invariant_accesses =
+        get_num_invariant_accesses_in_stmts(stmts, nstmts, loop->depth, prog);
+    if (unique_invariant_accesses > max_invariant_accesses)
+      max_invariant_accesses = unique_invariant_accesses;
+  }
+  free(stmts);
+  pluto_loops_free(iloops, num_inner_loops);
+  return max_invariant_accesses;
+}
+
+/// Returns the maximum number of accesses at the innermost level.
+static unsigned get_max_num_innermost_accesses(Ploop *loop,
+                                               const PlutoProg *prog) {
+  unsigned num_inner_loops;
+  Ploop **iloops = pluto_get_loops_under(loop->stmts, loop->nstmts, loop->depth,
+                                         prog, &num_inner_loops);
+
+  unsigned max_unique_accesses = 0;
+  Stmt **stmts = (Stmt **)malloc(loop->nstmts * sizeof(Stmt *));
+  for (unsigned i = 0; i < num_inner_loops; i++) {
+    if (!pluto_loop_is_innermost(iloops[i], prog))
+      continue;
+
+    unsigned max_dim = get_max_dim(iloops[i]->stmts, iloops[i]->nstmts);
+    unsigned nstmts = 0;
+    for (unsigned j = 0; j < iloops[i]->nstmts; j++) {
+      Stmt *stmt = iloops[i]->stmts[j];
+      if (stmt->dim != max_dim)
+        continue;
+      stmts[nstmts++] = stmt;
+    }
+    unsigned unique_accesses =
+        get_num_unique_accesses_in_stmts(stmts, nstmts, prog);
+    if (unique_accesses > max_unique_accesses)
+      max_unique_accesses = unique_accesses;
+  }
+  free(stmts);
+  pluto_loops_free(iloops, num_inner_loops);
+  return max_unique_accesses;
+}
+
+/// Cost function returns true if unrolling jamming the loop will utilize less
+/// number of registers than the total number of registers specified in the ISA
+/// of the processor. We assume that the total number of registers that is
+/// available is 32. This heuristic has to be tuned further.
+bool is_unroll_jam_profitable(Ploop *loop, const PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+  unsigned t = get_max_num_innermost_invariant_accesses(loop, prog);
+  IF_DEBUG(printf("Number of accesses with temporal reuse: %d\n", t););
+  // If there is no temporal reuse, then unroll jam isnt profitable.
+  if (t == 0)
+    return false;
+  unsigned a = get_max_num_innermost_accesses(loop, prog);
+  IF_DEBUG(pluto_loop_print(loop););
+  IF_DEBUG(
+      printf("Total number of unique accesses at innermost level %d\n", a););
+  unsigned unroll_factor = options->ufactor;
+  int num_reg_required = a * unroll_factor - (t * (unroll_factor - 1));
+  int cost = NUM_TOTAL_REGISTERS - num_reg_required;
+  IF_DEBUG(pluto_loop_print(loop););
+  IF_DEBUG(printf("Cost for loop: %d\n", cost););
+  if (cost >= 0)
+    return true;
+  return false;
+}
+
+/// Returns a list of intra tile loops that are candidates for unroll jam.
+Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
+                                   unsigned *num_ujloops) {
+  unsigned num_ibands;
+  Band **ibands = pluto_get_innermost_permutable_bands(prog, 1, &num_ibands);
+  unsigned num = 0;
+  Ploop **ujloops = NULL;
+  unsigned nloops = 0;
+  for (unsigned j = 0; j < num_ibands; j++) {
+    Ploop *loop = ibands[j]->loop;
+    Ploop **loops = pluto_get_loops_under(loop->stmts, loop->nstmts,
+                                          loop->depth, prog, &num);
+    for (unsigned i = 0; i < num; i++) {
+      /* Do not unroll jam a tile space loop. */
+      if (is_tile_space_loop(loops[i], prog))
+        continue;
+      /* Do not unroll jam the innermost loop. */
+      if (pluto_loop_is_innermost(loops[i], prog))
+        continue;
+      /* Do not unroll jam if unroll jamming is not profitable. Refer function
+       * defintion for the cost function. */
+      if (!is_unroll_jam_profitable(loops[i], prog))
+        continue;
+      ujloops = (Ploop **)realloc(ujloops, (nloops + 1) * sizeof(Ploop *));
+      ujloops[nloops++] = pluto_loop_dup(loops[i]);
+    }
+    pluto_loops_free(loops, num);
+  }
+  *num_ujloops = nloops;
+  pluto_bands_free(ibands, num_ibands);
+  return ujloops;
+}
+
 /* Get all parallel loops */
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops) {
   Ploop **loops, **ploops;
@@ -590,22 +766,23 @@ void pluto_bands_free(Band **bands, unsigned nbands) {
   free(bands);
 }
 
-int pluto_is_depth_scalar(Ploop *loop, int depth) {
-  int i;
+/// Returns true, if all statements under the loop have a scalar hyperplane at
+/// depth 'depth'.
+bool pluto_is_depth_scalar(Ploop *loop, int depth) {
 
   assert(depth >= loop->depth);
 
-  for (i = 0; i < loop->nstmts; i++) {
+  for (int i = 0; i < loop->nstmts; i++) {
     if (!pluto_is_hyperplane_scalar(loop->stmts[i], depth))
-      return 0;
+      return false;
   }
 
-  return 1;
+  return true;
 }
 
 /* Returns a non-trivial permutable band starting from this loop; NULL
  * if the band is trivial (just the loop itself */
-Band *pluto_get_permutable_band(Ploop *loop, PlutoProg *prog) {
+Band *pluto_get_permutable_band(Ploop *loop, const PlutoProg *prog) {
   int i, depth;
 
   depth = loop->depth;
@@ -812,12 +989,15 @@ int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog) {
   return (num == 0);
 }
 
-/* Does this band have any loops under it */
-int pluto_is_band_innermost(const Band *band, int num_tiling_levels) {
-  int i, j;
-  for (i = 0; i < band->loop->nstmts; i++) {
-    int firstd = band->loop->depth + (num_tiling_levels + 1) * band->width;
-    for (j = firstd; j < band->loop->stmts[i]->trans->nrows; j++) {
+/// Does this band have any loops under it. Num levels introduced is the number
+/// of scalar dimensions introduced by post tile distribution. The routine
+/// returns 1 if the band is innermost. Else it returns false.
+int pluto_is_band_innermost(const Band *band, int num_tiling_levels,
+                            unsigned num_levels_introduced) {
+  for (int i = 0; i < band->loop->nstmts; i++) {
+    int firstd = band->loop->depth + (num_tiling_levels + 1) * band->width +
+                 num_levels_introduced;
+    for (int j = firstd; j < band->loop->stmts[i]->trans->nrows; j++) {
       if (pluto_is_hyperplane_loop(band->loop->stmts[i], j))
         return 0;
     }
@@ -846,7 +1026,8 @@ Ploop **pluto_get_innermost_loops(PlutoProg *prog, int *nloops) {
 }
 
 /* Set of innermost non-trivial permutable bands (of width >= 2) */
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
+Band **pluto_get_innermost_permutable_bands(const PlutoProg *prog,
+                                            unsigned num_tiled_levels,
                                             unsigned *ndbands) {
   Ploop **loops;
   unsigned num, i, nbands;
@@ -859,7 +1040,7 @@ Band **pluto_get_innermost_permutable_bands(PlutoProg *prog,
   nbands = 0;
   for (i = 0; i < num; i++) {
     Band *band = pluto_get_permutable_band(loops[i], prog);
-    if (band != NULL && pluto_is_band_innermost(band, 0)) {
+    if (band != NULL && pluto_is_band_innermost(band, num_tiled_levels, 0)) {
       bands = (Band **)realloc(bands, (nbands + 1) * sizeof(Band *));
       bands[nbands] = band;
       nbands++;

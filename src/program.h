@@ -93,6 +93,7 @@ void pluto_separate_stmts(PlutoProg *prog, Stmt **stmts, int num, int level,
                           int offset);
 
 bool pluto_is_hyperplane_scalar(const Stmt *stmt, int level);
+bool pluto_is_depth_scalar(Ploop *loop, int depth);
 int pluto_stmt_is_member_of(int stmt_id, Stmt **slist, int len);
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num);
 int pluto_stmt_is_subset_of(Stmt **s1, int n1, Stmt **s2, int n2);
@@ -141,6 +142,14 @@ isl_stat isl_map_extract_access_func(__isl_take isl_map *map, void *user);
 
 int read_codegen_context_from_file(PlutoConstraints *codegen_context);
 
+bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog);
+unsigned get_num_invariant_accesses(Ploop *loop);
+unsigned get_num_accesses(Ploop *loop);
+unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                          const PlutoProg *prog);
+unsigned get_num_invariant_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                             unsigned depth,
+                                             const PlutoProg *prog);
 #if defined(__cplusplus)
 }
 #endif

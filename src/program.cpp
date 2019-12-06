@@ -27,9 +27,11 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "constraints.h"
 #include "ddg.h"
@@ -226,6 +228,18 @@ static int64_t *pluto_check_supernode(const Stmt *stmt, unsigned pos,
   }
 
   return tile_hyp;
+}
+
+/// Returns true if the input loop is a tile space loop.
+bool is_tile_space_loop(Ploop *loop, const PlutoProg *prog) {
+  int tile_size;
+  int64_t *tiling_hyp =
+      pluto_check_supernode(loop->stmts[0], loop->depth, &tile_size);
+  if (tiling_hyp == NULL) {
+    return false;
+  }
+  free(tiling_hyp);
+  return true;
 }
 
 static int is_skewed(int64_t *func, int len) {
@@ -2356,3 +2370,129 @@ void pluto_stmt_transformation_print(const Stmt *stmt) {
   printf(")\n\n");
 }
 
+///
+PlutoAccess *pluto_create_new_access(int sym_id, const char *name,
+                                     PlutoMatrix *acc_mat) {
+  PlutoAccess *newacc = (PlutoAccess *)malloc(sizeof(PlutoAccess));
+  newacc->sym_id = sym_id;
+  newacc->name = strdup(name);
+  newacc->mat = acc_mat;
+  return newacc;
+}
+
+/// Checks if two PlutoAceesess are the same.
+static bool are_pluto_accesses_same(PlutoAccess *acc1, PlutoAccess *acc2) {
+  // Just compare names in PlutoAccess. sym_id may not be initialized in all
+  // cases.
+  if (strcmp(acc1->name, acc2->name))
+    return false;
+  return are_pluto_matrices_equal(acc1->mat, acc2->mat);
+}
+
+/// Checks if an access is present in a set of accesses.
+static bool is_access_present(std::vector<PlutoAccess *> acc_set,
+                              PlutoAccess *acc) {
+  for (auto acc_itr = acc_set.begin(); acc_itr != acc_set.end(); acc_itr++) {
+    if (are_pluto_accesses_same(*acc_itr, acc))
+      return true;
+  }
+  return false;
+}
+
+/// Inserts an access newacc to a vector of accesses if it is not already
+/// present.
+static void insert_access_if_unique(std::vector<PlutoAccess *> *acc_set,
+                                    PlutoAccess *newacc) {
+  if (acc_set->empty()) {
+    acc_set->push_back(newacc);
+  } else if (is_access_present(*acc_set, newacc)) {
+    pluto_access_free(newacc);
+  } else {
+    acc_set->push_back(newacc);
+  }
+}
+
+/// Returns a vector of unique accesses in the list of input statements. Note
+/// that the new access function after the transformation is computed in this
+/// function.
+static std::vector<PlutoAccess *>
+get_unique_accesses_in_stmts(std::vector<Stmt *> stmts, const PlutoProg *prog) {
+  std::vector<PlutoAccess *> unique_accesses;
+  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
+    /* All read accesses. */
+    Stmt *stmt = *stmt_itr;
+    for (int j = 0; j < stmt->nreads; j++) {
+      int *divs;
+      PlutoAccess *acc = stmt->reads[j];
+      PlutoMatrix *new_acc_func =
+          pluto_get_new_access_func(acc->mat, stmt, &divs);
+      PlutoAccess *newacc =
+          pluto_create_new_access(acc->sym_id, acc->name, new_acc_func);
+      insert_access_if_unique(&unique_accesses, newacc);
+      free(divs);
+    }
+    /* All write accesses. */
+    for (int j = 0; j < stmt->nwrites; j++) {
+      int *divs;
+      PlutoAccess *acc = stmt->writes[j];
+      PlutoMatrix *new_acc_func =
+          pluto_get_new_access_func(acc->mat, stmt, &divs);
+      PlutoAccess *newacc =
+          pluto_create_new_access(acc->sym_id, acc->name, new_acc_func);
+      insert_access_if_unique(&unique_accesses, newacc);
+      free(divs);
+    }
+  }
+  return unique_accesses;
+}
+
+/// Returns the number of unique accesses in a set of statements.
+unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                          const PlutoProg *prog) {
+  std::vector<Stmt *> stmts_vec;
+  for (unsigned i = 0; i < nstmts; i++) {
+    stmts_vec.push_back(stmts[i]);
+  }
+  std::vector<PlutoAccess *> unique_accesses =
+      get_unique_accesses_in_stmts(stmts_vec, prog);
+  unsigned num_unique_accesses = unique_accesses.size();
+  for (auto acc_itr = unique_accesses.begin(); acc_itr != unique_accesses.end();
+       acc_itr++) {
+    pluto_access_free(*acc_itr);
+  }
+  return num_unique_accesses;
+}
+
+/// Checks if an access is invariant at a given depth. This is very similar to
+/// the routine is_invariant in src/polyloop.c but it does not compute the new
+/// access function. It assumes that the new access function is already
+/// computed.
+static bool is_access_invariant(PlutoAccess *acc, unsigned depth) {
+  for (unsigned i = 0; i < acc->mat->nrows; i++) {
+    if (acc->mat->val[i][depth] != 0)
+      return false;
+  }
+  return true;
+}
+
+/// Returns the number of access in the input statements that are invariant
+/// with respect to a loop at a perticular depth.
+unsigned get_num_invariant_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                             unsigned depth,
+                                             const PlutoProg *prog) {
+  std::vector<Stmt *> stmts_vec;
+  for (unsigned i = 0; i < nstmts; i++) {
+    stmts_vec.push_back(stmts[i]);
+  }
+  std::vector<PlutoAccess *> unique_accesses =
+      get_unique_accesses_in_stmts(stmts_vec, prog);
+  unsigned num_invariant_access = 0;
+  for (auto itr = unique_accesses.begin(); itr != unique_accesses.end();
+       itr++) {
+    if (is_access_invariant(*itr, depth)) {
+      num_invariant_access++;
+    }
+    pluto_access_free(*itr);
+  }
+  return num_invariant_access;
+}

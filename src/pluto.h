@@ -642,6 +642,8 @@ int get_outermost_parallel_loop(const PlutoProg *prog);
 int is_loop_dominated(Ploop *loop1, Ploop *loop2, const PlutoProg *prog);
 Ploop **pluto_get_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Ploop **pluto_get_all_loops(const PlutoProg *prog, unsigned *num);
+Ploop **pluto_get_unroll_jam_loops(const PlutoProg *prog,
+                                   unsigned *num_ujloops);
 Ploop **pluto_get_dom_parallel_loops(const PlutoProg *prog, unsigned *nploops);
 Band **pluto_get_dom_parallel_bands(PlutoProg *prog, unsigned *nbands,
                                     int **comm_placement_levels);
@@ -652,11 +654,14 @@ void pluto_loops_print(Ploop **loops, int num);
 void pluto_loops_free(Ploop **loops, int nloops);
 int pluto_loop_compar(const void *_l1, const void *_l2);
 Band *pluto_band_alloc(Ploop *loop, int width);
+Band *pluto_band_dup(Band *band);
 void pluto_bands_print(Band **bands, int num);
 void pluto_band_print(const Band *band);
 
 Band **pluto_get_outermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
 Ploop *pluto_loop_dup(Ploop *l);
+Ploop *pluto_loop_alloc();
+void pluto_loop_free(Ploop *l);
 int pluto_loop_is_parallel(const PlutoProg *prog, Ploop *loop);
 int pluto_loop_is_parallel_for_stmt(const PlutoProg *prog, const Ploop *loop,
                                     const Stmt *stmt);
@@ -674,8 +679,11 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
 int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
-int pluto_is_band_innermost(const Band *band, int is_tiled);
-Band **pluto_get_innermost_permutable_bands(PlutoProg *prog, unsigned *ndbands);
+int pluto_is_band_innermost(const Band *band, int is_tiled,
+                            unsigned num_levels_introduced);
+Band **pluto_get_innermost_permutable_bands(const PlutoProg *prog,
+                                            unsigned num_tiled_levels,
+                                            unsigned *ndbands);
 int pluto_loop_is_innermost(const Ploop *loop, const PlutoProg *prog);
 
 PlutoConstraints *pluto_get_transformed_dpoly(const Dep *dep, Stmt *src,
