@@ -289,10 +289,9 @@ PlutoConstraints *farkas_lemma_affine(const PlutoConstraints *dom,
   return farkas;
 }
 
-/* Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself; only for
- * single element list. Multiple elements doesn't make sense; you may want to
- * use intersect
- */
+/// Adds cs1 and cs2 and puts them in cs1 -> returns cs1 itself for convenience.
+/// This function is only for  single element lists. For multiple element lists,
+/// use pluto_constraints_intersect.
 PlutoConstraints *pluto_constraints_add(PlutoConstraints *cst1,
                                         const PlutoConstraints *cst2) {
   assert(cst2 != NULL);

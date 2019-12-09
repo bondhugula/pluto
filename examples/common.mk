@@ -5,8 +5,8 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-CC=icc
-#CC=gcc
+#CC=icc
+CC=gcc
 
 NPROCS=4
 NTHREADS=4
@@ -14,9 +14,14 @@ POLYBENCHINCDIR=$(BASEDIR)polybench/utilities
 POLYBENCHSRC=$(BASEDIR)polybench/utilities/polybench.c
 PLC=$(BASEDIR)../polycc
 
-# Intel MKL and AMD ACML library paths
+# Intel MKL library paths
 MKLROOT=/opt/intel/mkl
-ACMLROOT=/usr/local/acml
+
+OPENBLAS_CFLAGS=-I/usr/include/openblas
+OPENBLAS_LDFLAGS=-L/usr/lib64/openblas -lopenblas
+
+BLIS_CFLAGS=-I/usr/include/blis
+BLIS_LDFLAGS=-L/usr/local/lib/ -lblis
 
 ifeq ($(CC), icc)
 	OPT_FLAGS     := -O3 -xHost -ansi-alias -ipo -fp-model precise
@@ -36,13 +41,7 @@ endif
 CFLAGS += -DTIME
 LDFLAGS += -lm
 PLCFLAGS +=
-TILEFLAGS += 
-
-#PERFCTR=perfctr
-
-ifdef PERFCTR
-	CFLAGS += -DPERFCTR -L/usr/local/lib64 -lpapi
-endif
+TILEFLAGS +=
 
 ifdef POLYBENCH
 	CFLAGS += -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -I $(POLYBENCHINCDIR) $(POLYBENCHSRC)
@@ -104,7 +103,6 @@ pipeperf: par pipepar
 	rm -f .test
 	OMP_NUM_THREADS=$(NTHREADS) ./par
 	OMP_NUM_THREADS=$(NTHREADS) ./pipepar 
-
 
 test: orig tiled par
 	touch .test

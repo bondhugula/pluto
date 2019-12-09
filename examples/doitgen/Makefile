@@ -8,10 +8,6 @@ include ../common.mk
 mkl: doitgen.mkl.c decls.h
 	$(CC) $(CFLAGS) -I$(MKL)/include doitgen.mkl.c -L $(MKL)/lib/em64t -lmkl_em64t -lmkl -lguide -lpthread -o mkl
 
-acml: doitgen.acml.c decls.h
-	$(CC) -c $(CFLAGS) -I $(ACML)/ifort64_mp_int64/include doitgen.acml.c
-	ifort -openmp -nofor-main  -L $(ACML)/ifort64_mp_int64/lib doitgen.acml.o -lacml_mp -o acml
-
 mkl2: doitgen.dgemm.c decls.h
 	$(CC) $(CFLAGS) -I $(MKL)/include doitgen.dgemv.c -L $(MKL)/lib/em64t -lmkl_em64t -lmkl -lguide -lpthread -o mkl2
 

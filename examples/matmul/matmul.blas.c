@@ -5,9 +5,29 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <mkl.h>
+#ifdef MKL
+#include "mkl.h"
+#elif BLIS
+#include "blis/blis.h"
+#else
+// OpenBLAS.
+#include "cblas.h"
+#endif
 
-#include "decls.h"
+#ifndef NUM_REPS
+#define NUM_REPS 1
+#endif
+
+#define M 2048
+#define N 2048
+#define K 2048
+
+#define alpha 1
+#define beta 1
+
+double A[M][K];
+double B[K][N];
+double C[M][N];
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -15,11 +35,9 @@
 #define IF_TIME(foo)
 #endif
 
-void init_array() {
-  int i, j;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < N; j++) {
+void init_matrices() {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
       A[i][j] = (i + j);
       B[i][j] = (double)(i * j);
       C[i][j] = 0.0;
@@ -27,11 +45,9 @@ void init_array() {
   }
 }
 
-void print_array() {
-  int i, j;
-
-  for (i = 0; i < N; i++) {
-    for (j = 0; j < N; j++) {
+void print_output() {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
       fprintf(stderr, "%lf ", C[i][j]);
       if (j % 80 == 79)
         fprintf(stderr, "\n");
@@ -43,8 +59,7 @@ void print_array() {
 double rtclock() {
   struct timezone Tzp;
   struct timeval Tp;
-  int stat;
-  stat = gettimeofday(&Tp, &Tzp);
+  int stat = gettimeofday(&Tp, &Tzp);
   if (stat != 0)
     printf("Error return from gettimeofday: %d", stat);
   return (Tp.tv_sec + Tp.tv_usec * 1.0e-6);
@@ -52,46 +67,34 @@ double rtclock() {
 double t_start, t_end;
 
 int main() {
-  int i, j;
-  int LDA, LDB, LDC;
-  double *a, *b, *c;
-  // char transa='n', transb='n';
-  LDA = M;
-  LDB = N;
-  LDC = M;
+  int LDA = M;
+  int LDB = N;
+  int LDC = M;
 
-  init_array();
-
-  a = (double *)malloc(sizeof(double) * M * M);
-  b = (double *)malloc(sizeof(double) * M * M);
-  c = (double *)malloc(sizeof(double) * M * M);
-
-  for (i = 0; i < M; i++) {
-    for (j = 0; j < N; j++) {
-      a[i * M + j] = A[i][j];
-      b[i * M + j] = B[i][j];
-      c[i * M + j] = C[i][j];
-    }
-  }
+  init_matrices();
 
   IF_TIME(t_start = rtclock());
 
-  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha, a, LDA,
-              b, LDB, beta, c, LDC);
+  double _alpha = alpha;
+  double _beta = beta;
+
+  for (int t = 0; t < NUM_REPS; ++t) {
+#ifdef BLIS
+    bli_dgemm(BLIS_NO_TRANSPOSE, BLIS_NO_TRANSPOSE, M, N, K, &_alpha, &A[0][0],
+              N, 1, &B[0][0], N, 1, &_beta, &C[0][0], N, 1);
+#else
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, alpha,
+                &A[0][0], LDA, &B[0][0], LDB, beta, &C[0][0], LDC);
+#endif
+  }
 
   IF_TIME(t_end = rtclock());
-  IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
-  IF_TIME(fprintf(stderr, "%0.2lf GFLOPS\n",
-                  2.0 * M * N * K / (t_end - t_start) / 1E9));
+  IF_TIME(fprintf(stdout, "%0.6lfs\n", t_end - t_start));
+  IF_TIME(fprintf(stdout, "%0.2lf GFLOPS\n",
+                  2.0 * NUM_REPS * M * N * K / (t_end - t_start) / 1E9));
 
   if (fopen(".test", "r")) {
-    for (i = 0; i < M; i++) {
-      for (j = 0; j < N; j++) {
-        C[i][j] = c[i * M + j];
-      }
-    }
-
-    print_array();
+    print_output();
   }
 
   return 0;

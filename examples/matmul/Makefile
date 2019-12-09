@@ -6,34 +6,34 @@ EXTRA_CLEAN = atlas mkl netlib atlaspt goto
 
 include ../common.mk
 
-atlaspt: dgemm.f decls.h
+atlaspt: dgemm.f
 	gfortran -m64 -O dgemm.f -L /usr/local/ATLAS/lib -o atlaspt -llapack -lptcblas -lptf77blas -latlas -lpthread
 
-atlas: dgemm.f decls.h
+atlas: dgemm.f
 	gfortran -m64 -O dgemm.f -L /usr/local/ATLAS/lib -o atlas -llapack -lcblas -lf77blas -latlas -lpthread
 
-mkl: matmul.blas.c decls.h
-	$(CC) -O3 $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o mkl
+openblas: matmul.blas.c
+	$(CC) -O3 -DOPENBLAS $(CFLAGS) $(OPENBLAS_CFLAGS) matmul.blas.c $(OPENBLAS_LDFLAGS) -o $@
 
-acml: matmul.blas.c decls.h
-	$(CC) -O3 -c -I $(ACML)/ifort64_mp/include -openmp matmul.acml.c -DTIME
-	ifort -openmp -nofor-main  -L $(ACML)/ifort64_mp/lib matmul.acml.o -lacml_mp -o acml
+blis: matmul.blas.c
+	$(CC) -O3 -DBLIS $(CFLAGS) $(BLIS_CFLAGS) matmul.blas.c -lblis  -o $@
 
-netlib: dgemm.f decls.h
+mkl: matmul.blas.c
+	$(CC) -O3 -DMKL $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o $@
+
+netlib: dgemm.f
 	ifort -O3 dgemm.f -lblas -o netlib
 
-goto: dgemm.f decls.h
+goto: dgemm.f
 	 ifort -o goto dgemm.f -L ~/tmp/GotoBLAS -lgoto_core2p-r1.23 -lpthread
 
-mkl_test: matmul.blas.c decls.h
-	icc -DTEST -I/usr/local/mkl/include  -L/usr/local/mkl/lib/em64t $(SRC).blas.c -o mkl_test -lmkl_em64t -lmkl -lguide -lpthread
-
-ptest: tiled_test par_test mkl_test  orig_test
-	./orig_test 2> out_orig
-	./tiled_test 2> out_tiled
-	diff -q out_tiled out_orig
-	export OMP_NUM_THREADS=4
-	./par_test 2> out_par4
-	diff -q out_orig out_par4
-	./mkl_test 2> out_mkl
+blas_test: tiled mkl openblas blis
+	touch .test
+	./tiled 2> out_tiled
+	OMP_NUM_THREADS=1 ./mkl 2> out_mkl
 	diff -q out_tiled out_mkl
+	BLIS_NUM_THREADS=1 ./blis 2> out_blis
+	diff -q out_tiled out_blis
+	OPENBLAS_NUM_THREADS=1 ./openblas 2> out_openblas
+	diff -q out_tiled out_mkl out_blis out_openblas
+	rm -f .test

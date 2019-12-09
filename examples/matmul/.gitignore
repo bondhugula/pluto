@@ -10,4 +10,6 @@ par
 tiled
 orig_par
 *.pipepar.c
+blis
+openblas
 pipepar
