@@ -186,7 +186,7 @@ void pluto_mark_unroll_jam(struct clast_stmt *root, const PlutoProg *prog,
       continue;
     }
     for (unsigned j = 0; j < nloops; j++) {
-      loops[j]->unroll += CLAST_UNROLL_JAM;
+      loops[j]->unroll_type += clast_unroll_and_jam;
       loops[j]->ufactor = ufactor;
     }
     free(stmtids);

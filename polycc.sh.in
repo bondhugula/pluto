@@ -64,16 +64,6 @@ prefix=`basename $SOURCEFILE .c`
 CLOOGFILE=`basename $OUTFILE`.pluto.cloog
 PLUTOOUT=$OUTFILE
 
-# generate and insert unrolling annotations, run ancc on it,
-# if [ "$UNROLL" == 1 ]; then
-#     $plorc $PLUTOOUT @srcdir@/orio-0.1.0
-# fi
-
-#if [ "$UNROLL" == 1 ]; then
-    #$plann $PLUTOOUT @srcdir@/annotations
-#fi
-
-
 # put the original skeleton around the transformed code
 $inscop $SOURCEFILE $OUTFILE $OUTFILE
 
