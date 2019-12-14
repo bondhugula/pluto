@@ -3,7 +3,7 @@
 	url = https://github.com/bondhugula/isl-for-pluto.git
 [submodule "cloog-isl"]
 	path = cloog-isl
-	url = https://github.com/periscop/cloog.git
+	url = https://github.com/bondhugula/cloog.git
 [submodule "piplib"]
 	path = piplib
 	url = https://github.com/periscop/piplib.git
