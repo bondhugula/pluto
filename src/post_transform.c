@@ -31,22 +31,11 @@
 #include "program.h"
 #include "transforms.h"
 
-int is_invariant(Stmt *stmt, PlutoAccess *acc, int depth) {
-  int *divs;
-  PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
-  assert(depth <= (int)newacc->ncols - 1);
-  unsigned i;
-  for (i = 0; i < newacc->nrows; i++) {
-    if (newacc->val[i][depth] != 0)
-      break;
-  }
-  int is_invariant = (i == newacc->nrows);
-  pluto_matrix_free(newacc);
-  free(divs);
-  return is_invariant;
-}
-
+/// Used to determine if an access has a short stride.  This is used to favour
+/// loops with short strides at the innermost level. Loops with short stride
+/// have exhibit spatial locality when they are present at the innermost level.
 #define SHORT_STRIDE 4
+
 int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   int *divs;
   PlutoMatrix *newacc = pluto_get_new_access_func(acc->mat, stmt, &divs);
@@ -78,21 +67,6 @@ int has_spatial_reuse(Stmt *stmt, PlutoAccess *acc, int depth) {
   return 0;
 }
 
-unsigned get_num_invariant_accesses(Ploop *loop) {
-  /* All statements under the loop, all accesses for the statement */
-  unsigned ni = 0;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    Stmt *stmt = loop->stmts[i];
-    for (int j = 0; j < stmt->nreads; j++) {
-      ni += is_invariant(stmt, stmt->reads[j], loop->depth);
-    }
-    for (int j = 0; j < stmt->nwrites; j++) {
-      ni += is_invariant(stmt, stmt->writes[j], loop->depth);
-    }
-  }
-  return ni;
-}
-
 unsigned get_num_spatial_accesses(Ploop *loop) {
   /* All statements under the loop, all accesses for the statement */
   unsigned ns = 0;
@@ -105,16 +79,6 @@ unsigned get_num_spatial_accesses(Ploop *loop) {
       ns += has_spatial_reuse(stmt, stmt->writes[j], loop->depth);
     }
   }
-  return ns;
-}
-
-unsigned get_num_accesses(Ploop *loop) {
-  /* All statements under the loop, all accesses for the statement */
-  unsigned ns = 0;
-  for (unsigned i = 0; i < loop->nstmts; i++) {
-    ns += loop->stmts[i]->nreads + loop->stmts[i]->nwrites;
-  }
-
   return ns;
 }
 
@@ -151,7 +115,9 @@ int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
 }
 
 /// Detects up to two loops to register tile (unroll-jam). Returns the number
-/// of loops marked for register tiling.
+/// of loops marked for register tiling. The support for unroll jam using this
+/// routine is deprectated as hprops has become obsolete and orio does not
+/// support unroll jamming of loop nests with vector pragmas .
 int pluto_detect_mark_register_tile_loops(PlutoProg *prog) {
   int bandStart, bandEnd;
   int numRegTileLoops;
@@ -260,7 +226,7 @@ int gen_reg_tile_file(PlutoProg *prog) {
 int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
                                    PlutoProg *prog) {
   /* Band has to be the innermost band as well */
-  if (!pluto_is_band_innermost(band, num_tiled_levels)) {
+  if (!pluto_is_band_innermost(band, num_tiled_levels, 0)) {
     return 0;
   }
 
