@@ -308,7 +308,7 @@ void pluto_tile(PlutoProg *prog) {
   }
 
   if (options->intratileopt) {
-    int retval = 0;
+    bool retval = false;
     for (i = 0; i < nbands; i++) {
       retval |=
           pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);

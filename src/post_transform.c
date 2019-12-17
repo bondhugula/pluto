@@ -19,13 +19,17 @@
  * `LICENSE' in the top-level directory of this distribution.
  *
  */
-#include <assert.h>
-#include <limits.h>
-#include <stdio.h>
 
-#include "math_support.h"
 #include "post_transform.h"
 
+#include <assert.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "ddg.h"
+#include "math_support.h"
 #include "pluto/matrix.h"
 #include "pluto/pluto.h"
 #include "program.h"
@@ -222,20 +226,13 @@ int gen_reg_tile_file(PlutoProg *prog) {
   return 0;
 }
 
-/// Optimize the intra-tile loop order for locality and vectorization.
-int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
-                                   PlutoProg *prog) {
-  /* Band has to be the innermost band as well */
-  if (!pluto_is_band_innermost(band, num_tiled_levels, 0)) {
-    return 0;
-  }
+/// Returns the best loop that can be moved to the innermost
+/// level. The loop is treated as vectorizable if 1) it is parallel 2) it has
+/// all stride 0 or stride 1 accesses (exhibits spatial locality). A weighted
+/// sum of these factors is taken into account.
+Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog) {
 
   PlutoContext *context = prog->context;
-
-  unsigned nloops;
-  Ploop **loops = pluto_get_loops_under(
-      band->loop->stmts, band->loop->nstmts,
-      band->loop->depth + num_tiled_levels * band->width, prog, &nloops);
 
   int max_score = INT_MIN;
   Ploop *best_loop = NULL;
@@ -262,32 +259,270 @@ int pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
         printf("[pluto-intra-tile-opt] Score for loop %d: %d\n", l, score));
     IF_DEBUG(pluto_loop_print(loops[l]));
   }
-
-  if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
-    IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
-    IF_DEBUG(pluto_loop_print(best_loop););
-
-    /* The last level in the innermost permutable band. This is true only if the
-     * outermost permutable band and innermost permutable band are the same. */
-    unsigned last_level =
-        band->loop->depth + num_tiled_levels * band->width + band->width;
-    bool move_across_scalar_hyperplanes = false;
-    /* Move loop across scalar hyperplanes only if the loop nest is tiled.*/
-    if (num_tiled_levels > 0) {
-      move_across_scalar_hyperplanes = true;
-    }
-    pluto_make_innermost_loop(best_loop, last_level,
-                              move_across_scalar_hyperplanes, prog);
-    pluto_loops_free(loops, nloops);
-    return 1;
-  }
-
-  pluto_loops_free(loops, nloops);
-  return 0;
+  return best_loop;
 }
 
-/* is_tiled: is the band tiled */
-int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
+/// For each statement in the input outermost band, the routine returns a per
+/// statement band. The returned band->loop will have a single statement. This
+/// is used to find statements in the band that are share the same intra-tile
+/// iterators.
+Band **get_per_stmt_band(Band *band, unsigned *nstmt_bands) {
+  unsigned nstmts = band->loop->nstmts;
+  unsigned nbands = 0;
+  Band **per_stmt_bands = (Band **)malloc(nstmts * sizeof(Band *));
+  for (int i = 0; i < nstmts; i++) {
+    /* Create a Ploop with a single statement i */
+    Ploop *loop = pluto_loop_alloc();
+    loop->nstmts = 1;
+    loop->depth = band->loop->depth;
+    loop->stmts = (Stmt **)malloc(sizeof(Stmt *));
+    memcpy(loop->stmts, &band->loop->stmts[i], sizeof(Stmt *));
+
+    per_stmt_bands[i] = pluto_band_alloc(loop, band->width);
+    nbands++;
+    pluto_loop_free(loop);
+  }
+  *nstmt_bands = nbands;
+  return per_stmt_bands;
+}
+
+/// Assumes that all bands in per_stmt_bands have the same width and begin at
+/// the same depth. Returns true if the statements in band b1 and b2 are fused
+/// in the tile space.
+bool are_stmts_fused_in_band(Band **per_stmt_bands, int b1, int b2,
+                             int num_tiled_levels) {
+
+  /* Assumptions of this routine. */
+  assert(per_stmt_bands[b1]->loop->depth == per_stmt_bands[b2]->loop->depth &&
+         per_stmt_bands[b1]->width == per_stmt_bands[b2]->width);
+
+  unsigned band_begin = per_stmt_bands[b1]->loop->depth;
+  unsigned band_end = per_stmt_bands[b1]->loop->depth +
+                      num_tiled_levels * per_stmt_bands[b1]->width;
+
+  Stmt *stmt1 = per_stmt_bands[b1]->loop->stmts[0];
+  Stmt *stmt2 = per_stmt_bands[b2]->loop->stmts[0];
+
+  for (unsigned i = band_begin; i < band_end; i++) {
+    if (!pluto_is_depth_scalar(per_stmt_bands[b1]->loop, i)) {
+      continue;
+    }
+    int col1 = stmt1->trans->ncols - 1;
+    int col2 = stmt2->trans->ncols - 1;
+    if (stmt1->trans->val[i][col1] != stmt2->trans->val[i][col2]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// The routine fuses per statement bands of statements that are not distributed
+/// in the tile space. The intra tile loop iterators of all these statements
+/// which are not distributed have to be permuted to the inner levels together.
+Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
+                           int num_tiled_levels, unsigned *num_fused_bands,
+                           PlutoContext *context) {
+
+  if (nbands == 0) {
+    num_fused_bands = 0;
+    return NULL;
+  }
+  /* Band map is a map that maps each band to a band identifier. All bands that
+   * are completely fused in the inter tile space will have the same band map.
+   * Each band initialized to a unique identifier to start with and is updated
+   * when fusion decisions are made.*/
+  unsigned *band_map = (unsigned *)malloc(nbands * sizeof(unsigned));
+  for (unsigned i = 0; i < nbands; i++) {
+    band_map[i] = i;
+  }
+
+  /* Compute bands that need to be fused and update band_map. */
+  unsigned total_bands = 0;
+  for (int i = 0; i < nbands; i++) {
+    /* If the current band is not fused with the band that was seen earlier,
+     * then it has to be put in a new band. If it is fused with a band k such
+     * that k<i, then all bands j>i would also be fused with k. Hence it is not
+     * necessary to check for any band that is greater than i that can be fused
+     * with i. */
+    if (band_map[i] < i)
+      continue;
+
+    /* This is a new band that has not been fused with anything that was seen
+     * before. Update band_map so that a new band is created for the band i. */
+    band_map[i] = total_bands++;
+
+    for (int j = i + 1; j < nbands; j++) {
+      /* If the statements in which were originally in bands i and j have been
+       * fused, then skip. */
+      if (band_map[i] == band_map[j])
+        continue;
+      /* If the statements in the bands i and j are not fused, then do not merge
+       * the bands. */
+      if (!are_stmts_fused_in_band(per_stmt_bands, i, j, num_tiled_levels)) {
+        IF_DEBUG(
+            printf("Stmts in bands %d and %d are distributed in tile space\n",
+                   i, j););
+        continue;
+      }
+      /* Statements are fused in the band*/
+      band_map[j] = band_map[i];
+    }
+  }
+
+  if (total_bands == nbands) {
+    *num_fused_bands = total_bands;
+    free(band_map);
+    return per_stmt_bands;
+  }
+
+  /* Fuse bands based on band map. Note that Band map will be sorted, and
+   * band_map[i] will be the id of the smallest band with which band[i] has to
+   * be fused. */
+  IF_DEBUG(printf("Total number of fused bands %d\n", total_bands););
+  Band **fused_bands = (Band **)malloc(total_bands * sizeof(Band *));
+  unsigned nfbands = 0;
+
+  for (unsigned i = 0; i < nbands; i++) {
+    IF_DEBUG(printf("Band %d to be fused with band %d\n", i, band_map[i]););
+    if (band_map[i] >= nfbands) {
+      fused_bands[nfbands++] = pluto_band_dup(per_stmt_bands[i]);
+      continue;
+    }
+    unsigned band_id = band_map[i];
+    Ploop *loop = fused_bands[band_id]->loop;
+    int new_num_stmts = loop->nstmts + per_stmt_bands[i]->loop->nstmts;
+    loop->stmts = (Stmt **)realloc(loop->stmts, new_num_stmts * sizeof(Stmt *));
+    memcpy(loop->stmts + loop->nstmts, per_stmt_bands[i]->loop->stmts,
+           per_stmt_bands[i]->loop->nstmts * sizeof(Stmt *));
+    fused_bands[band_id]->loop->nstmts = new_num_stmts;
+  }
+  *num_fused_bands = nfbands;
+  free(band_map);
+  return fused_bands;
+}
+
+/// The routine looks for a parallel loop with the best cost and makes it the
+/// innermost loop. This is called when the loop nest is tiled and outer and
+/// inner permutable bands are not the same.
+static bool make_parallel_loop_innermost(Band *band, unsigned num_tiled_levels,
+                                         PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+
+  int depth = band->loop->depth + num_tiled_levels * band->width;
+  unsigned nloops;
+  Ploop **loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
+                                        depth, prog, &nloops);
+  pluto_loops_print(loops, nloops);
+  unsigned nploops = 0;
+  Ploop **par_loops = (Ploop **)malloc(nloops * sizeof(Ploop *));
+  unsigned innermost_loop_depth = band->loop->depth;
+  for (unsigned i = 0; i < nloops; i++) {
+    if (pluto_loop_is_parallel(prog, loops[i])) {
+      par_loops[nploops++] = loops[i];
+    }
+    if (loops[i]->depth > innermost_loop_depth) {
+      innermost_loop_depth = loops[i]->depth;
+    }
+  }
+  if (nploops == 0) {
+    return false;
+  }
+
+  Ploop *best_loop = get_best_vectorizable_loop(par_loops, nploops, prog);
+  if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
+    IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
+    pluto_loop_print(best_loop);
+
+    bool move_across_scalar_hyperplanes = true;
+    pluto_make_innermost_loop(best_loop, innermost_loop_depth + 1,
+                              move_across_scalar_hyperplanes, prog);
+    return true;
+  }
+  return false;
+}
+
+/// Optimize the intra-tile loop order for locality and vectorization.
+bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
+                                    PlutoProg *prog) {
+  /* Band has to be the innermost band as well */
+  if (!pluto_is_band_innermost(band, num_tiled_levels, 0)) {
+    /* If the loop nest is tiled (but not completely), then move an intratile
+     * parallel loop in this band to the innermost level. */
+    if (num_tiled_levels > 0) {
+      return make_parallel_loop_innermost(band, num_tiled_levels, prog);
+    }
+    return false;
+  }
+
+  /* Band may have been distributed in the inter tile space.  If the band is
+   * distributed then there can be multiple innner permutable bands. We need to
+   * find optimize for each of them separately. First find bands with a single
+   * statement in it and then fuse the bands with statements that are fused in
+   * the tile space. */
+  /* TODO: We need an early bailout condition here. If the number of statements
+   * in the band is 1 or the loop nest is not tiled, then we can skip the
+   * procedure to find inner most bands corresponding to the input band. */
+  unsigned nstmt_bands = 0;
+  Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
+
+  unsigned num_fused_bands = 0;
+  Band **ibands =
+      fuse_per_stmt_bands(per_stmt_bands, nstmt_bands, num_tiled_levels,
+                          &num_fused_bands, prog->context);
+
+  if (num_fused_bands != nstmt_bands) {
+    pluto_bands_free(per_stmt_bands, nstmt_bands);
+  }
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+  if (options->debug) {
+    printf("Bands for intra tile optimiztion \n");
+    pluto_bands_print(ibands, num_fused_bands);
+  }
+
+  bool retval = false;
+  for (unsigned i = 0; i < num_fused_bands; i++) {
+    Band *band = ibands[i];
+    int depth = band->loop->depth + num_tiled_levels * band->width;
+    IF_DEBUG(printf("Getting loop at depth  %d\n", depth););
+
+    unsigned nloops;
+    Ploop **loops = pluto_get_loops_under(band->loop->stmts, band->loop->nstmts,
+                                          depth, prog, &nloops);
+    Ploop *best_loop = get_best_vectorizable_loop(loops, nloops, prog);
+
+    if (best_loop && !pluto_loop_is_innermost(best_loop, prog)) {
+      IF_DEBUG(printf("[pluto] intra_tile_opt: loop to be made innermost: "););
+      IF_DEBUG(pluto_loop_print(best_loop););
+
+      /* The last level in the innermost permutable band. This is true only if
+       * the outermost permutable band and innermost permutable band are the
+       * same. */
+      unsigned last_level =
+          band->loop->depth + (num_tiled_levels + 1) * band->width;
+      bool move_across_scalar_hyperplanes = false;
+      /* Move loop across scalar hyperplanes only if the loop nest is tiled. If
+       * the loop nest is not tiled, then moving across scalar hyperplanes might
+       * not be valid in all cases. */
+      /* FIXME: Requires further exploration to find the exact reason for doing
+       * this. */
+      if (num_tiled_levels > 0) {
+        move_across_scalar_hyperplanes = true;
+      }
+      pluto_make_innermost_loop(best_loop, last_level,
+                                move_across_scalar_hyperplanes, prog);
+      retval = true;
+    }
+
+    pluto_loops_free(loops, nloops);
+  }
+  pluto_bands_free(ibands, num_fused_bands);
+  return retval;
+}
+
+/// This routine is called only when the band is not tiled ?
+/// is_tiled: is the band tiled.
+bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
   unsigned nbands;
   int retval;
   Band **bands = pluto_get_outermost_permutable_bands(prog, &nbands);

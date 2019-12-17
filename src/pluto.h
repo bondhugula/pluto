@@ -676,8 +676,8 @@ Ploop **pluto_get_loops_under(Stmt **stmts, unsigned nstmts, unsigned depth,
                               const PlutoProg *prog, unsigned *num);
 Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num);
-int pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
-int pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
+bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
+bool pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
 
 int pluto_is_band_innermost(const Band *band, int is_tiled,
                             unsigned num_levels_introduced);
