@@ -105,11 +105,11 @@ TEST_MORE_INTRA_TILE_OPT="\
     @top_srcdir@/test/intratileopt5.c
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
-    printf '%-50s ' "$file with --maxfuse"
-    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-TILE $file
+    printf '%-50s ' "$file"
+    ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
-    printf '%-50s ' "$file with --maxfuse --notile"
-    ./src/pluto --maxfuse --notile $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-NOTILE $file
+    printf '%-50s ' "$file with --notile"
+    ./src/pluto --notile $file -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
 

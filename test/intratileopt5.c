@@ -1,31 +1,28 @@
-// CHECK: T(S1): (i, j, 0, 1, 0)
-// CHECK: T(S2): (i, j, 1, 0, k)
-// CHECK: T(S3): (i, j, 0, 0, 0)
-// CHECK: T(S4): (i, j+k, 1, 1, k)
-// CHECK-TILE: After tiling:
-// CHECK-TILE: T(S1): (i/32, j/32, 0, 1, 0, i, j, 0, 1, 0)
-// CHECK-TILE: T(S2): (i/32, j/32, 1, 0, k/32, i, j, 1, 0, k)
-// CHECK-TILE: T(S3): (i/32, j/32, 0, 0, 0, i, j, 0, 0, 0)
-// CHECK-TILE: T(S4): (i/32, (j+k)/32, 1, 1, k/32, i, j+k, 1, 1, k)
+// CHECK: T(S1): (0, i, j, 1, 0)
+// CHECK: T(S2): (1, i, j, 0, k)
+// CHECK: T(S3): (0, i, j, 0, 0)
+// CHECK: T(S4): (1, i, k, 1, j)
+// TILE-PARALLEL: After tiling:
+// TILE-PARALLEL: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
+// TILE-PARALLEL: T(S2): (1, i/32, j/32, 0, k/32, i, j, 0, k)
+// TILE-PARALLEL: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
+// TILE-PARALLEL: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
 // After intra-tile optimize
-// CHECK-TILE: T(S1): (i/32, j/32, 0, 1, 0, i, j, 0, 1, 0)
-// CHECK-TILE: T(S2): (i/32, j/32, 1, 0, k/32, i, k, 1, 0, j)
-// CHECK-TILE: T(S3): (i/32, j/32, 0, 0, 0, i, j, 0, 0, 0)
-// CHECK-TILE: T(S4): (i/32, (j+k)/32, 1, 1, k/32, i, k, 1, 1, j+k)
-// CHECK-NOTILE: T(S1): (i, j, 0, 1, 0)
-// CHECK-NOTILE: T(S2): (i, j, 1, 0, k)
-// CHECK-NOTILE: T(S3): (i, j, 0, 0, 0)
-// CHECK-NOTILE: T(S4): (i, j+k, 1, 1, k)
+// TILE-PARALLEL: T(S1): (0, i/32, j/32, i, j, 1, 0, 0, 0)
+// TILE-PARALLEL: T(S2): (1, i/32, j/32, 0, k/32, i, 0, k, j)
+// TILE-PARALLEL: T(S3): (0, i/32, j/32, i, j, 0, 0, 0, 0)
+// TILE-PARALLEL: T(S4): (1, i/32, k/32, 1, j/32, i, k, 1, j)
 // CHECK: Output written
 
-/* This is a 2mm kernel is taken from Polybench to test intra tile optimization.
- * With maxfuse, the intra-tile optimization has to move hyperplane (j+k) at
- * level 6 to the innermost level for the statement S4. This test case thus
- * tests for intra tile optimization to move loops across scalar hyperplanes. If
- * the loop nest is not tiled, then it will be incorrect to move a loop across
- * scalar hyperplane in the loop nest. The key here is that in case of a tiled
- * loop nest, the distribution would be made in the tile space (in the outermost
- * permutable band) and not within a tile. */
+/* This 2mm kernel is taken from Polybench to test intra tile optimization.
+ * Intra-tile optimization has to move hyperplane j at level 6 to the innermost
+ * level only for the statement S2. This test case checks for intra tile
+ * optimizations for statements that lie in the same band and require different
+ * intra-tile permutations for statements that do not share intra-tile loops.
+ * When loop nest is not tiled, loops in the innermost permutable band should
+ * not be moved acorss scalar hyperplanes, even if outer and inner permutable
+ * bands are the same. */
+
 #pragma scop
 /* D := alpha*A*B*C + beta*D */
 for (i = 0; i < _PB_NI; i++)
@@ -41,4 +38,3 @@ for (i = 0; i < _PB_NI; i++)
       D[i][j] += tmp[i][k] * C[k][j];
   }
 #pragma endscop
-
