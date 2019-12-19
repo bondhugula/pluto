@@ -324,7 +324,7 @@ Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
                            PlutoContext *context) {
 
   if (nbands == 0) {
-    num_fused_bands = 0;
+    *num_fused_bands = 0;
     return NULL;
   }
   /* Band map is a map that maps each band to a band identifier. All bands that
@@ -462,10 +462,10 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   /* TODO: We need an early bailout condition here. If the number of statements
    * in the band is 1 or the loop nest is not tiled, then we can skip the
    * procedure to find inner most bands corresponding to the input band. */
-  unsigned nstmt_bands = 0;
+  unsigned nstmt_bands;
   Band **per_stmt_bands = get_per_stmt_band(band, &nstmt_bands);
 
-  unsigned num_fused_bands = 0;
+  unsigned num_fused_bands;
   Band **ibands =
       fuse_per_stmt_bands(per_stmt_bands, nstmt_bands, num_tiled_levels,
                           &num_fused_bands, prog->context);
@@ -476,7 +476,7 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
   if (options->debug) {
-    printf("Bands for intra tile optimiztion \n");
+    printf("Bands for intra tile optimization \n");
     pluto_bands_print(ibands, num_fused_bands);
   }
 
@@ -500,12 +500,12 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
        * same. */
       unsigned last_level =
           band->loop->depth + (num_tiled_levels + 1) * band->width;
-      bool move_across_scalar_hyperplanes = false;
       /* Move loop across scalar hyperplanes only if the loop nest is tiled. If
        * the loop nest is not tiled, then moving across scalar hyperplanes might
        * not be valid in all cases. */
       /* FIXME: Requires further exploration to find the exact reason for doing
        * this. */
+      bool move_across_scalar_hyperplanes = false;
       if (num_tiled_levels > 0) {
         move_across_scalar_hyperplanes = true;
       }
@@ -520,7 +520,7 @@ bool pluto_intra_tile_optimize_band(Band *band, int num_tiled_levels,
   return retval;
 }
 
-/// This routine is called only when the band is not tiled ?
+/// FIXME:This routine is called only when the band is not tiled ?
 /// is_tiled: is the band tiled.
 bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled) {
   unsigned nbands;
