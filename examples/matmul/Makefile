@@ -19,7 +19,7 @@ blis: matmul.blas.c
 	$(CC) -O3 -DBLIS $(CFLAGS) $(BLIS_CFLAGS) matmul.blas.c -lblis  -o $@
 
 mkl: matmul.blas.c
-	$(CC) -O3 -DMKL $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c -L $(MKL_LDFLAGS) -o $@
+	$(CC) -O3 -DMKL $(CFLAGS) $(MKL_CFLAGS) matmul.blas.c $(MKL_LDFLAGS) -o $@
 
 netlib: dgemm.f
 	ifort -O3 dgemm.f -lblas -o netlib
