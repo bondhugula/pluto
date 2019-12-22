@@ -224,7 +224,9 @@ void pluto_tile(PlutoProg *prog) {
   unsigned nbands, i, j, n_ibands, num_tiled_levels, nloops;
   Band **bands, **ibands;
   bands = pluto_get_outermost_permutable_bands(prog, &nbands);
-  ibands = pluto_get_innermost_permutable_bands(prog, &n_ibands);
+  /* Tiling has not been done yet. Hence num_tiled_levels argument to
+   * pluto_get_innermost_permutable_bands is 0. */
+  ibands = pluto_get_innermost_permutable_bands(prog, 0, &n_ibands);
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
 
@@ -306,7 +308,7 @@ void pluto_tile(PlutoProg *prog) {
   }
 
   if (options->intratileopt) {
-    int retval = 0;
+    bool retval = false;
     for (i = 0; i < nbands; i++) {
       retval |=
           pluto_intra_tile_optimize_band(bands[i], num_tiled_levels, prog);

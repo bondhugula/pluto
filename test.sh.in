@@ -105,11 +105,11 @@ TEST_MORE_INTRA_TILE_OPT="\
     @top_srcdir@/test/intratileopt5.c
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
-    printf '%-50s ' "$file with --maxfuse"
-    ./src/pluto --maxfuse $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-TILE $file
+    printf '%-50s ' "$file"
+    ./src/pluto $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
-    printf '%-50s ' "$file with --maxfuse --notile"
-    ./src/pluto --maxfuse --notile $file -o test_temp_out.pluto.c | FileCheck --check-prefix CHECK-NOTILE $file
+    printf '%-50s ' "$file with --notile"
+    ./src/pluto --notile $file -o test_temp_out.pluto.c | FileCheck $file
     check_ret_val_emit_status
 done
 
@@ -169,6 +169,15 @@ check_ret_val_emit_status
 
 # TODO: add tests that check the generated code for certain things (like stmt
 # body source esp. while using --pet).
+# Unroll jam tests. These tests check the generated code.
+echo -e "\nTest Unroll jam"
+echo "===================="
+TESTS_UNROLL_JAM="@top_srcdir@/test/unrolljam.c"
+for file in $TESTS_UNROLL_JAM; do
+    printf '%-50s ' $file
+    ./src/pluto --unrolljam --silent --ufactor=2 $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | FileCheck $file
+    check_ret_val_emit_status
+done
 
 cleanup()
 {

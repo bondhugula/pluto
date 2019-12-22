@@ -715,3 +715,16 @@ void mpz_set_ull(mpz_t n, unsigned long long ull) {
   /* n += (unsigned int)ull */
   mpz_add_ui(n, n, (unsigned int)ull);
 }
+
+/// Returns true if the two input matrices are equal.
+bool are_pluto_matrices_equal(PlutoMatrix *mat1, PlutoMatrix *mat2) {
+  if ((mat1->nrows != mat2->nrows) || (mat1->ncols != mat2->ncols))
+    return false;
+  for (unsigned i = 0; i < mat1->nrows; i++) {
+    for (unsigned j = 0; j < mat1->ncols; j++) {
+      if (mat1->val[i][j] != mat2->val[i][j])
+        return false;
+    }
+  }
+  return true;
+}
