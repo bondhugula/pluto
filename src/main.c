@@ -149,7 +149,7 @@ void usage_message(void) {
   fprintf(stdout, "\n   Miscellaneous\n");
   fprintf(stdout, "       --rar                     Consider RAR dependences "
                   "too (disabled by default)\n");
-  fprintf(stdout, "       --[no]unrolljam           Unroll and jam (disabled "
+  fprintf(stdout, "       --[no]unrolljam           Unroll and jam (enabled "
                   "by default)\n");
   fprintf(stdout, "       --ufactor=<factor>        Unroll and jam factor "
                   "(default is 8)\n");
@@ -223,7 +223,6 @@ int main(int argc, char *argv[]) {
     {"parallelize", no_argument, &options->parallel, 1},
     {"innerpar", no_argument, &options->innerpar, 1},
     {"iss", no_argument, &options->iss, 1},
-    {"unrolljam", no_argument, &options->unrolljam, 1},
     {"nounrolljam", no_argument, &options->unrolljam, 0},
     {"bee", no_argument, &options->bee, 1},
     {"ufactor", required_argument, 0, 'u'},
