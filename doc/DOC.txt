@@ -101,8 +101,7 @@ COMMAND-LINE OPTIONS
     guaranteed. Fusion is done across SCCs.
 
     --[no]unrolljam
-    Automatically identify and unroll-jam up to two loops. Not enabled
-    by default.
+    Automatically identify and unroll-jam loops. Enabled by default.
 
     --ufactor=<n>
     Unroll or unroll-jam factor (default is 8). Note that if two loops
