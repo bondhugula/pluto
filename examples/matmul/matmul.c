@@ -78,10 +78,6 @@ int main() {
   IF_TIME(fprintf(stdout, "%0.2lf GFLOPS\n",
                   2.0 * M * N * K / (t_end - t_start) / 1E9));
 
-#ifdef PERFCTR
-  PERF_EXIT;
-#endif
-
   if (fopen(".test", "r")) {
 #ifdef MPI
     if (my_rank == 0) {
