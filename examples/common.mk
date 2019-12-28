@@ -5,8 +5,9 @@
 #
 BASEDIR=$(dir $(lastword $(MAKEFILE_LIST)))
 
-#CC=icc
 CC=gcc
+#CC=icc
+#CC=clang
 
 NPROCS=4
 NTHREADS=4
@@ -29,13 +30,19 @@ ifeq ($(CC), icc)
 	OMP_FLAGS     := -qopenmp
 	MKL_CFLAGS    := -DMKL_ILP64 -mkl=parallel
 	MKL_LDFLAGS   := -liomp5 -lpthread -lm -ldl
+else ifeq ($(CC), clang)
+	OPT_FLAGS     := -O3 -march=native -mtune=native
+	PAR_FLAGS     := 
+	OMP_FLAGS     := -fopenmp -I/usr/lib/gcc/x86_64-redhat-linux/9/include
+	MKL_CFLAGS    := -DMKL_ILP64 -m64 -I$(MKLROOT)/include
+	MKL_LDFLAGS   := -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
 else
 	# for gcc
-	OPT_FLAGS     := -O3 -march=native -mtune=native -ftree-vectorize
+	OPT_FLAGS     := -O3 -march=native -mtune=native
 	PAR_FLAGS     := -ftree-parallelize-loops=$(NTHREADS)
 	OMP_FLAGS     := -fopenmp
 	MKL_CFLAGS    := -DMKL_ILP64 -m64 -I$(MKLROOT)/include
-	MKL_LDFLAGS   :=  -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+	MKL_LDFLAGS   := -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
 endif
 
 CFLAGS += -DTIME
