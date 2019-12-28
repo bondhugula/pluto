@@ -4,6 +4,8 @@ PLCFLAGS = --second-level-tile
 TILEFLAGS =
 EXTRA_CLEAN = atlas mkl netlib atlaspt goto
 
+CFLAGS += -ffast-math
+
 include ../common.mk
 
 atlaspt: dgemm.f
