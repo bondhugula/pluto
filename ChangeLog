@@ -11,6 +11,9 @@ Until present
 - --tile and --parallel enabled by default
 - Diamond tiling enabled by default
 - libpluto interface updated.
+- Introduce loop unroll and jam support using ClooG AST and enable it by
+  default.
+- Improvements to intra-tile optimization heuristics.
 
 version 0.11.4
 
