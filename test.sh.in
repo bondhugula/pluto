@@ -95,12 +95,12 @@ TESTS="@top_srcdir@/test/dfp/typed-fuse-1.c\
         ./src/pluto --dfp $file $* -o test_tmp_out.pluto.c | FileCheck $file
         check_ret_val_emit_status
    done
-# Test greedy greedy coloring heuristic in Pluto-lp-dfp
+# Test greedy greedy coloring heuristic and stencil check in Pluto-lp-dfp
    TESTS="test/dfp/fdtd-2d.c\
        "
    for file in $TESTS; do
         printf '%-50s ' "$file with --dfp --clusterscc --lpcolor"
-        ./src/pluto --dfp --lpcolor --clusterscc $file -o test_tmp_out.pluto.c | FileCheck $file
+        ./src/pluto --typedfuse --lpcolor $file -o test_tmp_out.pluto.c | FileCheck $file
         check_ret_val_emit_status
    done
 fi

@@ -413,7 +413,7 @@ struct plutoProg {
 
   /* Used to store constraint solving times */
   double mipTime, ilpTime, cst_solve_time, cst_const_time, cst_write_time,
-      scaling_cst_sol_time, skew_time;
+      scaling_cst_sol_time, skew_time, stencil_check_time;
   double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time,
       fcg_cst_alloc_time;
   long int num_lp_calls;
@@ -505,8 +505,7 @@ void compute_pairwise_permutability(Dep *dep, PlutoProg *prog);
 PlutoConstraints *get_permutability_constraints(PlutoProg *);
 PlutoConstraints *get_scc_permutability_constraints(int, PlutoProg *);
 PlutoConstraints *get_cc_permutability_constraints(int, PlutoProg *);
-PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog, Stmt **,
-                                                     int);
+
 PlutoConstraints **get_stmt_lin_ind_constraints(Stmt *stmt,
                                                 const PlutoProg *prog,
                                                 const PlutoConstraints *currcst,
@@ -552,6 +551,7 @@ int pluto_dynschedule_parallelize(PlutoProg *prog, FILE *sigmafp,
 int pluto_distmem_parallelize(PlutoProg *prog, FILE *sigmafp, FILE *headerfp,
                               FILE *pifp);
 
+bool is_scc_stencil(int scc_id, PlutoProg *prog);
 void ddg_update(Graph *g, PlutoProg *prog);
 void ddg_compute_scc(PlutoProg *prog);
 void ddg_compute_cc(PlutoProg *prog);
@@ -678,6 +678,7 @@ Ploop **pluto_get_loops_immediately_inner(Ploop *ploop, const PlutoProg *prog,
                                           unsigned *num);
 bool pluto_intra_tile_optimize(PlutoProg *prog, int is_tiled);
 bool pluto_intra_tile_optimize_band(Band *band, int is_tiled, PlutoProg *prog);
+PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band);
 
 int pluto_is_band_innermost(const Band *band, int is_tiled,
                             unsigned num_levels_introduced);
