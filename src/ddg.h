@@ -53,6 +53,8 @@ struct scc {
   /* Set to true if there is a parallel hyperplane has already been found for
    * this scc */
   bool has_parallel_hyperplane;
+  /* Set to true if the scc has stencil dependence pattern. */
+  bool is_scc_stencil;
 };
 typedef struct scc Scc;
 
@@ -96,6 +98,7 @@ Graph *graph_transpose(Graph *g);
 void dfs(Graph *g);
 void dfs_for_scc(Graph *g);
 void dfs_vertex(Graph *g, Vertex *v, int *time);
+void transitive_closure(Graph *g);
 Vertex *ddg_get_vertex_by_id(Graph *g, int id);
 
 bool is_adjecent(Graph *, int, int);
