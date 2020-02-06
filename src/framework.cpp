@@ -21,9 +21,11 @@
  */
 #include <assert.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #include "constraints.h"
 #include "ddg.h"
@@ -41,10 +43,17 @@
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000U
 #define MAX_FARKAS_CST 2000
 
+// This value represents the upper bound on w in case the dependence is short.
+#define SHORT_DEP_DISTANCE 10
+
 static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
                                         unsigned level);
 static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
                                                 unsigned level);
+
+static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts);
+static PlutoConstraints *
+get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts);
 
 /**
  *
@@ -611,8 +620,8 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
 /*
  * 1-d affine schedule for a set of statements.
  */
-PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
-                                                     Stmt **stmts, int nstmts) {
+PlutoConstraints *
+get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts) {
   int ndeps = prog->ndeps;
   Dep **deps = prog->deps;
   int nvar = prog->nvar;
@@ -630,8 +639,8 @@ PlutoConstraints *get_feautrier_schedule_constraints(PlutoProg *prog,
       continue;
     }
 
-    if (!pluto_stmt_is_member_of(dep->src, stmts, nstmts) ||
-        !pluto_stmt_is_member_of(dep->dest, stmts, nstmts)) {
+    if (!is_stmt_in_stmt_list(dep->src, stmts) ||
+        !is_stmt_in_stmt_list(dep->dest, stmts)) {
       continue;
     }
 
@@ -1448,4 +1457,375 @@ void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
         pluto_is_hyperplane_scalar(stmt, stmt->trans->nrows - 1) ? H_SCALAR
                                                                  : H_LOOP;
   }
+}
+
+/// The routine checks whether the statement given by stat_id is present in
+/// the vector of input statements.
+static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts) {
+  for (auto itr = stmts.begin(); itr != stmts.end(); itr++) {
+    Stmt *stmt = *itr;
+    if (stmt->id == stmt_id)
+      return true;
+  }
+  return false;
+}
+
+/// Finds domain face that allows concurrent start (for diamond tiling)
+/// FIXME: iteration space boundaries are assumed to be corresponding to
+/// rectangular ones
+/// Returns: matrix with row i being the concurrent start face for Stmt i
+static PlutoMatrix *
+get_face_with_concurrent_start_for_stmts(PlutoProg *prog,
+                                         std::vector<Stmt *> stmts) {
+  PlutoConstraints *bcst;
+  PlutoMatrix *conc_start_faces;
+  PlutoContext *context = prog->context;
+
+  int npar = prog->npar;
+  int nvar = prog->nvar;
+
+  PlutoConstraints *fcst = get_feautrier_schedule_constraints(prog, stmts);
+
+  bcst = get_coeff_bounding_constraints(prog);
+  pluto_constraints_add(fcst, bcst);
+  pluto_constraints_free(bcst);
+
+  int64_t *sol = pluto_prog_constraints_lexmin(fcst, prog);
+  pluto_constraints_free(fcst);
+
+  if (!sol) {
+    IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: no valid 1-d "
+                    "schedules \n"););
+    return NULL;
+  }
+
+  conc_start_faces = pluto_matrix_alloc(stmts.size(), nvar + npar + 1, context);
+  pluto_matrix_set(conc_start_faces, 0);
+
+  for (int s = 0, _s = 0; s < prog->nstmts; s++) {
+    if (!is_stmt_in_stmt_list(s, stmts))
+      continue;
+    assert(_s <= (int)stmts.size() - 1);
+    for (int j = 0; j < nvar; j++) {
+      conc_start_faces->val[_s][j] = sol[npar + 1 + s * (nvar + 1) + j];
+    }
+    conc_start_faces->val[_s][nvar + npar] =
+        sol[npar + 1 + s * (nvar + 1) + nvar];
+    _s++;
+  }
+  free(sol);
+
+  IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
+  unsigned s = 0;
+  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
+    Stmt *stmt = *stmt_itr;
+    IF_DEBUG(printf("\tf(S%d) = ", stmt->id + 1););
+    IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s++],
+                                         nvar + npar,
+                                         (const char **)stmt->domain->names););
+    IF_DEBUG(printf("\n"););
+  }
+
+  /* 1-d schedule should be parallel to an iteration space boundary
+   * FIXME: assuming canonical boundaries */
+  for (s = 0; s < stmts.size(); s++) {
+    unsigned nz = 0;
+    for (int j = 0; j < nvar; j++) {
+      if (conc_start_faces->val[s][j])
+        nz++;
+    }
+    if (nz != 1)
+      break;
+  }
+
+  if (s < stmts.size()) {
+    pluto_matrix_free(conc_start_faces);
+    IF_DEBUG(printf("[pluto] No iteration space faces with concurrent start "
+                    "for all statements\n"););
+    return NULL;
+  }
+
+  IF_DEBUG(
+      printf(
+          "[pluto] faces with concurrent start found for all statements\n"););
+
+  return conc_start_faces;
+}
+
+/// Return the face with concurrent start for a band. This routine is the
+/// interface between the routine get_face_with_concurrent_start_for_stmts and
+/// pluto.c for diamond tiling.
+PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
+  PlutoContext *context = prog->context;
+  IF_DEBUG(printf("[pluto] get_face_with_concurrent_start for band\n\t"););
+  IF_DEBUG(pluto_band_print(band););
+
+  std::vector<Stmt *> stmts;
+  for (unsigned i = 0; i < band->loop->nstmts; i++) {
+    stmts.push_back(band->loop->stmts[i]);
+  }
+  return get_face_with_concurrent_start_for_stmts(prog, stmts);
+}
+
+/// Returns the dependence distance bounding constraints for each dependence in
+/// the scc.
+static PlutoConstraints *
+get_dep_distance_bounding_constraints_for_scc(int scc_id, PlutoProg *prog) {
+  PlutoConstraints *dep_dist_bound_cst = NULL;
+  PlutoContext *context = prog->context;
+  Dep **deps = prog->deps;
+  Stmt **stmts = prog->stmts;
+  for (int i = 0; i < prog->ndeps; i++) {
+    Dep *dep = deps[i];
+    if (IS_RAR(dep->type))
+      continue;
+    int src_stmt = dep->src;
+    int dest_stmt = dep->dest;
+    if (stmts[src_stmt]->scc_id != scc_id || stmts[dest_stmt]->scc_id != scc_id)
+      continue;
+
+    if (!dep->bounding_cst)
+      compute_permutability_constraints_dep(dep, prog);
+    if (!dep_dist_bound_cst) {
+      dep_dist_bound_cst = pluto_constraints_alloc(
+          dep->bounding_cst->nrows, dep->bounding_cst->ncols, context);
+      dep_dist_bound_cst->nrows = 0;
+      dep_dist_bound_cst->ncols = dep->bounding_cst->ncols;
+      pluto_constraints_add(dep_dist_bound_cst, dep->bounding_cst);
+    } else
+      dep_dist_bound_cst =
+          pluto_constraints_add(dep_dist_bound_cst, dep->bounding_cst);
+  }
+  return dep_dist_bound_cst;
+}
+
+/// Return constraints of the form \phi(t) - \phi(s) >= -(u+w) for the input
+/// dependence. This is used to lower bound the dependence distances to a small
+/// value (Dep distances may even be negative). The callee has to set the value
+/// of u to be zero if the dependence distance has to be short.
+static PlutoConstraints *
+compute_dep_dist_lb_constraints_for_stencil_check(Dep *dep, PlutoProg *prog) {
+  int src_stmt = dep->src;
+  int dest_stmt = dep->dest;
+  int nvar = prog->nvar;
+  int npar = prog->npar;
+  PlutoMatrix *phi = NULL;
+  PlutoContext *context = prog->context;
+
+  if (src_stmt != dest_stmt) {
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + 2 * (nvar + 1) + 1,
+                             context);
+    pluto_matrix_set(phi, 0);
+
+    for (int r = 0; r < nvar; r++) {
+      /* Source stmt. */
+      phi->val[r][npar + 1 + r] = -1;
+    }
+    for (int r = nvar; r < 2 * nvar; r++) {
+      /* Dest stmt. */
+      phi->val[r][npar + 1 + (nvar + 1) + (r - nvar)] = 1;
+    }
+    for (int r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* for \vec{u} - parametric bounding function */
+      phi->val[r][r - 2 * nvar] = 1;
+    }
+
+    /* Translation coefficients of statements */
+    phi->val[2 * nvar + npar][npar + 1 + nvar] = -1;
+    phi->val[2 * nvar + npar][npar + 1 + (nvar + 1) + nvar] = 1;
+    /* for w. */
+    phi->val[2 * nvar + npar][npar] = 1;
+  } else {
+    phi = pluto_matrix_alloc(2 * nvar + npar + 1, npar + 1 + (nvar + 1) + 1,
+                             context);
+    pluto_matrix_set(phi, 0);
+
+    for (int r = 0; r < nvar; r++) {
+      /* Source stmt. */
+      phi->val[r][npar + 1 + r] = -1;
+    }
+    for (int r = nvar; r < 2 * nvar; r++) {
+      /* Dest stmt */
+      phi->val[r][npar + 1 + (r - nvar)] = 1;
+    }
+    for (int r = 2 * nvar; r < 2 * nvar + npar; r++) {
+      /* for u */
+      phi->val[r][r - 2 * nvar] = 1;
+      /* No parametric shift coefficients */
+    }
+    /* Statement's translation coefficients cancel out */
+
+    /* for w */
+    phi->val[2 * nvar + npar][npar] = 1;
+  }
+
+  /* Apply Farkas lemma for bounding function constraints */
+  PlutoConstraints *bounding_func_cst =
+      farkas_lemma_affine(dep->bounding_poly, phi);
+
+  pluto_matrix_free(phi);
+  // Bring this to global format
+  PlutoConstraints *bcst_g;
+
+  int src_offset = npar + 1 + src_stmt * (nvar + 1);
+  int dest_offset = npar + 1 + dest_stmt * (nvar + 1);
+  int nstmts = prog->nstmts;
+
+  bcst_g =
+      pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH, context);
+
+  for (unsigned k = 0; k < bounding_func_cst->nrows; k++) {
+    pluto_constraints_add_constraint(bcst_g, bounding_func_cst->is_eq[k]);
+    for (int j = 0; j < npar + 1; j++) {
+      bcst_g->val[bcst_g->nrows - 1][j] = bounding_func_cst->val[k][j];
+    }
+    for (int j = 0; j < nvar + 1; j++) {
+      bcst_g->val[bcst_g->nrows - 1][src_offset + j] =
+          bounding_func_cst->val[k][npar + 1 + j];
+      if (src_stmt != dest_stmt) {
+        bcst_g->val[bcst_g->nrows - 1][dest_offset + j] =
+            bounding_func_cst->val[k][npar + 1 + nvar + 1 + j];
+      }
+    }
+    /* constant part */
+    if (src_stmt == dest_stmt) {
+      bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
+          bounding_func_cst->val[k][npar + 1 + nvar + 1];
+    } else {
+      bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
+          bounding_func_cst->val[k][npar + 1 + 2 * nvar + 2];
+    }
+  }
+  pluto_constraints_free(bounding_func_cst);
+  return bcst_g;
+}
+
+/// Get a lower bound for dependence distances this is used to check if the
+/// dependences in the SCC are short. See routine
+/// compute_dep_dist_lb_constraints_for_stencil_check for more details.
+static PlutoConstraints *
+get_dep_dist_lower_bound_constraints_for_scc(int scc_id, PlutoProg *prog) {
+  PlutoContext *context = prog->context;
+  Dep **deps = prog->deps;
+  Stmt **stmts = prog->stmts;
+  PlutoConstraints *dist_lb_csts = NULL;
+  for (int i = 0; i < prog->ndeps; i++) {
+    Dep *dep = deps[i];
+    if (IS_RAR(dep->type))
+      continue;
+    int src_stmt = dep->src;
+    int dest_stmt = dep->dest;
+    if (stmts[src_stmt]->scc_id != scc_id || stmts[dest_stmt]->scc_id != scc_id)
+      continue;
+
+    PlutoConstraints *dep_dist_lb_cst =
+        compute_dep_dist_lb_constraints_for_stencil_check(dep, prog);
+    if (dist_lb_csts == NULL) {
+      dist_lb_csts =
+          pluto_constraints_alloc(prog->ndeps * dep_dist_lb_cst->nrows,
+                                  dep_dist_lb_cst->ncols, context);
+      dist_lb_csts->nrows = 1;
+      dist_lb_csts->ncols = dep_dist_lb_cst->ncols;
+    }
+    dist_lb_csts = pluto_constraints_add(dist_lb_csts, dep_dist_lb_cst);
+    pluto_constraints_free(dep_dist_lb_cst);
+  }
+  return dist_lb_csts;
+}
+
+/// Returns true if the scc in the ddg given by scc_id has the stencil pattern
+/// of dependences. That is, the routine checks if there a face with concurrent
+/// start and there are short dependences on either sides of the face with
+/// concurrent start.
+/// FIXME: Assumes that the that allows concurrent start is along the cononical
+/// axes and hence differs from the description in the paper.
+bool is_scc_stencil(int scc_id, PlutoProg *prog) {
+  std::vector<Stmt *> stmts;
+  PlutoContext *context = prog->context;
+  for (int i = 0; i < prog->nstmts; i++) {
+    if (prog->stmts[i]->scc_id == scc_id) {
+      stmts.push_back(prog->stmts[i]);
+    }
+  }
+  // The face with concurrent start is guaranteed to satisfy some dependence.
+  PlutoMatrix *conc_start_faces =
+      get_face_with_concurrent_start_for_stmts(prog, stmts);
+  if (!conc_start_faces)
+    return false;
+  // printf("Concurrent start faces\n");
+  // pluto_matrix_print(stdout, conc_start_faces);
+  // Get dependence distance bounding constraints.
+  PlutoConstraints *dep_bound_cst =
+      get_dep_distance_bounding_constraints_for_scc(scc_id, prog);
+
+  PlutoConstraints *dep_dist_lower_bound_cst =
+      get_dep_dist_lower_bound_constraints_for_scc(scc_id, prog);
+
+  // Bounding Constraints for coefficients.
+  PlutoConstraints *coeff_bound_cst = pluto_constraints_alloc(
+      dep_bound_cst->ncols, dep_bound_cst->ncols, context);
+  coeff_bound_cst->nrows = 0;
+  coeff_bound_cst->ncols = dep_bound_cst->ncols;
+  unsigned npar = prog->npar;
+
+  for (unsigned i = npar; i < dep_bound_cst->ncols - 1; i++) {
+    pluto_constraints_add_lb(coeff_bound_cst, i, 0);
+  }
+  // Set \vec{u} to zero.
+  for (unsigned i = 0; i < npar; i++) {
+    pluto_constraints_add_equality(coeff_bound_cst);
+    coeff_bound_cst->val[coeff_bound_cst->nrows - 1][i] = 1;
+  }
+
+  int short_dist_bound = SHORT_DEP_DISTANCE;
+  // Upper bound on w for short dependence distance.
+  pluto_constraints_add_ub(coeff_bound_cst, npar, short_dist_bound);
+  // Lower bound on w for short dependence distance. Note that in case of
+  // stencils this can be negative.
+  // pluto_constraints_add_lb(coeff_bound_cst, npar, -short_dist_bound);
+
+  PlutoConstraints *orthocst = pluto_constraints_alloc(
+      conc_start_faces->nrows, dep_bound_cst->ncols, context);
+  orthocst->nrows = conc_start_faces->nrows;
+  orthocst->ncols = dep_bound_cst->ncols;
+  unsigned count = 0;
+  unsigned nvar = prog->nvar;
+  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
+    Stmt *stmt = *stmt_itr;
+    unsigned offset = npar + 1 + stmt->id * (nvar + 1);
+    for (int i = 0; i < prog->nvar; i++) {
+      if (conc_start_faces->val[count][i] == 0) {
+        orthocst->val[count][offset + i] = 1;
+      } else {
+        // The coefficient corresponding to the dimension of the concurrent
+        // start is zero.
+        pluto_constraints_add_equality(orthocst);
+        orthocst->val[orthocst->nrows - 1][offset + i] = 1;
+      }
+    }
+    orthocst->val[count][orthocst->ncols - 1] = -1;
+    count++;
+  }
+
+  dep_bound_cst = pluto_constraints_add(dep_bound_cst, orthocst);
+  dep_bound_cst =
+      pluto_constraints_add(dep_bound_cst, dep_dist_lower_bound_cst);
+  dep_bound_cst = pluto_constraints_add(dep_bound_cst, coeff_bound_cst);
+
+  bool is_stencil = true;
+  int64_t *sol = pluto_constraints_lexmin(dep_bound_cst, ALLOW_NEGATIVE_COEFF);
+  if (!sol) {
+    is_stencil = false;
+  } else if (sol[npar] == 0) {
+    // w should be non zero.
+    is_stencil = false;
+  }
+  free(sol);
+
+  pluto_constraints_free(dep_dist_lower_bound_cst);
+  pluto_constraints_free(dep_bound_cst);
+  pluto_constraints_free(coeff_bound_cst);
+  pluto_matrix_free(conc_start_faces);
+  pluto_constraints_free(orthocst);
+  return is_stencil;
 }
