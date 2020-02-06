@@ -1726,14 +1726,19 @@ int pluto_auto_transform(PlutoProg *prog) {
 
     nVertices = 0;
     if (options->scc_cluster) {
-      for (int i = 0; i < ddg->num_sccs; i++) {
-        ddg->sccs[i].fcg_scc_offset = nVertices;
+      for (unsigned i = 0; i < ddg->num_sccs; i++) {
+        if (ddg->sccs[i].max_dim > 0) {
+          ddg->sccs[i].fcg_scc_offset = nVertices;
+        }
         ddg->sccs[i].is_scc_coloured = false;
         nVertices += ddg->sccs[i].max_dim;
+        ddg->sccs[i].is_scc_stencil = false;
       }
     } else {
-      for (int i = 0; i < nstmts; i++) {
-        ddg->vertices[i].fcg_stmt_offset = nVertices;
+      for (unsigned i = 0; i < nstmts; i++) {
+        if (stmts[i]->dim > 0) {
+          ddg->vertices[i].fcg_stmt_offset = nVertices;
+        }
         nVertices += stmts[i]->dim_orig;
       }
     }
@@ -1746,8 +1751,10 @@ int pluto_auto_transform(PlutoProg *prog) {
     PlutoConstraints *permutecst = get_permutability_constraints(prog);
     IF_DEBUG(pluto_constraints_cplex_print(stdout, permutecst););
 
-    /* Yet to start colouring hence the current_colour can be either 0 or 1 */
-    prog->fcg = build_fusion_conflict_graph(prog, colour, nVertices, 0);
+    /* The current_colour parameter has to be 1. This is the indicate that
+     * colouring has to start from first level. Internally this is also used to
+     * introduce must distribute edges in the fusion conflict graph. */
+    prog->fcg = build_fusion_conflict_graph(prog, colour, nVertices, 1);
 
     fcg = prog->fcg;
     fcg->num_coloured_vertices = 0;

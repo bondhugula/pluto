@@ -379,15 +379,14 @@ void fcg_add_pairwise_edges(Graph *fcg, int v1, int v2, PlutoProg *prog,
 
 /// Returns both intra and inter dependence constraints for dependences between
 /// SCC1 and SCC2.
-PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
-                                                PlutoProg *prog) {
+PlutoConstraints *
+get_inter_scc_dep_constraints(int scc1, int scc2, PlutoProg *prog,
+                              PlutoConstraints *inter_scc_dep_cst) {
   Dep **deps = prog->deps;
   int ndeps = prog->ndeps;
   Stmt **stmts = prog->stmts;
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
-
-  PlutoConstraints *inter_scc_dep_cst = NULL;
 
   IF_DEBUG2(printf("Computing inter-scc dep constraints for SCCs %d and %d\n",
                    scc1, scc2););
@@ -414,8 +413,6 @@ PlutoConstraints *get_inter_scc_dep_constraints(int scc1, int scc2,
         int nrows = dep->cst->nrows * ndeps;
         int ncols = dep->cst->ncols;
         inter_scc_dep_cst = pluto_constraints_alloc(nrows, ncols, context);
-        inter_scc_dep_cst->nrows = 0;
-        inter_scc_dep_cst->ncols = dep->cst->ncols;
       }
       pluto_constraints_add(inter_scc_dep_cst, dep->cst);
     }
@@ -439,6 +436,7 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
   Stmt **stmts = prog->stmts;
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
+  PlutoConstraints *inter_scc_cst = NULL;
 
   for (int scc1 = 0; scc1 < num_sccs; scc1++) {
     int scc1_fcg_offset = sccs[scc1].fcg_scc_offset;
@@ -449,10 +447,18 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
         continue;
       }
 
-      PlutoConstraints *inter_scc_cst =
-          get_inter_scc_dep_constraints(scc1, scc2, prog);
-      if ((sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
-          options->fuse == kTypedFuse) {
+      /* Do not allocate every time for each pair of SCCs.*/
+      if (!inter_scc_cst)
+        inter_scc_cst =
+            pluto_constraints_alloc(prog->ndeps * nstmts, CST_WIDTH, context);
+      inter_scc_cst->nrows = 0;
+      get_inter_scc_dep_constraints(scc1, scc2, prog, inter_scc_cst);
+      bool hybridcut = options->hybridcut &&
+                       sccs[scc1].has_parallel_hyperplane &&
+                       sccs[scc2].has_parallel_hyperplane;
+      bool is_stencil = sccs[scc1].is_scc_stencil && sccs[scc2].is_scc_stencil;
+      if (!hybridcut && (sccs[scc1].is_parallel || sccs[scc2].is_parallel) &&
+          options->fuse == kTypedFuse && !is_stencil) {
         check_parallel = true;
       }
 
@@ -589,9 +595,9 @@ void fcg_scc_cluster_add_inter_scc_edges(Graph *fcg, int *colour,
           }
         }
       }
-      pluto_constraints_free(inter_scc_cst);
     }
   }
+  pluto_constraints_free(inter_scc_cst);
 }
 
 /// Computes intra statement dependence constraints for every unstisfied
@@ -985,6 +991,93 @@ void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog) {
   return;
 }
 
+/// The routine checks if the two SCCs are fused in the till the current level.
+/// If yes it returns true else returns false
+static bool are_sccs_fused(PlutoProg *prog, unsigned scc1, unsigned scc2) {
+  unsigned num_hyperplanes = prog->num_hyperplanes;
+  Scc *sccs = prog->ddg->sccs;
+  Stmt **stmts = prog->stmts;
+  unsigned nvar = prog->nvar;
+  unsigned npar = prog->npar;
+
+  unsigned stmt1 = sccs[scc1].vertices[0];
+  unsigned stmt2 = sccs[scc2].vertices[0];
+
+  bool sccs_fused = true;
+  for (unsigned i = 0; i < num_hyperplanes; i++) {
+    if (prog->hProps[i].type == H_LOOP) {
+      continue;
+    }
+
+    int cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
+    int cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
+
+    if (cut_id1 != cut_id2) {
+      sccs_fused = false;
+      break;
+    }
+  }
+  return sccs_fused;
+}
+
+/// Adds fusion conflict edges between all dimensions corresponding to the
+/// statements that are not connected in the DDG.
+void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
+  Graph *transitive_ddg = ddg_create(prog);
+  transitive_closure(transitive_ddg);
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+  unsigned nstmts = prog->nstmts;
+  if (options->scc_cluster) {
+    unsigned num_sccs = prog->ddg->num_sccs;
+    for (unsigned i = 0; i < num_sccs; i++) {
+      for (unsigned j = i + 1; j < num_sccs; j++) {
+        /* Check if the two sccs are connected in the transitve closure. */
+        if (ddg_sccs_direct_connected(transitive_ddg, prog, i, j))
+          continue;
+        /* If the sccs are already distributed then do not add any must
+         * distribute edges. */
+        if (!are_sccs_fused(prog, i, j))
+          continue;
+
+        unsigned scc_offset1 = prog->ddg->sccs[i].fcg_scc_offset;
+        unsigned scc_offset2 = prog->ddg->sccs[j].fcg_scc_offset;
+        Scc scc1 = prog->ddg->sccs[i];
+        Scc scc2 = prog->ddg->sccs[j];
+        for (unsigned dim1 = 0; dim1 < scc1.max_dim; dim1++) {
+          for (unsigned dim2 = 0; dim2 < scc2.max_dim; dim2++) {
+            fcg->adj->val[scc_offset1 + dim1][scc_offset2 + dim2] = 1;
+          }
+        }
+      }
+    }
+    graph_free(transitive_ddg);
+    return;
+  }
+  /* When Clustering is turned off. */
+  Stmt **stmts = prog->stmts;
+  for (unsigned i = 0; i < nstmts; i++) {
+    for (unsigned j = i + 1; j < nstmts; j++) {
+      if (is_adjecent(transitive_ddg, i, j))
+        continue;
+      unsigned scc1 = stmts[i]->scc_id;
+      unsigned scc2 = stmts[j]->scc_id;
+      if (!are_sccs_fused(prog, scc1, scc2))
+        continue;
+      IF_DEBUG(
+          printf("Adding must distribute edges between statements %d and %d\n",
+                 i, j););
+      unsigned stmt_offset1 = prog->ddg->vertices[i].fcg_stmt_offset;
+      unsigned stmt_offset2 = prog->ddg->vertices[j].fcg_stmt_offset;
+      for (unsigned dim1 = 0; dim1 < stmts[i]->dim_orig; dim1++) {
+        for (unsigned dim2 = 0; dim2 < stmts[j]->dim_orig; dim2++) {
+          fcg->adj->val[stmt_offset1 + dim1][stmt_offset2 + dim2] = 1;
+        }
+      }
+    }
+  }
+  graph_free(transitive_ddg);
+}
 /// Build the fusion conflict graph for a given program. The current colour is
 /// used to rebuild FCG for the current level. This is needed in case we are
 /// separating out construction of FCG for permute preventing dependence and
@@ -1092,6 +1185,9 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
   }
 
   pluto_matrix_free(obj);
+  pluto_constraints_free(boundcst);
+  pluto_constraints_free(*conflicts);
+  free(conflicts);
 
   if (options->scc_cluster) {
     fcg_add_intra_scc_edges(fcg, prog);
@@ -1116,9 +1212,11 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
     }
   }
 
-  pluto_constraints_free(boundcst);
-  pluto_constraints_free(*conflicts);
-  free(conflicts);
+  /* Add must distribute edges. Distribution is done only at the outermost
+   * level. */
+  if (current_colour == 1) {
+    add_must_distribute_edges(fcg, prog);
+  }
   prog->fcg_const_time += rtclock() - t_start;
 
   IF_DEBUG(printf("FCG \n"););
@@ -1494,6 +1592,41 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
   return false;
 }
 
+/// Checks if the input SCC (given by scc_id) is connected by must distribute
+/// edges with some scc that was numbered less than scc_id.
+bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
+                                   PlutoProg *prog) {
+  /* If the scc corresponds to a scalar statement, then there is no
+   * corresponding vertex in the FCG. Trivially in such cases, there are no must
+   * distribute edges. Hence bail out and return false. */
+  if (ddg->sccs[scc_id].max_dim == 0)
+    return false;
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+  for (int i = 0; i < scc_id; i++) {
+    if (ddg->sccs[i].max_dim == 0) {
+      continue;
+    }
+    if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
+      continue;
+    if (!options->scc_cluster) {
+      unsigned stmt1 = ddg->sccs[i].vertices[0];
+      unsigned stmt2 = ddg->sccs[scc_id].vertices[0];
+      unsigned v1 = ddg->vertices[stmt1].fcg_stmt_offset;
+      unsigned v2 = ddg->vertices[stmt2].fcg_stmt_offset;
+      if (is_adjecent(fcg, v1, v2)) {
+        return true;
+      }
+    } else {
+      unsigned v1 = ddg->sccs[i].fcg_scc_offset;
+      unsigned v2 = ddg->sccs[scc_id].fcg_scc_offset;
+      if (is_adjecent(fcg, v1, v2))
+        return true;
+    }
+  }
+  return false;
+}
+
 /// Returns SCCs that are convex successors of the input SCC.
 int *get_convex_successors(int scc_id, PlutoProg *prog,
                            int *num_convex_successors) {
@@ -1504,6 +1637,9 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
   int num_successors = 0;
 
   for (int i = scc_id + 1; i < num_sccs; i++) {
+    if (scc_has_must_distribute_edges(prog->fcg, ddg, i, prog)) {
+      break;
+    }
 
     if (is_convex_scc(scc_id, i, ddg, prog)) {
       if (convex_successors == NULL) {
@@ -1538,6 +1674,8 @@ int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
     }
     convex_par_successors[par_successors++] = convex_successors[i];
   }
+  IF_DEBUG(printf("Num parallel convex successors for Scc %d : %d \n", scc_id,
+                  par_successors););
   free(convex_successors);
   *num_convex_par_successors = par_successors;
   return convex_par_successors;
@@ -2086,7 +2224,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
   bool hybrid_cut = options->hybridcut && sccs[scc_id].has_parallel_hyperplane;
   /* If the SCC has a parallel hyperplane and the fusion strategy is hybrid,
    * then look max_fuse instead of greedy typed fuse heuristic */
-  if (options->fuse == kTypedFuse && sccs[scc_id].is_parallel && !hybrid_cut) {
+  if (options->fuse == kTypedFuse && !sccs[scc_id].is_scc_stencil &&
+      sccs[scc_id].is_parallel && !hybrid_cut) {
     if (colour_scc_cluster_greedy(scc_id, colour, current_colour, prog)) {
       sccs[scc_id].has_parallel_hyperplane = true;
       return true;
@@ -2170,9 +2309,7 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
 /// Returns colours corresponding vertices of the original FCG from the colours
 /// of vertices of scc clustered FCG.
 int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
-                                       int *has_parallel_hyperplane) {
-  PlutoContext *context = prog->context;
-  PlutoOptions *options = context->options;
+                                       bool *has_parallel_hyperplane) {
   int nvar = prog->nvar;
   int nstmts = prog->nstmts;
   Stmt **stmts = prog->stmts;
@@ -2186,11 +2323,35 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
     for (int j = 0; j < stmts[i]->dim_orig; j++) {
       stmt_colour[i * (nvar) + j] = colour[scc_offset + j];
     }
-    if (options->fuse == kTypedFuse) {
-      has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
-    }
   }
   return stmt_colour;
+}
+
+/// Temporarily move the properties of sccs that are associated with an scc to a
+/// vertex. This is done to keep carry the info of sccs across updates of the
+/// DDG. Properties that are to be moved are given as arguments.
+static void get_vertex_properties_from_scc_properties(
+    PlutoProg *prog, bool *has_parallel_hyperplane, bool *is_stencil) {
+  Scc *sccs = prog->ddg->sccs;
+  for (int i = 0; i < prog->nstmts; i++) {
+    int scc_id = prog->stmts[i]->scc_id;
+    has_parallel_hyperplane[i] = sccs[scc_id].has_parallel_hyperplane;
+    is_stencil[i] = sccs[scc_id].is_scc_stencil;
+  }
+}
+
+/// The routine sets the properties of SCCs given in input from vertex
+/// properties. These were temporarily moved from scc properties to vertices
+/// during ddg update.
+static void set_scc_properties_from_vertex_properties(
+    PlutoProg *prog, bool *has_parallel_hyperplane, bool *is_stencil) {
+  Scc *sccs = prog->ddg->sccs;
+  int num_sccs = prog->ddg->num_sccs;
+  for (int i = 0; i < num_sccs; i++) {
+    int stmt_id = sccs[i].vertices[0];
+    sccs[i].has_parallel_hyperplane = has_parallel_hyperplane[stmt_id];
+    sccs[i].is_scc_stencil = is_stencil[stmt_id];
+  }
 }
 
 /// Returns colours corresponding to clustered FCG from the colours of the
@@ -2199,7 +2360,7 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
 /// SCC.
 int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
                                          int current_colour, int nvertices,
-                                         int *has_parallel_hyperplane) {
+                                         bool *has_parallel_hyperplane) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
   int nvar = prog->nvar;
@@ -2242,12 +2403,16 @@ int *get_scc_colours_from_vertex_colours(PlutoProg *prog, int *stmt_colour,
 int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
-  int *has_parallel_hyperplane = NULL;
+  bool *has_parallel_hyperplane = NULL;
+  bool *is_stencil = NULL;
   Graph *fcg = prog->fcg;
   Graph *ddg = prog->ddg;
 
   if (options->fuse == kTypedFuse) {
-    has_parallel_hyperplane = (int *)malloc((prog->nstmts) * sizeof(int));
+    has_parallel_hyperplane = (bool *)malloc((prog->nstmts) * sizeof(bool));
+    is_stencil = (bool *)malloc((prog->nstmts) * sizeof(bool));
+    get_vertex_properties_from_scc_properties(prog, has_parallel_hyperplane,
+                                              is_stencil);
   }
   int *stmt_colour =
       get_vertex_colour_from_scc_colour(prog, colour, has_parallel_hyperplane);
@@ -2271,6 +2436,11 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
 
   int *scc_colour = get_scc_colours_from_vertex_colours(
       prog, stmt_colour, c, nvertices, has_parallel_hyperplane);
+  if (options->fuse == kTypedFuse) {
+    set_scc_properties_from_vertex_properties(prog, has_parallel_hyperplane,
+                                              is_stencil);
+    free(is_stencil);
+  }
   if (options->fuse == kTypedFuse) {
     pluto_matrix_free(par_preventing_adj_mat);
   }
@@ -2300,35 +2470,6 @@ int *rebuild_scc_cluster_fcg(PlutoProg *prog, int *colour, int c) {
   free(stmt_colour);
   free(has_parallel_hyperplane);
   return scc_colour;
-}
-
-/// The routine checks if the two SCCs are fused in the till the current level.
-/// If yes it returns true else returns false
-bool are_sccs_fused(PlutoProg *prog, int scc1, int scc2) {
-  int num_hyperplanes = prog->num_hyperplanes;
-  Scc *sccs = prog->ddg->sccs;
-  Stmt **stmts = prog->stmts;
-  int nvar = prog->nvar;
-  int npar = prog->npar;
-
-  int stmt1 = sccs[scc1].vertices[0];
-  int stmt2 = sccs[scc2].vertices[0];
-
-  bool sccs_fused = true;
-  for (int i = 0; i < num_hyperplanes; i++) {
-    if (prog->hProps[i].type == H_LOOP) {
-      continue;
-    }
-
-    int cut_id1 = stmts[stmt1]->trans->val[i][nvar + npar];
-    int cut_id2 = stmts[stmt2]->trans->val[i][nvar + npar];
-
-    if (cut_id1 != cut_id2) {
-      sccs_fused = false;
-      break;
-    }
-  }
-  return sccs_fused;
 }
 
 /// Routine adds a scalar hyperplane between two SCCs. Note that SCCs might not
@@ -2383,6 +2524,14 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
       continue;
     }
 
+    /* From the second scc, check if the two sccs must be distributed. */
+    if (i >= 1 && scc_has_must_distribute_edges(fcg, ddg, i, prog)) {
+      pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
+      IF_DEBUG(printf("Updating FCG between SCCs %d and %d\n", prev_scc, i););
+      update_fcg_between_sccs(fcg, prev_scc, i, prog);
+      /* The scalar cut might satisfy some dependences. */
+      dep_satisfaction_update(prog, prog->stmts[0]->trans->nrows - 1);
+    }
     IF_DEBUG(printf("Trying colouring Scc %d of Size %d with colour %d\n", i,
                     ddg->sccs[i].size, c););
 
@@ -2404,6 +2553,7 @@ int *colour_fcg_scc_based(int c, int *colour, PlutoProg *prog) {
               cut_between_sccs(prog, ddg, prev_scc, i);
               update_fcg_between_sccs(fcg, prev_scc, i, prog);
             } else {
+              IF_DEBUG(printf("Adding Scalar hyperplanes without cut\n"););
               pluto_add_scalar_hyperplanes_between_sccs(prog, prev_scc, i);
             }
           }
@@ -2613,9 +2763,12 @@ void find_permutable_dimensions_scc_based(int *colour, PlutoProg *prog) {
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
 
-  if (options->fuse == kTypedFuse && options->scc_cluster) {
+  /* For typed and hybrid fusion, these are already initialized based on SCCs
+   * that have short dependences. */
+  if (options->scc_cluster && options->fuse != kTypedFuse) {
     for (int i = 0; i < prog->ddg->num_sccs; i++) {
-      prog->ddg->sccs[i].has_parallel_hyperplane = 0;
+      prog->ddg->sccs[i].is_scc_stencil = false;
+      prog->ddg->sccs[i].has_parallel_hyperplane = false;
     }
   }
 
@@ -3198,7 +3351,7 @@ bool introduce_skew(PlutoProg *prog) {
   bool is_skew_introduced = false;
   for (int i = 0; i < num_sccs; i++) {
     IF_DEBUG(printf("Looking for skews in SCC %d \n", i););
-    /* If there are no dependences in for this cc then, no skewing is required
+    /* If there are no dependences in for this cc then, no skewing is required.
      */
     int cc_id = newDDG->vertices[sccs[i].vertices[0]].cc_id;
     if (cc_permute_constraints[cc_id] == NULL) {
@@ -3237,25 +3390,30 @@ bool introduce_skew(PlutoProg *prog) {
       int64_t *sol = pluto_prog_constraints_lexmin(skewingCst, prog);
 
       if (!sol) {
-        /* The loop nest is not tileable */
+        /* The loop nest is not tileable. */
         break;
       }
 
-      /* Set the Appropriate coeffs in the transformation matrix */
+      /* Set appropriate coeffs in the transformation matrix. */
       for (int j = 0; j < nstmts; j++) {
         int stmt_offset = npar + 1 + j * (nvar + 1);
         for (int k = 0; k < nvar; k++) {
           stmts[j]->trans->val[level][k] = sol[stmt_offset + k];
         }
-        /* No parametric Shifts */
+        /* No parametric shifts. */
         for (int k = nvar; k < nvar + npar; k++) {
           stmts[j]->trans->val[level][k] = 0;
         }
-        /* The constant Shift */
+        /* constant shift. */
         stmts[j]->trans->val[level][nvar + npar] = sol[stmt_offset + nvar];
+        /* Update hyperplane type. A scalar hyperplane for a statement S can
+         * become a loop hyperplane in cases where m_S linearly independent
+         * dimensions have already been found till level 'level - 1'. */
+        stmts[j]->hyp_types[level] =
+            pluto_is_hyperplane_scalar(stmts[j], level) ? H_SCALAR : H_LOOP;
       }
       /* If skewing results in a parallel hyperplane, then swap this hyperplane
-       * with the one that satisfied dependences at this level */
+       * with the one that satisfied dependences at the outer level. */
       if (is_ilp_solution_parallel(sol, npar)) {
         int par_level = get_outermost_sat_level(i, src_dims, prog);
         swap_trans_for_cc(par_level, level, cc_id, prog);
