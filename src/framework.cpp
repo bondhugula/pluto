@@ -43,17 +43,20 @@
 #define CONSTRAINTS_SIMPLIFY_THRESHOLD 10000U
 #define MAX_FARKAS_CST 2000
 
-// This value represents the upper bound on w in case the dependence is short.
-#define SHORT_DEP_DISTANCE 10
+/// This value represents the threshold on non-parametric dependence
+/// distance to be considered as short. It is used to enforce an upper bound on
+/// dependence distances during the classification of an SCC as a stencil.
+#define MAX_SHORT_DEP_DISTANCE 10
 
 static int pluto_dep_satisfies_instance(const Dep *dep, const PlutoProg *prog,
                                         unsigned level);
 static int pluto_dep_remove_satisfied_instances(Dep *dep, PlutoProg *prog,
                                                 unsigned level);
 
-static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts);
+static bool is_stmt_in_stmt_list(int stmt_id, const std::vector<Stmt *> &stmts);
 static PlutoConstraints *
-get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts);
+get_feautrier_schedule_constraints(PlutoProg *prog,
+                                   const std::vector<Stmt *> &stmts);
 
 /**
  *
@@ -617,11 +620,10 @@ PlutoConstraints *get_feautrier_schedule_constraints_dep(Dep *dep,
   return cst;
 }
 
-/*
- * 1-d affine schedule for a set of statements.
- */
+/// Get Feautrier's 1-d affine schedule for a set of statements.
 PlutoConstraints *
-get_feautrier_schedule_constraints(PlutoProg *prog, std::vector<Stmt *> stmts) {
+get_feautrier_schedule_constraints(PlutoProg *prog,
+                                   const std::vector<Stmt *> &stmts) {
   int ndeps = prog->ndeps;
   Dep **deps = prog->deps;
   int nvar = prog->nvar;
@@ -1461,9 +1463,9 @@ void pluto_add_hyperplane_from_ilp_solution(int64_t *sol, PlutoProg *prog) {
 
 /// The routine checks whether the statement given by stat_id is present in
 /// the vector of input statements.
-static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts) {
-  for (auto itr = stmts.begin(); itr != stmts.end(); itr++) {
-    Stmt *stmt = *itr;
+static bool is_stmt_in_stmt_list(int stmt_id,
+                                 const std::vector<Stmt *> &stmts) {
+  for (auto *stmt : stmts) {
     if (stmt->id == stmt_id)
       return true;
   }
@@ -1472,11 +1474,11 @@ static bool is_stmt_in_stmt_list(int stmt_id, std::vector<Stmt *> stmts) {
 
 /// Finds domain face that allows concurrent start (for diamond tiling)
 /// FIXME: iteration space boundaries are assumed to be corresponding to
-/// rectangular ones
-/// Returns: matrix with row i being the concurrent start face for Stmt i
+/// rectangular ones.
+/// Returns: matrix with row i being the concurrent start face for Stmt i.
 static PlutoMatrix *
 get_face_with_concurrent_start_for_stmts(PlutoProg *prog,
-                                         std::vector<Stmt *> stmts) {
+                                         const std::vector<Stmt *> &stmts) {
   PlutoConstraints *bcst;
   PlutoMatrix *conc_start_faces;
   PlutoContext *context = prog->context;
@@ -1517,8 +1519,7 @@ get_face_with_concurrent_start_for_stmts(PlutoProg *prog,
 
   IF_DEBUG(printf("[pluto] get_face_with_concurrent_start: 1-d schedules\n"););
   unsigned s = 0;
-  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
-    Stmt *stmt = *stmt_itr;
+  for (auto *stmt : stmts) {
     IF_DEBUG(printf("\tf(S%d) = ", stmt->id + 1););
     IF_DEBUG(pluto_affine_function_print(stdout, conc_start_faces->val[s++],
                                          nvar + npar,
@@ -1561,6 +1562,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
   IF_DEBUG(pluto_band_print(band););
 
   std::vector<Stmt *> stmts;
+  stmts.reserve(band->loop->nstmts);
   for (unsigned i = 0; i < band->loop->nstmts; i++) {
     stmts.push_back(band->loop->stmts[i]);
   }
@@ -1568,7 +1570,7 @@ PlutoMatrix *get_face_with_concurrent_start(PlutoProg *prog, Band *band) {
 }
 
 /// Returns the dependence distance bounding constraints for each dependence in
-/// the scc.
+/// the SCC.
 static PlutoConstraints *
 get_dep_distance_bounding_constraints_for_scc(int scc_id, PlutoProg *prog) {
   PlutoConstraints *dep_dist_bound_cst = NULL;
@@ -1592,9 +1594,10 @@ get_dep_distance_bounding_constraints_for_scc(int scc_id, PlutoProg *prog) {
       dep_dist_bound_cst->nrows = 0;
       dep_dist_bound_cst->ncols = dep->bounding_cst->ncols;
       pluto_constraints_add(dep_dist_bound_cst, dep->bounding_cst);
-    } else
+    } else {
       dep_dist_bound_cst =
           pluto_constraints_add(dep_dist_bound_cst, dep->bounding_cst);
+    }
   }
   return dep_dist_bound_cst;
 }
@@ -1662,16 +1665,13 @@ compute_dep_dist_lb_constraints_for_stencil_check(Dep *dep, PlutoProg *prog) {
   /* Apply Farkas lemma for bounding function constraints */
   PlutoConstraints *bounding_func_cst =
       farkas_lemma_affine(dep->bounding_poly, phi);
-
   pluto_matrix_free(phi);
-  // Bring this to global format
-  PlutoConstraints *bcst_g;
 
+  // Bring this to global format
   int src_offset = npar + 1 + src_stmt * (nvar + 1);
   int dest_offset = npar + 1 + dest_stmt * (nvar + 1);
   int nstmts = prog->nstmts;
-
-  bcst_g =
+  PlutoConstraints *bcst_g =
       pluto_constraints_alloc(bounding_func_cst->nrows, CST_WIDTH, context);
 
   for (unsigned k = 0; k < bounding_func_cst->nrows; k++) {
@@ -1687,7 +1687,7 @@ compute_dep_dist_lb_constraints_for_stencil_check(Dep *dep, PlutoProg *prog) {
             bounding_func_cst->val[k][npar + 1 + nvar + 1 + j];
       }
     }
-    /* constant part */
+    /* Constant part. */
     if (src_stmt == dest_stmt) {
       bcst_g->val[bcst_g->nrows - 1][bcst_g->ncols - 1] =
           bounding_func_cst->val[k][npar + 1 + nvar + 1];
@@ -1733,12 +1733,12 @@ get_dep_dist_lower_bound_constraints_for_scc(int scc_id, PlutoProg *prog) {
   return dist_lb_csts;
 }
 
-/// Returns true if the scc in the ddg given by scc_id has the stencil pattern
-/// of dependences. That is, the routine checks if there a face with concurrent
-/// start and there are short dependences on either sides of the face with
-/// concurrent start.
+/// Returns true if the SCC in the ddg given by scc_id has the stencil pattern
+/// of dependences. That is, the routine checks if there is a face with
+/// concurrent start and there are short dependences on either sides of the face
+/// with concurrent start.
 /// FIXME: Assumes that the that allows concurrent start is along the cononical
-/// axes and hence differs from the description in the paper.
+/// axes.
 bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   std::vector<Stmt *> stmts;
   PlutoContext *context = prog->context;
@@ -1752,9 +1752,7 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
       get_face_with_concurrent_start_for_stmts(prog, stmts);
   if (!conc_start_faces)
     return false;
-  // printf("Concurrent start faces\n");
-  // pluto_matrix_print(stdout, conc_start_faces);
-  // Get dependence distance bounding constraints.
+
   PlutoConstraints *dep_bound_cst =
       get_dep_distance_bounding_constraints_for_scc(scc_id, prog);
 
@@ -1777,7 +1775,7 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
     coeff_bound_cst->val[coeff_bound_cst->nrows - 1][i] = 1;
   }
 
-  int short_dist_bound = SHORT_DEP_DISTANCE;
+  int short_dist_bound = MAX_SHORT_DEP_DISTANCE;
   // Upper bound on w for short dependence distance.
   pluto_constraints_add_ub(coeff_bound_cst, npar, short_dist_bound);
   // Lower bound on w for short dependence distance. Note that in case of
@@ -1790,8 +1788,7 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   orthocst->ncols = dep_bound_cst->ncols;
   unsigned count = 0;
   unsigned nvar = prog->nvar;
-  for (auto stmt_itr = stmts.begin(); stmt_itr != stmts.end(); stmt_itr++) {
-    Stmt *stmt = *stmt_itr;
+  for (auto *stmt : stmts) {
     unsigned offset = npar + 1 + stmt->id * (nvar + 1);
     for (int i = 0; i < prog->nvar; i++) {
       if (conc_start_faces->val[count][i] == 0) {
@@ -1814,12 +1811,12 @@ bool is_scc_stencil(int scc_id, PlutoProg *prog) {
 
   bool is_stencil = true;
   int64_t *sol = pluto_constraints_lexmin(dep_bound_cst, ALLOW_NEGATIVE_COEFF);
-  if (!sol) {
+  if (!sol)
     is_stencil = false;
-  } else if (sol[npar] == 0) {
-    // w should be non zero.
+  else if (sol[npar] == 0)
+    // If w = 0 then there is a parallel hyperplane and hence, SCC is not a
+    // stencil.
     is_stencil = false;
-  }
   free(sol);
 
   pluto_constraints_free(dep_dist_lower_bound_cst);
