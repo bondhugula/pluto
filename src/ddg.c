@@ -109,8 +109,8 @@ Graph *get_undirected_graph(const Graph *g) {
   return gU;
 }
 
-/* Floyd-Warshall algorithm to find the transitive closure of a graph */
-void transitive_closure(Graph *g) {
+/// Compute the transitive closure of the graph using Floyd-Warshall algorithm.
+void compute_transitive_closure(Graph *g) {
   int i, j, k;
   for (i = 0; i < g->nVertices; i++) {
     for (j = 0; j < g->nVertices; j++) {
@@ -221,7 +221,9 @@ void dfs_for_scc(Graph *g) {
   free(vCopy);
 }
 
-bool is_adjecent(Graph *g, int i, int j) {
+/// Returns true if vertices i and j are adjacent in the graph g, otherwise
+/// returns false.
+bool is_adjacent(Graph *g, int i, int j) {
   if (g->adj->val[i][j] != 0 || g->adj->val[j][i] != 0) {
     return true;
   }

@@ -78,31 +78,31 @@ check_ret_val_emit_status
 # Test typed fusion with dfp. These cases are executed only when glpk or gurobi
 # is enabled. Either of these solvers is required by the dfp framework.
 if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
-TESTS="@top_srcdir@/test/dfp/typed-fuse-1.c\
-       @top_srcdir@/test/dfp/typed-fuse-2.c\
-       @top_srcdir@/test/dfp/typed-fuse-3.c\
-       "
-   for file in $TESTS; do
-   printf '%-50s '  $file
-   ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
-   check_ret_val_emit_status
-   done
-# Test loop distribution with dfp
-   TESTS="@top_srcdir@/test/dfp/distribution.c\
-       "
-   for file in $TESTS; do
+    TESTS="@top_srcdir@/test/dfp/typed-fuse-1.c\
+        @top_srcdir@/test/dfp/typed-fuse-2.c\
+        @top_srcdir@/test/dfp/typed-fuse-3.c\
+        "
+    for file in $TESTS; do
+        printf '%-50s '  $file
+        ./src/pluto --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+        check_ret_val_emit_status
+    done
+    # Test loop distribution with dfp
+    TESTS="@top_srcdir@/test/dfp/scalar-distribute.c\
+        "
+    for file in $TESTS; do
         printf '%-50s ' "$file with --dfp"
         ./src/pluto --dfp $file $* -o test_tmp_out.pluto.c | FileCheck $file
         check_ret_val_emit_status
-   done
-# Test greedy greedy coloring heuristic and stencil check in Pluto-lp-dfp
-   TESTS="test/dfp/fdtd-2d.c\
-       "
-   for file in $TESTS; do
+    done
+    # Test greedy greedy coloring heuristic and stencil check in Pluto-lp-dfp
+    TESTS="test/dfp/fdtd-2d.c\
+        "
+    for file in $TESTS; do
         printf '%-50s ' "$file with --dfp --clusterscc --lpcolor"
         ./src/pluto --typedfuse --lpcolor $file -o test_tmp_out.pluto.c | FileCheck $file
         check_ret_val_emit_status
-   done
+    done
 fi
 
 TESTS_TILE_PARALLEL="\

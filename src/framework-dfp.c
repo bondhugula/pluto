@@ -991,8 +991,8 @@ void fcg_add_intra_scc_edges(Graph *fcg, PlutoProg *prog) {
   return;
 }
 
-/// The routine checks if the two SCCs are fused in the till the current level.
-/// If yes it returns true else returns false
+/// Checks if the two SCCs are fused till the current level. If yes it returns
+/// true else returns false.
 static bool are_sccs_fused(PlutoProg *prog, unsigned scc1, unsigned scc2) {
   unsigned num_hyperplanes = prog->num_hyperplanes;
   Scc *sccs = prog->ddg->sccs;
@@ -1024,7 +1024,7 @@ static bool are_sccs_fused(PlutoProg *prog, unsigned scc1, unsigned scc2) {
 /// statements that are not connected in the DDG.
 void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
   Graph *transitive_ddg = ddg_create(prog);
-  transitive_closure(transitive_ddg);
+  compute_transitive_closure(transitive_ddg);
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
   unsigned nstmts = prog->nstmts;
@@ -1032,11 +1032,11 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
     unsigned num_sccs = prog->ddg->num_sccs;
     for (unsigned i = 0; i < num_sccs; i++) {
       for (unsigned j = i + 1; j < num_sccs; j++) {
-        /* Check if the two sccs are connected in the transitve closure. */
+        /* Check if the two SCCs are connected in the transitve closure. */
         if (ddg_sccs_direct_connected(transitive_ddg, prog, i, j))
           continue;
-        /* If the sccs are already distributed then do not add any must
-         * distribute edges. */
+        /* If the SCCs are already distributed then do not add any 'must
+         * distribute' edges. */
         if (!are_sccs_fused(prog, i, j))
           continue;
 
@@ -1054,11 +1054,12 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
     graph_free(transitive_ddg);
     return;
   }
+
   /* When Clustering is turned off. */
   Stmt **stmts = prog->stmts;
   for (unsigned i = 0; i < nstmts; i++) {
     for (unsigned j = i + 1; j < nstmts; j++) {
-      if (is_adjecent(transitive_ddg, i, j))
+      if (is_adjacent(transitive_ddg, i, j))
         continue;
       unsigned scc1 = stmts[i]->scc_id;
       unsigned scc2 = stmts[j]->scc_id;
@@ -1078,6 +1079,7 @@ void add_must_distribute_edges(Graph *fcg, PlutoProg *prog) {
   }
   graph_free(transitive_ddg);
 }
+
 /// Build the fusion conflict graph for a given program. The current colour is
 /// used to rebuild FCG for the current level. This is needed in case we are
 /// separating out construction of FCG for permute preventing dependence and
@@ -1172,7 +1174,7 @@ Graph *build_fusion_conflict_graph(PlutoProg *prog, int *colour, int num_nodes,
       /* The lower bound for  constant shift of i^th statement is 0 */
       (*conflicts)->is_eq[nrows + npar + 1 + i * (nvar + 1) + nvar] = 0;
       for (int j = i + 1; j < nstmts; j++) {
-        if (is_adjecent(ddg, i, j)) {
+        if (is_adjacent(ddg, i, j)) {
           /* Set the lower bound of the constant shift to be 1. */
           (*conflicts)->is_eq[nrows + npar + 1 + j * (nvar + 1) + nvar] = 0;
           fcg_add_pairwise_edges(fcg, i, j, prog, colour, boundcst,
@@ -1345,7 +1347,7 @@ int *get_common_parallel_dims_for_sccs(Scc scc1, Scc scc2, PlutoProg *prog) {
 
   for (int i = 0; (i < scc1.size) && (stmt1 == -1); i++) {
     for (int j = 0; j < scc2.size; j++) {
-      if (is_adjecent(ddg, scc1.vertices[i], scc2.vertices[j])) {
+      if (is_adjacent(ddg, scc1.vertices[i], scc2.vertices[j])) {
         stmt1 = scc1.vertices[i];
         stmt2 = scc2.vertices[j];
         break;
@@ -1559,8 +1561,8 @@ bool colour_scc(int scc_id, int *colour, int c, int stmt_pos, int pv,
       continue;
     }
 
-    /* This check is redundant. covered in the next condition; */
-    if (pv >= 0 && is_adjecent(fcg, v, pv)) {
+    /* FIXME: This check is redundant and is covered in the next condition. */
+    if (pv >= 0 && is_adjacent(fcg, v, pv)) {
       list[num_discarded] = v;
       num_discarded++;
       continue;
@@ -1604,9 +1606,8 @@ bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
   PlutoContext *context = prog->context;
   PlutoOptions *options = context->options;
   for (int i = 0; i < scc_id; i++) {
-    if (ddg->sccs[i].max_dim == 0) {
+    if (ddg->sccs[i].max_dim == 0)
       continue;
-    }
     if (ddg_sccs_direct_connected(ddg, prog, i, scc_id))
       continue;
     if (!options->scc_cluster) {
@@ -1614,13 +1615,13 @@ bool scc_has_must_distribute_edges(Graph *fcg, Graph *ddg, int scc_id,
       unsigned stmt2 = ddg->sccs[scc_id].vertices[0];
       unsigned v1 = ddg->vertices[stmt1].fcg_stmt_offset;
       unsigned v2 = ddg->vertices[stmt2].fcg_stmt_offset;
-      if (is_adjecent(fcg, v1, v2)) {
+      if (is_adjacent(fcg, v1, v2)) {
         return true;
       }
     } else {
       unsigned v1 = ddg->sccs[i].fcg_scc_offset;
       unsigned v2 = ddg->sccs[scc_id].fcg_scc_offset;
-      if (is_adjecent(fcg, v1, v2))
+      if (is_adjacent(fcg, v1, v2))
         return true;
     }
   }
@@ -1637,9 +1638,8 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
   int num_successors = 0;
 
   for (int i = scc_id + 1; i < num_sccs; i++) {
-    if (scc_has_must_distribute_edges(prog->fcg, ddg, i, prog)) {
+    if (scc_has_must_distribute_edges(prog->fcg, ddg, i, prog))
       break;
-    }
 
     if (is_convex_scc(scc_id, i, ddg, prog)) {
       if (convex_successors == NULL) {
@@ -1653,7 +1653,7 @@ int *get_convex_successors(int scc_id, PlutoProg *prog,
 }
 
 /// Returns SCCs that are convex successors of the given SCC and have a parallel
-/// dimension
+/// dimension.
 int *get_convex_parallel_successors(int scc_id, PlutoProg *prog,
                                     int *num_convex_par_successors) {
   PlutoContext *context = prog->context;
@@ -1717,11 +1717,11 @@ int *get_common_parallel_dims(int scc_id, int *convex_successors,
         int v = succ_scc_offset + j;
         /* The vertex can be coloured if there is no self edge on j,
          * no edge between dimension j and k in the fcg, and there is
-         * no vertex adjecent to j that is already coloured. Also
+         * no vertex adjacent to j that is already coloured. Also
          * vertex j must be parallel and fusing with dimension k
          * must not hinder parallelism */
         if (colour[v] == 0 && !fcg->adj->val[v][v] &&
-            !is_adjecent(fcg, v, scc_offset + k) &&
+            !is_adjacent(fcg, v, scc_offset + k) &&
             is_valid_colour(v, current_colour, fcg, colour, is_parallel) &&
             !par_preventing_adj_mat->val[v][v] &&
             !(par_preventing_adj_mat->val[v][scc_offset + k] ||
@@ -1952,7 +1952,7 @@ int get_min_vertex_from_lp_sol(int scc1, int scc2, PlutoProg *prog,
     for (int j = 0; j < ddg->sccs[scc2].max_dim; j++) {
       int v2 = scc2_offset + j;
       /* check if v2 is not coloured with current colour */
-      if (is_adjecent(fcg, v1, v2))
+      if (is_adjacent(fcg, v1, v2))
         continue;
       if (dep_dist_mat->val[v1][v2] < min_dist) {
         IF_DEBUG(printf("Dep distance: %ld\n", dep_dist_mat->val[i][j]););
@@ -1980,7 +1980,7 @@ bool *get_colourable_dims(int scc_id, PlutoProg *prog, int *colour,
 
   for (int i = 0; i < max_dim; i++) {
     int v = scc_offset + i;
-    if (colour[v] != 0 || is_adjecent(fcg, v, v) ||
+    if (colour[v] != 0 || is_adjacent(fcg, v, v) ||
         is_discarded(v, discarded_list, num_discarded)) {
       continue;
     }
@@ -2015,7 +2015,7 @@ int *get_common_dims(int scc_id, int *scc_list, int num_sccs,
         int v2 = scc2_offset + k;
         if (colour[v2] != 0)
           continue;
-        if (is_adjecent(fcg, v, v2) || fcg->adj->val[v2][v2])
+        if (is_adjacent(fcg, v, v2) || fcg->adj->val[v2][v2])
           continue;
         if (!is_valid_colour(v2, current_colour, fcg, colour, check_parallel))
           continue;
@@ -2162,7 +2162,7 @@ int get_next_min_vertex_scc_cluster(int scc_id, PlutoProg *prog,
     IF_DEBUG(printf("Colouring dim of SCC %d: %d\n", min_scc_id, dim););
     int fcg_vertex = sccs[min_scc_id].fcg_scc_offset + dim;
     for (int i = 0; i < max_dim; i++) {
-      if (colourable_dims[i] && !is_adjecent(fcg, scc_offset + i, fcg_vertex)) {
+      if (colourable_dims[i] && !is_adjacent(fcg, scc_offset + i, fcg_vertex)) {
         /* free(succ_colourable_dims); */
         free(colourable_dims);
         return scc_offset + i;
@@ -2283,8 +2283,8 @@ bool colour_scc_cluster(int scc_id, int *colour, int current_colour,
       continue;
     }
 
-    /* Check if there is an adjecent vertex with the same colour.
-     * In case of typed fuse it checks if there is an adjecent vertex
+    /* Check if there is an adjacent vertex with the same colour.
+     * In case of typed fuse it checks if there is an adjacent vertex
      * with the same colour and has a parallelism preventing edge  */
     if (is_valid_colour(v, current_colour, fcg, colour, check_parallel)) {
       if (options->fuse == kTypedFuse && sccs[scc_id].is_parallel &&
@@ -2327,9 +2327,10 @@ int *get_vertex_colour_from_scc_colour(PlutoProg *prog, int *colour,
   return stmt_colour;
 }
 
-/// Temporarily move the properties of sccs that are associated with an scc to a
-/// vertex. This is done to keep carry the info of sccs across updates of the
-/// DDG. Properties that are to be moved are given as arguments.
+/// Some properites of SCCs are temporarily assigned to vertices in order to
+/// carry these properties across updates of the DDG, which changes the number
+/// and ids of SCCs in the DDG. Properties that are to be carried across updates
+/// are given as arguments.
 static void get_vertex_properties_from_scc_properties(
     PlutoProg *prog, bool *has_parallel_hyperplane, bool *is_stencil) {
   Scc *sccs = prog->ddg->sccs;
