@@ -1,20 +1,25 @@
 Until present
 
-- Coding style set to LLVM style; all sources in src/ and include/
-  auto-formatted to that
-- Code modernized for compilation with C++ compilers; language changed to C99
-  and C++11 for all future development
 - 'pet' branch merged into master; pluto now needs pet and thus clang
   headers/libraries to build
+- Introduced loop unroll and jam support using ClooG AST and enable it by
+  default.
+- Improvements to intra-tile optimization heuristics.
+- Support for the LP based decoupled framework, Pluto-lp-dfp, included;
+  requires Pluto to be configured with GLPK or Gurobi.
+- Two more fusion models, namely, typed and hybrid fusion incorporated. These
+  models use the decoupled framework work.
+- libpluto interface updated.
+- --tile and --parallel enabled by default
+- Diamond tiling enabled by default
+- Auto-indentifucation of time-iterated stencils with concurrent start.
 - Submodules pet, cloog-isl, isl, clan, candl, openscop - all updated to
   their most recent releases or git master tips. The previous versions were
   several years old in some cases (isl, pet, in particular).
-- --tile and --parallel enabled by default
-- Diamond tiling enabled by default
-- libpluto interface updated.
-- Introduce loop unroll and jam support using ClooG AST and enable it by
-  default.
-- Improvements to intra-tile optimization heuristics.
+- Coding style set to LLVM style; all sources in src/ and include/
+  auto-formatted to that.
+- Code modernized for compilation with C++ compilers; language changed to C99
+  and C++11 for all future development
 
 version 0.11.4
 
