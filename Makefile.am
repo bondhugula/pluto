@@ -1,8 +1,8 @@
 #
 # Makefile.am
 #
-# Copyright (C) 2007 Uday Bondhugula 
-# 
+# Copyright (C) 2007 Uday Bondhugula
+#
 #
 
 RM = rm -f
@@ -26,7 +26,7 @@ dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`
 
 
-bin_SCRIPTS = polycc vloog ploog plorc plutune getversion.sh
+bin_SCRIPTS = polycc plutune getversion.sh
 CLEANFILES: $(bin_SCRIPTS) parsetab.py
 EXTRA_DIST = polycc.sh.in  examples test
 
