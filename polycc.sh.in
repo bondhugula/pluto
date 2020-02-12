@@ -13,8 +13,6 @@
 #
 
 pluto=@abs_top_builddir@/src/pluto
-plann=@abs_top_srcdir@/plann
-plorc=@abs_top_srcdir@/plorc
 inscop=@abs_top_srcdir@/inscop
 
 # Some additional setup here to ensure that variables are visible outside of the run function
