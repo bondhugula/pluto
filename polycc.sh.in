@@ -3,14 +3,14 @@
 # Top-level script that runs all components of the end-to-end
 # system
 #
-# Just run 'polycc <C code>' when the program section to 
+# Just run 'polycc <C code>' when the program section to
 # be parallelized/optimized around special comments as described
 # in the `README'
-# 
-# Copyright (C) 2007-2008 Uday Bondhugula 
+#
+# Copyright (C) 2007-2008 Uday Bondhugula
 #
 # Available under GNU GPL version 3 or (at your option) any later version
-# 
+#
 
 pluto=@abs_top_builddir@/src/pluto
 plann=@abs_top_srcdir@/plann
@@ -106,7 +106,7 @@ cleanup() {
   then
     mv $TEMPFILE $SOURCEFILE
   fi
-  if [ "$DEBUG" != 1 ]; 
+  if [ "$DEBUG" != 1 ];
   then
     rm -f .regtile .vectorize .pragmas .params .orcc .linearized .nonlinearized \
       $CLOOGFILE .srcfilename .outfilename .distmem pi.cloog sigma.cloog \
