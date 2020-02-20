@@ -16,40 +16,14 @@ endif
 bin_PROGRAMS = pluto
 
 pluto_SOURCES = \
-		ast_transform.c \
 		ast_transform.h \
-		constraints.c \
-		constraints.h \
+		ast_transform.c \
 		constraints_polylib.c \
 		constraints_polylib.h \
-		constraints_isl.c \
-		ddg.c \
-		ddg.h \
-		framework.cpp \
-		framework-dfp.c \
-		gurobi-plugin.c \
-		isl_support.c \
-		isl_support.h \
-		iss.c \
-		main.c \
-		math_support.c \
-		math_support.h \
-		osl_pluto.h \
+		main.cpp \
 		osl_pluto.c \
 		pet_to_pluto.cpp \
-		pet_to_pluto.h \
-		pluto.c \
-		pluto.h \
 		pluto_codegen_if.c \
-		pluto_codegen_if.h \
-		polyloop.c \
-		post_transform.c \
-		post_transform.h \
-		program.cpp \
-		program.h \
-		tile.c \
-		transforms.c \
-		transforms.h \
 		version.h
 
 pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
@@ -69,6 +43,7 @@ pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -I$(top_srcdir)/candl/include \
    -I../polylib/include \
    -I$(top_srcdir)/polylib/include
+
 # To avoid same name object from being created with libtool and without it.
 pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
 
@@ -82,6 +57,7 @@ pluto_LDADD =  \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
+   ../src/libpluto.la \
    -lm
 
 lib_LTLIBRARIES = libpluto.la
