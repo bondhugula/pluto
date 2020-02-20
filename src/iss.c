@@ -1,5 +1,12 @@
-/* Index set splitting */
-
+/*
+ * This software is available under the MIT license. Please see LICENSE.MIT
+ * in the top-level directory for details.
+ *
+ * This file is part of libpluto.
+ *
+ * Index set splitting.
+ *
+ */
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>

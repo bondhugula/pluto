@@ -1,3 +1,9 @@
+/*
+ * This software is available under the MIT license. Please see LICENSE.MIT
+ * in the top-level directory for details.
+ *
+ * This file is part of libpluto.
+ */
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
