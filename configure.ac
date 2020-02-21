@@ -59,10 +59,8 @@ if test X$user_set_cflags != Xyes; then
   CFLAGS="-Wall"
 fi
 
-AC_PROG_LIBTOOL
+LT_INIT
 AC_PROG_SED
-AC_PROG_INSTALL
-AC_PROG_LN_S
 
 debug="false"
 dnl debugging flag
@@ -279,7 +277,6 @@ configureopts="--enable-longlongint-lib \
  cd polylib/
  $REL_SRCDIR_PREFIX/polylib/configure ${configureopts}
 )
-
 
 AC_SUBST(ISL_INCLUDE)
 AC_SUBST(ISL_LDFLAGS)
