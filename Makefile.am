@@ -60,18 +60,21 @@ test_libpluto: test/test_libpluto.c
 unit_tests: test/unit_tests.c
 	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Llib/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I$(top_srcdir)/lib -lpluto -o unit_tests
 
-tool/pluto: force
-	$(MAKE) $(MFLAGS) -C tool pluto
-
 force:
 	true
 
+libpluto: force
+	$(MAKE) $(MFLAGS) -C lib libpluto.la
+
+pluto: libpluto
+	$(MAKE) $(MFLAGS) -C tool pluto
+
 test: PHONY
 
-PHONY: polycc tool/pluto test_libpluto unit_tests
+PHONY: pluto polycc test_libpluto unit_tests
 	./test.sh
 
-test-alt: polycc tool/pluto
+test-alt: polycc pluto
 	./test-alt.sh --silent --notile --noparallel
 	./test-alt.sh --silent --cloogsh --nocloogbacktrack
 	./test-alt.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack
