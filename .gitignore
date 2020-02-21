@@ -6,15 +6,18 @@
 # python byte compiled files in orio
 *.pyc
 test_plutolib
+test.sh
 
 test/*.cloog
 test/*.pluto.c
 test/*.opt.c
 test/*.par.c
 test/*.tiled.c
-src/pluto
-src/Makefile
-src/Makefile.in
+tool/pluto
+tool/Makefile
+tool/Makefile.in
+lib/Makefile
+lib/Makefile.in
 .libs
 .deps
 autom4te.cache
