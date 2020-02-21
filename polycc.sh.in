@@ -12,10 +12,11 @@
 # Available under GNU GPL version 3 or (at your option) any later version
 #
 
-pluto=@abs_top_builddir@/src/pluto
+pluto=@abs_top_builddir@/tool/pluto
 inscop=@abs_top_srcdir@/inscop
 
-# Some additional setup here to ensure that variables are visible outside of the run function
+# Some additional setup here to ensure that variables are visible outside of the
+# run function.
 SOURCEFILE=""
 OUTFILE=""
 dirname=""

@@ -1,8 +1,8 @@
 dnl
 dnl configure.in
-dnl 
+dnl
 dnl PLUTO - parallelism and locality transformer (experimental)
-dnl 
+dnl
 dnl Copyright (C) 2007-2008 Uday Bondhugula
 dnl
 dnl This program is free software; you can redistribute it and/or
@@ -365,10 +365,11 @@ AC_PATH_PROGS(BASH, bash)
 AC_CONFIG_FILES([getversion.sh], [chmod +x ./getversion.sh])
 AC_CONFIG_FILES([test.sh], [chmod +x ./test.sh])
 AC_CONFIG_COMMANDS([version.h],
-                   [echo '#define PLUTO_VERSION "'`./getversion.sh`'"' > src/version.h])
+                   [echo '#define PLUTO_VERSION "'`./getversion.sh`'"' > lib/version.h])
 
 AC_OUTPUT(Makefile \
-          src/Makefile \
+          lib/Makefile \
+          tool/Makefile \
           polycc.sh
           )
 

@@ -18,7 +18,7 @@ ISL_LIBADD += $(top_builddir)/isl/libisl.la
 endif
 
 
-SUBDIRS = piplib polylib $(MAY_ISL) openscop cloog-isl clan candl pet src
+SUBDIRS = piplib polylib $(MAY_ISL) openscop cloog-isl clan candl pet lib tool
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -47,30 +47,31 @@ bindir:
 		fi
 
 binit:
-	cp -f src/pluto bin/
+	cp -f tool/pluto bin/
 	cp -r polycc bin/
 
 pclean:
-	$(MAKE) -C src clean
+	$(MAKE) -C lib clean
+	$(MAKE) -C tool clean
 
 test_libpluto: test/test_libpluto.c
-	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $<  -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
+	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $<  -Llib/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I openscop/include -lpluto -lgomp -o test_libpluto
 
 unit_tests: test/unit_tests.c
-	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Lsrc/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I$(top_srcdir)/src -lpluto -o unit_tests
+	libtool --mode=link --tag=CC $(CC) $(CLFAGS) $< -Llib/.libs/ -I $(top_srcdir)/include $(ISL_INCLUDE) $(ISL_LIBADD) -I$(top_srcdir)/lib -lpluto -o unit_tests
 
-src/pluto: force
-	$(MAKE) $(MFLAGS) -C src pluto
+tool/pluto: force
+	$(MAKE) $(MFLAGS) -C tool pluto
 
 force:
 	true
 
 test: PHONY
 
-PHONY: polycc src/pluto test_libpluto unit_tests
+PHONY: polycc tool/pluto test_libpluto unit_tests
 	./test.sh
 
-test-alt: polycc src/pluto
+test-alt: polycc tool/pluto
 	./test-alt.sh --silent --notile --noparallel
 	./test-alt.sh --silent --cloogsh --nocloogbacktrack
 	./test-alt.sh --silent --nodiamond-tile --cloogsh --nocloogbacktrack

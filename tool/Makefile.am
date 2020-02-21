@@ -42,7 +42,8 @@ pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
    -I../candl/include \
    -I$(top_srcdir)/candl/include \
    -I../polylib/include \
-   -I$(top_srcdir)/polylib/include
+   -I$(top_srcdir)/polylib/include \
+   -I$(top_srcdir)/lib
 
 # To avoid same name object from being created with libtool and without it.
 pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
@@ -57,52 +58,5 @@ pluto_LDADD =  \
    $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
    ../candl/libcandl.la \
-   ../src/libpluto.la \
+   ../lib/libpluto.la \
    -lm
-
-lib_LTLIBRARIES = libpluto.la
-
-# libpluto doesn't use polylib-based functions
-libpluto_la_SOURCES = \
-		      constraints.c \
-		      constraints.h \
-		      constraints_isl.c \
-		      ddg.c \
-		      ddg.h \
-		      framework.cpp \
-		      framework-dfp.c \
-		      gurobi-plugin.c \
-		      isl_support.c \
-		      isl_support.h \
-		      iss.c \
-		      libpluto_dummy.c \
-		      math_support.c \
-		      math_support.h \
-		      pluto.c \
-		      plutolib.c \
-		      pluto.h \
-		      polyloop.c \
-		      post_transform.c \
-		      post_transform.h \
-		      program.cpp \
-		      program.h \
-		      tile.c \
-		      transforms.c \
-		      transforms.h
-
-libpluto_la_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
-   -DLIB_PLUTO -DSCOPLIB_INT_T_IS_LONGLONG -DCLOOG_INT_GMP \
-   -I../include \
-   -I$(top_srcdir)/include \
-   -I../piplib/include \
-   -I$(top_srcdir)/piplib/include \
-   $(ISL_INCLUDE)
-# To avoid same name object from being created with libtool and without it.
-libpluto_la_CFLAGS = $(AM_CFLAGS) $(libpluto_la_CXXFLAGS)
-
-# libpluto doesn't use polylib
-libpluto_la_LIBADD = \
-   ../piplib/libpiplib_dp.la \
-   $(ISL_LIBADD) \
-   -lm -lgomp
-libpluto_la_LDFLAGS = -version-info 2:0:0
