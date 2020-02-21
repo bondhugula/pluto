@@ -35,8 +35,10 @@ import ycm_core
 
 flags = [
         '-Wall',
+        '-Wextra',
         '-x', 'c++',
         '-O3',
+        '-std=c++11',
         '-I./include/',
         '-I./src/',
          '-DLIB_PLUTO',
@@ -48,9 +50,9 @@ flags = [
          '-I./candl/include',
          '-I./cloog-isl/include',
          '-I./isl/include',
-         '-I./pet/include'
+         '-I./pet/include',
+         '-I./lib'
 ]
-
 
 # Set this to the absolute path to the folder (NOT the file!) containing the
 # compile_commands.json file to use that instead of 'flags'. See here for
