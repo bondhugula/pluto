@@ -4,6 +4,7 @@
 #
 
 PLUTO=tool/pluto
+FILECHECK=FileCheck
 
 num_succ=0
 num_fail=0
@@ -68,13 +69,13 @@ TESTS="\
 # Tests without --pet and without any tiling and parallelization.
 for file in $TESTS; do
     printf '%-50s ' $file
-    $PLUTO --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    $PLUTO --notile --noparallel $file $* -o test_temp_out.pluto.c | $FILECHECK $file
     check_ret_val_emit_status
 done
 
 # Test per cc objective
 printf '%-50s ' @top_srcdir@/test/test-per-cc-obj.c
-$PLUTO --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o test_tmp_out.pluto.c | FileCheck --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
+$PLUTO --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o test_tmp_out.pluto.c | $FILECHECK --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
 check_ret_val_emit_status
 
 # Test typed fusion with dfp. These cases are executed only when glpk or gurobi
@@ -86,7 +87,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s '  $file
-        $PLUTO --typedfuse $file $* -o test_tmp_out.pluto.c | FileCheck --check-prefix TYPED-FUSE-CHECK $file
+        $PLUTO --typedfuse $file $* -o test_tmp_out.pluto.c | $FILECHECK --check-prefix TYPED-FUSE-CHECK $file
         check_ret_val_emit_status
     done
     # Test loop distribution with dfp
@@ -94,7 +95,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s ' "$file with --dfp"
-        $PLUTO --dfp $file $* -o test_tmp_out.pluto.c | FileCheck $file
+        $PLUTO --dfp $file $* -o test_tmp_out.pluto.c | $FILECHECK $file
         check_ret_val_emit_status
     done
     # Test greedy greedy coloring heuristic and stencil check in Pluto-lp-dfp
@@ -102,7 +103,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s ' "$file with --dfp --clusterscc --lpcolor"
-        $PLUTO --typedfuse --lpcolor $file -o test_tmp_out.pluto.c | FileCheck $file
+        $PLUTO --typedfuse --lpcolor $file -o test_tmp_out.pluto.c | $FILECHECK $file
         check_ret_val_emit_status
     done
 fi
@@ -115,7 +116,7 @@ echo -e "\nTest without pet frontend but with tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_TILE_PARALLEL; do
     printf '%-50s ' "$file with --tile --parallel"
-    $PLUTO $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    $PLUTO $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
@@ -124,10 +125,10 @@ TEST_MORE_INTRA_TILE_OPT="\
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
     printf '%-50s ' "$file"
-    $PLUTO $file -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    $PLUTO $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
     printf '%-50s ' "$file with --notile"
-    $PLUTO --notile $file -o test_temp_out.pluto.c | FileCheck $file
+    $PLUTO --notile $file -o test_temp_out.pluto.c | $FILECHECK $file
     check_ret_val_emit_status
 done
 
@@ -142,7 +143,7 @@ echo -e "\nTest with pet frontend with no tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_PET; do
   printf '%-50s ' $file
-  $PLUTO $file --pet --notile --noparallel  -o test_temp_out.pluto.c | FileCheck $file
+  $PLUTO $file --pet --notile --noparallel  -o test_temp_out.pluto.c | $FILECHECK $file
   check_ret_val_emit_status
 done
 # Tests with pet frontend with tiling and parallelization enabled.
@@ -150,7 +151,7 @@ echo -e "\nTest with pet frontend with tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_PET; do
     printf '%-50s ' "$file with --tile --parallel"
-    $PLUTO $file --pet -o test_temp_out.pluto.c | FileCheck --check-prefix TILE-PARALLEL $file
+    $PLUTO $file --pet -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
@@ -164,7 +165,7 @@ TESTS_ISS="\
   "
 for file in $TESTS_ISS; do
     printf '%-50s ' $file
-    $PLUTO --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | FileCheck $file
+    $PLUTO --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | $FILECHECK $file
     check_ret_val_emit_status
 done
 
@@ -173,7 +174,7 @@ echo -e "\nTest libpluto interface"
 file=@top_srcdir@/test/test_libpluto.c
 echo "============================="
 printf '%-50s ' test_libpluto
-./test_libpluto | FileCheck @top_srcdir@/test/test_libpluto.c
+./test_libpluto | $FILECHECK @top_srcdir@/test/test_libpluto.c
 check_ret_val_emit_status
 
 # Unit tests
@@ -182,7 +183,7 @@ echo "==============="
 printf '%-50s ' unit_tests
 # Filter out all "// " comments from unit_tests.in when sending input to
 # 'unit_tests'.
-cat @top_srcdir@/test/unit_tests.in | grep -v "^// " | ./unit_tests | FileCheck @top_srcdir@/test/unit_tests.in
+cat @top_srcdir@/test/unit_tests.in | grep -v "^// " | ./unit_tests | $FILECHECK @top_srcdir@/test/unit_tests.in
 check_ret_val_emit_status
 
 # TODO: add tests that check the generated code for certain things (like stmt
@@ -193,7 +194,7 @@ echo "===================="
 TESTS_UNROLL_JAM="@top_srcdir@/test/unrolljam.c"
 for file in $TESTS_UNROLL_JAM; do
     printf '%-50s ' $file
-    $PLUTO --unrolljam --silent --ufactor=2 $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | FileCheck $file
+    $PLUTO --unrolljam --silent --ufactor=2 $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | $FILECHECK $file
     check_ret_val_emit_status
 done
 
