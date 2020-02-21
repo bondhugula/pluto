@@ -1493,10 +1493,10 @@ get_face_with_concurrent_start_for_stmts(PlutoProg *prog,
   conc_start_faces = pluto_matrix_alloc(stmts.size(), nvar + npar + 1, context);
   pluto_matrix_set(conc_start_faces, 0);
 
-  for (int s = 0, _s = 0; s < prog->nstmts; s++) {
+  for (unsigned s = 0, _s = 0; s < prog->nstmts; s++) {
     if (!is_stmt_in_stmt_list(s, stmts))
       continue;
-    assert(_s <= (int)stmts.size() - 1);
+    assert(_s < stmts.size());
     for (int j = 0; j < nvar; j++) {
       conc_start_faces->val[_s][j] = sol[npar + 1 + s * (nvar + 1) + j];
     }
@@ -1731,7 +1731,7 @@ get_dep_dist_lower_bound_constraints_for_scc(int scc_id, PlutoProg *prog) {
 bool is_scc_stencil(int scc_id, PlutoProg *prog) {
   std::vector<Stmt *> stmts;
   PlutoContext *context = prog->context;
-  for (int i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     if (prog->stmts[i]->scc_id == scc_id) {
       stmts.push_back(prog->stmts[i]);
     }

@@ -116,7 +116,7 @@ Stmt *pluto_stmt_dup(const Stmt *stmt);
 PlutoAccess *pluto_access_dup(const PlutoAccess *acc);
 void pluto_dep_free(Dep *dep);
 Dep *pluto_dep_dup(Dep *d);
-void pluto_remove_stmt(PlutoProg *prog, int stmt_id);
+void pluto_remove_stmt(PlutoProg *prog, unsigned stmt_id);
 
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog);
 

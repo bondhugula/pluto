@@ -717,7 +717,7 @@ int read_codegen_context_from_file(PlutoConstraints *codegen_context) {
  */
 int pluto_prog_get_largest_const_in_domains(const PlutoProg *prog) {
   int max = 0;
-  for (int i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     Stmt *stmt = prog->stmts[i];
     for (unsigned r = 0; r < stmt->domain->nrows; r++) {
       max = PLMAX(max, stmt->domain->val[r][stmt->domain->ncols - 1]);
@@ -762,15 +762,13 @@ PlutoProg *pluto_prog_alloc(PlutoContext *context) {
 }
 
 void pluto_prog_free(PlutoProg *prog) {
-  int i;
-
   /* Free dependences */
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     pluto_dep_free(prog->deps[i]);
   }
   free(prog->deps);
 
-  for (i = 0; i < prog->ntransdeps; i++) {
+  for (int i = 0; i < prog->ntransdeps; i++) {
     pluto_dep_free(prog->transdeps[i]);
   }
   free(prog->transdeps);
@@ -784,7 +782,7 @@ void pluto_prog_free(PlutoProg *prog) {
     free(prog->hProps);
   }
 
-  for (i = 0; i < prog->npar; i++) {
+  for (int i = 0; i < prog->npar; i++) {
     free(prog->params[i]);
   }
   if (prog->npar >= 1) {
@@ -792,7 +790,7 @@ void pluto_prog_free(PlutoProg *prog) {
   }
 
   /* Statements */
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     pluto_stmt_free(prog->stmts[i]);
   }
   if (prog->nstmts >= 1) {
@@ -806,7 +804,7 @@ void pluto_prog_free(PlutoProg *prog) {
 
   free(prog->decls);
 
-  for (i = 0; i < prog->num_data; i++) {
+  for (int i = 0; i < prog->num_data; i++) {
     free(prog->data_names[i]);
   }
   free(prog->data_names);
@@ -932,23 +930,21 @@ void pluto_context_free(PlutoContext *context) {
 
 /* Add global/program parameter at position 'pos' */
 void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos) {
-  int i, j;
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     Stmt *stmt = prog->stmts[i];
     pluto_constraints_add_dim(
         stmt->domain, stmt->domain->ncols - 1 - prog->npar + pos, param);
     pluto_matrix_add_col(stmt->trans,
                          stmt->trans->ncols - 1 - prog->npar + pos);
 
-    for (j = 0; j < stmt->nwrites; j++) {
+    for (int j = 0; j < stmt->nwrites; j++) {
       pluto_matrix_add_col(stmt->writes[j]->mat, stmt->dim + pos);
     }
-    for (j = 0; j < stmt->nreads; j++) {
+    for (int j = 0; j < stmt->nreads; j++) {
       pluto_matrix_add_col(stmt->reads[j]->mat, stmt->dim + pos);
     }
   }
-  for (i = 0; i < prog->ndeps; i++) {
+  for (int i = 0; i < prog->ndeps; i++) {
     pluto_constraints_add_dim(
         prog->deps[i]->dpolytope,
         prog->deps[i]->dpolytope->ncols - 1 - prog->npar + pos, NULL);
@@ -963,7 +959,7 @@ void pluto_prog_add_param(PlutoProg *prog, const char *param, int pos) {
   prog->params =
       (char **)realloc(prog->params, sizeof(char *) * (prog->npar + 1));
 
-  for (i = prog->npar - 1; i >= pos; i--) {
+  for (int i = prog->npar - 1; i >= pos; i--) {
     prog->params[i + 1] = prog->params[i];
   }
 
@@ -2082,12 +2078,10 @@ void add_if_new_var(PlutoAccess ***accs, int *num, PlutoAccess *new_acc) {
 
 /* Get all write accesses in the program */
 PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num) {
-  int i;
-
   PlutoAccess **accs = NULL;
   *num = 0;
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     assert(prog->stmts[i]->nwrites == 1);
     add_if_new_var(&accs, num, prog->stmts[i]->writes[0]);
   }
@@ -2095,11 +2089,9 @@ PlutoAccess **pluto_get_all_waccs(const PlutoProg *prog, int *num) {
 }
 
 int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog) {
-  int max, i;
+  int max = 0;
 
-  max = 0;
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     max = PLMAX(max, pluto_stmt_get_num_ind_hyps_non_scalar(prog->stmts[i]));
   }
 
@@ -2113,7 +2105,7 @@ int pluto_get_max_ind_hyps_non_scalar(const PlutoProg *prog) {
 int pluto_get_max_ind_hyps(const PlutoProg *prog) {
   unsigned max = 0;
 
-  for (int i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     max = PLMAX(max, pluto_stmt_get_num_ind_hyps(prog->stmts[i]));
   }
 
@@ -2159,7 +2151,7 @@ unsigned pluto_stmt_get_num_ind_hyps(const Stmt *stmt) {
  * Are all transformations full column-ranked?
  */
 int pluto_transformations_full_ranked(PlutoProg *prog) {
-  for (int i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     if (pluto_stmt_get_num_ind_hyps(prog->stmts[i]) <
         prog->stmts[i]->dim_orig) {
       return 0;
@@ -2228,12 +2220,12 @@ static void decrement_stmt_id(PlutoProg *prog, int id) {
 }
 
 /* Add statement to program; can't reuse arg stmt pointer any more */
-void pluto_remove_stmt(PlutoProg *prog, int stmt_id) {
-  int i;
+void pluto_remove_stmt(PlutoProg *prog, unsigned stmt_id) {
+  assert(prog->nstmts > 0 && "no stmts in program");
 
   pluto_stmt_free(prog->stmts[stmt_id]);
 
-  for (i = stmt_id; i < prog->nstmts - 1; i++) {
+  for (unsigned i = stmt_id; i < prog->nstmts - 1; i++) {
     prog->stmts[i] = prog->stmts[i + 1];
     decrement_stmt_id(prog, prog->stmts[i]->id);
   }
@@ -2243,27 +2235,21 @@ void pluto_remove_stmt(PlutoProg *prog, int stmt_id) {
   prog->stmts =
       (Stmt **)realloc(prog->stmts, ((prog->nstmts) * sizeof(Stmt *)));
 
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     prog->nvar = PLMAX(prog->nvar, (int)prog->stmts[i]->dim);
   }
 }
 
 void pluto_transformations_pretty_print(const PlutoProg *prog) {
-  int nstmts, i;
-
-  nstmts = prog->nstmts;
-
-  for (i = 0; i < nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     pluto_stmt_transformation_print(prog->stmts[i]);
   }
 }
 
 void pluto_transformation_print_level(const PlutoProg *prog, int level) {
-  int nstmts, i;
+  unsigned nstmts = prog->nstmts;
 
-  nstmts = prog->nstmts;
-
-  for (i = 0; i < nstmts; i++) {
+  for (unsigned i = 0; i < nstmts; i++) {
     fprintf(stdout, "h(S%d) = ", i + 1);
     pluto_stmt_print_hyperplane(stdout, prog->stmts[i], level);
     if (i < nstmts - 1)
@@ -2324,9 +2310,7 @@ void pluto_print_hyperplane_properties(const PlutoProg *prog) {
 }
 
 void pluto_transformations_print(const PlutoProg *prog) {
-  int i;
-
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     printf("T_(S%d) \n", prog->stmts[i]->id + 1);
     pluto_matrix_print(stdout, prog->stmts[i]->trans);
   }

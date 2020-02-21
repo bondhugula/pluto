@@ -101,7 +101,7 @@ static void compute_deps_pet(struct pet_scop *pscop, PlutoProg *prog,
 
   // Collect read and writes accesses, and construct schedules with read/write
   // access number encoded in the domain information.
-  for (int i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     struct pet_stmt *pstmt = prog->stmts[i]->pstmt;
     Stmt *stmt = prog->stmts[i];
 
@@ -225,8 +225,8 @@ static void mark_trivial_dead_code(struct pet_scop *pscop,
 static Stmt **pet_to_pluto_stmts(
     struct pet_scop *pscop, isl_map **stmt_wise_schedules,
     const std::unordered_map<struct pet_stmt *, char *> &stmtTextMap,
-    int *nstmts, PlutoContext *context) {
-  int i, j, s, t;
+    unsigned *nstmts, PlutoContext *context) {
+  int i, j;
   Stmt **stmts;
   int nvar, npar, max_sched_rows;
   char **params;
@@ -262,7 +262,7 @@ static Stmt **pet_to_pluto_stmts(
 
   *nstmts = 0;
 
-  for (s = 0; s < pscop->n_stmt; s++) {
+  for (int s = 0; s < pscop->n_stmt; s++) {
     struct pet_stmt *pstmt = pscop->stmts[s];
     int stmt_dim = isl_set_dim(pstmt->domain, isl_dim_set);
     nvar = PLMAX(nvar, stmt_dim);
@@ -276,7 +276,7 @@ static Stmt **pet_to_pluto_stmts(
 
   max_sched_rows = 0;
 
-  for (s = 0, t = 0; s < pscop->n_stmt; s++) {
+  for (int s = 0, t = 0; s < pscop->n_stmt; s++) {
     if (dead[s])
       continue;
     struct pet_stmt *pstmt = pscop->stmts[s];
@@ -351,7 +351,7 @@ static Stmt **pet_to_pluto_stmts(
 
   isl_union_map_free(s_umap);
 
-  for (s = 0; s < *nstmts; s++) {
+  for (unsigned s = 0; s < *nstmts; s++) {
     /* Pad with all zero rows */
     int curr_sched_rows = stmts[s]->trans->nrows;
     for (j = curr_sched_rows; j < max_sched_rows; j++) {
@@ -610,7 +610,7 @@ static __isl_give isl_printer *construct_stmt_body(
  */
 PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
                              PlutoContext *context) {
-  int i, max_sched_rows, npar;
+  int max_sched_rows, npar;
 
   if (pscop == NULL)
     return NULL;
@@ -625,7 +625,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   npar = isl_set_dim(pscop->context, isl_dim_all);
 
   isl_space *cspace = isl_set_get_space(pscop->context);
-  for (i = 0; i < npar; i++) {
+  for (int i = 0; i < npar; i++) {
     pluto_prog_add_param(prog, isl_space_get_dim_name(cspace, isl_dim_param, i),
                          prog->npar);
   }
@@ -638,7 +638,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   IF_DEBUG(pluto_constraints_compact_print(stdout, prog->param_context));
 
   if (options->codegen_context != -1) {
-    for (i = 0; i < prog->npar; i++) {
+    for (int i = 0; i < prog->npar; i++) {
       pluto_constraints_add_inequality(prog->codegen_context);
       prog->codegen_context->val[i][i] = 1;
       prog->codegen_context->val[i][prog->codegen_context->ncols - 1] =
@@ -651,7 +651,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   prog->nvar = -1;
   max_sched_rows = 0;
 
-  for (i = 0; i < pscop->n_stmt; i++) {
+  for (int i = 0; i < pscop->n_stmt; i++) {
     struct pet_stmt *pstmt = pscop->stmts[i];
 
     int stmt_dim = isl_set_dim(pstmt->domain, isl_dim_set);
@@ -686,7 +686,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
 
   /* Add hyperplanes */
   if (prog->nstmts >= 1) {
-    for (i = 0; i < max_sched_rows; i++) {
+    for (int i = 0; i < max_sched_rows; i++) {
       pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_UNKNOWN);
       prog->hProps[prog->num_hyperplanes - 1].type =
           (i % 2) ? H_LOOP : H_SCALAR;
@@ -699,7 +699,7 @@ PlutoProg *pet_to_pluto_prog(struct pet_scop *pscop, isl_ctx *ctx,
   char tmpstr[256];
   char linearized[256];
   if (lfp && nlfp) {
-    for (i = 0; i < prog->nstmts; i++) {
+    for (unsigned i = 0; i < prog->nstmts; i++) {
       rewind(lfp);
       rewind(nlfp);
       while (!feof(lfp) && !feof(nlfp)) {

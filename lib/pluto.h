@@ -329,7 +329,7 @@ typedef struct hyperplane_properties HyperplaneProperties;
 struct plutoProg {
   /* Array of statements */
   Stmt **stmts;
-  int nstmts;
+  unsigned nstmts;
 
   /* Array of dependences */
   /* Does not contain transitive dependences if options->lastwriter */
