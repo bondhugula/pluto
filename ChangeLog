@@ -20,6 +20,7 @@ Until present
   auto-formatted to that.
 - Code modernized for compilation with C++ compilers; language changed to C99
   and C++11 for all future development
+- src/ split into lib/ and tool/ to separate out libpluto and the pluto tool.
 
 version 0.11.4
 
