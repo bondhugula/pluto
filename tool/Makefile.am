@@ -48,7 +48,7 @@ pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
 # To avoid same name object from being created with libtool and without it.
 pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
 
-pluto_LDFLAGS = -static -fopenmp
+pluto_LDFLAGS = -static
 pluto_LDADD =  \
    ../piplib/libpiplib_dp.la \
    ../openscop/libosl.la \

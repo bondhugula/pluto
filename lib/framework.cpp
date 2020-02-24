@@ -1128,8 +1128,6 @@ int pluto_compute_dep_satisfaction_precise(PlutoProg *prog) {
 
   num_satisfied = 0;
 
-  /* Piplib is not thread-safe (use multiple threads only with --islsolve) */
-  /* #pragma omp parallel for if (options->islsolve) */
   for (i = 0; i < prog->ndeps; i++) {
     int level;
     Dep *dep = prog->deps[i];
