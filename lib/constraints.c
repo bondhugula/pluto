@@ -1082,13 +1082,13 @@ int64_t *pluto_constraints_lexmin_pip(const PlutoConstraints *cst, int negvar) {
   return sol;
 }
 
-/* Solve these constraints for lexmin solution */
+/// Solve these constraints for lexmin. solution.
+//  TODO: GLPK-based path doesn't exist here.
 int64_t *pluto_constraints_lexmin(const PlutoConstraints *cst, int negvar) {
-  if (cst->context->options->islsolve) {
+  if (cst->context->options->islsolve)
     return pluto_constraints_lexmin_isl(cst, negvar);
-  } else {
-    return pluto_constraints_lexmin_pip(cst, negvar);
-  }
+  // Use PIP.
+  return pluto_constraints_lexmin_pip(cst, negvar);
 }
 
 #ifdef GLPK
