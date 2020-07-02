@@ -39,8 +39,8 @@ cat .includes > .head
 if ! grep -q "#define ceild(n,d)" __tmp
 	then
 	echo "#include <math.h>" >> .head
-	echo "#define ceild(n,d)  ceil(((double)(n))/((double)(d)))" >> .head
-	echo "#define floord(n,d) floor(((double)(n))/((double)(d)))" >> .head
+	echo "#define ceild(n,d)  (((n)<0) ? -((-(n))/(d)) : ((n)+(d)-1)/(d))" >> .head
+	echo "#define floord(n,d) (((n)<0) ? -((-(n)+(d)-1)/(d)) : (n)/(d))" >> .head
 	echo "#define max(x,y)    ((x) > (y)? (x) : (y))" >> .head
 	echo -e "#define min(x,y)    ((x) < (y)? (x) : (y))\n" >> .head
 fi
