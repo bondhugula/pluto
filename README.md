@@ -195,6 +195,7 @@ doc/DOC.txt
 
 BUGS AND ISSUES
 
-Please report bugs/issues at https://github.com/bondhugula/pluto/issues
+Please report bugs and issues at https://github.com/bondhugula/pluto/issues
 For questions and general discussion, please email
-pluto-development@googlegroups.com.
+pluto-development@googlegroups.com after joining the group:
+https://groups.google.com/g/pluto-development
