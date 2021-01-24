@@ -9,7 +9,7 @@
 	url = https://github.com/periscop/piplib.git
 [submodule "polylib"]
 	path = polylib
-	url = git://repo.or.cz/polylib.git
+	url =  https://github.com/vincentloechner/polylib.git
 [submodule "candl"]
 	path = candl
 	url = https://github.com/periscop/candl.git
