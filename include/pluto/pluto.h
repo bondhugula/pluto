@@ -1,11 +1,11 @@
 /******************************************************************************
- *               libpluto -  A library version of Pluto                       *
+ *               libpluto -  A library version of Pluto
  ******************************************************************************
- *                                                                            *
- * Copyright (C) 2012 Uday Bondhugula                                         *
- *                                                                            *
- * This software is available under the MIT license. Please see LICENSE.MIT   *
- * in the top-level directory for details.                                    *
+ *
+ * Copyright (C) 2012 Uday Bondhugula
+ *
+ * This software is available under the MIT license. Please see LICENSE in the
+ * top-level directory for details.
  *
  * This file is part of libpluto.
  *

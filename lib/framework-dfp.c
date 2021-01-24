@@ -1,10 +1,10 @@
 /*
- * PLUTO: An automatic parallelizer and locality optimizer
+ * Pluto: An automatic parallelizer and locality optimizer
  *
  * Copyright (C) 2018-2020 Aravind Acharya
  *
- * This software is available under the MIT license. Please see LICENSE.MIT
- * in the top-level directory for details.
+ * This software is available under the MIT license. Please see LICENSE in the
+ * top-level directory for details.
  *
  * This file is part of libpluto.
  *

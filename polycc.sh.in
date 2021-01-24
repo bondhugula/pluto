@@ -9,9 +9,9 @@
 #
 # Copyright (C) 2007-2008 Uday Bondhugula
 #
-# Available under GNU GPL version 3 or (at your option) any later version
+# This file is available under the MIT license. Please see LICENSE in the
+# top-level directory for details.
 #
-
 pluto=@abs_top_builddir@/tool/pluto
 inscop=@abs_top_srcdir@/inscop
 

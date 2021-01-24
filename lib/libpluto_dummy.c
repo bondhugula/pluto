@@ -1,3 +1,14 @@
+/*
+ * Pluto: An automatic parallelier and locality optimizer
+ *
+ * Copyright (C) 2007-2012 Uday Bondhugula
+ *
+ * This software is available under the MIT license. Please see LICENSE
+ * in the top-level directory for details.
+ *
+ * This file is part of libpluto.
+ *
+ */
 #include <assert.h>
 #include <stdio.h>
 
