@@ -4,7 +4,9 @@
 # inscop <original> <transformed_kernel> <output_file>
 # transformed_kernel and output_file can be the same
 #
-
+# This file is available under the MIT license. Please see LICENSE in the
+# top-level directory for details.
+#
 CC=gcc
 
 MAXLINES=`wc -l $1 | awk '{print $1}'`
