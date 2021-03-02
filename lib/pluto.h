@@ -549,8 +549,8 @@ void ddg_compute_scc(PlutoProg *prog);
 void ddg_compute_cc(PlutoProg *prog);
 Graph *ddg_create(PlutoProg *prog);
 int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2);
-int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
-int cut_all_sccs(PlutoProg *prog, Graph *ddg);
+unsigned cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2);
+unsigned cut_all_sccs(PlutoProg *prog, Graph *ddg);
 void cut_smart(PlutoProg *prog, Graph *ddg);
 
 void pluto_print_dep_directions(PlutoProg *prog);

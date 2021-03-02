@@ -39,7 +39,7 @@ struct scc {
   int size;
 
   /* Maximum dimensionality statement in this SCC */
-  int max_dim;
+  unsigned max_dim;
 
   /* Id of this SCC */
   int id;

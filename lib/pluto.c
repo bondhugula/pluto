@@ -449,9 +449,8 @@ int ddg_sccs_direct_connected(Graph *g, PlutoProg *prog, int scc1, int scc2) {
   return 0;
 }
 
-/* Cut dependences between two SCCs
- * Returns: number of dependences cut  */
-int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
+/// Cut dependences between two SCCs. Returns the number of dependences cut.
+unsigned cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
   Stmt **stmts = prog->stmts;
   int nstmts = prog->nstmts;
   PlutoContext *context = prog->context;
@@ -459,7 +458,7 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
   int nvar = prog->nvar;
   int npar = prog->npar;
 
-  int i, j, num_satisfied;
+  int i, j;
 
   if (!ddg_sccs_direct_connected(ddg, prog, scc1, scc2)) {
     return 0;
@@ -480,7 +479,8 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
       stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] = 1;
     }
   }
-  num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
+  unsigned num_satisfied =
+      dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
   if (num_satisfied >= 1) {
     IF_DEBUG(
         pluto_transformation_print_level(prog, prog->num_hyperplanes - 1););
@@ -495,11 +495,8 @@ int cut_between_sccs(PlutoProg *prog, Graph *ddg, int scc1, int scc2) {
   return num_satisfied;
 }
 
-/*
- * Cut dependences between all SCCs
- */
-int cut_all_sccs(PlutoProg *prog, Graph *ddg) {
-  int i, j, num_satisfied;
+/// Cut dependences between all SCCs. Return the number of dependences cut.
+unsigned cut_all_sccs(PlutoProg *prog, Graph *ddg) {
   Stmt **stmts = prog->stmts;
   int nstmts = prog->nstmts;
   int nvar = prog->nvar;
@@ -515,16 +512,17 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg) {
 
   pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
 
-  for (i = 0; i < nstmts; i++) {
+  for (unsigned i = 0; i < nstmts; i++) {
     pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
-    for (j = 0; j < nvar + npar; j++) {
+    for (unsigned j = 0; j < nvar + npar; j++) {
       stmts[i]->trans->val[stmts[i]->trans->nrows - 1][j] = 0;
     }
     stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] =
         stmts[i]->scc_id;
   }
   IF_DEBUG(pluto_transformation_print_level(prog, prog->num_hyperplanes - 1););
-  num_satisfied = dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
+  unsigned num_satisfied =
+      dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
   ddg_update(ddg, prog);
 
   return num_satisfied;
@@ -540,8 +538,7 @@ int cut_all_sccs(PlutoProg *prog, Graph *ddg) {
  * (Due to the algorithm used for computing SCCs, there are no edges
  * between SCC<i> and SCC<j> where i > j)
  */
-int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
-  int i, j, k, count;
+unsigned cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
   Stmt **stmts = prog->stmts;
   int nvar = prog->nvar;
   int npar = prog->npar;
@@ -552,22 +549,21 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
 
   IF_DEBUG(printf("Cutting based on SCC dimensionalities\n"));
 
-  count = 0;
-
-  int cur_max_dim = ddg->sccs[0].max_dim;
+  unsigned cur_max_dim = ddg->sccs[0].max_dim;
 
   pluto_prog_add_hyperplane(prog, prog->num_hyperplanes, H_SCALAR);
 
-  for (k = 0; k < ddg->num_sccs; k++) {
+  unsigned count = 0;
+  for (unsigned k = 0; k < ddg->num_sccs; k++) {
     if (cur_max_dim != ddg->sccs[k].max_dim) {
       cur_max_dim = ddg->sccs[k].max_dim;
       count++;
     }
 
-    for (i = 0; i < prog->nstmts; i++) {
+    for (unsigned i = 0; i < prog->nstmts; i++) {
       if (stmts[i]->scc_id == k) {
         pluto_stmt_add_hyperplane(stmts[i], H_SCALAR, stmts[i]->trans->nrows);
-        for (j = 0; j < nvar; j++) {
+        for (unsigned j = 0; j < nvar; j++) {
           stmts[i]->trans->val[stmts[i]->trans->nrows - 1][j] = 0;
         }
         stmts[i]->trans->val[stmts[i]->trans->nrows - 1][nvar + npar] = count;
@@ -575,7 +571,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
     }
   }
 
-  int num_new_carried =
+  unsigned num_new_carried =
       dep_satisfaction_update(prog, stmts[0]->trans->nrows - 1);
 
   if (num_new_carried >= 1) {
@@ -583,7 +579,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
         pluto_transformation_print_level(prog, prog->num_hyperplanes - 1););
     ddg_update(ddg, prog);
   } else {
-    for (i = 0; i < prog->nstmts; i++) {
+    for (unsigned i = 0; i < prog->nstmts; i++) {
       stmts[i]->trans->nrows--;
     }
     prog->num_hyperplanes--;
@@ -592,7 +588,7 @@ int cut_scc_dim_based(PlutoProg *prog, Graph *ddg) {
   return num_new_carried;
 }
 
-/* Heuristic cut */
+/// Cuts dependences between statements using a heuristic.
 void cut_smart(PlutoProg *prog, Graph *ddg) {
   if (ddg->num_sccs == 0)
     return;
@@ -603,29 +599,21 @@ void cut_smart(PlutoProg *prog, Graph *ddg) {
     return;
   }
 
-  int i, j;
-
-  int num_new_carried = 0;
-
   /* First time, cut between SCCs of different dimensionalities */
-  if (cut_scc_dim_based(prog, ddg)) {
+  if (cut_scc_dim_based(prog, ddg))
     return;
-  }
 
   /* Cut in the center */
   if (cut_between_sccs(prog, ddg, ceil(ddg->num_sccs / 2.0) - 1,
-                       ceil(ddg->num_sccs / 2.0))) {
+                       ceil(ddg->num_sccs / 2.0)))
     return;
-  }
 
   /* Cut between SCCs that are far away */
-  for (i = 0; i < ddg->num_sccs - 1; i++) {
-    for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
+  for (unsigned i = 0; i < ddg->num_sccs - 1; i++) {
+    for (unsigned j = ddg->num_sccs - 1; j >= i + 1; j--) {
       if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (ddg_sccs_direct_connected(ddg, prog, i, j)) {
-          // if (ddg->sccs[i].max_dim == ddg->sccs[j].max_dim) {
-          num_new_carried += cut_between_sccs(prog, ddg, i, j);
-          // }
+          cut_between_sccs(prog, ddg, i, j);
         }
       } else {
         cut_all_sccs(prog, ddg);
@@ -635,10 +623,9 @@ void cut_smart(PlutoProg *prog, Graph *ddg) {
   }
 }
 
-/* Distribute conservatively to maximize (rather random) fusion chance */
+/// Distribute loop nests by cutting dependences in a conservative manner (fewer
+/// dependences are cut).
 void cut_conservative(PlutoProg *prog, Graph *ddg) {
-  int i, j;
-
   if (cut_scc_dim_based(prog, ddg)) {
     return;
   }
@@ -650,8 +637,8 @@ void cut_conservative(PlutoProg *prog, Graph *ddg) {
   }
 
   /* Cut between SCCs that are far away */
-  for (i = 0; i < ddg->num_sccs - 1; i++) {
-    for (j = ddg->num_sccs - 1; j >= i + 1; j--) {
+  for (unsigned i = 0; i < ddg->num_sccs - 1; i++) {
+    for (unsigned j = ddg->num_sccs - 1; j >= i + 1; j--) {
       if ((int)prog->stmts[0]->trans->nrows <= 4 * prog->nvar + 2) {
         if (cut_between_sccs(prog, ddg, i, j)) {
           return;
