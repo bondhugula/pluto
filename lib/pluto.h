@@ -388,6 +388,9 @@ struct plutoProg {
    * had been found*/
   int evicted_hyp_pos;
 
+  // If concurrent start is found.
+  bool is_diamond_tiled;
+
   /* number of outermost parallel dimensions to be parameterized */
   /* used by dynschedule */
   int num_parameterized_loops;
@@ -408,6 +411,10 @@ struct plutoProg {
       scaling_cst_sol_time, skew_time, stencil_check_time;
   double fcg_const_time, fcg_colour_time, fcg_dims_scale_time, fcg_update_time,
       fcg_cst_alloc_time;
+
+  // Time taken by tile size selection model
+  double tss_time;
+
   long int num_lp_calls;
 
   PlutoContext *context;

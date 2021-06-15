@@ -14,6 +14,8 @@
 
 typedef struct plutoProg PlutoProg;
 typedef struct band Band;
+typedef struct pLoop Ploop;
+typedef struct plutoContext PlutoContext;
 
 #if defined(__cplusplus)
 extern "C" {
@@ -26,6 +28,14 @@ int pluto_detect_mark_register_tile_loops(PlutoProg *prog);
 
 int gen_reg_tile_file(PlutoProg *prog);
 
+int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog);
+Band **get_per_stmt_band(Band *band, unsigned *nstmt_bands);
+
+Band **fuse_per_stmt_bands(Band **per_stmt_bands, unsigned nbands,
+                           int num_tiled_levels, unsigned *num_fused_bands,
+                           PlutoContext *context);
+Ploop *get_best_vectorizable_loop(Ploop **loops, int nloops, PlutoProg *prog);
+unsigned get_dimensional_reuse(Ploop *loop);
 #if defined(__cplusplus)
 }
 #endif

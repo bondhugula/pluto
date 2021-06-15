@@ -105,6 +105,7 @@ int pluto_transformations_full_ranked(PlutoProg *prog);
 void pluto_pad_stmt_transformations(PlutoProg *prog);
 
 void pluto_access_print(FILE *fp, const PlutoAccess *acc, const Stmt *stmt);
+void pluto_access_free(PlutoAccess *acc);
 void pluto_transformations_print(const PlutoProg *prog);
 void pluto_transformations_pretty_print(const PlutoProg *prog);
 void pluto_print_hyperplane_properties(const PlutoProg *prog);
@@ -139,9 +140,13 @@ unsigned get_num_invariant_accesses(Ploop *loop);
 unsigned get_num_accesses(Ploop *loop);
 unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
                                           const PlutoProg *prog);
+PlutoAccess **get_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                           const PlutoProg *prog,
+                                           unsigned *num_accesses);
 unsigned get_num_invariant_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
                                              unsigned depth,
                                              const PlutoProg *prog);
+bool are_pluto_accesses_same(PlutoAccess *acc1, PlutoAccess *acc2);
 #if defined(__cplusplus)
 }
 #endif
