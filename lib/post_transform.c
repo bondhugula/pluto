@@ -87,6 +87,16 @@ int getDeepestNonScalarLoop(PlutoProg *prog) {
   return loop;
 }
 
+/// Dimensional reuse of a loop is the total number of accesses that have either
+/// spatial or temporal or group temporal reuse. Choosing a large tile size for
+/// the vector dimension removed the need for including accesses that have
+/// spatial reuse. Group temporal reuse was not considered in the experiments
+/// that were performed. Hence, we return the number of accesses that have
+/// temporal reuse.
+unsigned get_dimensional_reuse(Ploop *loop) {
+  return get_num_invariant_accesses(loop);
+}
+
 /* Check if loop is amenable to straightforward vectorization */
 int pluto_loop_is_vectorizable(Ploop *loop, PlutoProg *prog) {
   /* LIMITATION: it is possible (rarely) that a loop is not parallel at this

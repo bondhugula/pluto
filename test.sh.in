@@ -169,6 +169,19 @@ for file in $TESTS_ISS; do
     check_ret_val_emit_status
 done
 
+# Test with automatic tile size selection.
+echo -e "\nTest TSS"
+echo "========"
+TESTS_TSS="\
+  @top_srcdir@/test/tss1.c \
+  @top_srcdir@/test/wavefront.c \
+  "
+for file in $TESTS_TSS; do
+    printf '%-50s ' "$file with --tile --determine-tile-size"
+    $PLUTO --tile --determine-tile-size $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
+    check_ret_val_emit_status
+done
+
 # Test libpluto interface.
 echo -e "\nTest libpluto interface"
 file=@top_srcdir@/test/test_libpluto.c

@@ -17,6 +17,7 @@ typedef struct isl_union_set isl_union_set;
 typedef struct isl_union_map isl_union_map;
 
 #include "isl/ctx.h"
+#include <stdbool.h>
 
 typedef struct pluto_matrix PlutoMatrix;
 
@@ -127,6 +128,16 @@ struct plutoOptions {
   /// in several cases reduce the number of tiles available for parallel
   /// execution.
   int second_level_tile;
+
+  /// Automatically find tile sizes for each permutable band using a tile size
+  /// selection model.
+  bool find_tile_sizes;
+
+  /// Cache size in bytes.
+  uint64_t cache_size;
+
+  /// Size in bytes of each data element.
+  unsigned data_element_size;
 
   /* NOTE: --ft and --lt are to manually force tiling depths */
   /* First depth to tile (starting from 0) */

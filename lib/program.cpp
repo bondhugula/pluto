@@ -751,12 +751,30 @@ PlutoProg *pluto_prog_alloc(PlutoContext *context) {
   prog->decls = (char *)malloc(16384 * 9);
   prog->data_names = NULL;
   prog->num_data = 0;
+  prog->is_diamond_tiled = false;
 
   strcpy(prog->decls, "");
 
   prog->globcst = NULL;
 
   prog->num_parameterized_loops = -1;
+
+  prog->cst_solve_time = 0.0;
+  prog->cst_const_time = 0.0;
+  prog->scaling_cst_sol_time = 0.0;
+  prog->mipTime = 0.0;
+  prog->ilpTime = 0.0;
+  prog->skew_time = 0.0;
+  prog->cst_write_time = 0.0;
+  prog->fcg_const_time = 0.0;
+  prog->fcg_update_time = 0.0;
+  prog->fcg_colour_time = 0.0;
+  prog->fcg_dims_scale_time = 0.0;
+  prog->fcg_cst_alloc_time = 0.0;
+  prog->stencil_check_time = 0.0;
+
+  prog->tss_time = 0.0;
+  prog->num_lp_calls = 0;
 
   return prog;
 }
@@ -863,6 +881,9 @@ PlutoOptions *pluto_options_alloc() {
 
   options->multipar = 0;
   options->second_level_tile = 0;
+  options->find_tile_sizes = 0;
+  options->cache_size = 1048576; // L2 cache size by default
+  options->data_element_size = sizeof(double);
   options->prevector = 1;
   options->fuse = kSmartFuse;
 
@@ -2353,7 +2374,7 @@ PlutoAccess *pluto_create_new_access(int sym_id, const char *name,
 }
 
 /// Checks if two PlutoAceesess are the same.
-static bool are_pluto_accesses_same(PlutoAccess *acc1, PlutoAccess *acc2) {
+bool are_pluto_accesses_same(PlutoAccess *acc1, PlutoAccess *acc2) {
   // Just compare names in PlutoAccess. sym_id may not be initialized in all
   // cases.
   if (strcmp(acc1->name, acc2->name))
@@ -2418,20 +2439,33 @@ get_unique_accesses_in_stmts(std::vector<Stmt *> stmts, const PlutoProg *prog) {
   return unique_accesses;
 }
 
-/// Returns the number of unique accesses in a set of statements.
-unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
-                                          const PlutoProg *prog) {
+PlutoAccess **get_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                           const PlutoProg *prog,
+                                           unsigned *num_accesses) {
   std::vector<Stmt *> stmts_vec;
   for (unsigned i = 0; i < nstmts; i++) {
     stmts_vec.push_back(stmts[i]);
   }
   std::vector<PlutoAccess *> unique_accesses =
       get_unique_accesses_in_stmts(stmts_vec, prog);
-  unsigned num_unique_accesses = unique_accesses.size();
-  for (auto acc_itr = unique_accesses.begin(); acc_itr != unique_accesses.end();
-       acc_itr++) {
-    pluto_access_free(*acc_itr);
-  }
+  PlutoAccess **accesses =
+      (PlutoAccess **)malloc(unique_accesses.size() * sizeof(PlutoAccess *));
+  for (unsigned i = 0; i < unique_accesses.size(); i++)
+    accesses[i] = unique_accesses[i];
+  *num_accesses = unique_accesses.size();
+  return accesses;
+}
+
+/// Returns the number of unique accesses in a set of statements.
+unsigned get_num_unique_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
+                                          const PlutoProg *prog) {
+  unsigned num_unique_accesses;
+  PlutoAccess **accesses =
+      get_unique_accesses_in_stmts(stmts, nstmts, prog, &num_unique_accesses);
+
+  for (unsigned i = 0; i < num_unique_accesses; i++)
+    pluto_access_free(accesses[i]);
+  free(accesses);
   return num_unique_accesses;
 }
 
@@ -2452,19 +2486,16 @@ static bool is_access_invariant(PlutoAccess *acc, unsigned depth) {
 unsigned get_num_invariant_accesses_in_stmts(Stmt **stmts, unsigned nstmts,
                                              unsigned depth,
                                              const PlutoProg *prog) {
-  std::vector<Stmt *> stmts_vec;
-  for (unsigned i = 0; i < nstmts; i++) {
-    stmts_vec.push_back(stmts[i]);
-  }
-  std::vector<PlutoAccess *> unique_accesses =
-      get_unique_accesses_in_stmts(stmts_vec, prog);
+  unsigned num_unique_accesses;
+  PlutoAccess **accesses =
+      get_unique_accesses_in_stmts(stmts, nstmts, prog, &num_unique_accesses);
   unsigned num_invariant_access = 0;
-  for (auto itr = unique_accesses.begin(); itr != unique_accesses.end();
-       itr++) {
-    if (is_access_invariant(*itr, depth)) {
+  for (unsigned i = 0; i < num_unique_accesses; i++) {
+    if (is_access_invariant(accesses[i], depth)) {
       num_invariant_access++;
     }
-    pluto_access_free(*itr);
+    pluto_access_free(accesses[i]);
   }
+  free(accesses);
   return num_invariant_access;
 }

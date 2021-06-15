@@ -40,6 +40,7 @@ libpluto_la_SOURCES = \
 		      program.cpp \
 		      program.h \
 		      tile.c \
+		      tile_size_selection_model.cpp \
 		      transforms.c \
 		      transforms.h
 

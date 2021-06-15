@@ -1527,22 +1527,6 @@ int pluto_auto_transform(PlutoProg *prog) {
   int nvar = prog->nvar;
   int npar = prog->npar;
 
-  prog->cst_solve_time = 0.0;
-  prog->cst_const_time = 0.0;
-  prog->scaling_cst_sol_time = 0.0;
-  prog->mipTime = 0.0;
-  prog->ilpTime = 0.0;
-  prog->skew_time = 0.0;
-  prog->cst_write_time = 0.0;
-  prog->fcg_const_time = 0.0;
-  prog->fcg_update_time = 0.0;
-  prog->fcg_colour_time = 0.0;
-  prog->fcg_dims_scale_time = 0.0;
-  prog->fcg_cst_alloc_time = 0.0;
-  prog->stencil_check_time = 0.0;
-
-  prog->num_lp_calls = 0;
-
   if (nstmts == 0)
     return 0;
 
@@ -1758,6 +1742,7 @@ int pluto_auto_transform(PlutoProg *prog) {
         /* Diamond tiling: done for the first band of permutable loops */
         if (options->diamondtile && nsols >= 2 && !conc_start_found) {
           conc_start_found = pluto_diamond_tile(prog);
+          prog->is_diamond_tiled = conc_start_found;
         }
 
         for (j = 0; j < nsols; j++) {

@@ -19,6 +19,7 @@
 #include "pluto/pluto.h"
 #include "post_transform.h"
 #include "program.h"
+#include "tile_size_selection_model.h"
 #include "transforms.h"
 
 /* Read tile sizes from file tile.sizes */
@@ -328,21 +329,27 @@ void pluto_tile(PlutoProg *prog) {
 /// perform another level of tiling.
 void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
                                 bool tile_second_level) {
-  int i, j, b;
   int tile_sizes[prog->num_hyperplanes];
   int second_level_tile_size_ratios[prog->num_hyperplanes];
 
   Stmt **stmts = prog->stmts;
 
-  for (j = 0; j < prog->num_hyperplanes; j++) {
+  for (unsigned j = 0; j < prog->num_hyperplanes; j++) {
     tile_sizes[j] = DEFAULT_FIRST_LEVEL_TILE_SIZE;
     second_level_tile_size_ratios[j] = DEFAULT_SECOND_LEVEL_TILE_SIZE_RATIO;
   }
 
-  for (b = 0; b < nbands; b++) {
-    read_tile_sizes(tile_sizes, second_level_tile_size_ratios, bands[b]->width,
-                    bands[b]->loop->stmts, bands[b]->loop->nstmts,
-                    bands[b]->loop->depth, prog->context);
+  PlutoContext *context = prog->context;
+  PlutoOptions *options = context->options;
+
+  for (unsigned b = 0; b < nbands; b++) {
+    if (options->find_tile_sizes)
+      find_tile_sizes(bands[b], prog, tile_sizes);
+    else
+      read_tile_sizes(tile_sizes, second_level_tile_size_ratios,
+                      bands[b]->width, bands[b]->loop->stmts,
+                      bands[b]->loop->nstmts, bands[b]->loop->depth,
+                      prog->context);
 
     if (tile_second_level) {
       pluto_tile_band(prog, bands[b], second_level_tile_size_ratios);
@@ -353,10 +360,10 @@ void pluto_tile_scattering_dims(PlutoProg *prog, Band **bands, int nbands,
 
   /* Sink everything to the same depth */
   unsigned max = 0, curr;
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     max = PLMAX(stmts[i]->trans->nrows, max);
   }
-  for (i = 0; i < prog->nstmts; i++) {
+  for (unsigned i = 0; i < prog->nstmts; i++) {
     curr = stmts[i]->trans->nrows;
     for (unsigned j = curr; j < max; j++) {
       pluto_sink_transformation(stmts[i], stmts[i]->trans->nrows);

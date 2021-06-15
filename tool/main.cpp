@@ -89,6 +89,13 @@ void usage_message(void) {
                   "execution order for locality [enabled by default]\n");
   fprintf(stdout, "       --second-level-tile       Tile a second time "
                   "(typically for L2 cache) [disabled by default] \n");
+  fprintf(stdout, "       --determine-tile-size    Choose tile sizes using a "
+                  "tile size selection model\n");
+  fprintf(stdout,
+          "       --cache-size=<value>    Cache size per core in "
+          "bytes for first level of tiling. Default 1MB (L2 cache size))\n");
+  fprintf(stdout, "       --data-element-size=<value>  Size of each data "
+                  "element in bytes. Default sizeof(double)\n");
   fprintf(stdout, "       --parallel                Automatically parallelize "
                   "(generate OpenMP pragmas) [disabled by default]\n");
   fprintf(stdout, "    or --parallelize\n");
@@ -225,12 +232,15 @@ int main(int argc, char *argv[]) {
     {"cloogl", required_argument, 0, 'L'},
     {"cloogsh", no_argument, &options->cloogsh, 1},
     {"nocloogbacktrack", no_argument, &options->cloogbacktrack, 0},
-    {"cyclesize", required_argument, 0, 'S'},
     {"forceparallel", required_argument, 0, 'p'},
     {"ft", required_argument, 0, 'f'},
     {"lt", required_argument, 0, 'l'},
     {"multipar", no_argument, &options->multipar, 1},
     {"second-level-tile", no_argument, &options->second_level_tile, 1},
+    {"determine-tile-size", no_argument, (int *)&options->find_tile_sizes,
+     true},
+    {"data-element-size", required_argument, 0, 'D'},
+    {"cache-size", required_argument, 0, 'S'},
     {"version", no_argument, 0, 'v'},
     {"help", no_argument, 0, 'h'},
     {"indent", no_argument, 0, 'i'},
@@ -276,11 +286,25 @@ int main(int argc, char *argv[]) {
     switch (option) {
     case 0:
       break;
+    case 'D':
+      options->data_element_size = atoi(optarg);
+      if (options->data_element_size <= 0) {
+        printf("ERROR: Data element size should be at least 1 byte\n");
+        return 2;
+      }
+      break;
     case 'F':
       options->cloogf = atoi(optarg);
       break;
     case 'L':
       options->cloogl = atoi(optarg);
+      break;
+    case 'S':
+      options->cache_size = strtoul(optarg, NULL, 10);
+      if (options->cache_size <= 0) {
+        printf("ERROR: Cache size should be at least 1 byte\n");
+        return 2;
+      }
       break;
     case 'b':
       options->bee = 1;
@@ -372,6 +396,14 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
   if (options->lastwriter && options->candldep) {
     printf("[pluto] ERROR: --lastwriter is only supported with --isldep\n");
+    pluto_options_free(options);
+    usage_message();
+    return 1;
+  }
+
+  if (options->second_level_tile && options->find_tile_sizes) {
+    printf("[pluto] ERROR: Automatic tile size selection is supported only for "
+           "one level of tiling\n");
     pluto_options_free(options);
     usage_message();
     return 1;
@@ -783,6 +815,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
            "analysis time: %0.6lfs\n",
            t_d);
     printf("[pluto] Auto-transformation time: %0.6lfs\n", t_t);
+    printf("[pluto] Tile size selection time: %0.6lfs\n", prog->tss_time);
     if (options->dfp) {
       printf("[pluto] \tFCG construction time: %0.6lfs\n",
              prog->fcg_const_time);
