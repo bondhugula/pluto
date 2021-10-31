@@ -307,8 +307,8 @@ int pluto_gen_cloog_code(const PlutoProg *prog, int cloogf, int cloogl,
   return 0;
 }
 
-/* Generate code for a single multicore; the ploog script will insert openmp
- * pragmas later */
+/// Generate code for a single multicore. Clast will insert OpenMP
+/// pragmas later.
 int pluto_multicore_codegen(FILE *cloogfp, FILE *outfp, const PlutoProg *prog) {
   if (prog->context->options->parallel) {
     fprintf(outfp, "#include <omp.h>\n\n");
