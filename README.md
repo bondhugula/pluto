@@ -16,17 +16,20 @@ INSTALLING PLUTO
 PREREQUISITES
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines
-running Fedora, Ubuntu, and RedHat Enterprise Server.  Solaris should also
-be fine if you have GNU utilities.
+running Fedora, Ubuntu, and CentOS.
 
 - In order to use the development version from Pluto's git repository, automatic
   build system tools including autoconf, automake, and libtool are needed.
 
-- LLVM/Clang (2.9 or higher) along with its development/header files is needed
-  for the pet submodule. These packages are available in distribution
-  repositories, or could be installed by building LLVM and Clang from sources.
-  On a Fedora distribution, these could be typically installed with:
+- LLVM/Clang 2.9 or higher until 11.0 along with its development/header files is
+  needed for the pet submodule. These packages are available in standard
+  distribution repositories, or could be installed by building LLVM and Clang
+  from sources. On a Fedora distribution, these could be typically installed
+  with:
+
   $ dnf -y install llvm-devel clang-devel
+
+  See pet/README for additional detail.
 
 - LLVM FileCheck is used for Pluto's test suite. (On a Fedora, this is part of
   the 'llvm' package.)
@@ -46,7 +49,7 @@ Stable release
 
 $ tar zxvf pluto-0.11.4.tar.gz
 $ cd pluto-0.11.4/
-$ ./configure
+$ ./configure [--with-clang-prefix=<clang install location>]
 $ make
 $ make test
 
@@ -60,12 +63,16 @@ $ cd pluto/
 $ git submodule init
 $ git submodule update
 $ ./autogen.sh
-$ ./configure [--enable-debug] [--with-isl-prefix=<isl install location>]
+$ ./configure [--enable-debug] [--with-clang-prefix=<clang install location>]
 $ make
 $ make test
 
-* --with-isl-prefix=<location> to compile and link with an already installed
-isl. By default, the version of isl bundled with Pluto will be used.
+* Use --with-clang-prefix=<location> to point to the specific of clang to build
+with.
+
+* Use --with-isl-prefix=<isl install location> to compile and link with an
+already installed isl. By default, the version of isl bundled with Pluto will be
+used.
 
 'polycc' is the wrapper script around src/pluto (core transformer) and all
 other components. 'polycc' runs all of these in sequence on an input C
@@ -74,7 +81,6 @@ user should use on input. Output generated is OpenMP parallel C code that
 can be readily compiled and run on shared-memory parallel machines like
 general-purpose multicores. libpluto.{so,a} is also built and can be found
 in src/.libs/. 'make install' will install it.
-
 
 TRYING A NEW CODE
 
