@@ -18,6 +18,7 @@ typedef struct isl_union_map isl_union_map;
 
 #include "isl/ctx.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct pluto_matrix PlutoMatrix;
 
