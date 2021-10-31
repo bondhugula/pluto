@@ -38,7 +38,11 @@ jobs:
         working-directory: ${{github.workspace}}
         shell: bash
         # Execute the build.
-        run: make -j 16
+        run: |
+          # Build pluto and libpluto test binary.
+          make -j 16 pluto
+          make test_libpluto
+          make unit_tests
 
       - name: Test
         working-directory: ${{github.workspace}}
