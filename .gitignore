@@ -105,6 +105,7 @@ clan-0.6.0/scoplib/scoplib-0.2.0/autoconf/texinfo.tex
 depcomp
 install-sh
 aclocal.m4
+compile_commands.json
 config.h.in
 config.guess
 config.sub
