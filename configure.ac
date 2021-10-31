@@ -256,6 +256,7 @@ echo "Configuring Candl"
 echo "=========================="
 configureopts="--enable-llint-version \
 --prefix=$prefix \
+--with-gmp-prefix=$GMP_PREFIX \
 --with-piplib=build \
 --with-piplib-builddir=../piplib \
 --with-osl=build \
