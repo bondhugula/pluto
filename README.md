@@ -1,4 +1,4 @@
-# PLuTo
+# Pluto
 
 ## OVERVIEW
 
