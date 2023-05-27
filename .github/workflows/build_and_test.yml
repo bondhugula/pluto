@@ -32,7 +32,7 @@ jobs:
         # Use a bash shell so we can use the same syntax for environment variable
         # access regardless of the host operating system
         shell: bash
-        run: ./configure --enable-glpk
+        run: ./configure --enable-glpk --with-clang-prefix=/usr/lib/llvm-11/
 
       - name: Build
         working-directory: ${{github.workspace}}
@@ -40,7 +40,7 @@ jobs:
         # Execute the build.
         run: |
           # Build pluto and libpluto test binary.
-          make -j 16 pluto
+          make -j 16
           make test_libpluto
           make unit_tests
 
