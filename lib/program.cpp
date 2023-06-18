@@ -438,8 +438,9 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
     if (*src_name != '\0') {
       src_type = *src_name;
       src_acc_num = atoi(src_name + 1);
-    } else
-      assert(0); // access function num not encoded in dependence
+    } else {
+      assert(0 && "access function number not encoded in dependence");
+    }
 
     dest_name = isl_basic_map_get_tuple_name(bmap, isl_dim_out) + 2;
     while (*dest_name != '\0' && *(dest_name++) != '_')
