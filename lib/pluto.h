@@ -61,7 +61,7 @@ typedef struct pluto_matrix PlutoMatrix;
 #define MAX_TILING_LEVELS 2
 
 /// The default tile size to use for the first level of tiling.
-#define DEFAULT_FIRST_LEVEL_TILE_SIZE 32
+#define DEFAULT_FIRST_LEVEL_TILE_SIZE 64
 
 /// The ratio / multiplying factor to use for the second level of tile size.
 #define DEFAULT_SECOND_LEVEL_TILE_SIZE_RATIO 8

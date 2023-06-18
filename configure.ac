@@ -14,9 +14,9 @@ dnl The complete GNU General Public Licence Notice can be found as the
 dnl `COPYING' file in the top-level directory.
 dnl
 
-AC_PREREQ(2.13)
+AC_PREREQ([2.71])
 
-AC_INIT(pluto, 0.12.0, [udayb@iisc.ac.in])
+AC_INIT([pluto],[0.12.0],[udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -53,8 +53,7 @@ if test -n "${CFLAGS}"; then
   user_set_cflags=yes
 fi
 dnl Determine a C compiler to use
-AC_PROG_CC
-AC_PROG_CC_C99
+AC_REQUIRE(AC_PROG_CC)
 if test X$user_set_cflags != Xyes; then
   CFLAGS="-Wall"
 fi
@@ -90,7 +89,7 @@ AC_SUBST(BUILD_DIR)
 
 dnl Offer --with-clang-prefix
 AC_ARG_WITH(clang-prefix,
-    AC_HELP_STRING([--with-clang-prefix=DIR], [DIR location of clang install]),
+    AS_HELP_STRING([--with-clang-prefix=DIR],[DIR location of clang install]),
     [
         CLANG_PREFIX="$withval";
         external_clang=true
@@ -116,8 +115,7 @@ AC_ARG_ENABLE(gurobi,
 
 dnl Offer --with-glpk-prefix.
 AC_ARG_WITH(glpk-prefix,
-            AC_HELP_STRING([--with-glpk-prefix=DIR],
-                           [DIR location of GLPK package]),
+            AS_HELP_STRING([--with-glpk-prefix=DIR],[DIR location of GLPK package]),
                            [CPPFLAGS="${CPPFLAGS} -I$withval/include";
                             LDFLAGS="${LDFLAGS} -L$withval/lib";
                             GLPK_PREFIX="$withval";
@@ -128,15 +126,14 @@ if test $glpk = "true"; then
     AC_CHECK_HEADER([glpk.h],[AC_DEFINE([GLPK],[1],[GLPK solver for solving ILP])]
                                 CFLAGS="$CFLAGS -DGLPK" LDFLAGS="$LDFLAGS -lglpk"
                                 CXXFLAGS="$CXXFLAGS -DGLPK"
-                                , [AC_ERROR([glpk.h header not found])])
+                                , [AC_MSG_ERROR(glpk.h header not found)])
     AC_CHECK_LIB([glpk], [glp_create_prob], []
-                 , [AC_ERROR([GLPK library not found])])
+                 , [AC_MSG_ERROR(GLPK library not found)])
 fi
 
 dnl Offer --with-gurobi-prefix.
 AC_ARG_WITH(gurobi-prefix,
-            AC_HELP_STRING([--with-gurobi-prefix=DIR],
-                           [DIR location of GUROBI package]),
+            AS_HELP_STRING([--with-gurobi-prefix=DIR],[DIR location of GUROBI package]),
                            [CPPFLAGS="${CPPFLAGS} -I$withval/include";
                             LDFLAGS="${LDFLAGS} -L$withval/lib";
                             # MAJOR_VERSION=`cat $withval/include/gurobi_c.h| grep VERSION_MAJOR`;
@@ -153,15 +150,14 @@ if test $gurobi = "true"; then
                                    grb_version=gurobi$major_version$minor_version
                                    CFLAGS="$CFLAGS -DGUROBI" LDFLAGS="$LDFLAGS -l$grb_version"
                                    CXXFLAGS="$CXXFLAGS -DGUROBI"
-                                   , [AC_ERROR([gurobi_c.h header not found])])
+                                   , [AC_MSG_ERROR(gurobi_c.h header not found)])
     AC_CHECK_LIB([$grb_version], [GRBnewmodel], []
-                 , [AC_ERROR([Gurobi library not found])])
+                 , [AC_MSG_ERROR(Gurobi library not found)])
 fi
 
 dnl Offer --with-gmp-prefix.
 AC_ARG_WITH(gmp-prefix,
-            AC_HELP_STRING([--with-gmp-prefix=DIR],
-                           [DIR Location of GMP package]),
+            AS_HELP_STRING([--with-gmp-prefix=DIR],[DIR Location of GMP package]),
                            [CPPFLAGS="${CPPFLAGS} -I$withval/include";
                             LDFLAGS="${LDFLAGS} -L$withval/lib";
                             LIBS="-lgmp $LIBS";
@@ -177,8 +173,7 @@ AC_CHECK_HEADER(gmp.h,
 dnl Request arch flag
 ARCHGIVEN="false"
 AC_ARG_WITH(gcc-arch,
-			AC_HELP_STRING([--with-gcc-arch=ARCH],
-						   [ARCH Architecture to compile pluto for (march, mcpu etc.]),
+			AS_HELP_STRING([--with-gcc-arch=ARCH],[ARCH Architecture to compile pluto for (march, mcpu etc.]),
 						   [ARCHGIVEN="true";
 						   ARCH="$withval";])
 
@@ -285,8 +280,7 @@ AC_SUBST(ISL_LIBADD)
 
 dnl Provide --with-isl-prefix
 AC_ARG_WITH(isl-prefix,
-            AC_HELP_STRING([--with-isl-prefix=DIR],
-              	             [DIR location where isl is installed]),
+            AS_HELP_STRING([--with-isl-prefix=DIR],[DIR location where isl is installed]),
               [isl_prefix=$withval;
                ISL_INCLUDE="-I$withval/include";
                ISL_LDFLAGS="-L$withval/lib";
@@ -365,11 +359,12 @@ AC_CONFIG_FILES([test.sh], [chmod +x ./test.sh])
 AC_CONFIG_COMMANDS([version.h],
                    [echo '#define PLUTO_VERSION "'`./getversion.sh`'"' > lib/version.h])
 
-AC_OUTPUT(Makefile \
+AC_CONFIG_FILES([Makefile \
           lib/Makefile \
           tool/Makefile \
           polycc.sh
-          )
+          ])
+AC_OUTPUT
 
 echo " /*-----------------------------------------------*"
 echo "  *           PLUTO configuration is OK           *"
