@@ -217,7 +217,7 @@ rm -f test_temp_out.pluto.c
 rm -f test_temp_out.pluto.pluto.cloog
 }
 
-echo -ne "\n\n==========================="
+echo -ne "\n\n===========================\n"
 echo -e "$num_succ / $(($num_succ + $num_fail)) tests \e[32mPASSED\e[0m"
 if [ $num_fail -gt 0 ]; then
 	echo -e "$num_fail / $(($num_succ + $num_fail)) tests \e[31mFAILED\e[0m"
