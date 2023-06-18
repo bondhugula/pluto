@@ -53,7 +53,8 @@ if test -n "${CFLAGS}"; then
   user_set_cflags=yes
 fi
 dnl Determine a C compiler to use
-AC_REQUIRE(AC_PROG_CC)
+AC_PROG_CC
+
 if test X$user_set_cflags != Xyes; then
   CFLAGS="-Wall"
 fi
