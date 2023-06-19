@@ -23,7 +23,7 @@ AC_CONFIG_MACRO_DIR([m4])
 dnl pass 'foreign' since we have a README.md instead of README.
 AM_INIT_AUTOMAKE([foreign])
 AM_SILENT_RULES([yes])
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 
 # Define REL_SRCDIR_PREFIX to be used when invoking configure script
 # of subprojects
