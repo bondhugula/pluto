@@ -23,16 +23,16 @@ jobs:
         run: git submodule update --init --depth 1
 
       - name: Generate build
-        # Use a bash shell so we can use the same syntax for environment variable
-        # access regardless of the host operating system
+        # Use a bash shell so we can use the same syntax for environment
+        # variable access regardless of the host operating system.
         shell: bash
         run: ./autogen.sh
 
       - name: Configure build
-        # Use a bash shell so we can use the same syntax for environment variable
-        # access regardless of the host operating system
+        # Use a bash shell so we can use the same syntax for environment
+        # variable access regardless of the host operating system.
         shell: bash
-        run: ./configure --enable-glpk --with-clang-prefix=/usr/lib/llvm-11
+        run: ./configure --enable-glpk --with-clang-prefix=/usr/lib/llvm-12
 
       - name: Build
         working-directory: ${{github.workspace}}
