@@ -29,11 +29,11 @@
 #include "pluto/pluto.h"
 #include "program.h"
 
-#include <isl/aff.h>
-#include <isl/flow.h>
-#include <isl/map.h>
-#include <isl/space.h>
-#include <isl/union_map.h>
+#include "isl/aff.h"
+#include "isl/flow.h"
+#include "isl/map.h"
+#include "isl/space.h"
+#include "isl/union_map.h"
 
 void pluto_add_dep(PlutoProg *prog, Dep *dep) {
   dep->id = prog->ndeps;

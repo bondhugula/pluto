@@ -28,15 +28,15 @@
 #include "pluto/pluto.h"
 #include "program.h"
 
-#include <isl/flow.h>
-#include <isl/id.h>
-#include <isl/map.h>
-#include <isl/mat.h>
-#include <isl/set.h>
-#include <isl/space.h>
-#include <isl/union_map.h>
-#include <isl/union_set.h>
-#include <isl/val.h>
+#include "isl/flow.h"
+#include "isl/id.h"
+#include "isl/map.h"
+#include "isl/mat.h"
+#include "isl/set.h"
+#include "isl/space.h"
+#include "isl/union_map.h"
+#include "isl/union_set.h"
+#include "isl/val.h"
 
 #include "pet.h"
 

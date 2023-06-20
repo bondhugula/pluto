@@ -25,9 +25,9 @@
 #include "pluto/pluto.h"
 #include "program.h"
 
-#include <isl/constraint.h>
-#include <isl/mat.h>
-#include <isl/set.h>
+#include "isl/constraint.h"
+#include "isl/mat.h"
+#include "isl/set.h"
 
 #if defined GLPK || defined GUROBI
 int scale_shift_permutations(PlutoProg *prog, int *colour, int c);

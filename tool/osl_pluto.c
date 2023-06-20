@@ -33,13 +33,14 @@
 #include "osl/relation_list.h"
 #include "osl/scop.h"
 
-#include <isl/aff.h>
-#include <isl/flow.h>
-#include <isl/map.h>
-#include <isl/mat.h>
-#include <isl/set.h>
-#include <isl/space.h>
-#include <isl/union_map.h>
+#include "isl/aff.h"
+#include "isl/flow.h"
+#include "isl/map.h"
+#include "isl/mat.h"
+#include "isl/set.h"
+#include "isl/val.h"
+#include "isl/space.h"
+#include "isl/union_map.h"
 
 /*
  * Converts a [A c] pluto transformations to a [eq -I A c] osl scattering
