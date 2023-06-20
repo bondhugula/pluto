@@ -1581,11 +1581,11 @@ void pluto_constraints_normalize_row(PlutoConstraints *cst, int pos) {
   for (i = 0; i < cst->nrows; i++) {
     if (cst->val[i][0] == 0)
       continue;
-    int rowgcd = abs(cst->val[i][0]);
+    int64_t rowgcd = labs(cst->val[i][0]);
     for (j = 1; j < cst->ncols; j++) {
       if (cst->val[i][j] == 0)
         break;
-      rowgcd = gcd(rowgcd, abs(cst->val[i][j]));
+      rowgcd = gcd(rowgcd, labs(cst->val[i][j]));
     }
     if (i == cst->nrows) {
       if (rowgcd >= 2) {
@@ -2426,7 +2426,7 @@ void pluto_constraints_remove_const_ub(PlutoConstraints *cst, int pos) {
     if (pluto_constraints_is_ub(cst, i, pos)) {
       int sum = 0;
       for (j = 0; j < cst->ncols - 1 && j != pos; j++) {
-        sum += abs(cst->val[i][j]);
+        sum += labs(cst->val[i][j]);
       }
       if (sum == 0) {
         pluto_constraints_remove_row(cst, i);

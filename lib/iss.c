@@ -72,11 +72,11 @@ PlutoConstraints **get_lin_ind_constraints(PlutoMatrix *mat, int *orthonum) {
   for (j = 0; j < ortho->ncols; j++) {
     if (ortho->val[0][j] == 0)
       continue;
-    int colgcd = abs(ortho->val[0][j]);
+    int64_t colgcd = labs(ortho->val[0][j]);
     for (i = 1; i < ortho->nrows; i++) {
       if (ortho->val[i][j] == 0)
         break;
-      colgcd = gcd(colgcd, abs(ortho->val[i][j]));
+      colgcd = gcd(colgcd, labs(ortho->val[i][j]));
     }
     if (i == ortho->nrows) {
       if (colgcd > 1) {
@@ -291,7 +291,7 @@ int is_long_bidirectional_dep(const Dep *dep, int dim, int npar) {
 
   pluto_constraints_free(dpolyc);
 
-  return !(retval1 && retval2 && abs(ub) <= 5 && abs(lb) <= 5);
+  return !(retval1 && retval2 && labs(ub) <= 5 && labs(lb) <= 5);
 }
 
 /*
