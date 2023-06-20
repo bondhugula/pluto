@@ -15,25 +15,36 @@ Pluto and libpluto are available under the MIT LICENSE. Please see the file
 
 ### PREREQUISITES
 
-A Linux distribution. Pluto has been tested on x86 and x86-64 machines running Fedora, Ubuntu, and CentOS.
+A Linux distribution. Pluto has been tested on x86 and x86-64 machines running
+Fedora, Ubuntu, and CentOS.
 
 - In order to use the development version from Pluto's git repository, automatic build system tools including `autoconf`, `automake`, and `libtool` are needed.
 
-- LLVM/Clang 2.9 or higher until 11.0 along with its development/header files is needed for the pet submodule. These packages are available in standard distribution repositories, or could be installed by building LLVM and Clang from sources. See `pet/README` for additional detail.
+- LLVM/Clang 2.9 or higher until 14.x (recommended) along with its
+  development/header files is needed for the pet submodule. These packages are
+  available in standard distribution repositories, or could be installed by
+  building LLVM and Clang from sources. See `pet/README` for additional detail.
+  On most modern distributions, these can be installed from the repositories.
+  Example:
 
-  - On a Fedora distribution, these could be typically installed with: `dnf -y install llvm-devel clang-devel`. 
+  # On an Ubuntu.
+  sudo apt install -y llvm-14-dev libclang-14-dev
+  # On a Fedora.
+  sudo dnf -y install llvm14-devel clang14-devel
 
-- LLVM `FileCheck` is used for Pluto's test suite. (On a Fedora, this is part of the 'llvm' package.)
+- LLVM `FileCheck` is used for Pluto's test suite. (On a Fedora, this is part of
+  the 'llvm' package.)
 
 - GMP (GNU multi precision arithmetic library) is needed by ISL (one of the
-  included libraries).  If it's not already on your system, it can be installed easily with, for eg., `sudo yum -y install gmp gmp-devel` on a Fedora (`sudo
+  included libraries).  If it's not already on your system, it can be installed
+  easily with, for eg., `sudo yum -y install gmp gmp-devel` on a Fedora (`sudo
   apt-get install libgmp3-dev` or something similar on an Ubuntu).
 
 Pluto includes all polyhedral libraries that it depends on. See `pet/README` for pet's pre-requisites.
 
 ### BUILDING PLUTO
 
-**Stable release:** 
+**Stable release:**
 
 ```
 tar zxvf pluto-0.11.4.tar.gz
@@ -53,6 +64,7 @@ git submodule init
 git submodule update
 ./autogen.sh
 ./configure [--enable-debug] [--with-clang-prefix=<clang install location>]
+# Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14
 make
 make test
 ```
