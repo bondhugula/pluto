@@ -483,7 +483,6 @@ void pluto_iss_dep(PlutoProg *prog) {
   int num_cuts;
 
   PlutoConstraints **cuts = NULL;
-  int *pos = NULL;
   num_cuts = 0;
 
   for (i = 0; i < ndim; i++) {
@@ -499,7 +498,6 @@ void pluto_iss_dep(PlutoProg *prog) {
 
       if (num_cuts == 0) {
         cuts = (PlutoConstraints **)malloc(2 * sizeof(PlutoConstraints *));
-        pos = (int *)malloc(2 * sizeof(sizeof(int)));
         cuts[0] = negh;
         cuts[1] = posh;
         num_cuts = 2;
@@ -535,7 +533,6 @@ void pluto_iss_dep(PlutoProg *prog) {
     pluto_constraints_free(cuts[i]);
   }
   free(cuts);
-  free(pos);
 
   for (i = 0; i < ndim; i++) {
     free(long_dep_doms[i]);
