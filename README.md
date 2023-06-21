@@ -63,7 +63,7 @@ $ tar zxvf pluto-0.11.4.tar.gz
 $ cd pluto-0.11.4/
 $ ./configure [--with-clang-prefix=<clang install location>]
 $ make
-$ make check-pluto
+$ make test
 ```
 
 configure can be provided `--with-isl-prefix=<isl install location>` to build
