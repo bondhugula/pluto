@@ -24,7 +24,7 @@ dist-hook:
 	rm -rf `find $(distdir)/doc -name CVS`
 
 bin_SCRIPTS = polycc getversion.sh
-CLEANFILES = $(bin_SCRIPTS) parsetab.py test_libpluto
+CLEANFILES = $(bin_SCRIPTS) parsetab.py test_libpluto unit_tests
 EXTRA_DIST = polycc.sh.in  examples test
 
 pkginclude_HEADERS = include/pluto/pluto.h include/pluto/matrix.h
