@@ -3,8 +3,18 @@ name: Build and Test Pluto
 on:
   push:
     branches: [master]
+    paths-ignore:
+    - '**.gitignore'
+    - '**.md'
+    - '**.png'
+    - '.github/workflows/clang_format.yml'
   pull_request:
     branches: [master]
+    paths-ignore:
+    - '**.gitignore'
+    - '**.md'
+    - '**.png'
+    - '.github/workflows/clang_format.yml'
 
 jobs:
   build:
