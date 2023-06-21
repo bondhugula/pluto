@@ -65,7 +65,7 @@ libpluto: force
 pluto: libpluto
 	$(MAKE) $(MFLAGS) -C tool pluto
 
-check: PHONY
+check-pluto: PHONY
 
 PHONY: pluto polycc test_libpluto unit_tests
 	./test.sh
