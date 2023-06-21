@@ -50,7 +50,7 @@ jobs:
         # Execute the build.
         run: |
           # Build pluto and libpluto test binary.
-          make -j 16 pluto
+          make -j 16
           make test_libpluto
           make unit_tests
 
