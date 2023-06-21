@@ -98,7 +98,7 @@ and run on shared-memory parallel machines like general-purpose multicores.
 `libpluto.{so,a}` is also built and can be found in `src/.libs/`. `make install`
 will install it.
 
-## TRYING A NEW CODE
+## TRYING A NEW EXAMPLE
 
 - Use `#pragma scop` and `#pragma endscop` around the section of code
   you want to parallelize/optimize.
