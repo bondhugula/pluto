@@ -4,7 +4,9 @@
 
 Please see http://pluto-compiler.sourceforge.net.
 
-This package includes both the tool pluto and libpluto. The `pluto` tool is a source-to-source transfomer meant to be run via the polycc script, `libpluto` provides a thread-safe library interface.
+This package includes both the tool pluto and libpluto. The `pluto` tool is a source-to-source transformer meant to be run via the polycc script, `libpluto` provides a thread-safe library interface.
+
+[![Pluto build and test](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml)
 
 ## LICENSE
 
@@ -18,19 +20,21 @@ Pluto and libpluto are available under the MIT LICENSE. Please see the file
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines running
 Fedora, Ubuntu, and CentOS.
 
-- In order to use the development version from Pluto's git repository, automatic build system tools including `autoconf`, `automake`, and `libtool` are needed.
+- In order to use the development version from Pluto's git repository, automatic build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 
-- LLVM/Clang 2.9 or higher until 14.x (recommended) along with its
-  development/header files is needed for the pet submodule. These packages are
-  available in standard distribution repositories, or could be installed by
+- LLVM/Clang 2.9 or higher until 14.x (recommended), along with its
+  development/header files, is needed for the pet submodule. These packages are
+  available in standard distribution repositories or could be installed by
   building LLVM and Clang from sources. See `pet/README` for additional detail.
   On most modern distributions, these can be installed from the repositories.
   Example:
 
+  ```shell
   # On an Ubuntu.
   sudo apt install -y llvm-14-dev libclang-14-dev
   # On a Fedora.
   sudo dnf -y install llvm14-devel clang14-devel
+  ```
 
 - LLVM `FileCheck` is used for Pluto's test suite. (On a Fedora, this is part of
   the 'llvm' package.)
