@@ -47,5 +47,5 @@ jobs:
       - name: Test
         working-directory: ${{github.workspace}}
         shell: bash
-        # Run the test suite.
-        run: ./test.sh
+        # Run the complete test suite.
+        run: make check-pluto
