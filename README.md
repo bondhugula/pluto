@@ -183,13 +183,13 @@ print execution time for the core part of the computation as well.
 To run the Pluto parallelized version:
 
 ```shell
-OMP_NUM_THREADS=4; ./par
+OMP_NUM_THREADS=4 ./par
 ```
 
 To run native compiler optimized/auto-parallelized version:
 
 ```shell
-OMP_NUM_THREADS=4; ./orig_par
+OMP_NUM_THREADS=4 ./orig_par
 ```
 
 To run the original unparallelized code:
