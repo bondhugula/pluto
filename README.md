@@ -8,6 +8,8 @@ This package includes both the tool pluto and libpluto. The `pluto` tool is a so
 
 [![Pluto build and test](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml)
 
+[![Check format with clang-format](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml)
+
 ## LICENSE
 
 Pluto and libpluto are available under the MIT LICENSE. Please see the file
