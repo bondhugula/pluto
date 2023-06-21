@@ -44,9 +44,10 @@ if test -n "${CXXFLAGS}"; then
 fi
 dnl Determine a C++ compiler to use
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
+AX_CXX_COMPILE_STDCXX(17, noext, mandatory)
 if test X$user_set_cxxflags != Xyes; then
-  CXXFLAGS="-Wall -std=c++11"
+	dnl Enable all warnings.
+  CXXFLAGS="-Wall"
 fi
 
 if test -n "${CFLAGS}"; then

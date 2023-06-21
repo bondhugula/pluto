@@ -49,14 +49,15 @@ pluto_CXXFLAGS = $(OPT_FLAGS) $(DEBUG_FLAGS) \
 pluto_CFLAGS = $(AM_CFLAGS) $(pluto_CXXFLAGS)
 
 pluto_LDFLAGS = -static
+# libpet needs to come later after libisl so that the right isl is linked.
 pluto_LDADD =  \
-   ../piplib/libpiplib_dp.la \
-   ../openscop/libosl.la \
-   ../clan/libclan.la \
    ../cloog-isl/libcloog-isl.la \
-   ../pet/libpet.la \
-   $(ISL_LIBADD) \
    ../polylib/libpolylib64.la \
+   ../clan/libclan.la \
    ../candl/libcandl.la \
+   ../openscop/libosl.la \
    ../lib/libpluto.la \
+   $(ISL_LIBADD) \
+   ../piplib/libpiplib_dp.la \
+   ../pet/libpet.la \
    -lm
