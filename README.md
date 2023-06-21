@@ -77,13 +77,14 @@ cd pluto/
 git submodule init
 git submodule update
 ./autogen.sh
-./configure [--enable-debug] [--with-clang-prefix=<clang install location>]
-# Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14
+./configure [--enable-debug] [--with-clang-prefix=<clang headers/libs location>]
+# Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14, on a Fedora, 
+# typically, it's /usr/lib64/llvm14.
 make
 make check-pluto
 ```
 
-* Use `--with-clang-prefix=<location>` to point to the specific of clang to
+* Use `--with-clang-prefix=<location>` to point to the specific clang to
 build with.
 
 * Use `--with-isl-prefix=<isl install location>` to compile and link with an
