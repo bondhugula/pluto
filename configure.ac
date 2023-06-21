@@ -14,7 +14,7 @@ dnl The complete GNU General Public Licence Notice can be found as the
 dnl `COPYING' file in the top-level directory.
 dnl
 
-AC_PREREQ([2.71])
+AC_PREREQ([2.69])
 
 AC_INIT([pluto],[0.12.0],[udayb@iisc.ac.in])
 AC_CONFIG_AUX_DIR([.])
