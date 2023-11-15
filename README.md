@@ -28,12 +28,12 @@ Fedora, Ubuntu, and CentOS.
 - In order to use the development version from Pluto's git repository, automatic
 build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 
-- LLVM/Clang 2.9 or higher until 14.x (14.x recommended, 11.x, 12.x tested to
-work as well), along with its development/header files, is needed for the pet
-submodule. These packages are available in standard distribution repositories
-or could be installed by building LLVM and Clang from sources. See `pet/README`
-for additional detail.  On most modern distributions, these can be installed
-from the repositories.
+- LLVM/Clang 14.x (14.x recommended, 11.x, 12.x tested to work as well), along
+  with its development/header files, is needed for the pet submodule. These
+  packages are available in standard distribution repositories or could be
+  installed by building LLVM and Clang from sources. See `pet/README` for
+  additional detail.  On most modern distributions, these can be installed from
+  the repositories.
 
   Example:
   ```shell
@@ -78,7 +78,7 @@ git submodule init
 git submodule update
 ./autogen.sh
 ./configure [--enable-debug] [--with-clang-prefix=<clang headers/libs location>]
-# Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14, on a Fedora, 
+# Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14, on a Fedora,
 # typically, it's /usr/lib64/llvm14.
 make
 make check-pluto
@@ -218,10 +218,6 @@ for all examples, in `examples/`, run `make check-pluto`.
 
 * See `doc/DOC.txt` for an overview of the system and details on all
 command-line options.
-
-* For specifying custom tile sizes through `tile.sizes` file, see `doc/DOC.txt`.
-
-* For specifying custom fusion structure through `.fst` file, see `doc/DOC.txt`.
 
 ## BUGS AND ISSUES
 
