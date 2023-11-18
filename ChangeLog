@@ -1,4 +1,11 @@
-Until present
+version 0.12.0
+
+- all submodules (pet, piplib, isl, cloog-isl, clan, candl, openscop) updated
+to recent versions.
+
+- autoconf setup modernized
+
+- code modernized
 
 - 'pet' branch merged into master; pluto now needs pet and thus clang
   headers/libraries to build
