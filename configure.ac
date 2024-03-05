@@ -102,7 +102,7 @@ AC_ARG_WITH(clang-prefix,
 AM_CONDITIONAL(EXTERNAL_CLANG, test x$external_clang = xtrue)
 
 dnl TODO: check for FileCheck at other places.
-AC_CHECK_PROG(FILECHECK,FileCheck,yes,no,path = "$CLANG_PREFIX/bin:$PATH:/usr/lib64/llvm")
+AC_CHECK_PROG(FILECHECK,FileCheck,yes,no,"$CLANG_PREFIX/bin:$PATH:/usr/lib64/llvm")
 AS_IF([test x"$FILECHECK" != x"yes"], [AC_MSG_ERROR([Please install LLVM FileCheck before configuring.])])
 
 glpk="false"
