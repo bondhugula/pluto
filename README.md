@@ -59,8 +59,10 @@ pet's pre-requisites.
 **Stable release:**
 
 ```shell
-$ tar zxvf pluto-0.11.4.tar.gz
-$ cd pluto-0.11.4/
+$ PLUTO_VERSION=0.12.0
+$ tar zxvf pluto-${PLUTO_VERSION}.tar.gz
+$ cd pluto-${PLUTO_VERSION}/
+$ ./autogen.sh
 $ ./configure [--with-clang-prefix=<clang install location>]
 $ make
 $ make test
