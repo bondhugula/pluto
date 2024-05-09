@@ -26,7 +26,8 @@ A Linux distribution. Pluto has been tested on x86 and x86-64 machines running
 Fedora, Ubuntu, and CentOS.
 
 - In order to use the development version from Pluto's git repository, automatic
-build system tools, including `autoconf`, `automake`, and `libtool` are needed.
+build system tools, including `autoconf`, `automake`, `pkg-config`, and `libtool`
+ are needed.
 
 - LLVM/Clang 14.x (14.x recommended, 11.x, 12.x tested to work as well), along
   with its development/header files, is needed for the pet submodule. These
