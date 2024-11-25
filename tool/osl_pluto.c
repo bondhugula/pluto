@@ -38,9 +38,9 @@
 #include "isl/map.h"
 #include "isl/mat.h"
 #include "isl/set.h"
-#include "isl/val.h"
 #include "isl/space.h"
 #include "isl/union_map.h"
+#include "isl/val.h"
 
 /*
  * Converts a [A c] pluto transformations to a [eq -I A c] osl scattering
@@ -1253,8 +1253,15 @@ static void compute_deps_osl(osl_scop_p scop, PlutoProg *prog,
       dom = osl_relation_list_to_isl_set(stmt->domain, space);
       dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-      space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
-                              2 * niter + 1);
+      int nb_parameters = OSL_UNDEFINED;
+      int nb_iterators = OSL_UNDEFINED;
+      int nb_scattdims = OSL_UNDEFINED;
+      int nb_localdims = OSL_UNDEFINED;
+      int array_id = OSL_UNDEFINED;
+      osl_relation_get_attributes(stmt->scattering, &nb_parameters,
+                                  &nb_iterators, &nb_scattdims, &nb_localdims,
+                                  &array_id);
+      space = isl_space_alloc(ctx, nb_parameters, nb_iterators, nb_scattdims);
       if (scop->context->nb_parameters) {
         scop_params = (osl_strings_p)scop->parameters->data;
         space = set_names(space, isl_dim_param, scop_params->string);
@@ -1307,7 +1314,6 @@ static void compute_deps_osl(osl_scop_p scop, PlutoProg *prog,
         isl_map *read_pos;
         isl_map *write_pos;
         isl_map *schedule_i;
-
         char name[25];
 
         if (access->elt->type == OSL_TYPE_READ) {
@@ -1337,8 +1343,16 @@ static void compute_deps_osl(osl_scop_p scop, PlutoProg *prog,
         dom = osl_relation_list_to_isl_set(stmt->domain, space);
         dom = isl_set_intersect_params(dom, isl_set_copy(context));
 
-        space = isl_space_alloc(ctx, scop->context->nb_parameters, niter,
-                                2 * niter + 1);
+        int nb_parameters = OSL_UNDEFINED;
+        int nb_iterators = OSL_UNDEFINED;
+        int nb_scattdims = OSL_UNDEFINED;
+        int nb_localdims = OSL_UNDEFINED;
+        int array_id = OSL_UNDEFINED;
+        osl_relation_get_attributes(stmt->scattering, &nb_parameters,
+                                    &nb_iterators, &nb_scattdims, &nb_localdims,
+                                    &array_id);
+        space = isl_space_alloc(ctx, scop->context->nb_parameters, nb_iterators,
+                                nb_scattdims);
         if (scop->context->nb_parameters) {
           scop_params = (osl_strings_p)scop->parameters->data;
           space = set_names(space, isl_dim_param, scop_params->string);
