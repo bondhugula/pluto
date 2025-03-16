@@ -23,13 +23,13 @@ structure. [Cloog](https://github.com/periscop/cloog) is used for code
 generation.
 
 1. Automatic Transformations for Communication-Minimized Parallelization and
-Locality Optimization in the Polyhedral Model [PDF | BibTeX ] Uday Bondhugula,
-M. Baskaran, S. Krishnamoorthy, J. Ramanujam, A. Rountev, and P. Sadayappan.
+Locality Optimization in the Polyhedral Modelm
+Uday Bondhugula, M. Baskaran, S. Krishnamoorthy, J. Ramanujam, A. Rountev, and P. Sadayappan.
 International Conference on Compiler Construction (ETAPS CC), Apr 2008,
 Budapest, Hungary.
 
-2. A Practical Automatic Polyhedral Parallelizer and Locality Optimizer [PDF|
-BibTeX] Uday Bondhugula, A. Hartono, J. Ramanujan, P. Sadayappan.  ACM SIGPLAN
+3. A Practical Automatic Polyhedral Parallelizer and Locality Optimizer
+Uday Bondhugula, A. Hartono, J. Ramanujan, P. Sadayappan.  ACM SIGPLAN
 Programming Languages Design and Implementation (PLDI), Jun 2008, Tucson,
 Arizona.
 
