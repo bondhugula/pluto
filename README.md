@@ -2,7 +2,36 @@
 
 ## Overview
 
-Please see http://pluto-compiler.sourceforge.net.
+PLUTO is an automatic parallelization tool based on the [polyhedral
+model](http://polyhedral.info).  The polyhedral model for compiler optimization
+provides an abstraction to perform high-level transformations such as loop-nest
+optimization and parallelization on affine loop nests. Pluto transforms C
+programs from source to source for coarse-grained parallelism and data locality
+simultaneously. The core transformation framework mainly works by finding affine
+transformations for efficient tiling. The scheduling algorithm used by Pluto has
+been published in [1]. OpenMP parallel code for multicores can be automatically
+generated from sequential C program sections. Outer (communication-free), inner,
+or pipelined parallelization is achieved purely with OpenMP parallel for
+pragrams; the code is also optimized for locality and made amenable for
+auto-vectorization. An experimental evaluation and comparison with previous
+techniques can be found in [2]. Though the tool is fully automatic (C to OpenMP
+C), a number of options are provided (both command-line and through meta files)
+to tune aspects like tile sizes, unroll factors, and outer loop fusion
+structure. [Cloog](https://github.com/periscop/cloog) is used for code
+generation.
+
+1. Automatic Transformations for Communication-Minimized Parallelization and
+Locality Optimization in the Polyhedral Model [PDF | BibTeX ] Uday Bondhugula,
+M. Baskaran, S. Krishnamoorthy, J. Ramanujam, A. Rountev, and P. Sadayappan.
+International Conference on Compiler Construction (ETAPS CC), Apr 2008,
+Budapest, Hungary.
+
+2. A Practical Automatic Polyhedral Parallelizer and Locality Optimizer [PDF|
+BibTeX] Uday Bondhugula, A. Hartono, J. Ramanujan, P. Sadayappan.  ACM SIGPLAN
+Programming Languages Design and Implementation (PLDI), Jun 2008, Tucson,
+Arizona.
+
+<img src="poly_hyperplane.png" width="90%"></img><br/>
 
 This package includes both the tool pluto, and libpluto. The `pluto` tool is a
 source-to-source transformer meant to be run via the polycc script, `libpluto`
