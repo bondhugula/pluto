@@ -1,7 +1,8 @@
 version 0.13.0
 
-See git commit history https://github.com/bondhugula/pluto for details.
-0.12.0 missed including `configure`/generated autoconf/automake files. Fixed
+- See git commit history https://github.com/bondhugula/pluto for details.
+
+- 0.12.0 missed including `configure`/generated autoconf/automake files. Fixed
 here.
 
 version 0.12.0
