@@ -2,7 +2,7 @@
 
 ## Overview
 
-<img src="poly_hyperplane.png" width="90%"></img><br/>
+<img src="poly_hyperplane.png" width="50%"></img><br/>
 
 PLUTO is an automatic parallelization tool based on the [polyhedral
 model](http://polyhedral.info).  The polyhedral model for compiler optimization
