@@ -2,6 +2,8 @@
 
 ## Overview
 
+<img src="poly_hyperplane.png" width="90%"></img><br/>
+
 PLUTO is an automatic parallelization tool based on the [polyhedral
 model](http://polyhedral.info).  The polyhedral model for compiler optimization
 provides an abstraction to perform high-level transformations such as loop-nest
@@ -30,8 +32,6 @@ Budapest, Hungary.
 BibTeX] Uday Bondhugula, A. Hartono, J. Ramanujan, P. Sadayappan.  ACM SIGPLAN
 Programming Languages Design and Implementation (PLDI), Jun 2008, Tucson,
 Arizona.
-
-<img src="poly_hyperplane.png" width="90%"></img><br/>
 
 This package includes both the tool pluto, and libpluto. The `pluto` tool is a
 source-to-source transformer meant to be run via the polycc script, `libpluto`
