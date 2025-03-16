@@ -1,6 +1,6 @@
 # Pluto
 
-## OVERVIEW
+## Overview
 
 Please see http://pluto-compiler.sourceforge.net.
 
@@ -13,14 +13,14 @@ test](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml/b
 
 [![Check format with clang-format](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml)
 
-## LICENSE
+## License
 
 Pluto and libpluto are available under the MIT LICENSE. Please see the file
 `LICENSE` in the top-level directory for more details.
 
-## INSTALLING PLUTO
+## Installing Pluto
 
-### PREREQUISITES
+### Prerequisites
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines running
 Fedora, Ubuntu, and CentOS.
@@ -54,7 +54,7 @@ build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 Pluto includes all polyhedral libraries that it depends on. See `pet/README` for
 pet's pre-requisites.
 
-### BUILDING PLUTO
+### Building Pluto
 
 **Stable release:**
 
@@ -99,7 +99,7 @@ and run on shared-memory parallel machines like general-purpose multicores.
 `libpluto.{so,a}` is also built and can be found in `src/.libs/`. `make install`
 will install it.
 
-## TRYING A NEW EXAMPLE
+## Trying a new example
 
 - Use `#pragma scop` and `#pragma endscop` around the section of code
   you want to parallelize/optimize.
@@ -132,7 +132,7 @@ where target can be orig, orig_par, opt, tiled, par, pipepar, etc (see
 - `make check-pluto` to test for correctness, `make perf` to compare
 performance.
 
-## COMMAND-LINE OPTIONS
+## Command-line options
 
 Run
 
@@ -143,7 +143,7 @@ Run
 or see documentation (`doc/DOC.txt`) for details.
 
 
-## TRYING ANY INCLUDED EXAMPLE CODE
+## Trying any included example code
 
 Let's say we are trying the 2-d gauss seidel kernel. In `examples/seidel`, do
 `make par`; this will generate `seidel.par.c` from `seidel.c` and also compile
@@ -214,12 +214,12 @@ for all examples, in `examples/`, run `make check-pluto`.
 [examples/ ]$ make check-pluto
 ```
 
-## MORE INFORMATION
+## More information
 
 * See `doc/DOC.txt` for an overview of the system and details on all
 command-line options.
 
-## BUGS AND ISSUES
+## Bugs and issues
 
 Please report bugs and issues at https://github.com/bondhugula/pluto/issues.
 
