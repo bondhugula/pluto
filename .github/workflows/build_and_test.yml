@@ -24,7 +24,7 @@ jobs:
     steps:
       # Clone the repo. Do shallow clone up until depth two to save clone time.
       - name: Checkout Pluto
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: Checkout submodules

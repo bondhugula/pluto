@@ -14,7 +14,7 @@ jobs:
     steps:
       # Clone the repo. Do shallow clone to save clone time.
       - name: Get Pluto (mlir-private)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
@@ -77,7 +77,7 @@ jobs:
       # Upload the format patch to an artifact (zip'd) associated
       # with the workflow run. Only run this on a failure.
       - name: Upload format patch
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         continue-on-error: true
         if: ${{ failure() }}
         with:

@@ -1,10 +1,39 @@
 # Pluto
 
-## OVERVIEW
+## Overview
 
-Please see http://pluto-compiler.sourceforge.net.
+<img src="poly_hyperplane.png" width="50%"></img><br/>
 
-This package includes both the tool pluto and libpluto. The `pluto` tool is a
+PLUTO is an automatic parallelization tool based on the [polyhedral
+model](http://polyhedral.info).  The polyhedral model for compiler optimization
+provides an abstraction to perform high-level transformations such as loop-nest
+optimization and parallelization on affine loop nests. Pluto transforms C
+programs from source to source for coarse-grained parallelism and data locality
+simultaneously. The core transformation framework mainly works by finding affine
+transformations for efficient tiling. The scheduling algorithm used by Pluto has
+been published in [1]. OpenMP parallel code for multicores can be automatically
+generated from sequential C program sections. Outer (communication-free), inner,
+or pipelined parallelization is achieved purely with OpenMP parallel for
+pragrams; the code is also optimized for locality and made amenable for
+auto-vectorization. An experimental evaluation and comparison with previous
+techniques can be found in [2]. Though the tool is fully automatic (C to OpenMP
+C), a number of options are provided (both command-line and through meta files)
+to tune aspects like tile sizes, unroll factors, and outer loop fusion
+structure. [Cloog](https://github.com/periscop/cloog) is used for code
+generation.
+
+1. Automatic Transformations for Communication-Minimized Parallelization and
+Locality Optimization in the Polyhedral Modelm
+Uday Bondhugula, M. Baskaran, S. Krishnamoorthy, J. Ramanujam, A. Rountev, and P. Sadayappan.
+International Conference on Compiler Construction (ETAPS CC), Apr 2008,
+Budapest, Hungary.
+
+3. A Practical Automatic Polyhedral Parallelizer and Locality Optimizer
+Uday Bondhugula, A. Hartono, J. Ramanujan, P. Sadayappan.  ACM SIGPLAN
+Programming Languages Design and Implementation (PLDI), Jun 2008, Tucson,
+Arizona.
+
+This package includes both the tool pluto, and libpluto. The `pluto` tool is a
 source-to-source transformer meant to be run via the polycc script, `libpluto`
 provides a thread-safe library interface.
 
@@ -13,14 +42,14 @@ test](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml/b
 
 [![Check format with clang-format](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml)
 
-## LICENSE
+## License
 
 Pluto and libpluto are available under the MIT LICENSE. Please see the file
 `LICENSE` in the top-level directory for more details.
 
-## INSTALLING PLUTO
+## Installing Pluto
 
-### PREREQUISITES
+### Prerequisites
 
 A Linux distribution. Pluto has been tested on x86 and x86-64 machines running
 Fedora, Ubuntu, and CentOS.
@@ -47,23 +76,24 @@ build system tools, including `autoconf`, `automake`, `pkg-config`, and `libtool
 - LLVM `FileCheck` is used for Pluto's test suite. (On a Fedora, this is part of
   the 'llvm' package.)
 
-- GMP (GNU multi precision arithmetic library) is needed by ISL (one of the
+- GMP (GNU multi-precision arithmetic library) is needed by ISL (one of the
   included libraries).  If it's not already on your system, it can be installed
   easily with, for eg., `sudo yum -y install gmp gmp-devel` on a Fedora (`sudo
   apt-get install libgmp3-dev` or something similar on an Ubuntu).
 
-Pluto includes all polyhedral libraries that it depends on. See `pet/README` for
+Pluto includes all polyhedral libraries on which it depends. See `pet/README` for
 pet's pre-requisites.
 
-### BUILDING PLUTO
+### Building Pluto
 
 **Stable release:**
 
+Download the latest stable release from GitHub releases.
+
 ```shell
-$ PLUTO_VERSION=0.12.0
-$ tar zxvf pluto-${PLUTO_VERSION}.tar.gz
+$ PLUTO_VERSION=0.13.0
+$ tar zxvf pluto-${PLUTO_VERSION}.tgz
 $ cd pluto-${PLUTO_VERSION}/
-$ ./autogen.sh
 $ ./configure [--with-clang-prefix=<clang install location>]
 $ make
 $ make test
@@ -102,7 +132,7 @@ and run on shared-memory parallel machines like general-purpose multicores.
 `libpluto.{so,a}` is also built and can be found in `src/.libs/`. `make install`
 will install it.
 
-## TRYING A NEW EXAMPLE
+## Trying a new example
 
 - Use `#pragma scop` and `#pragma endscop` around the section of code
   you want to parallelize/optimize.
@@ -112,11 +142,11 @@ will install it.
   The transformation is also printed out, and `test.par.c` will have the
   parallelized code. If you want to see intermediate files, like the
   `.cloog` file generated (`.opt.cloog`, `.tiled.cloog`, or `.par.cloog`
-  depending on command-line options provided), use `--debug` on command
+  depending on command-line options provided), use `--debug` on the command
   line.
 
-- Tile sizes can be specified in a file `tile.sizes`, otherwise default
-  sizes will be set. See `doc/DOC.txt` on how to specify the sizes.
+- Tile sizes can be specified in a file `tile.sizes`, otherwise, default
+  sizes will be set. See `doc/DOC.txt` for instructions on how to specify the sizes.
 
 To run a good number of experiments on a code, it is best to use the setup
 created for example codes in the `examples/` directory.  If you do not have
@@ -128,14 +158,14 @@ created for example codes in the `examples/` directory.  If you do not have
 
 - do a `make` (this will build all executables; `orig` is the original code
 compiled with the native compiler, `tiled` is the tiled code, `par` is the
-OpenMP parallelized + locality optimized code. One could do `make <target>`
-where target can be orig, orig_par, opt, tiled, par, pipepar, etc (see
-`examples/common.mk` for full list).
+OpenMP parallelized + locality-optimized code. One could do `make <target>`
+where target can be orig, orig_par, opt, tiled, par, pipepar, etc. (see
+`examples/common.mk` for complete list).
 
 - `make check-pluto` to test for correctness, `make perf` to compare
 performance.
 
-## COMMAND-LINE OPTIONS
+## Command-line options
 
 Run
 
@@ -143,10 +173,10 @@ Run
 ./polycc -h
 ```
 
-or see documentation (`doc/DOC.txt`) for details.
+Or see documentation (`doc/DOC.txt`) for details.
 
 
-## TRYING ANY INCLUDED EXAMPLE CODE
+## Trying any included example code
 
 Let's say we are trying the 2-d gauss seidel kernel. In `examples/seidel`, do
 `make par`; this will generate `seidel.par.c` from `seidel.c` and also compile
@@ -163,11 +193,11 @@ cd examples/seidel
 compiler's auto-parallelization enabled.
 
 `seidel.opt.c`: This is the transformed code without tiling (this is of not much
-use, except for seeing benefits of fusion in some cases). `opt` is the
+use, except for seeing the benefits of fusion in some cases). `opt` is the
 corresponding executable.
 
-`seidel.tiled.c`: This is Pluto generated code optimized for locality with
-tiling and other transformations, but not not parallelized - this should be used
+`seidel.tiled.c`: This is Pluto-generated code optimized for locality with
+tiling and other transformations, but not parallelized - this should be used
 for sequential execution. `tiled` is the corresponding executable.
 
 `seidel.par.c`: This is Pluto parallelized code optimized for locality and
@@ -180,7 +210,7 @@ pragmas. `par` is the corresponding executable.
 - To manually specify tile sizes, create `tile.sizes`; see `examples/matmul/`
 for example or `doc/DOC.txt` for more information on setting tile sizes.
 
-The executables already have timers; you just have to run them and that will
+The executables already have timers; you just have to run them, and that will
 print execution time for the core part of the computation as well.
 
 To run the Pluto parallelized version:
@@ -195,13 +225,13 @@ To run native compiler optimized/auto-parallelized version:
 OMP_NUM_THREADS=4 ./orig_par
 ```
 
-To run the original unparallelized code:
+To run the original sequential code:
 
 ```shell
 ./orig
 ```
 
-To run the locality optimized version generated by Pluto:
+To run the locality-optimized version generated by Pluto:
 
 ```shell
 ./tiled
@@ -210,19 +240,19 @@ To run the locality optimized version generated by Pluto:
 `make clean` in the particular example's directory removes all executables as
 well as generated codes.
 
-To launch a complete verification that compares output of tiled, par with orig
+To launch a complete verification that compares the output of tiled, par with orig
 for all examples, in `examples/`, run `make check-pluto`.
 
 ```shell
 [examples/ ]$ make check-pluto
 ```
 
-## MORE INFORMATION
+## More information
 
 * See `doc/DOC.txt` for an overview of the system and details on all
 command-line options.
 
-## BUGS AND ISSUES
+## Bugs and issues
 
 Please report bugs and issues at https://github.com/bondhugula/pluto/issues.
 
