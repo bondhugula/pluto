@@ -9,6 +9,15 @@ FILECHECK=FileCheck
 num_succ=0
 num_fail=0
 
+PLUTO_OUTPUT="test_temp_out.pluto.c"
+
+cleanup()
+{
+  rm -f "$PLUTO_OUTPUT"
+  rm -f test_temp_out.pluto.pluto.cloog
+}
+trap cleanup EXIT
+
 # Test helper.
 check_ret_val_emit_status() {
 if [ $? -ne 0 ]; then
@@ -69,13 +78,13 @@ TESTS="\
 # Tests without --pet and without any tiling and parallelization.
 for file in $TESTS; do
     printf '%-50s ' $file
-    $PLUTO --notile --noparallel $file $* -o test_temp_out.pluto.c | $FILECHECK $file
+    $PLUTO --notile --noparallel $file $* -o "$PLUTO_OUTPUT" | $FILECHECK $file
     check_ret_val_emit_status
 done
 
 # Test per cc objective
 printf '%-50s ' @top_srcdir@/test/test-per-cc-obj.c
-$PLUTO --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o test_tmp_out.pluto.c | $FILECHECK --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
+$PLUTO --notile --noparallel --per-cc-obj @top_srcdir@/test/test-per-cc-obj.c -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix CC-OBJ-CHECK @top_srcdir@/test/test-per-cc-obj.c
 check_ret_val_emit_status
 
 # Test typed fusion with dfp. These cases are executed only when glpk or gurobi
@@ -87,7 +96,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s '  $file
-        $PLUTO --typedfuse $file $* -o test_tmp_out.pluto.c | $FILECHECK --check-prefix TYPED-FUSE-CHECK $file
+        $PLUTO --typedfuse $file $* -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix TYPED-FUSE-CHECK $file
         check_ret_val_emit_status
     done
     # Test loop distribution with dfp
@@ -95,7 +104,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s ' "$file with --dfp"
-        $PLUTO --dfp $file $* -o test_tmp_out.pluto.c | $FILECHECK $file
+        $PLUTO --dfp $file $* -o "$PLUTO_OUTPUT" | $FILECHECK $file
         check_ret_val_emit_status
     done
     # Test greedy greedy coloring heuristic and stencil check in Pluto-lp-dfp
@@ -103,7 +112,7 @@ if grep -q -e "#define GLPK 1" -e "#define GUROBI 1" config.h; then
         "
     for file in $TESTS; do
         printf '%-50s ' "$file with --dfp --clusterscc --lpcolor"
-        $PLUTO --typedfuse --lpcolor $file -o test_tmp_out.pluto.c | $FILECHECK $file
+        $PLUTO --typedfuse --lpcolor $file -o "$PLUTO_OUTPUT" | $FILECHECK $file
         check_ret_val_emit_status
     done
 fi
@@ -116,7 +125,7 @@ echo -e "\nTest without pet frontend but with tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_TILE_PARALLEL; do
     printf '%-50s ' "$file with --tile --parallel"
-    $PLUTO $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
+    $PLUTO $file -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
@@ -125,10 +134,10 @@ TEST_MORE_INTRA_TILE_OPT="\
 "
 for file in $TEST_MORE_INTRA_TILE_OPT; do
     printf '%-50s ' "$file"
-    $PLUTO $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
+    $PLUTO $file -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
     printf '%-50s ' "$file with --notile"
-    $PLUTO --notile $file -o test_temp_out.pluto.c | $FILECHECK $file
+    $PLUTO --notile $file -o "$PLUTO_OUTPUT" | $FILECHECK $file
     check_ret_val_emit_status
 done
 
@@ -143,7 +152,7 @@ echo -e "\nTest with pet frontend with no tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_PET; do
   printf '%-50s ' $file
-  $PLUTO $file --pet --notile --noparallel  -o test_temp_out.pluto.c | $FILECHECK $file
+  $PLUTO $file --pet --notile --noparallel  -o "$PLUTO_OUTPUT" | $FILECHECK $file
   check_ret_val_emit_status
 done
 # Tests with pet frontend with tiling and parallelization enabled.
@@ -151,7 +160,7 @@ echo -e "\nTest with pet frontend with tiling / parallelization"
 echo "============================================================"
 for file in $TESTS_PET; do
     printf '%-50s ' "$file with --tile --parallel"
-    $PLUTO $file --pet -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
+    $PLUTO $file --pet -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
@@ -165,7 +174,7 @@ TESTS_ISS="\
   "
 for file in $TESTS_ISS; do
     printf '%-50s ' $file
-    $PLUTO --pet --iss --notile --noparallel $file $* -o test_temp_out.pluto.c | $FILECHECK $file
+    $PLUTO --pet --iss --notile --noparallel $file $* -o "$PLUTO_OUTPUT" | $FILECHECK $file
     check_ret_val_emit_status
 done
 
@@ -178,7 +187,7 @@ TESTS_TSS="\
   "
 for file in $TESTS_TSS; do
     printf '%-50s ' "$file with --tile --determine-tile-size"
-    $PLUTO --tile --determine-tile-size $file -o test_temp_out.pluto.c | $FILECHECK --check-prefix TILE-PARALLEL $file
+    $PLUTO --tile --determine-tile-size $file -o "$PLUTO_OUTPUT" | $FILECHECK --check-prefix TILE-PARALLEL $file
     check_ret_val_emit_status
 done
 
@@ -207,15 +216,19 @@ echo "===================="
 TESTS_UNROLL_JAM="@top_srcdir@/test/unrolljam.c"
 for file in $TESTS_UNROLL_JAM; do
     printf '%-50s ' $file
-    $PLUTO --unrolljam --silent --ufactor=2 $file -o test_temp_out.pluto.c && cat test_temp_out.pluto.c | $FILECHECK $file
+    $PLUTO --unrolljam --silent --ufactor=2 $file -o "$PLUTO_OUTPUT" && cat "$PLUTO_OUTPUT" | $FILECHECK $file
     check_ret_val_emit_status
 done
 
-cleanup()
-{
-rm -f test_temp_out.pluto.c
-rm -f test_temp_out.pluto.pluto.cloog
-}
+# Openscop inputs
+echo -e "\nTest with Openscop as input"
+echo "============================="
+TESTS_OPENSCOP="./test/gemver.scop"
+for file in $TESTS_OPENSCOP; do
+    printf '%-50s ' "$file"
+    $PLUTO --readscop "$file"  --tile --parallel -o "$PLUTO_OUTPUT" 2>&1 | $FILECHECK "$file" 
+    check_ret_val_emit_status
+done
 
 echo -ne "\n\n===========================\n"
 echo -e "$num_succ / $(($num_succ + $num_fail)) tests \e[32mPASSED\e[0m"
@@ -224,5 +237,4 @@ if [ $num_fail -gt 0 ]; then
 fi
 echo ===========================
 
-trap cleanup SIGINT exit $num_fail
 exit $num_fail
