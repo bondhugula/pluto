@@ -176,14 +176,6 @@ where target can be orig, orig_par, opt, tiled, par, pipepar, etc. (see
 - `make check-pluto` to test for correctness, `make perf` to compare
 performance.
 
-## Command-line options
-
-Run
-
-```shell
-./polycc -h
-```
-
 
 ## Using Pluto
 
@@ -203,8 +195,29 @@ kind of code around which one can put '#pragma scop' and '#pragma
 endscop'.  Most of the time, although your program may not satisfy the
 constraints, it may be possible to work around them.
 
+## Using Pluto
+
+- Use '#pragma scop' and '#pragma endscop' around the section of code
+  you want to parallelize/optimize.
+
+- Then, run
+
+    ./polycc <C source file> --parallel --tile
+
+    The output file will be named <original prefix>.pluto.c unless '-o
+    <filename>" is supplied. When --debug is used, the .cloog used to
+    generate code is not deleted and is named similarly.
+
+Please refer to the documentation of Clan or PET for information on the
+kind of code around which one can put '#pragma scop' and '#pragma
+endscop'.  Most of the time, although your program may not satisfy the
+constraints, it may be possible to work around them.
 
 ## Command-line options
+
+```shell
+./polycc -h
+```
 
     -o output
     Output to file 'output'. Without -o, name of the output file is
@@ -332,6 +345,7 @@ example.  If
 level, the
 tile.sizes file will be
 
+```
 # First level tile size 8x128x8.
 8
 128
@@ -340,6 +354,7 @@ tile.sizes file will be
 16
 2
 16
+```
 
 The default tile size in the absence of a tile.sizes file is 32 (along
 all dimensions), and the default second/first ratio is 8 (when using
@@ -347,6 +362,7 @@ all dimensions), and the default second/first ratio is 8 (when using
 loops in that order.  For eg., for heat-3d, you'll see this output when
 you run Pluto
 
+```shell
 $ ../../polycc 3d7pt.c
 
 [...]
@@ -357,6 +373,7 @@ T(S1): (t, t+i, t+j, t+k)
 loop types (loop, loop, loop, loop)
 
 [...]
+```
 
 Hence, the tile sizes specified correspond to t, t+i, t+j, and t+k.
 
@@ -375,7 +392,7 @@ prefetching provides benefits,
 exploited, increasing tile size beyond 32 often provides diminishing
 returns (additional reuse); so one may not want to experiment much
 beyond 32. Each time tile.sizes is changed, code has to be regenerated
-(rm -f *.tiled.c; make tiled; ./tiled).
+(`rm -f *.tiled.c; make tiled; ./tiled`).
 
 If one wishes to carefully tune tile sizes, it may be good to first run
 Pluto without tiling (without --tile) and check the number of iterations
@@ -405,6 +422,7 @@ union of all components is the set of all statements. So the set of all
 statements is partitioned into components. Here's the format of the .fst
 file:
 
+```
 <number of components>
 # description of 1st component
 <num of statements in component>
@@ -412,10 +430,12 @@ file:
 <whether to tile this component -- 0 for no, 1 or more for yes>
 # description of 2nd component
 ...
+```
 
 See examples/gemver/.fst as an example; here is the meaning of a sample
 .fst for examples/gemver/gemver.c:
 
+```
 3 # number of components
 1 # number of statements in first component
 0 # statement id's of statements in 1st component (id is from 0 to   num_stmts-1): so we have S0 here
@@ -426,6 +446,7 @@ See examples/gemver/.fst as an example; here is the meaning of a sample
 1 # number of statements in the third component
 3 # stmt id 3, i.e., S3
 0 # don't tile this {S3}
+```
 
 So, the above asks Pluto to distribute the statements at the outer
 level as: {S0}, {S1,S2}, {S3}. It'll try to fuse as much as possible
@@ -441,6 +462,7 @@ can then complete. This is a useful way to test or manually specify a
 particular transformation, or to check if a particular transformation is a
 valid one. The format of .precut is as below.
 
+```
 <number of statements>
 <number of levels to tile>
 # first statement
@@ -456,6 +478,7 @@ other number for tiling; as many lines as the number of tiling levels
 specified earlier>
 # second statement
 ...
+```
 
 Parsing of any other text (like comments) in .fst or .precut is not
 handled.
@@ -467,7 +490,6 @@ handled.
 scalars and insert the ivdep and 'vector always' pragmas to allow
 vectorization with ICC. GCC does not support these, and its
 vectorization capalibility is currently very limited.
-
 
 ### Looking at the transformation
 
@@ -489,7 +511,7 @@ to just look at the transformation without the actual tiling and
 parallelization performed; the transformation is just applied, and loop
 fusion can be seen.
 
-USING PLUTO AS A LIBRARY
+## Using Pluto as a library
 
 See src/test_plutolib.c
 
