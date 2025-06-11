@@ -25,18 +25,18 @@ generation.
 This is the chain of the entire source-to-source system that polycc will
 run.
 
-C code --> Polyhedral extraction -->  Dependence analysis
+C code ⟶ Polyhedral extraction ⟶  Dependence analysis
            (clan or PET)                (ISL or candl)
 
--->    Pluto transformer
+⟶    Pluto transformer
       (core Pluto algorithm + post transformation)
 
- --> CLooG                     -->       C (with OpenMP, ivdep pragmas)
+ ⟶ CLooG                     ⟶       C (with OpenMP, ivdep pragmas)
  (cloog + clast processing
  to mark loops parallel, ivdep)
 
 1. Automatic Transformations for Communication-Minimized Parallelization and
-Locality Optimization in the Polyhedral Modelm Uday Bondhugula, M. Baskaran, S.
+Locality Optimization in the Polyhedral Model, Uday Bondhugula, M. Baskaran, S.
 Krishnamoorthy, J. Ramanujam, A. Rountev, and P. Sadayappan.  International
 Conference on Compiler Construction (ETAPS CC), Apr 2008, Budapest, Hungary.
 
@@ -72,8 +72,8 @@ build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 - LLVM/Clang 14.x (14.x recommended, 11.x, 12.x tested to work as well), along
   with its development/header files, is needed for the pet submodule. These
   packages are available in standard distribution repositories or could be
-  installed by building LLVM and Clang from sources. See `pet/README` for
-  additional detail.  On most modern distributions, these can be installed from
+  installed by building LLVM and Clang from source. See `pet/README` for
+  additional details.  On most modern distributions, these can be installed from
   the repositories.
 
   Example:
@@ -89,7 +89,7 @@ build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 
 - GMP (GNU multi-precision arithmetic library) is needed by ISL (one of the
   included libraries).  If it's not already on your system, it can be installed
-  easily with, for eg., `sudo yum -y install gmp gmp-devel` on a Fedora (`sudo
+  easily with, for e.g., `sudo yum -y install gmp gmp-devel` on a Fedora (`sudo
   apt-get install libgmp3-dev` or something similar on an Ubuntu).
 
 Pluto includes all polyhedral libraries on which it depends. See `pet/README` for
@@ -110,7 +110,7 @@ $ make test
 ```
 
 configure can be provided `--with-isl-prefix=<isl install location>` to build
-with another isl, otherwise the bundled isl is used.
+with another isl version; otherwise, the bundled isl is used.
 
 **Development version from Git:**
 
@@ -137,7 +137,7 @@ used.
 `polycc` is the wrapper script around src/pluto (core transformer) and all other
 components. `polycc` runs all of these in sequence on an input C program (with
 the section to parallelize/optimize marked) and is what a user should use on
-input. Output generated is OpenMP parallel C code that can be readily compiled
+input. The output generated is OpenMP parallel C code that can be readily compiled
 and run on shared-memory parallel machines like general-purpose multicores.
 `libpluto.{so,a}` is also built and can be found in `src/.libs/`. `make install`
 will install it.
@@ -151,7 +151,7 @@ will install it.
 
   The transformation is also printed out, and `test.par.c` will have the
   parallelized code. If you want to see intermediate files, like the
-  `.cloog` file generated (`.opt.cloog`, `.tiled.cloog`, or `.par.cloog`
+  `.cloog` file generated (`.opt.cloog`, `.tiled.cloog`, or `.par.cloog`,
   depending on command-line options provided), use `--debug` on the command
   line.
 
@@ -171,29 +171,11 @@ created for example codes in the `examples/` directory.  If you do not have
 compiled with the native compiler, `tiled` is the tiled code, `par` is the
 OpenMP parallelized + locality-optimized code. One could do `make <target>`
 where target can be orig, orig_par, opt, tiled, par, pipepar, etc. (see
-`examples/common.mk` for complete list).
+`examples/common.mk` for a complete list).
 
 - `make check-pluto` to test for correctness, `make perf` to compare
 performance.
 
-
-## Using Pluto
-
-- Use '#pragma scop' and '#pragma endscop' around the section of code
-  you want to parallelize/optimize.
-
-- Then, run
-
-    ./polycc <C source file> --parallel --tile
-
-    The output file will be named <original prefix>.pluto.c unless '-o
-    <filename>" is supplied. When --debug is used, the .cloog used to
-    generate code is not deleted and is named similarly.
-
-Please refer to the documentation of Clan or PET for information on the
-kind of code around which one can put '#pragma scop' and '#pragma
-endscop'.  Most of the time, although your program may not satisfy the
-constraints, it may be possible to work around them.
 
 ## Using Pluto
 
@@ -224,7 +206,7 @@ constraints, it may be possible to work around them.
     determined as described earlier (under 'Using PLUTO')
 
     --help
-    List all available options with one-line summary
+    List all available options with a one-line summary
 
     --pet Use 'pet' to extract polyhedral representation from the source
     program instead of clan.
@@ -234,7 +216,7 @@ constraints, it may be possible to work around them.
     default, --second-level-tile is disabled. Tile sizes can be forced
     if needed from a file 'tile.sizes' (see below), otherwise, tile
       sizes are set automatically using a rough heuristic.  Tiling also
-      allows extraction of coarse-grained pipelined parallelism with the
+      allows the extraction of coarse-grained pipelined parallelism with the
       Pluto model.
 
     --intratileopt  [enabled by default]
@@ -250,11 +232,11 @@ constraints, it may be possible to work around them.
     Same as --parallel
 
     --innnerpar
-    Prever inner parallelism over pipelined/wavefront parallelism obtained
+    Prefer inner parallelism over pipelined/wavefront parallelism obtained
     via skewing whenever both exist
 
     --multipar
-    Will enable extraction of multiple degrees of parallelism (from all
+    Will enable the extraction of multiple degrees of parallelism (from all
     parallel loops).  Disabled by default. By default, only one degree
     of outer parallelism or coarse-grained pipelined parallelism is
     extracted if it exists.
@@ -335,15 +317,14 @@ constraints, it may be possible to work around them.
 ## Specifying custom tile sizes through the `tile.sizes` file
 
 A 'tile.sizes' file in the current working directory can be used to manually
-specify tile sizes. Specify one tile size on each line and as many tile
+specify tile sizes. Specify one tile size on each line, and as many tile
 sizes are there are hyperplanes in the outermost non-trivial permutable
 band. When specifying tile sizes for multiple levels (with
---second-level-tile), first specify first level tile sizes, then
+--second-level-tile), first specify first-level tile sizes, then
 second:first tile size ratios.  See examples/matmul/tile.sizes as an
 example.  If
 8x128x8 is the first level tile size, and 128x256x128 for the second
-level, the
-tile.sizes file will be
+level, the tile.sizes file will be:
 
 ```
 # First level tile size 8x128x8.
@@ -386,12 +367,12 @@ empirically are below.
 
 (1) data set should fit in L2 roughly (or definitely within L3), (2) the
 innermost dimension should have enough iterations, especially if it's
-being vectorized so that (a) cleanup code if any doesn't hurt and (b)
+being vectorized so that (a) cleanup code, if any, doesn't hurt and (b)
 prefetching provides benefits,
 (3) for non-innermost dimensions from which temporal reuse is typically being
 exploited, increasing tile size beyond 32 often provides diminishing
 returns (additional reuse); so one may not want to experiment much
-beyond 32. Each time tile.sizes is changed, code has to be regenerated
+beyond 32. Each time tile.sizes is changed, the code has to be regenerated
 (`rm -f *.tiled.c; make tiled; ./tiled`).
 
 If one wishes to carefully tune tile sizes, it may be good to first run
@@ -403,7 +384,7 @@ determine tile sizes.
 
 Wherever diamond tiling is performed, the same tile size should be
 chosen along the first two dimensions of the tile band; otherwise, the
-tile wavefront will no longer be parallel to the concurrent start face
+tile wavefront will no longer be parallel to the concurrent start face,
 and tile-wise concurrent start will be lost.
 
 
@@ -415,7 +396,7 @@ your `present working directory'.  If both files exist in the directory
 polycc is run from, '.fst' takes precedence. If --nofuse is specified,
 distribution will be done in spite of a .fst/.precut.
 
-Alternative 1 (.fst file)
+#### Alternative 1 (.fst file)
 
 A component is a subset of statements. Components are disjoint, and the
 union of all components is the set of all statements. So the set of all
@@ -425,7 +406,7 @@ file:
 ```
 <number of components>
 # description of 1st component
-<num of statements in component>
+<number of statements in component>
 <ids of statements in first component - an id is b/w 0 and num_stmts-1>
 <whether to tile this component -- 0 for no, 1 or more for yes>
 # description of 2nd component
@@ -453,7 +434,7 @@ level as: {S0}, {S1,S2}, {S3}. It'll try to fuse as much as possible
 within each component if you use --maxfuse along with the above .fst,
 but will always respect the distribution specified.
 
-Alternative 2
+#### Alternative 2
 
 Using the '.precut' file
 
