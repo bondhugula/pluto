@@ -1,4 +1,4 @@
-name: Build and Test Pluto
+name: Build and test Pluto
 
 on:
   push:
