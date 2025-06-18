@@ -1,15 +1,15 @@
 # Ignore objects and archives.
 *.[oa]
 *.lo
-# vim swap files
+# vim swap files.
 *.swp
-# python byte compiled files in orio
+# Python byte compiled files in orio.
 *.pyc
+*.cloog
+*.pluto.c
 test_plutolib
 test.sh
 
-test/*.cloog
-test/*.pluto.c
 test/*.opt.c
 test/*.par.c
 test/*.tiled.c
