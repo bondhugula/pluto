@@ -97,7 +97,7 @@ pet's pre-requisites.
 
 ### Building Pluto
 
-**Stable release:**
+**Stable release**
 
 Download the latest stable release from [GitHub
 releases](https://github.com/bondhugula/pluto/releases).
@@ -113,7 +113,7 @@ $ make test
 configure can be provided `--with-isl-prefix=<isl install location>` to build
 with another isl version; otherwise, the bundled isl is used.
 
-**Development version from Git:**
+**Development version from Git**
 
 ```shell
 git clone git@github.com:bondhugula/pluto.git
