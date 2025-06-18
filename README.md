@@ -54,6 +54,8 @@ test](https://github.com/bondhugula/pluto/actions/workflows/build_and_test.yml/b
 
 [![Check format with clang-format](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/clang_format.yml)
 
+[![Find trailing whitespace](https://github.com/bondhugula/pluto/actions/workflows/find_trailing_whitespace.yml/badge.svg)](https://github.com/bondhugula/pluto/actions/workflows/find_trailing_whitespace.yml)
+
 ## License
 
 Pluto and libpluto are available under the MIT LICENSE. Please see the file
