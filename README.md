@@ -103,11 +103,11 @@ Download the latest stable release from [GitHub
 releases](https://github.com/bondhugula/pluto/releases).
 
 ```shell
-$ tar zxvf pluto-<version>.tar.gz
-$ cd pluto-<version>/
-$ ./configure [--with-clang-prefix=<clang install location>]
-$ make
-$ make test
+tar zxvf pluto-<version>.tar.gz
+cd pluto-<version>/
+./configure [--with-clang-prefix=<clang install location>]
+make -j 32
+make test
 ```
 
 configure can be provided `--with-isl-prefix=<isl install location>` to build
@@ -124,7 +124,7 @@ git submodule update
 ./configure [--enable-debug] [--with-clang-prefix=<clang headers/libs location>]
 # Example: on an Ubuntu: --with-clang-prefix=/usr/lib/llvm-14, on a Fedora,
 # typically, it's /usr/lib64/llvm14.
-make
+make -j 32
 make check-pluto
 ```
 
@@ -180,7 +180,7 @@ performance.
 
 ## Using Pluto
 
-- Use '#pragma scop' and '#pragma endscop' around the section of code
+- Use `#pragma scop` and '#pragma endscop' around the section of code
   you want to parallelize/optimize.
 
 - Then, run
@@ -192,8 +192,8 @@ performance.
     generate code is not deleted and is named similarly.
 
 Please refer to the documentation of Clan or PET for information on the
-kind of code around which one can put '#pragma scop' and '#pragma
-endscop'.  Most of the time, although your program may not satisfy the
+kind of code around which one can put `#pragma scop` and `#pragma
+endscop`.  Most of the time, although your program may not satisfy the
 constraints, it may be possible to work around them.
 
 ## Command-line options
@@ -201,119 +201,6 @@ constraints, it may be possible to work around them.
 ```shell
 ./polycc -h
 ```
-
-    -o output
-    Output to file 'output'. Without -o, name of the output file is
-    determined as described earlier (under 'Using PLUTO')
-
-    --help
-    List all available options with a one-line summary
-
-    --pet Use 'pet' to extract polyhedral representation from the source
-    program instead of clan.
-
-    --tile [--second-level-tile]
-    Tile code; in addition, --second-level-tile will tile once more. By
-    default, --second-level-tile is disabled. Tile sizes can be forced
-    if needed from a file 'tile.sizes' (see below), otherwise, tile
-      sizes are set automatically using a rough heuristic.  Tiling also
-      allows the extraction of coarse-grained pipelined parallelism with the
-      Pluto model.
-
-    --intratileopt  [enabled by default]
-    Optimize a tile's execution order for locality (spatial and temporal
-    reuse); the right loop permutation for a tile will be chosen, in particular,
-    the right innermost loop. Spatial locality is not otherwise captured
-    by Pluto's cost function.
-
-    --parallel
-    Parallelize code with OpenMP (usually useful when used with --tile)
-
-    --parallelize
-    Same as --parallel
-
-    --innnerpar
-    Prefer inner parallelism over pipelined/wavefront parallelism obtained
-    via skewing whenever both exist
-
-    --multipar
-    Will enable the extraction of multiple degrees of parallelism (from all
-    parallel loops).  Disabled by default. By default, only one degree
-    of outer parallelism or coarse-grained pipelined parallelism is
-    extracted if it exists.
-
-    --smartfuse [default]
-    This is the default fusion heuristic. Will try to fuse between SCCs
-    of the same dimensionality.
-
-    --nofuse
-    Separate all strongly-connected components (SCCs) in the dependence
-    graphs to start with, i.e., no fusion across SCCs, and at any level
-    inside.
-
-    --maxfuse
-    This is geared towards maximal fusion, but maximal fusion is not
-    guaranteed. Fusion is done across SCCs.
-
-    --[no]unrolljam
-    Automatically identify and unroll-jam loops. Enabled by default.
-
-    --ufactor=<n>
-    Unroll or unroll-jam factor (default is 8). Note that if two loops
-    are unroll-jammed by factor n, you will get an nxn body.
-
-    --[no]prevector
-    Perform post-transformations to make the code amenable to
-    vectorization. Enabled by default.
-
-    --rar
-    Consider RAR dependences for optimization (increases running time by
-    a little). Disabled by default
-
-    --debug
-    Verbose information to give some insights into the algorithm.  Intermediate
-    files are not deleted (like the program-readable statement domains,
-    dependences, pretty-printed dependences, the .cloog file, etc.). For the
-    format of these files, see below.
-
-    --verbose
-    Higher level of output. ILP formulation constraints are
-    pretty-printed out dependence-wise, along with solution hyperplanes
-    at each level.
-
-    --indent
-    Indent generated code
-
-    --islsolve
-    Use ISL for solving ILPs
-
-    --isldep
-    See usage message (run polycc with no arguments)
-
-    --lastwriter
-    See usage message (run polycc with no arguments)
-
-    --readscoplib
-    Read input from a scoplib file
-
-    --context=<value>
-    An assertion from the user that all program parameters are greater than
-    or equal to <value>
-
-    --version
-    Print version number and exit
-
-	-q | --silent
-	UNIX-style silence: no output as long as everything goes fine
-
-    For more please see the output with '--help'.
-
-    Besides these, 'tile.sizes' and '.fst' files allow the user to force
-    certain things.
-
-    Other options will only make sense to power users. See comments in
-    src/pluto.h for details.
-
 
 ## Specifying custom tile sizes through the `tile.sizes` file
 
@@ -345,7 +232,7 @@ loops in that order.  For eg., for heat-3d, you'll see this output when
 you run Pluto
 
 ```shell
-$ ../../polycc 3d7pt.c
+../../polycc 3d7pt.c
 
 [...]
 
