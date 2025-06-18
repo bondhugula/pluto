@@ -99,7 +99,8 @@ pet's pre-requisites.
 
 **Stable release:**
 
-Download the latest stable release from GitHub releases.
+Download the latest stable release from [GitHub
+releases](https://github.com/bondhugula/pluto/releases).
 
 ```shell
 $ tar zxvf pluto-<version>.tar.gz
