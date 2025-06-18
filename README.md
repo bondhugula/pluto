@@ -287,7 +287,7 @@ empirically are below.
 
 (1) data set should fit in L2 roughly (or definitely within L3), (2) the
 innermost dimension should have enough iterations, especially if it's
-being vectorized so that (a) cleanup code, if any, doesn't hurt and (b)
+being vectorized so that (a) cleanup code, if any, doesn't hurt, and (b)
 prefetching provides benefits,
 (3) for non-innermost dimensions from which temporal reuse is typically being
 exploited, increasing tile size beyond 32 often provides diminishing
@@ -402,11 +402,11 @@ multi-dimensional affine function on a per-statement basis.
 
 The best options for taking a good look at the generated code are:
 
-<pluto_dir>/polycc source.c --noprevector --tile --parallel
+`<pluto_dir>/polycc source.c --noprevector --tile --parallel`
 
 or
 
-<pluto_dir>/polycc source.c --noprevector
+`<pluto_dir>/polycc source.c --noprevector`
 
 to just look at the transformation without the actual tiling and
 parallelization performed; the transformation is just applied, and loop
@@ -420,7 +420,7 @@ To install libpluto on a system, run 'make install' from Pluto's top-level
 directory.  libpluto.{so,a} can be found in src/.libs/
 
 
-## Trying any included example code
+## Trying any included example
 
 Let's say we are trying the 2-d gauss seidel kernel. In `examples/seidel`, do
 `make par`; this will generate `seidel.par.c` from `seidel.c` and also compile
@@ -496,5 +496,5 @@ for all examples, in `examples/`, run `make check-pluto`.
 Please report bugs and issues at https://github.com/bondhugula/pluto/issues.
 
 For questions and general discussion, please email
-pluto-development@googlegroups.com after joining the group:
+pluto-development@googlegroups.com after joining the pluto-development group:
 https://groups.google.com/g/pluto-development.
