@@ -143,12 +143,32 @@ and run on shared-memory parallel machines like general-purpose multicores.
 `libpluto.{so,a}` is also built and can be found in `src/.libs/`. `make install`
 will install it.
 
+## Using Pluto
+
+- Use `#pragma scop` and '#pragma endscop' around the section of code
+  you want to parallelize/optimize.
+
+- Then, run:
+
+    ./polycc <C source file> [--pet]
+
+    The output file will be named <original prefix>.pluto.c unless '-o
+    <filename>" is supplied. When --debug is used, the .cloog used to
+    generate code is not deleted and is named similarly. The pet frontend
+    `--pet` is needed to process many of the test cases/examples.
+
+Please refer to the documentation of Clan or PET for information on the
+kind of code around which one can put `#pragma scop` and `#pragma
+endscop`.  Most of the time, although your program may not satisfy the
+constraints, it may be possible to work around them.
+
+
 ## Trying a new example
 
 - Use `#pragma scop` and `#pragma endscop` around the section of code
   you want to parallelize/optimize.
 
-- Then, just run `./polycc <C source file>`.
+- Then, just run `./polycc <C source file> --pet`.
 
   The transformation is also printed out, and `test.par.c` will have the
   parallelized code. If you want to see intermediate files, like the
@@ -176,25 +196,6 @@ where target can be orig, orig_par, opt, tiled, par, pipepar, etc. (see
 
 - `make check-pluto` to test for correctness, `make perf` to compare
 performance.
-
-
-## Using Pluto
-
-- Use `#pragma scop` and '#pragma endscop' around the section of code
-  you want to parallelize/optimize.
-
-- Then, run
-
-    ./polycc <C source file> --parallel --tile
-
-    The output file will be named <original prefix>.pluto.c unless '-o
-    <filename>" is supplied. When --debug is used, the .cloog used to
-    generate code is not deleted and is named similarly.
-
-Please refer to the documentation of Clan or PET for information on the
-kind of code around which one can put `#pragma scop` and `#pragma
-endscop`.  Most of the time, although your program may not satisfy the
-constraints, it may be possible to work around them.
 
 ## Command-line options
 
@@ -232,19 +233,50 @@ loops in that order.  For eg., for heat-3d, you'll see this output when
 you run Pluto
 
 ```shell
-../../polycc 3d7pt.c
+# With default tile sizes.
+../../polycc test/3d7pt.c --pet
 
-[...]
-
+[pluto] compute_deps (isl)
+[pluto] Number of statements: 1
+[pluto] Total number of loops: 4
+[pluto] Number of deps: 15
+[pluto] Maximum domain dimensionality: 4
+[pluto] Number of parameters: 0
+[pluto] Concurrent start hyperplanes found
 [pluto] Affine transformations [<iter coeff's> <param> <const>]
 
-T(S1): (t, t+i, t+j, t+k)
+T(S1): (t-i, t+i, t+j, t+k)
 loop types (loop, loop, loop, loop)
 
-[...]
+[Pluto] After tiling:
+T(S1): ((t-i)/32, (t+i)/32, (t+j)/32, (t+k)/32, t-i, t+i, t+j, t+k)
+loop types (loop, loop, loop, loop, loop, loop, loop, loop)
+
+[Pluto] After intra_tile reschedule
+T(S1): ((t-i)/32, (t+i)/32, (t+j)/32, (t+k)/32, t, t+i, t+j, t+k)
+loop types (loop, loop, loop, loop, loop, loop, loop, loop)
+
+[Pluto] After tile scheduling:
+T(S1): ((t-i)/32+(t+i)/32, (t+i)/32, (t+j)/32, (t+k)/32, t, t+i, t+j, t+k)
+loop types (loop, loop, loop, loop, loop, loop, loop, loop)
+
+[pluto] using statement-wise -fs/-ls options: S1(5,8),
+[pluto-unroll-jam] No unroll jam loop candidates found
+[Pluto] Output written to 3d7pt.pluto.c
+
+[pluto] Timing statistics
+[pluto] SCoP extraction + dependence analysis time: 0.087957s
+[pluto] Auto-transformation time: 0.011928s
+[pluto] Tile size selection time: 0.000000s
+[pluto] 		Total constraint solving time (LP/MIP/ILP) time: 0.002028s
+[pluto] Code generation time: 0.049415s
+[pluto] Other/Misc time: 0.310162s
+[pluto] Total time: 0.459462s
+[pluto] All times: 0.087957 0.011928 0.049415 0.310162
 ```
 
-Hence, the tile sizes specified correspond to t, t+i, t+j, and t+k.
+The tile sizes specified correspond to t, t+i, t+j, and t+k. Notice the
+multi-dimensional affine transformation function before tiling and after tiling.
 
 
 ### Setting good tile sizes
