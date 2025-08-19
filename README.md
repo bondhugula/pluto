@@ -69,19 +69,19 @@ Fedora, Ubuntu, and CentOS.
 - In order to use the development version from Pluto's git repository, automatic
 build system tools, including `autoconf`, `automake`, and `libtool` are needed.
 
-- LLVM/Clang 14.x (14.x recommended, 11.x, 12.x tested to work as well), along
-  with its development/header files, is needed for the pet submodule. These
-  packages are available in standard distribution repositories or could be
-  installed by building LLVM and Clang from source. See `pet/README` for
-  additional details.  On most modern distributions, these can be installed from
-  the repositories.
+- LLVM/Clang 15.x (15.x recommended, 11.x, 12.x, 14.x tested to work as well),
+along with its development/header files, is needed for the pet submodule. These
+packages are available in standard distribution repositories or could be
+installed by building LLVM and Clang from source. See `pet/README` for
+additional details.  On most modern distributions, these can be installed from
+the repositories.
 
   Example:
   ```shell
   # On an Ubuntu.
   sudo apt install -y llvm-14-dev libclang-14-dev
   # On a Fedora.
-  sudo dnf -y install llvm14-devel clang14-devel
+  sudo dnf -y install llvm15-devel clang15-devel
   ```
 
 - LLVM `FileCheck` is used for Pluto's test suite. (On a Fedora, this is part of
