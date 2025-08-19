@@ -107,7 +107,7 @@ tar zxvf pluto-<version>.tar.gz
 cd pluto-<version>/
 ./configure [--with-clang-prefix=<clang install location>]
 make -j 32
-make test
+make check-pluto
 ```
 
 configure can be provided `--with-isl-prefix=<isl install location>` to build
