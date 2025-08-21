@@ -53,7 +53,7 @@ test:
 		make -C $$d test; \
 		done
 
-perf: 
+perf:
 	@-for d in $(DIRS); do \
 		echo "$$d"; \
 		make --no-print-directory -C $$d perf; \
@@ -63,4 +63,3 @@ clean:
 	@-for d in $(DIRS); do \
 		make -C $$d clean; \
 		done
-
