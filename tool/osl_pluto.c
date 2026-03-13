@@ -1501,15 +1501,20 @@ static Dep **deps_read(osl_dependence_p candlDeps, PlutoProg *prog) {
     switch (candl_dep->type) {
     case OSL_DEPENDENCE_RAW:
       dep->type = PLUTO_DEP_RAW;
+      break;
     case OSL_DEPENDENCE_WAW:
       dep->type = PLUTO_DEP_WAW;
+      break;
     case OSL_DEPENDENCE_WAR:
       dep->type = PLUTO_DEP_WAR;
+      break;
     case OSL_DEPENDENCE_RAR:
       dep->type = PLUTO_DEP_RAR;
+      break;
     case OSL_UNDEFINED:
     default:
       dep->type = PLUTO_DEP_UNDEFINED;
+      break;
     }
     dep->src = candl_dep->label_source;
     dep->dest = candl_dep->label_target;
@@ -1666,7 +1671,10 @@ PlutoProg *osl_scop_to_pluto_prog(osl_scop_p scop, PlutoContext *context) {
 
   osl_statement_p scop_stmt = scop->statement;
 
-  prog->nvar = osl_statement_get_nb_iterators(scop_stmt);
+  // osl_scop_to_pluto_prog crashes if scop->statement is null
+  // which can happen on empty scop. To fix that, we prevent
+  // the call to osl_statement_get_nb_iterators
+  prog->nvar = !scop_stmt ? 0 : osl_statement_get_nb_iterators(scop_stmt);
   max_sched_rows = 0;
   for (i = 0; i < prog->nstmts; i++) {
     int stmt_num_iter = osl_statement_get_nb_iterators(scop_stmt);
