@@ -1,9 +1,6 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <sys/time.h>
-#include <math.h>
 
 #define my_sqrt_array(x,j) sqrt(x[j])
 

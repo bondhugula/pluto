@@ -1,17 +1,14 @@
-#include <stdio.h>
-
 #include "decls.h"
 #include "util.h"
 
 double t_start, t_end;
 
-main()
-{
-    int t, p, q, r, s;
+int main() {
+  int t, p, q, r, s;
 
-    init_array();
+  init_array();
 
-    IF_TIME(t_start = rtclock());
+  IF_TIME(t_start = rtclock());
 
 #ifdef TIME
     for (t=0; t<1000; t++)  {
@@ -45,5 +42,4 @@ main()
 #endif
 
     return 0;
-
 }

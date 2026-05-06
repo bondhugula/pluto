@@ -1,9 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <unistd.h>
-#include <sys/time.h>
 #include <assert.h>
+#include <stdio.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define nx 300
 #define ny 300
@@ -11,7 +9,7 @@
 // #define T 20
 // #define 9 9
 
-#define f60 0.2 
+#define f60 0.2
 #define f61 0.5
 #define f62 0.3
 
@@ -85,7 +83,7 @@ int main()
 	init_array() ;
 
 #ifdef PERFCTR
-	PERF_INIT; 
+        PERF_INIT;
 #endif
 
 	IF_TIME(t_start = rtclock());
@@ -95,24 +93,26 @@ int main()
     for (j = 4; j <= ny+9-2; j++)
         for (i = 4; i <= nx+9-3; i++)
             for (k = 4; k <= nz+9-3; k++)
-                ab[j][i][k] = (f60 * (a[j-1][i][k] + a[j][i][k]) + f61 
-                        * (a[j-2][i][k] + a[j+1][i][k]) + f62 * (a[j-3][i][k] 
-                            + a[j+2][i][k])) * thirddtbydy * uyb[j][i][k];
+              ab[j][i][k] = (f60 * (a[j - 1][i][k] + a[j][i][k]) +
+                             f61 * (a[j - 2][i][k] + a[j + 1][i][k]) +
+                             f62 * (a[j - 3][i][k] + a[j + 2][i][k])) *
+                            thirddtbydy * uyb[j][i][k];
 
     for (j = 4; j <= ny+9-3; j++)
         for (i = 4; i <= nx+9-2; i++)
             for (k = 4; k <= nz+9-3; k++)
-                al[j][i][k] = (f60 * (a[j][i-1][k] + a[j][i][k]) + f61 
-                        * (a[j][i-2][k] + a[j][i+1][k]) + f62 * (a[j][i-3][k] + a[j][i+2][k]))
-                    * thirddtbydx * uxl[j][i][k];
+              al[j][i][k] = (f60 * (a[j][i - 1][k] + a[j][i][k]) +
+                             f61 * (a[j][i - 2][k] + a[j][i + 1][k]) +
+                             f62 * (a[j][i - 3][k] + a[j][i + 2][k])) *
+                            thirddtbydx * uxl[j][i][k];
 
     for (j = 4; j <= ny+9-3; j++)
         for (i = 4; i <= nx+9-3; i++)
             for (k = 4; k <= nz+9-2; k++)
-                af[j][i][k] = (f60 * (a[j][i][k-1] + a[j][i][k]) + f61 
-                        * (a[j][i][k-2] + a[j][i][k+1]) + f62 * (a[j][i][k-3] + a[j][i][k+2]))
-                    * thirddtbydz * uzf[j][i][k];
-
+              af[j][i][k] = (f60 * (a[j][i][k - 1] + a[j][i][k]) +
+                             f61 * (a[j][i][k - 2] + a[j][i][k + 1]) +
+                             f62 * (a[j][i][k - 3] + a[j][i][k + 2])) *
+                            thirddtbydz * uzf[j][i][k];
 
     for (j = 4; j <= ny+9-3; j++)
         for (i = 4; i <= nx+9-3; i++)
@@ -125,7 +125,7 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

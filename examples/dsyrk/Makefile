@@ -5,7 +5,7 @@ TILEFLAGS = #--second-level-tile
 
 include ../common.mk
 
-$(SRC).par2d.c: 
+$(SRC).par2d.c:
 	$(PLC) $(SRC).c --tile --parallel --multipipe $(TILEFLAGS) $(PLCFLAGS)
 
 par2d: $(SRC).par2d.c decls.h util.h
@@ -16,7 +16,7 @@ par2d_test: $(SRC).par2d.c decls.h util.h
 
 ptest: tiled_test par2d_test par_test
 	./tiled_test 2> out_tiled
-	export OMP_NUM_THREADS=4 
+	export OMP_NUM_THREADS=4
 	./par_test 2> out_par4
 	diff -q out_tiled out_par4
 	export OMP_NUM_THREADS=4; ./par2d_test 2> out_par2d

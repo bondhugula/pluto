@@ -1,8 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #define N 10000
 double a[N][N], y_1[N+17], y_2[N+19], x1[N+23], z0[N+29], x2[N+31];

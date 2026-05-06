@@ -1,7 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include <omp.h>
 
@@ -25,7 +23,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -53,7 +51,7 @@ int main()
     IF_TIME(fprintf(stderr, "%0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
     if (fopen(".test", "r")) {

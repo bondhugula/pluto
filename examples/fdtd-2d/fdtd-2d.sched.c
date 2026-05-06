@@ -1,6 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 #include <assert.h>
 
@@ -8,8 +7,6 @@
 #include <papi.h>
 #include "papi_defs.h"
 #endif
-
-
 
 #include "decls.h"
 
@@ -764,7 +761,7 @@ for (c1=-1;c1<=floord(2*tmax+ny-2,32);c1++) {
 
 
 #ifdef PERFCTR
-	PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
 #ifdef TEST

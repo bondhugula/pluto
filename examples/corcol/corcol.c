@@ -58,33 +58,27 @@ void print_array()
 
 /**  Error handler  **************************************************/
 
-void erhand(err_msg)
-  char err_msg[];
-  /* Error handler */
-{
-  fprintf(stderr,"Run-time error:\n");
-  fprintf(stderr,"%s\n", err_msg);
-  fprintf(stderr,"Exiting to system.\n");
+/* Error handler */
+void erhand(char err_msg[]) {
+  fprintf(stderr, "Run-time error:\n");
+  fprintf(stderr, "%s\n", err_msg);
+  fprintf(stderr, "Exiting to system.\n");
   exit(1);
 }
 
-
-float *vector(n)
-  int n;
-  /* Allocates a float vector with range [1..n]. */
-{
+/* Allocates a float vector with range [1..n]. */
+float *vector(int n) {
 
   float *v;
 
-  v = (float *) malloc ((unsigned) n*sizeof(float));
-  if (!v) erhand("Allocation failure in vector().");
-  return v-1;
-
+  v = (float *)malloc((unsigned)n * sizeof(float));
+  if (!v)
+    erhand("Allocation failure in vector().");
+  return v - 1;
 }
 
 #ifdef TIME
-double rtclock()
-{
+double rtclock() {
   struct timezone Tzp;
   struct timeval Tp;
   int stat;

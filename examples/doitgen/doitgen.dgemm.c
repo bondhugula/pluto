@@ -8,33 +8,32 @@
 
 double t_start, t_end;
 
-main()
-{
-    int t, p, q, r, s;
-    double *_C4, *_sum, *_A;
-    int LDA, LDB, LDC;
-    int i, j, k;
+int main() {
+  int t, p, q, r, s;
+  double *_C4, *_sum, *_A;
+  int LDA, LDB, LDC;
+  int i, j, k;
 
-    LDA=N;
-    LDB=N;
-    LDC=N;
+  LDA = N;
+  LDB = N;
+  LDC = N;
 
-    init_array();
+  init_array();
 
-    _A = (double *) malloc(sizeof(double)*N*N*N);
-    _C4 = (double *) malloc(sizeof(double)*N*N);
-    _sum = (double *) malloc(sizeof(double)*N*N*N);
+  _A = (double *)malloc(sizeof(double) * N * N * N);
+  _C4 = (double *)malloc(sizeof(double) * N * N);
+  _sum = (double *)malloc(sizeof(double) * N * N * N);
 
-    for( i=0; i<N; i++){
-        for( j=0; j<N; j++){
-            for( k=0; k<N; k++){
-                _A[i*N*N+j*N+k]= A[i][j][k];
-            }
-            _C4[i*N+j]= C4[i][j]; 
-        }
+  for (i = 0; i < N; i++) {
+    for (j = 0; j < N; j++) {
+      for (k = 0; k < N; k++) {
+        _A[i * N * N + j * N + k] = A[i][j][k];
+      }
+      _C4[i * N + j] = C4[i][j];
     }
+  }
 
-    IF_TIME(t_start = rtclock());
+  IF_TIME(t_start = rtclock());
 
 #ifndef TEST
     for (t=0; t<1000; t++)  {
@@ -73,5 +72,4 @@ main()
 #endif
 
     return 0;
-
 }

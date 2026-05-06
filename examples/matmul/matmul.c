@@ -1,7 +1,5 @@
 #include <assert.h>
-#include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/time.h>
 #include <unistd.h>
 

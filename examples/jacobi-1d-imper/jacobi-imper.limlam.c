@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
 #include <papi.h>
@@ -35,7 +33,6 @@ int main()
 #ifdef PERFCTR
     PERF_INIT;
 #endif
-    
 
     /* Generated from jacobi-imper.par.cloog by CLooG v0.14.1 64 bits in 0.11s. */
     for (c1=-1;c1<=floord(2*N+5*T-8,2048);c1++) {

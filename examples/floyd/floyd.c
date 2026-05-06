@@ -1,9 +1,8 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #ifdef TIME
 #define IF_TIME(foo) foo;
@@ -51,7 +50,7 @@ void print_array()
     int i, j;
     for(i= 0; i < NUM_NODES; i++) {
         for(j= 0; j < NUM_NODES; j++) {
-            fprintf(stderr, "%lf ", pathDistanceMatrix[i][j]); 
+          fprintf(stderr, "%lf ", pathDistanceMatrix[i][j]);
         }
         fprintf(stderr, "\n");
     }
@@ -73,7 +72,7 @@ int main()
     init_array();
 
 #ifdef PERFCTR
-    PERF_INIT; 
+    PERF_INIT;
 #endif
 
     IF_TIME(t_start = rtclock());
@@ -95,7 +94,7 @@ int main()
     IF_TIME(fprintf(stdout, "time = %0.6lfs\n", t_end - t_start));
 
 #ifdef PERFCTR
-    PERF_EXIT; 
+    PERF_EXIT;
 #endif
 
     if (fopen(".test", "r")) {

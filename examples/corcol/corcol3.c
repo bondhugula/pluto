@@ -1,9 +1,8 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <sys/time.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define my_sqrt_array(x,j) sqrt(x[j])
 
@@ -37,22 +36,19 @@ void init_array()
     }
 }
 
-
-void print_array(char** argv)
-{
-    int i, j;
-    if (! strcmp(argv[0], ""))
-      {
-	for (i=0; i<M; i++) {
-	  for (i=0; i<M; i++) {
-	  fprintf(stderr, "%0.2lf ", symmat[i][j]);
-	  if (i%80 == 20) fprintf(stderr, "\n");
-	  }
-	}
-	fprintf(stderr, "\n");
+void print_array(char **argv) {
+  int i, j;
+  if (!strcmp(argv[0], "")) {
+    for (i = 0; i < M; i++) {
+      for (i = 0; i < M; i++) {
+        fprintf(stderr, "%0.2lf ", symmat[i][j]);
+        if (i % 80 == 20)
+          fprintf(stderr, "\n");
       }
+    }
+    fprintf(stderr, "\n");
+  }
 }
-
 
 double rtclock()
 {

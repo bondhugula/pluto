@@ -7,9 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/time.h>
-#include <math.h>
 
 /*
  * N is the length of one side of the GoL world
@@ -218,9 +216,12 @@ int main(int argc, char * argv[]) {
   for (t = 0; t < T; t++) {
     for (i = 1; i < N-1; i++) {
       for (j = 1; j < N-1; j++) {
-        life[(t+1)%2][i][j] = b2s23(life[t%2][i][j], life[t%2][i-1][j+1] + life[t%2][i-1][j] + life[t%2][i-1][j-1] 
-                    + life[t%2][i][j+1] + life[t%2][i][j-1]                     
-                    + life[t%2][i+1][j+1] + life[t%2][i+1][j] + life[t%2][i+1][j-1]);
+        life[(t + 1) % 2][i][j] =
+            b2s23(life[t % 2][i][j],
+                  life[t % 2][i - 1][j + 1] + life[t % 2][i - 1][j] +
+                      life[t % 2][i - 1][j - 1] + life[t % 2][i][j + 1] +
+                      life[t % 2][i][j - 1] + life[t % 2][i + 1][j + 1] +
+                      life[t % 2][i + 1][j] + life[t % 2][i + 1][j - 1]);
       }
     }
     /* print_points(1-k); */
