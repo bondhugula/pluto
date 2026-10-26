@@ -125,3 +125,4 @@ libtool
 getversion.sh
 missing
 test_libpluto
+pluto-*.tar.gz
