@@ -34,7 +34,11 @@ polycc: polycc.sh
 	cat polycc.sh >> polycc
 	chmod ugo+x polycc
 
-.PHONY: bin binit
+.PHONY: bin binit release
+
+# Create a release tarball pluto-<version>.tar.gz in the source directory.
+release:
+	$(top_srcdir)/make-release.sh
 
 bindir:
 	@if [ ! -d bin ];then \
