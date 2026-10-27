@@ -1,3 +1,11 @@
+version 0.13.1
+
+- See git commit history https://github.com/bondhugula/pluto for details.
+
+- isl submodule updated for an isl_basic_map_reduce_coefficients fix.
+
+- Release tarballs are now created with `make release`.
+
 version 0.13.0
 
 - See git commit history https://github.com/bondhugula/pluto for details.
