@@ -405,49 +405,16 @@ static struct pet_stmt *extract_pet_stmt(__isl_keep isl_ast_node *node,
   return stmt;
 }
 
-/* Index transformation callback for pet_stmt_build_ast_exprs.
- * "index" expresses the array indices in terms of statement iterators
- * "iterator_map" expresses the statement iterators in terms of
- * AST loop iterators.
- *
- * The result expresses the array indices in terms of
- * AST loop iterators.
- */
-static __isl_give isl_multi_pw_aff *
-pullback_index(__isl_take isl_multi_pw_aff *index, __isl_keep isl_id *id,
-               void *user) {
-  isl_pw_multi_aff *iterator_map = (isl_pw_multi_aff *)user;
-
-  iterator_map = isl_pw_multi_aff_copy(iterator_map);
-  return isl_multi_pw_aff_pullback_pw_multi_aff(index, iterator_map);
-}
-
-/* Set the iterator names using schedule map of the statement*/
-static __isl_give isl_id_list *generate_names(isl_ctx *ctx,
-                                              struct pet_stmt *stmt) {
-  int i;
-  isl_id_list *names;
-  isl_id *id;
-
-  names = isl_id_list_alloc(ctx, isl_set_dim(stmt->domain, isl_dim_set));
-
-  for (i = 0; i < isl_set_dim(stmt->domain, isl_dim_set); i++) {
-    id = isl_id_alloc(ctx, isl_set_get_dim_name(stmt->domain, isl_dim_set, i),
-                      NULL);
-    names = isl_id_list_add(names, id);
-  }
-
-  return names;
-}
-
 static __isl_give void free_isl_id_to_ast_expr(void *user) {
   isl_id_to_ast_expr_free((isl_id_to_ast_expr *)user);
 }
 
-/* Transform the accesses in the statement associated to the domain
- * called by "node" to refer to the AST loop iterators, construct
- * corresponding AST expressions using "build" and attach them
- * to the node.
+/* Construct AST expressions for the accesses in the statement associated to
+ * the domain called by "node" and attach them to the node.
+ *
+ * The expressions are constructed using an AST build whose domain is the
+ * iteration domain of the statement, so that they are expressed in terms of
+ * the statement's own iterators rather than the AST loop iterators.
  */
 static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
                                                __isl_keep isl_ast_build *build,
@@ -455,8 +422,7 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
   struct pet_stmt *stmt;
   isl_ctx *ctx;
   isl_id *id;
-  isl_map *map;
-  isl_pw_multi_aff *iterator_map;
+  isl_ast_build *stmt_build;
   isl_id_to_ast_expr *ref2expr;
   struct pet_scop *scop = (struct pet_scop *)user;
 
@@ -468,16 +434,9 @@ static __isl_give isl_ast_node *at_each_domain(__isl_take isl_ast_node *node,
             isl_ast_node_free(node);
             node = NULL);
 
-  map = isl_map_from_union_map(isl_ast_build_get_schedule(build));
-  map = isl_map_reverse(map);
-  iterator_map = isl_pw_multi_aff_from_map(map);
-
-  isl_id_list *iterators = generate_names(ctx, stmt);
-  build = isl_ast_build_set_iterators(build, iterators);
-
-  ref2expr = pet_stmt_build_ast_exprs(stmt, build, &pullback_index,
-                                      iterator_map, NULL, NULL);
-  isl_pw_multi_aff_free(iterator_map);
+  stmt_build = isl_ast_build_from_context(isl_set_copy(stmt->domain));
+  ref2expr = pet_stmt_build_ast_exprs(stmt, stmt_build, NULL, NULL, NULL, NULL);
+  isl_ast_build_free(stmt_build);
 
   id = isl_id_alloc(ctx, NULL, ref2expr);
   id = isl_id_set_free_user(id, &free_isl_id_to_ast_expr);
