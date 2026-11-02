@@ -30,7 +30,11 @@ jobs:
       - name: Checkout submodules
         # Checkout submodule via the command so that we avoid a complete
         # recursive checkout. We only need the submodules Pluto depends on.
-        run: git submodule update --init --depth 1
+        # Sync first so that submodule URL changes in .gitmodules take effect
+        # on runners that reuse an existing checkout.
+        run: |
+          git submodule sync
+          git submodule update --init --depth 1
 
       - name: Generate build
         # Use a bash shell so we can use the same syntax for environment
