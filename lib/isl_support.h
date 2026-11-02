@@ -12,7 +12,9 @@
 #ifndef ISL_SUPPORT_H
 #define ISL_SUPPORT_H
 
+#include "isl/aff_type.h"
 #include "isl/ctx.h"
+#include "isl/map_type.h"
 #include "isl/set.h"
 
 typedef struct pluto_matrix PlutoMatrix;
@@ -32,6 +34,11 @@ isl_stat isl_aff_to_pluto_func(__isl_take isl_set *set, __isl_take isl_aff *aff,
 PlutoMatrix *pluto_matrix_from_isl_mat(__isl_keep isl_mat *mat,
                                        PlutoContext *context);
 long long isl_val_get_num_ll(__isl_keep isl_val *v);
+__isl_give isl_basic_map *
+pluto_isl_basic_map_range_factor_domain(__isl_take isl_basic_map *bmap);
+isl_bool pluto_isl_map_dim_is_single_valued(__isl_keep isl_map *map, int pos);
+__isl_give isl_pw_aff *pluto_isl_pw_aff_from_map_dim(__isl_keep isl_map *map,
+                                                     int pos);
 
 #if defined(__cplusplus)
 }

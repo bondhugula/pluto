@@ -434,8 +434,8 @@ PlutoMatrix *isl_map_to_pluto_func(isl_map *map, int stmt_dim, int npar,
     PlutoMatrix *func_onedim = NULL;
     struct pluto_mat_context_info info = {&func_onedim, context};
     /* Schedule should be single valued */
-    assert(isl_map_dim_is_single_valued(map, i));
-    isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+    assert(pluto_isl_map_dim_is_single_valued(map, i));
+    isl_pw_aff *pw_aff = pluto_isl_pw_aff_from_map_dim(map, i);
     /* TODO: check to make sure there is only one piece; or else
      * an incorrect schedule will be extracted */
     /* Best effort: Gets it from the last piece */
