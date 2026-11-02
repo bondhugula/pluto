@@ -390,7 +390,7 @@ static isl_stat basic_map_extract_dep(__isl_take isl_basic_map *bmap,
    * and t' < T } */
   isl_space *space = isl_basic_map_get_space(bmap);
   if (isl_space_range_is_wrapping(space)) {
-    bmap = isl_basic_map_range_factor_domain(bmap);
+    bmap = pluto_isl_basic_map_range_factor_domain(bmap);
     isl_space_free(space);
     space = isl_basic_map_get_space(bmap);
   }
@@ -516,8 +516,8 @@ isl_basic_map_extract_access_func(__isl_take isl_basic_map *bmap, void *user) {
 
   for (int i = 0; i < dim; i++) {
     PlutoMatrix *func_onedim = NULL;
-    if (isl_map_dim_is_single_valued(map, i)) {
-      isl_pw_aff *pw_aff = isl_pw_aff_from_map_dim(map, i);
+    if (pluto_isl_map_dim_is_single_valued(map, i)) {
+      isl_pw_aff *pw_aff = pluto_isl_pw_aff_from_map_dim(map, i);
       /* Best effort: Gets it from the last piece */
       struct pluto_mat_context_info m_info = {&func_onedim, info->context};
       isl_pw_aff_foreach_piece(pw_aff, isl_aff_to_pluto_func, &m_info);

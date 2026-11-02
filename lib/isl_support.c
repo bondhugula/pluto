@@ -22,6 +22,8 @@
 #include "pluto/matrix.h"
 
 #include "isl/aff.h"
+#include "isl/map.h"
+#include "isl/space.h"
 #include "isl/val.h"
 #include "isl/val_gmp.h"
 
@@ -167,4 +169,51 @@ long long isl_val_get_num_ll(__isl_keep isl_val *v) {
   result = (long long)((((unsigned long long)hi) << 32) + lo);
 
   return result;
+}
+
+/* Given a basic map A -> [B -> C], extract the basic map A -> B.
+ */
+__isl_give isl_basic_map *
+pluto_isl_basic_map_range_factor_domain(__isl_take isl_basic_map *bmap) {
+  isl_space *space = isl_space_range(isl_basic_map_get_space(bmap));
+  isl_multi_aff *proj = isl_multi_aff_domain_map(isl_space_unwrap(space));
+
+  return isl_basic_map_apply_range(bmap, isl_basic_map_from_multi_aff(proj));
+}
+
+/* Project out all output dimensions of "map" except the one at "pos".
+ */
+static __isl_give isl_map *map_project_onto_out_dim(__isl_take isl_map *map,
+                                                    int pos) {
+  isl_size n_out = isl_map_dim(map, isl_dim_out);
+  if (n_out < 0)
+    return isl_map_free(map);
+  assert(pos >= 0 && pos < n_out);
+
+  map = isl_map_project_out(map, isl_dim_out, pos + 1, n_out - pos - 1);
+  return isl_map_project_out(map, isl_dim_out, 0, pos);
+}
+
+/* Is "map" single-valued along its output dimension at "pos"?
+ */
+isl_bool pluto_isl_map_dim_is_single_valued(__isl_keep isl_map *map, int pos) {
+  isl_map *proj = map_project_onto_out_dim(isl_map_copy(map), pos);
+  isl_bool sv = isl_map_is_single_valued(proj);
+  isl_map_free(proj);
+
+  return sv;
+}
+
+/* Create a piecewise quasi-affine expression equivalent to the output
+ * dimension at "pos" of "map". "map" should be single-valued along that
+ * dimension.
+ */
+__isl_give isl_pw_aff *pluto_isl_pw_aff_from_map_dim(__isl_keep isl_map *map,
+                                                     int pos) {
+  isl_map *proj = map_project_onto_out_dim(isl_map_copy(map), pos);
+  isl_pw_multi_aff *pma = isl_pw_multi_aff_from_map(proj);
+  isl_pw_aff *pa = isl_pw_multi_aff_get_at(pma, 0);
+  isl_pw_multi_aff_free(pma);
+
+  return pa;
 }
