@@ -223,10 +223,14 @@ done
 # Openscop inputs
 echo -e "\nTest with Openscop as input"
 echo "============================="
-TESTS_OPENSCOP="./test/gemver.scop"
+TESTS_OPENSCOP="\
+  @top_srcdir@/test/gemver.scop \
+  @top_srcdir@/test/simple-case-verification.scop \
+  @top_srcdir@/test/simple-case-computation.scop \
+  "
 for file in $TESTS_OPENSCOP; do
     printf '%-50s ' "$file"
-    $PLUTO --readscop "$file"  --tile --parallel -o "$PLUTO_OUTPUT" 2>&1 | $FILECHECK "$file" 
+    $PLUTO --readscop "$file"  --tile --parallel -o "$PLUTO_OUTPUT" 2>&1 | $FILECHECK "$file"
     check_ret_val_emit_status
 done
 
