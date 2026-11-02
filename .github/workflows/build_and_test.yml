@@ -32,8 +32,16 @@ jobs:
         # recursive checkout. We only need the submodules Pluto depends on.
         # Sync first so that submodule URL changes in .gitmodules take effect
         # on runners that reuse an existing checkout.
+        # Upstream isl (repo.or.cz) does not allow fetching a commit by its
+        # hash, which a shallow submodule update relies on, so check out isl
+        # with its full history.
         run: |
           git submodule sync
+          if [ -e isl/.git ] && \
+             [ "$(git -C isl rev-parse --is-shallow-repository)" = true ]; then
+            git -C isl fetch --unshallow --tags origin
+          fi
+          git submodule update --init isl
           git submodule update --init --depth 1
 
       - name: Generate build
